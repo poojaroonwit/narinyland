@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         proxy: {
           '/api': {
-            target: 'https://narinyland-server.vercel.app',
+            target: 'http://localhost:4000',
             changeOrigin: true,
           },
         },

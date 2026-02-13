@@ -44,32 +44,44 @@ app.use((req, _res, next) => {
 });
 
 /* =========================
-   Router Setup
+   URL Normalization
+   Strip /api prefix to handle Vercel routing inconsistencies
 ========================= */
-const router = express.Router();
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/api')) {
+    req.url = req.url.replace(/^\/api/, '') || '/';
+  }
+  next();
+});
 
-// Apply AntiBot to all API routes
-router.use(antibotMiddleware);
+/* =========================
+   Simple Ping (No DB)
+========================= */
+app.get('/ping', (_req, res) => {
+  res.json({ status: 'pong', timestamp: new Date().toISOString() });
+});
 
-// Define routes on the router (without /api prefix)
-router.use('/config', configRoutes);
-router.use('/memories', memoriesRoutes);
-router.use('/timeline', timelineRoutes);
-router.use('/letters', lettersRoutes);
-router.use('/coupons', couponsRoutes);
-router.use('/stats', statsRoutes);
-router.use('/upload', uploadRoutes);
-router.use('/instagram', instagramRoutes);
+/* =========================
+   AntiBot (Allowed after CORS)
+========================= */
+app.use(antibotMiddleware);
 
-// Mount the router at both /api and root / to handle Vercel path rewriting behavior
-// consistent with whether it strips the prefix or not.
-app.use('/api', router);
-app.use('/', router);
+/* =========================
+   Routes (Mounted at root)
+========================= */
+app.use('/config', configRoutes);
+app.use('/memories', memoriesRoutes);
+app.use('/timeline', timelineRoutes);
+app.use('/letters', lettersRoutes);
+app.use('/coupons', couponsRoutes);
+app.use('/stats', statsRoutes);
+app.use('/upload', uploadRoutes);
+app.use('/instagram', instagramRoutes);
 
 /* =========================
    Health
 ========================= */
-app.get('/api/health', async (_req, res) => {
+app.get('/health', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ status: 'ok' });
@@ -79,10 +91,10 @@ app.get('/api/health', async (_req, res) => {
 });
 
 /* =========================
-   404
+   404 Handler
 ========================= */
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Not found' });
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found', path: req.path, originalUrl: req.originalUrl });
 });
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
