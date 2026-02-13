@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-
+import cors from 'cors'; // Restored cors package
 import prisma from './lib/prisma.js';
 
 import configRoutes from './routes/config.js';
@@ -16,26 +16,18 @@ import { antibotMiddleware } from './middleware/antibot.js';
 const app = express();
 
 /* =========================
-   ✅ CORS (Manual Fix)
+   ✅ CORS (Standard Package)
 ========================= */
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  // Allow ALL origins
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
+// origin: true matches the request origin (reflects it), effectively allowing all with credentials
+const corsConfigs = { 
+  origin: true, 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
 
-  // Handle preflight requests immediately
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
+app.use(cors(corsConfigs));
+app.options('*', cors(corsConfigs));
 
 /* =========================
    Body
@@ -52,21 +44,27 @@ app.use((req, _res, next) => {
 });
 
 /* =========================
-   AntiBot (หลัง CORS เท่านั้น)
+   Router Setup
 ========================= */
-app.use('/api', antibotMiddleware);
+const router = express.Router();
 
-/* =========================
-   Routes
-========================= */
-app.use('/api/config', configRoutes);
-app.use('/api/memories', memoriesRoutes);
-app.use('/api/timeline', timelineRoutes);
-app.use('/api/letters', lettersRoutes);
-app.use('/api/coupons', couponsRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/instagram', instagramRoutes);
+// Apply AntiBot to all API routes
+router.use(antibotMiddleware);
+
+// Define routes on the router (without /api prefix)
+router.use('/config', configRoutes);
+router.use('/memories', memoriesRoutes);
+router.use('/timeline', timelineRoutes);
+router.use('/letters', lettersRoutes);
+router.use('/coupons', couponsRoutes);
+router.use('/stats', statsRoutes);
+router.use('/upload', uploadRoutes);
+router.use('/instagram', instagramRoutes);
+
+// Mount the router at both /api and root / to handle Vercel path rewriting behavior
+// consistent with whether it strips the prefix or not.
+app.use('/api', router);
+app.use('/', router);
 
 /* =========================
    Health
