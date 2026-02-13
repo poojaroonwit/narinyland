@@ -10,11 +10,9 @@ import LoveLetter from './components/LoveLetter';
 import LoveTree from './components/LoveTree';
 import EditDrawer from './components/EditDrawer';
 import Logo from './components/Logo';
-import PetChat from './components/PetChat'; 
 import MusicPlayer from './components/MusicPlayer';
 import TimelineSpreadsheet from './components/TimelineSpreadsheet';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem } from './types';
-import { GeminiLiveService, decode, decodeAudioData } from './services/geminiLive';
 import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from './services/api';
 
 const INITIAL_MEMORIES: MemoryItem[] = [];
@@ -28,12 +26,9 @@ const App: React.FC = () => {
   const [isLetterOpen, setIsLetterOpen] = useState(false); 
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isSpreadsheetOpen, setIsSpreadsheetOpen] = useState(false);
-  const [isPetChatOpen, setIsPetChatOpen] = useState(false);
   
   const [petEmotion, setPetEmotion] = useState<Emotion>('neutral');
   const [petMessage, setPetMessage] = useState("Hello! Welcome back to our world! 🐾");
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [loveStats, setLoveStats] = useState<LoveStats & { leaves: number; points: number }>({ 
     xp: 0, 
     level: 1, 
@@ -48,11 +43,6 @@ const App: React.FC = () => {
   const [loveLetters, setLoveLetters] = useState<LoveLetterMessage[]>([]);
   const [timeline, setTimeline] = useState<Interaction[]>([]); // New local timeline state if we separate it
   // Note: currently timeline is in appConfig.timeline. We should populate that.
-
-  const liveService = useRef<GeminiLiveService | null>(null);
-  const audioContext = useRef<AudioContext | null>(null);
-  const audioQueue = useRef<AudioBufferSourceNode[]>([]);
-  const nextStartTime = useRef<number>(0);
 
   const [appConfig, setAppConfig] = useState({
     appName: "Our Story",
@@ -292,68 +282,7 @@ const App: React.FC = () => {
       proposal: { ...prev.proposal, isAccepted: true }
     }));
     console.log('💍 Proposal state saved');
-
-    if (!audioContext.current) {
-        audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-    }
-    connectLiveService();
   };
-
-  const connectLiveService = async () => {
-    if (isConnecting) return;
-    
-    setIsConnecting(true);
-    setConnectionError(null);
-    setPetEmotion('thinking');
-    setPetMessage("Nari is waking up... ⏳");
-
-    if (!liveService.current) {
-      liveService.current = new GeminiLiveService();
-    }
-
-    try {
-      await liveService.current.connect({
-        onMessage: (text) => setPetMessage(text),
-        onAudioData: async (base64) => {
-          if (!audioContext.current) return;
-          try {
-             const audioBuffer = await decodeAudioData(decode(base64), audioContext.current, 24000, 1);
-             const source = audioContext.current.createBufferSource();
-             source.buffer = audioBuffer;
-             source.connect(audioContext.current.destination);
-             const currentTime = audioContext.current.currentTime;
-             if (nextStartTime.current < currentTime) nextStartTime.current = currentTime;
-             source.start(nextStartTime.current);
-             nextStartTime.current += audioBuffer.duration;
-             audioQueue.current.push(source);
-             setPetEmotion('happy');
-             setTimeout(() => setPetEmotion('neutral'), audioBuffer.duration * 1000);
-          } catch (e) { console.error(e); }
-        },
-        onInterrupted: () => {
-          audioQueue.current.forEach(source => source.stop());
-          audioQueue.current = [];
-          nextStartTime.current = 0;
-          setPetEmotion('neutral');
-        },
-        onError: (e) => {
-          console.error("Nari Encountered an Error:", e);
-          setPetEmotion('sleeping');
-          setConnectionError(e.message || "Connection failed");
-        }
-      });
-      setPetEmotion('neutral');
-      setPetMessage("Nari is here! Ask me anything! ✨");
-    } catch (e: any) { 
-      console.error("Nari Connection Failed:", e);
-      setPetEmotion('sleeping');
-      setConnectionError(e.message || "Deadline expired or connection lost.");
-      setPetMessage("Zzz... Nari is tired. Wake her up? 😴");
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
 
 
   const handleRedeemCoupon = async (id: string) => {
@@ -602,7 +531,6 @@ const App: React.FC = () => {
              daysPerFlower={appConfig.daysPerFlower}
              flowerType={appConfig.flowerType}
              mixedFlowers={appConfig.mixedFlowers}
-             onPetClick={() => setIsPetChatOpen(true)}
              viewMode={appConfig.viewMode}
              leaves={loveStats.leaves}
              points={loveStats.points}
@@ -646,29 +574,7 @@ const App: React.FC = () => {
              
              {/* Love Forest & Pet Container */}
 
-                {/* Connection Status / Retry */}
-                <AnimatePresence>
-                  {petEmotion === 'sleeping' && !isConnecting && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50"
-                    >
-                      <button 
-                        onClick={connectLiveService}
-                        className="bg-white/95 backdrop-blur-md px-8 py-4 rounded-full shadow-2xl border-4 border-pink-200 text-pink-600 font-black text-sm uppercase tracking-widest flex items-center gap-3 hover:bg-pink-500 hover:text-white transition-all animate-bounce"
-                      >
-                        <i className="fas fa-bolt"></i> Wake Up Nari!
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
-                {isConnecting && (
-                  <div className="fixed top-24 left-1/2 -translate-x-1/2 text-pink-400 font-black text-[10px] uppercase tracking-[0.3em] animate-pulse z-40">
-                    Nari is coming...
-                  </div>
-                )}
              
 
           </div>
@@ -819,15 +725,7 @@ const App: React.FC = () => {
             </button>
           </motion.div>
 
-          {/* Modals & Overlays */}
-          <PetChat 
-            isOpen={isPetChatOpen}
-            setIsOpen={setIsPetChatOpen}
-            partner1Name={appConfig.partners.partner1.name} 
-            partner2Name={appConfig.partners.partner2.name} 
-            onPetSpeak={(text) => setPetMessage(text)}
-            petEmotion={petEmotion}
-          />
+
 
           <LoveLetter 
             isOpen={isLetterOpen} 

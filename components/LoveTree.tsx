@@ -14,7 +14,6 @@ interface LoveTreeProps {
   daysPerFlower?: number;
   flowerType?: string;
   mixedFlowers?: string[];
-  onPetClick?: () => void;
   // viewMode is deprecated but kept for compatibility for now
   viewMode?: string;
   leaves: number;

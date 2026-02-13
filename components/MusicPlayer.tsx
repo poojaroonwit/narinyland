@@ -36,8 +36,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
   // Clean URL to avoid playlist/radio bugs in embed
   const cleanUrl = React.useMemo(() => {
     if (!url) return '';
+    console.log("MusicPlayer: Received URL", url);
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      const match = url.match(/(?:[?&]v=|be\/)([^&?#/ ]+)/);
+      // Support standard v=ID, youtu.be/ID, shorts/ID, and embed/ID
+      const match = url.match(/(?:[?&]v=|be\/|shorts\/|embed\/)([^&?#/ ]+)/);
+      console.log("MusicPlayer: YouTube Match", match);
       return match ? `https://www.youtube.com/watch?v=${match[1]}` : url;
     }
     return url;
@@ -63,28 +66,39 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
             <ReactPlayer
               key={cleanUrl} 
               url={cleanUrl}
-              playing={isReady && playing}
+              playing={playing} // Removed isReady check to allow initial play request
               volume={volume}
               muted={muted}
               width="100%"
               height="100%"
               controls={false}
-              onReady={() => setIsReady(true)}
-              onStart={() => setIsActuallyPlaying(true)}
+              onReady={() => {
+                console.log("MusicPlayer: Player is ready");
+                setIsReady(true);
+              }}
+              onStart={() => {
+                console.log("MusicPlayer: Playback started");
+                setIsActuallyPlaying(true);
+              }}
               onPlay={() => setIsActuallyPlaying(true)}
               onPause={() => setIsActuallyPlaying(false)}
               onBuffer={() => setIsActuallyPlaying(false)}
               onBufferEnd={() => setIsActuallyPlaying(true)}
               onError={(e) => {
-                console.error("ReactPlayer Error:", e);
+                console.error("MusicPlayer Error:", e);
                 setIsActuallyPlaying(false);
               }}
               config={{
                 youtube: {
                   playerVars: { 
+                    autoplay: 1,
+                    playsinline: 1,
                     controls: 0,
                     modestbranding: 1,
-                    origin: window.location.origin
+                    rel: 0,
+                    showinfo: 0,
+                    enablejsapi: 1,
+                    origin: typeof window !== 'undefined' ? window.location.origin : ''
                   }
                 }
               }}
@@ -131,10 +145,25 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
             </div>
          </div>
 
-         <div className="mt-4 flex items-center justify-center">
+         <div className="mt-4 flex items-center justify-between px-1">
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-300">
-              {isActuallyPlaying ? 'Now Playing' : playing ? 'Loading...' : 'Paused'}
+              {isActuallyPlaying ? 'Now Playing' : playing ? 'Buffering...' : 'Paused'}
             </p>
+            <button 
+              onClick={() => {
+                const currentUrl = cleanUrl;
+                // Force remount by temporarily clearing URL
+                // Actually, just resetting state is usually enough
+                setIsReady(false);
+                setIsActuallyPlaying(false);
+                setPlaying(false);
+                setTimeout(() => setPlaying(true), 100);
+              }} 
+              className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-pink-400 transition-colors"
+              title="Refresh Player"
+            >
+              <i className="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
          </div>
       </motion.div>
 

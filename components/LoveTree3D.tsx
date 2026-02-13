@@ -18,7 +18,6 @@ interface LoveTree3DProps {
   daysPerFlower?: number;
   flowerType?: string;
   mixedFlowers?: string[];
-  onPetClick?: () => void;
   leaves: number;
   points: number;
   onAddLeaf: () => void;
@@ -322,7 +321,7 @@ const Tree = ({ theme, scale = 1, leafCount, windFactor = 1 }: { theme: any; sca
   );
 };
 
-const Pet3D = ({ emotion, onClick, theme }: { emotion: Emotion; onClick?: () => void; theme: any }) => {
+const Pet3D = ({ emotion, theme }: { emotion: Emotion; theme: any }) => {
   const ref = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Group>(null);
   const tailRef = useRef<THREE.Group>(null);
@@ -485,7 +484,6 @@ const Pet3D = ({ emotion, onClick, theme }: { emotion: Emotion; onClick?: () => 
   return (
     <group 
         ref={ref} 
-        onClick={(e) => { e.stopPropagation(); setActive(!active); if(onClick) onClick(); }} 
         position={[2, 0, 2]}
     >
         <group ref={coreRef}>
@@ -1102,7 +1100,7 @@ const StonePath = () => {
 };
 
 const LoveTree3D: React.FC<LoveTree3DProps> = ({ 
-    anniversaryDate, treeStyle = 'oak', petEmotion, petMessage, level, onPetClick,
+    anniversaryDate, treeStyle = 'oak', petEmotion, petMessage, level,
     leaves, points, onAddLeaf, daysPerFlower = 7, flowerType = 'sunflower',
     mixedFlowers = ['sunflower', 'tulip', 'rose', 'cherry', 'lavender', 'heart'],
     skyMode = 'follow_timezone'
@@ -1239,7 +1237,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
          <Tree theme={theme} scale={1.5} leafCount={leaves} windFactor={windFactor} />
 
          {/* Pet */}
-         <Pet3D emotion={petEmotion} onClick={onPetClick} theme={theme} />
+         <Pet3D emotion={petEmotion} theme={theme} />
 
           {/* Garden Props */}
           <group>

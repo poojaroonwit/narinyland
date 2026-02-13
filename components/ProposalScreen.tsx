@@ -20,6 +20,8 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
   const containerRef = useRef<HTMLDivElement>(null);
   const noButtonRef = useRef<HTMLButtonElement>(null);
 
+  const [distance, setDistance] = useState(1000);
+
   const moveButton = useCallback(() => {
     // Determine bounds for the random jump. 
     const vWidth = window.innerWidth;
@@ -27,10 +29,10 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
     
     // Create a random offset. 
     // Increased range to 0.85 to make it jump further across the screen
-    const offsetX = (Math.random() - 0.5) * (vWidth * 0.85);
-    const offsetY = (Math.random() - 0.5) * (vHeight * 0.85);
+    const offsetX = (Math.random() - 0.5) * (vWidth * 0.7);
+    const offsetY = (Math.random() - 0.5) * (vHeight * 0.7);
     // Add random rotation for unpredictability
-    const rotation = (Math.random() - 0.5) * 60;
+    const rotation = (Math.random() - 0.5) * 45;
     
     setNoButtonPos({ x: offsetX, y: offsetY, rotate: rotation });
   }, []);
@@ -44,13 +46,15 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
       const buttonCenterX = rect.left + rect.width / 2;
       const buttonCenterY = rect.top + rect.height / 2;
 
-      const distance = Math.sqrt(
+      const d = Math.sqrt(
         Math.pow(e.clientX - buttonCenterX, 2) + 
         Math.pow(e.clientY - buttonCenterY, 2)
       );
 
-      // Increased reaction distance to 200px - makes it run away sooner (harder to catch)
-      if (distance < 200) {
+      setDistance(d);
+
+      // Increased reaction distance to 220px - makes it run away sooner (harder to catch)
+      if (d < 220) {
         moveButton();
       }
     };
@@ -64,7 +68,8 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
       const nextStep = step + 1;
       setStep(nextStep);
       setNoButtonPos({ x: 0, y: 0, rotate: 0 });
-      if (onStepChange) onStepChange(step); // 'step' is the current index (1-based) we just finished
+      setDistance(1000); // Reset distance
+      if (onStepChange) onStepChange(step); 
     } else {
       if (onStepChange) onStepChange(questions.questions.length);
       onAccept();
@@ -153,17 +158,19 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
               animate={{ 
                 x: noButtonPos.x, 
                 y: noButtonPos.y,
-                rotate: noButtonPos.rotate
+                rotate: noButtonPos.rotate + (distance < 220 ? (Math.random() - 0.5) * 10 : 0),
+                scale: distance < 220 ? 0.9 + (Math.random() * 0.1) : 1,
+                opacity: distance < 300 ? 0.4 + (distance / 300) * 0.6 : 1
               }}
               transition={{ 
                 type: "spring", 
-                stiffness: 2000, 
-                damping: 10,     
-                mass: 0.1        
+                stiffness: 400, 
+                damping: 30,     
+                mass: 0.5        
               }}
               onMouseEnter={moveButton}
               onClick={moveButton}
-              className="px-8 py-3 bg-white text-gray-300 text-lg font-bold rounded-full shadow-lg border-4 border-gray-50 z-30 whitespace-nowrap select-none hover:bg-gray-50 transition-colors"
+              className="px-8 py-3 bg-white/40 backdrop-blur-md text-gray-500 text-lg font-bold rounded-full shadow-lg border border-white/50 z-30 whitespace-nowrap select-none hover:bg-white/60 transition-colors"
               style={{
                 position: 'relative' 
               }}
