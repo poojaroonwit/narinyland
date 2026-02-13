@@ -141,8 +141,8 @@ router.put('/:id', upload.array('media', 10), async (req, res) => {
     }
 
     const event = await prisma.timelineEvent.update({
-      where: { id },
-      data: updateData,
+      where: { id : id as string },
+      data: updateData as any,
     });
 
     const mediaItems = (event as any).mediaUrls?.map((url: string, i: number) => ({
