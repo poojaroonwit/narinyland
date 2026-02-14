@@ -1,5 +1,5 @@
-FROM node:20-alpine AS base
-RUN apk add --no-cache libc6-compat openssl
+FROM node:20-bookworm-slim AS base
+RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ecaf0bd06f5d11a23#nodealpine to understand why libc6-compat might be needed.
 WORKDIR /app
