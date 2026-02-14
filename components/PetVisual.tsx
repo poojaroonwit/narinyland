@@ -1,6 +1,6 @@
+"use client";
 
-import * as React from 'react';
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 // Added Variants to imports for proper typing
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Emotion } from '../types';

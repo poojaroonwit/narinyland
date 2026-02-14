@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: 'Outfit', 'Kanit', sans-serif;
+    background-color: #fdf2f8; /* pink-50 */
+    overflow-x: hidden;
+}
+
+.font-pacifico {
+    font-family: 'Pacifico', cursive;
+}
+
+.font-outfit {
+    font-family: 'Outfit', sans-serif;
+}

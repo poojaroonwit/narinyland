@@ -49,3 +49,40 @@ export interface LoveLetterMessage {
   media?: MediaContent;
   mediaItems?: MediaContent[];
 }
+export interface AppConfig {
+  appName: string;
+  musicUrl?: string;
+  anniversaryDate: string;
+  treeStyle: string;
+  viewMode?: "2d" | "3d";
+  galleryStyle: string;
+  gallerySource: "manual" | "instagram";
+  instagramUsername: string;
+  daysPerTree: number;
+  daysPerFlower: number;
+  flowerType: string;
+  mixedFlowers: string[];
+  skyMode: string;
+  timelineDefaultRows: number;
+  proposal: {
+    questions: string[];
+    progress?: number;
+    isAccepted?: boolean;
+  };
+  gallery: MemoryItem[];
+  timeline: Interaction[];
+  partners: {
+    partner1: { name: string; avatar: string };
+    partner2: { name: string; avatar: string };
+  };
+  coupons: {
+    id: string;
+    title: string;
+    emoji: string;
+    desc: string;
+    color: string;
+    expiry?: string;
+    for?: string;
+    points?: number;
+  }[];
+}

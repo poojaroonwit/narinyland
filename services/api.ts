@@ -6,7 +6,7 @@
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
 // This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
-const API_BASE = (import.meta as any).env.VITE_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // ─── Helper ──────────────────────────────────────────────────────────
 

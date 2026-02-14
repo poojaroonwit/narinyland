@@ -32,3 +32,9 @@ server/.env
 # Prisma
 server/node_modules
 server/dist
+
+# Next.js
+.next/
+out/
+build/
+

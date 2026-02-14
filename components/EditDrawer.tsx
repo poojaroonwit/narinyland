@@ -1,58 +1,21 @@
+"use client";
 
-import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Interaction, MemoryItem } from '../types';
+import { Interaction, MemoryItem, AppConfig, Emotion } from '../types';
 import { uploadAPI } from '../services/api';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-
-interface AppConfig {
-  appName: string;
-  musicUrl?: string;
-  anniversaryDate: string;
-  treeStyle: string;
-  viewMode?: "2d" | "3d";
-  galleryStyle: string;
-  gallerySource: "manual" | "instagram";
-  instagramUsername: string;
-  daysPerTree: number;
-  daysPerFlower: number;
-  flowerType: string;
-  mixedFlowers: string[];
-  skyMode: string;
-  timelineDefaultRows: number;
-  proposal: {
-    questions: string[];
-    progress?: number;
-    isAccepted?: boolean;
-  };
-  gallery: MemoryItem[];
-  timeline: Interaction[];
-  partners: {
-    partner1: { name: string; avatar: string };
-    partner2: { name: string; avatar: string };
-  };
-  coupons: {
-    id: string;
-    title: string;
-    emoji: string;
-    desc: string;
-    color: string;
-    expiry?: string;
-    for?: string;
-    points?: number;
-  }[];
-}
 
 interface EditDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   config: AppConfig;
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
+  onSave?: () => void;
 }
 
-const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig }) => {
+const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig, onSave }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons'>('general');
   
   // Local draft state so changes only apply when "Save" is clicked
@@ -172,6 +135,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
   const handleSave = () => {
     setConfig(localConfig);
+    if (onSave) onSave();
     setHasChanges(false);
     onClose();
   };

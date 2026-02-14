@@ -1,5 +1,6 @@
-import * as React from 'react';
-import { useState, useRef } from 'react';
+"use client";
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Interaction, MediaContent } from '../types';
 import DatePicker from 'react-datepicker';

@@ -1,3 +1,4 @@
+"use client";
 // @ts-nocheck
 import React, { useState } from 'react';
 import ReactPlayer from 'react-player';
@@ -6,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface MusicPlayerProps {
   url: string;
 }
+
+const Player = ReactPlayer as any;
 
 const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -68,8 +71,8 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
         className="mb-4 bg-white/90 backdrop-blur-xl rounded-3xl p-4 shadow-2xl border border-white/50 w-72 origin-bottom-left absolute bottom-16 left-0"
       >
          <div className="rounded-2xl overflow-hidden shadow-inner bg-black aspect-video mb-4 relative group ring-4 ring-pink-50">
-            {/* @ts-ignore - ReactPlayer types can be problematic with some setups */}
-            <ReactPlayer
+            {/* Cast to any to avoid type errors with ReactPlayer v3/v2 mismatches */}
+            <Player
               key={cleanUrl} 
               url={cleanUrl}
               playing={isReady && playing} // Re-added isReady to avoid AbortError
@@ -78,6 +81,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
               width="100%"
               height="100%"
               controls={false}
+              playsinline
               onReady={() => {
                 console.log("MusicPlayer: Player is ready");
                 // Small delay before setting ready to true to ensure internal player state is stable
@@ -95,13 +99,16 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
                 console.log("MusicPlayer: Pause event");
                 setIsActuallyPlaying(false);
               }}
-              onBuffer={() => setIsActuallyPlaying(false)}
-              onBufferEnd={() => setIsActuallyPlaying(true)}
-              onError={(e) => {
+              onProgress={({ playedSeconds }: any) => {
+                if (playedSeconds > 0 && !isActuallyPlaying) {
+                  setIsActuallyPlaying(true);
+                }
+              }}
+              onError={(e: any) => {
                 // Ignore AbortError as it's typically a race condition with play/pause
                 if (e?.toString().includes('AbortError')) {
-                   console.warn("MusicPlayer: Ignored AbortError (race condition)");
-                   return;
+                  console.warn("MusicPlayer: Ignored AbortError (race condition)");
+                  return;
                 }
                 console.error("MusicPlayer Error:", e);
                 setIsActuallyPlaying(false);
@@ -109,7 +116,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
               config={{
                 youtube: {
                   playerVars: { 
-                    autoplay: 1,
+                    autoplay: 0,
                     playsinline: 1,
                     controls: 0,
                     modestbranding: 1,

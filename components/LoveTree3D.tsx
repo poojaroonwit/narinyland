@@ -1,3 +1,4 @@
+"use client";
 
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
@@ -637,15 +638,52 @@ const Flower = ({ type, position, scale = 1, windFactor = 1 }: { type: string, p
                     </group>
                 )}
                 {type === 'tulip' && (
-                    <group>
-                         <mesh castShadow>
-                            <sphereGeometry args={[0.15, 12, 12, 0, Math.PI * 2, 0, Math.PI / 1.5]} />
-                            <meshStandardMaterial color="#f43f5e" emissive="#be123c" emissiveIntensity={0.3} />
-                        </mesh>
-                        <mesh position={[0, -0.05, 0]}>
-                             <cylinderGeometry args={[0.15, 0.05, 0.2, 12]} />
-                             <meshStandardMaterial color="#f43f5e" />
-                        </mesh>
+                    <group position={[0, 0.1, 0]}>
+                         {/* Stem Base */}
+                         <mesh position={[0, -0.1, 0]}>
+                             <cylinderGeometry args={[0.06, 0.04, 0.2, 8]} />
+                             <meshStandardMaterial color={stemColor} />
+                         </mesh>
+
+                         {/* Flower Head */}
+                         <group position={[0, 0.1, 0]}>
+                            {/* Inner Petals */}
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <mesh 
+                                    key={`in-${i}`} 
+                                    rotation={[0.15, i * (Math.PI * 2 / 3), 0]} 
+                                    position={[Math.sin(i * (Math.PI * 2 / 3)) * 0.02, 0, Math.cos(i * (Math.PI * 2 / 3)) * 0.02]}
+                                    scale={[0.8, 1.8, 0.4]}
+                                >
+                                    <sphereGeometry args={[0.08, 16, 16]} />
+                                    <meshStandardMaterial color="#f43f5e" emissive="#be123c" emissiveIntensity={0.2} roughness={0.3} />
+                                </mesh>
+                            ))}
+                            {/* Outer Petals */}
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <mesh 
+                                    key={`out-${i}`} 
+                                    rotation={[0.3, i * (Math.PI * 2 / 3) + Math.PI/3, 0]} 
+                                    position={[Math.sin(i * (Math.PI * 2 / 3) + Math.PI/3) * 0.05, -0.02, Math.cos(i * (Math.PI * 2 / 3) + Math.PI/3) * 0.05]}
+                                    scale={[0.9, 1.7, 0.5]}
+                                >
+                                     <sphereGeometry args={[0.08, 16, 16]} />
+                                     <meshStandardMaterial color="#e11d48" emissive="#881337" emissiveIntensity={0.2} roughness={0.3} />
+                                </mesh>
+                            ))}
+                         </group>
+
+                         {/* Long Leaves */}
+                         <group position={[0, -0.2, 0]}>
+                              <mesh rotation={[0.4, 0, 0]} position={[0, 0.15, 0.08]}>
+                                  <cylinderGeometry args={[0.01, 0.04, 0.5, 4]} />
+                                  <meshStandardMaterial color={stemColor} />
+                              </mesh>
+                              <mesh rotation={[0.5, Math.PI, 0]} position={[0, 0.1, -0.08]} scale={0.8}>
+                                  <cylinderGeometry args={[0.01, 0.04, 0.5, 4]} />
+                                  <meshStandardMaterial color={stemColor} />
+                              </mesh>
+                         </group>
                     </group>
                 )}
                 {type === 'rose' && (
