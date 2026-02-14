@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: narinyland-app
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    # Add dependency on a db service if you decide to run a local one:
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+volumes:
+  # Add volume for persistent data if needed
+  next_static:
