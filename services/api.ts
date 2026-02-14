@@ -4,8 +4,9 @@
  */
 
 
-const API_BASE = (import.meta as any).env.VITE_API_URL || 
-  ((import.meta as any).env.DEV ? 'http://localhost:4000/api' : '/api');
+// Use VITE_API_URL if defined, otherwise default to relative '/api' path
+// This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
+const API_BASE = (import.meta as any).env.VITE_API_URL || '/api';
 
 // ─── Helper ──────────────────────────────────────────────────────────
 

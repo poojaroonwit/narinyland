@@ -45,6 +45,12 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
     }
     return url;
   }, [url]);
+  
+  // Reset ready state when URL changes
+  React.useEffect(() => {
+    setIsReady(false);
+    setIsActuallyPlaying(false);
+  }, [cleanUrl]);
 
   if (!cleanUrl) return null;
 
@@ -66,7 +72,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
             <ReactPlayer
               key={cleanUrl} 
               url={cleanUrl}
-              playing={playing} // Removed isReady check to allow initial play request
+              playing={isReady && playing} // Re-added isReady to avoid AbortError
               volume={volume}
               muted={muted}
               width="100%"
@@ -74,17 +80,29 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
               controls={false}
               onReady={() => {
                 console.log("MusicPlayer: Player is ready");
-                setIsReady(true);
+                // Small delay before setting ready to true to ensure internal player state is stable
+                setTimeout(() => setIsReady(true), 150);
               }}
               onStart={() => {
                 console.log("MusicPlayer: Playback started");
                 setIsActuallyPlaying(true);
               }}
-              onPlay={() => setIsActuallyPlaying(true)}
-              onPause={() => setIsActuallyPlaying(false)}
+              onPlay={() => {
+                console.log("MusicPlayer: Play event");
+                setIsActuallyPlaying(true);
+              }}
+              onPause={() => {
+                console.log("MusicPlayer: Pause event");
+                setIsActuallyPlaying(false);
+              }}
               onBuffer={() => setIsActuallyPlaying(false)}
               onBufferEnd={() => setIsActuallyPlaying(true)}
               onError={(e) => {
+                // Ignore AbortError as it's typically a race condition with play/pause
+                if (e?.toString().includes('AbortError')) {
+                   console.warn("MusicPlayer: Ignored AbortError (race condition)");
+                   return;
+                }
                 console.error("MusicPlayer Error:", e);
                 setIsActuallyPlaying(false);
               }}
@@ -107,8 +125,12 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ url }) => {
             
             {/* Overlay Controls */}
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex flex-col items-center justify-center gap-2 text-white pointer-events-auto">
-                {!isActuallyPlaying && playing && isReady && (
-                   <p className="text-[10px] font-bold bg-black/60 px-2 py-1 rounded animate-pulse">Waiting for audio...</p>
+                {!isActuallyPlaying && playing && (
+                   <div className="flex flex-col items-center gap-1">
+                      <p className="text-[10px] font-bold bg-black/60 px-2 py-1 rounded animate-pulse">
+                         {!isReady ? 'Loading player...' : 'Waiting for audio...'}
+                      </p>
+                   </div>
                 )}
                 <button 
                   onClick={() => setPlaying(!playing)} 
