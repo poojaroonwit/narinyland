@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { redis } from '@/lib/redis';
 
 // GET /api/instagram/image
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const igUrl = searchParams.get('url');
+  
+  // Basic validation
   const isPost = /instagram\.com\/(p|reel|tv)\//.test(igUrl || '');
   const isCdn = /(cdninstagram|fbcdn)/.test(igUrl || '');
 
@@ -12,44 +15,55 @@ export async function GET(request: Request) {
   }
 
   try {
+    // 1. If it's already a CDN link, proxy it directly
     if (isCdn) {
         return proxyImage(igUrl);
     }
-    // Fetch the Instagram post page
+
+    // 2. Check Redis for previously resolved CDN URL
+    const cacheKey = `ig_resolve:${igUrl}`;
+    const cachedCdnUrl = await redis.get(cacheKey);
+
+    if (cachedCdnUrl) {
+        return proxyImage(cachedCdnUrl);
+    }
+
+    // 3. Scrape the Post to find the CDN URL
     const response = await fetch(igUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        },
     });
 
-    if (!response.ok) {
-        // Just return json error
-      return NextResponse.json({ error: `Instagram returned ${response.status}` }, { status: response.status });
-    }
-
+    if (!response.ok) return NextResponse.json({ error: 'Instagram fetch failed' }, { status: response.status });
     const html = await response.text();
 
-    // Extract og:image
-    const ogImageMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i)
-      || html.match(/content="([^"]+)"\s+(?:property|name)="og:image"/i);
-
-    if (!ogImageMatch || !ogImageMatch[1]) {
-      // Fallback
-      const cdnMatch = html.match(/(https:\/\/[^"'\s]+(?:cdninstagram|fbcdn)[^"'\s]+\.jpg[^"'\s]*)/i);
-      if (cdnMatch) {
-         return proxyImage(cdnMatch[1]);
-      }
-      return NextResponse.json({ error: 'Could not extract image from Instagram post' }, { status: 404 });
+    // Extract URL
+    let targetImageUrl = '';
+    const ogImageMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i) 
+                      || html.match(/content="([^"]+)"\s+(?:property|name)="og:image"/i);
+    
+    if (ogImageMatch) {
+         targetImageUrl = ogImageMatch[1].replace(/&amp;/g, '&');
+    } else {
+         const cdnMatch = html.match(/(https:\/\/[^"'\s]+(?:cdninstagram|fbcdn)[^"'\s]+\.jpg[^"'\s]*)/i);
+         if (cdnMatch) targetImageUrl = cdnMatch[1];
     }
 
-    const imageUrl = ogImageMatch[1].replace(/&amp;/g, '&');
-    return proxyImage(imageUrl);
+    if (!targetImageUrl) {
+        return NextResponse.json({ error: 'No image found' }, { status: 404 });
+    }
+
+    // 4. Cache the resolved URL (1 hour)
+    await redis.setex(cacheKey, 3600, targetImageUrl);
+    
+    // 5. Proxy the resolved image
+    return proxyImage(targetImageUrl);
 
   } catch (error: any) {
-    console.error('Instagram proxy error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch Instagram image' }, { status: 500 });
+    console.error('IG Proxy Error:', error.message);
+    return NextResponse.json({ error: 'Failed to proxy image' }, { status: 500 });
   }
 }
 
@@ -68,14 +82,12 @@ async function proxyImage(imageUrl: string) {
 
     const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
     
-    // Create a new response with the image body
     return new NextResponse(imgResponse.body, {
         headers: {
             'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=86400',
+            'Cache-Control': 'public, max-age=3600',
         }
     });
-
   } catch (error: any) {
     console.error('Image proxy error:', error.message);
     return NextResponse.json({ error: 'Failed to proxy image' }, { status: 502 });

@@ -131,16 +131,10 @@ model LoveStats {
   id              String @id @default("default")
   xp              Int    @default(0)
   level           Int    @default(1)
-  questsCompleted Int    @default(0)
   leaves          Int    @default(0)
   points          Int    @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
-model QuestLog {
-  id          String   @id @default(uuid())
-  questText   String
-  completedBy String?  
-  completedAt DateTime @default(now())
-}
+

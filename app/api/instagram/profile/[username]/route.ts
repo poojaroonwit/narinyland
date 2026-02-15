@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { redis } from '@/lib/redis';
 
 // GET /api/instagram/profile/[username]
 export async function GET(
@@ -12,9 +13,16 @@ export async function GET(
     return NextResponse.json({ error: 'Username is required' }, { status: 400 });
   }
 
+  const cleanUsername = username.replace(/^@/, '').trim();
+  const cacheKey = `ig_profile:${cleanUsername}`;
+
   try {
-    const cleanUsername = username.replace(/^@/, '').trim();
-    
+    // 1. Check Cache
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(JSON.parse(cached));
+    }
+
     // --- Method A: Try v1 API (Experimental & More Reliable) ---
     try {
       const apiUrl = `https://i.instagram.com/api/v1/users/web_profile_info/?username=${cleanUsername}`;
@@ -43,15 +51,19 @@ export async function GET(
             thumbnail: edge.node.display_url || edge.node.thumbnail_src || `https://www.instagram.com/p/${edge.node.shortcode}/media/?size=l`,
           }));
 
-          console.log(`[Instagram Scraper] v1 API Success! Found ${posts.length} posts for @${cleanUsername}`);
-          return NextResponse.json({
+          const result = {
             username: cleanUsername,
             displayName: user.full_name || cleanUsername,
             profilePicture: user.profile_pic_url,
             postCount: posts.length,
             posts,
             method: 'api_v1'
-          });
+          };
+          
+          // Cache success (1 hour)
+          await redis.setex(cacheKey, 3600, JSON.stringify(result));
+          
+          return NextResponse.json(result);
         }
       } 
     } catch (apiErr: any) {
@@ -141,14 +153,19 @@ export async function GET(
       shortcode: code,
     }));
 
-    return NextResponse.json({
+    const result = {
       username: cleanUsername,
       displayName,
       profilePicture,
       postCount: posts.length,
       posts,
       method: 'html_scrape'
-    });
+    };
+    
+    // Cache success (1 hour)
+    await redis.setex(cacheKey, 3600, JSON.stringify(result));
+
+    return NextResponse.json(result);
 
   } catch (error: any) {
     console.error('Instagram profile scrape error:', error.message);

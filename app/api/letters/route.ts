@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { uploadLetterMedia } from '@/lib/s3';
 
+import { redis } from '@/lib/redis';
+
 // GET /api/letters
 export async function GET() {
   try {
+    // Check cache
+    const cached = await redis.get('love_letters');
+    if (cached) return NextResponse.json(JSON.parse(cached));
+
     const letters = await prisma.loveLetter.findMany({
       include: { from: true },
       orderBy: { createdAt: 'desc' },
@@ -21,6 +27,9 @@ export async function GET() {
         ? { type: l.mediaType, url: l.mediaUrl }
         : undefined,
     }));
+
+    // Cache for 60s
+    await redis.setex('love_letters', 60, JSON.stringify(response));
 
     return NextResponse.json(response);
   } catch (error) {
@@ -95,6 +104,9 @@ export async function POST(request: Request) {
       },
       include: { from: true },
     });
+
+    // Invalidate cache
+    await redis.del('love_letters');
 
     return NextResponse.json({
       id: letter.id,

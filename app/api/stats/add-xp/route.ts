@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { redis } from '@/lib/redis';
 
 // ─── Duplicate Helper needed for Recalculation (or export from route.ts if possible, but duplication is safer for now)
 function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: number; xpForNextLevel: number } {
@@ -75,12 +76,14 @@ export async function PUT(request: Request) {
 
     const partnerPoints = await getPartnerPoints();
 
+    // Invalidate stats cache
+    await redis.del('app_stats');
+
     return NextResponse.json({
       xp: xpInCurrentLevel,
       level: newLevel,
       xpForNextLevel,
       totalXP: totalLifetimePoints,
-      questsCompleted: updated.questsCompleted,
       leaves: updated.leaves,
       points: totalSpendablePoints,
       partnerPoints,

@@ -200,14 +200,6 @@ export const statsAPI = {
       body: JSON.stringify({ amount, partnerId }),
     }),
 
-  completeQuest: (questText: string, completedBy?: string) =>
-    fetchAPI<any>('/stats/quest-complete', {
-      method: 'POST',
-      body: JSON.stringify({ questText, completedBy }),
-    }),
-
-  getQuests: () => fetchAPI<any[]>('/stats/quests'),
-
   addLeaf: () => fetchAPI<any>('/stats/add-leaf', { method: 'POST' }),
 
   addPoints: (amount: number) => 

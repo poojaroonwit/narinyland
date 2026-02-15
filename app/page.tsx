@@ -35,6 +35,8 @@ const Home: React.FC = () => {
   const [isMusicPlaying, setIsMusicPlaying] = useState(true);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [toast, setToast] = useState({ message: '', isVisible: false });
 
   const showToast = (message: string) => {
@@ -46,7 +48,6 @@ const Home: React.FC = () => {
   const [loveStats, setLoveStats] = useState<LoveStats & { leaves: number; points: number }>({ 
     xp: 0, 
     level: 1, 
-    questsCompleted: 0,
     leaves: 0,
     points: 0,
     partnerPoints: {
@@ -96,8 +97,37 @@ const Home: React.FC = () => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    // PWA Install Prompt Logic
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+      console.log('✅ PWA Install prompt deferred');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    window.addEventListener('appinstalled', () => {
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+      showToast("App installed successfully! 🎉");
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallPrompt(false);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -113,7 +143,7 @@ const Home: React.FC = () => {
           lettersAPI.list().catch(() => []),
           timelineAPI.list().catch(() => []), 
           memoriesAPI.list().catch(() => []),
-          statsAPI.get().catch(() => ({ xp: 0, level: 1, questsCompleted: 0, leaves: 0, points: 0 }))
+          statsAPI.get().catch(() => ({ xp: 0, level: 1, leaves: 0, points: 0 }))
         ]);
 
         console.log('✅ Data loaded from backend');
@@ -251,7 +281,6 @@ const Home: React.FC = () => {
       setLoveStats({
         xp: res.xp,
         level: res.level,
-        questsCompleted: res.questsCompleted,
         leaves: res.leaves ?? loveStats.leaves,
         points: res.points ?? loveStats.points
       });
@@ -291,7 +320,6 @@ const Home: React.FC = () => {
            points: res.points,
            xp: res.xp,
            level: res.level,
-           questsCompleted: prev.questsCompleted
          }));
 
          if (res.leveledUp) {
@@ -925,8 +953,29 @@ const Home: React.FC = () => {
             />
           </div>
 
-            {/* Grow Leaf Button (Visible only if points >= 100) */}
+            {/* PWA Install Button & Grow Leaf Button */}
             <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 items-end">
+              {/* PWA Install Notification */}
+              <AnimatePresence>
+                {showInstallPrompt && (
+                  <motion.button
+                    initial={{ x: 50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 50, opacity: 0 }}
+                    onClick={handleInstallApp}
+                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border-2 border-pink-100 group hover:border-pink-300 transition-all"
+                  >
+                    <div className="w-10 h-10 bg-pink-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
+                      <i className="fas fa-mobile-alt"></i>
+                    </div>
+                    <div className="text-left">
+                       <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-none mb-1">Install App</p>
+                       <p className="text-sm font-bold text-gray-700 leading-none">Add to Home</p>
+                    </div>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
               {/* Grow Leaf Button (Visible only if points >= 100) */}
               <AnimatePresence>
                 {loveStats.points >= 100 && activeTab === 'home' && (

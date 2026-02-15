@@ -15,11 +15,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-    # Add dependency on a db service if you decide to run a local one:
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
+      - REDIS_URL=redis://redis:6379
+
+  redis:
+    image: redis:alpine
+    container_name: narinyland-redis
+    ports:
+      - "6379:6379"
+    restart: always
 
 volumes:
-  # Add volume for persistent data if needed
   next_static:

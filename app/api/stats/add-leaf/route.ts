@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { redis } from '@/lib/redis';
 
 function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: number; xpForNextLevel: number } {
   const level = Math.min(50, Math.floor(totalXP / 100) + 1);
@@ -89,6 +90,9 @@ export async function POST() {
     });
 
     const partnerPoints = await getPartnerPoints();
+
+    // Invalidate stats cache
+    await redis.del('app_stats');
 
     return NextResponse.json({
       success: true,

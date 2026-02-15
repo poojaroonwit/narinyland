@@ -65,7 +65,6 @@ async function main() {
       id: 'default',
       xp: 0,
       level: 1,
-      questsCompleted: 0,
     },
   });
   console.log('  ✅ Love stats initialized');

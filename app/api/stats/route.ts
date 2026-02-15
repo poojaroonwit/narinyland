@@ -38,9 +38,15 @@ async function getPartnerPoints(): Promise<{ partner1: number; partner2: number 
     };
 }
 
+import { redis } from '@/lib/redis';
+
 // GET /api/stats
 export async function GET() {
   try {
+    // Check Cache
+    const cached = await redis.get('app_stats');
+    if (cached) return NextResponse.json(JSON.parse(cached));
+
     let stats = await prisma.loveStats.findUnique({
       where: { id: 'default' },
     });
@@ -68,16 +74,20 @@ export async function GET() {
 
     const partnerPoints = await getPartnerPoints();
 
-    return NextResponse.json({
+    const response = {
       xp: xpInCurrentLevel,
       level,
       xpForNextLevel,
       totalXP: totalLifetimePoints,
-      questsCompleted: stats.questsCompleted,
       leaves: stats.leaves,
       points: totalSpendablePoints, // Spendable points
       partnerPoints // Individual points
-    });
+    };
+
+    // Cache (60s)
+    await redis.setex('app_stats', 60, JSON.stringify(response));
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching stats:', error);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });

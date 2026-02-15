@@ -2,9 +2,17 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { uploadTimelineMedia } from '@/lib/s3';
 
+import { redis } from '@/lib/redis';
+
 // GET /api/timeline
 export async function GET() {
   try {
+    // Check cache first
+    const cached = await redis.get('timeline_events');
+    if (cached) {
+      return NextResponse.json(JSON.parse(cached));
+    }
+
     const events = await prisma.timelineEvent.findMany({
       orderBy: { timestamp: 'desc' },
     });
@@ -25,6 +33,9 @@ export async function GET() {
         mediaItems: mediaItems.length > 0 ? mediaItems : (e.mediaUrl ? [{ type: e.mediaType, url: e.mediaUrl }] : [])
       };
     });
+
+    // Cache for 60 seconds
+    await redis.setex('timeline_events', 60, JSON.stringify(response));
 
     return NextResponse.json(response);
   } catch (error) {
@@ -122,6 +133,9 @@ export async function POST(request: Request) {
       type: mediaTypes[i],
       url
     }));
+
+    // Invalidate cache
+    await redis.del('timeline_events');
 
     return NextResponse.json({
       id: event.id,

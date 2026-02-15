@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { deleteFile } from '@/lib/s3';
 
+import { redis } from '@/lib/redis';
+
 // GET /api/config
 export async function GET() {
   try {
+    // Check cache
+    const cached = await redis.get('app_config');
+    if (cached) return NextResponse.json(JSON.parse(cached));
+
     let config = await prisma.appConfig.findUnique({
       where: { id: 'default' },
       include: {
@@ -81,6 +87,9 @@ export async function GET() {
         points: c.points || 0,
       })),
     };
+
+    // Cache config for 60s
+    await redis.setex('app_config', 60, JSON.stringify(response));
 
     return NextResponse.json(response);
   } catch (error) {
@@ -326,6 +335,9 @@ export async function PUT(request: Request) {
         }
       }
     }
+
+    // Invalidate cache
+    await redis.del('app_config');
 
     return NextResponse.json({ success: true, config });
   } catch (error) {

@@ -9,6 +9,8 @@ async function getTotalSpendablePoints(): Promise<number> {
   return partners.reduce((sum, p) => sum + (p.points || 0), 0);
 }
 
+import { redis } from '@/lib/redis';
+
 // POST /api/stats/add-points
 export async function POST(request: Request) {
     try {
@@ -24,6 +26,9 @@ export async function POST(request: Request) {
               lifetimePoints: { increment: amount } // Increment total earned too
             }
         });
+
+        // Invalidate stats cache
+        await redis.del('app_stats');
 
         const total = await getTotalSpendablePoints();
         return NextResponse.json({ points: total });

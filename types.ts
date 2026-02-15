@@ -24,7 +24,6 @@ export interface Interaction {
 export interface LoveStats {
   xp: number;
   level: number;
-  questsCompleted: number;
   partnerPoints?: {
     partner1: number;
     partner2: number;
