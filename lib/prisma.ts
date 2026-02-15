@@ -16,10 +16,13 @@ export const prisma =
           // Add connection limit if not present to avoid Supabase connection errors
           if (!url.includes('connection_limit')) {
              const separator = url.includes('?') ? '&' : '?';
-             url = `${url}${separator}connection_limit=10&pool_timeout=15`;
+             // For Supabase, smaller limits are better to prevent "Max clients reached"
+             url = `${url}${separator}connection_limit=3&pool_timeout=20`;
           }
 
           // Detect Supabase Transaction Pooler (port 6543) and ensure pgbouncer=true
+          // Note: If you get "MaxClientsInSessionMode" error, ensure your Supabase 
+          // dashboard pooler setting is set to "Transaction" mode, NOT "Session".
           if (url.includes(':6543') && !url.includes('pgbouncer=true')) {
              const separator = url.includes('?') ? '&' : '?';
              url = `${url}${separator}pgbouncer=true`;
