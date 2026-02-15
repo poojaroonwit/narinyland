@@ -9,14 +9,12 @@ interface TimelineImagesProps {
   interactions: Interaction[];
   className?: string;
   maxImages?: number;
-  onImageClick?: (imageUrl: string) => void;
 }
 
 const TimelineImages: React.FC<TimelineImagesProps> = ({ 
   interactions, 
   className = "", 
-  maxImages = 6,
-  onImageClick
+  maxImages = 6
 }) => {
   // Get all images from timeline interactions
   const allTimelineImages: Array<{
@@ -99,12 +97,6 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Gallery Header */}
-      <div className="text-center mb-8 pt-4">
-        <h3 className="font-pacifico text-2xl md:text-3xl text-pink-500 mb-2">Gallery</h3>
-        <p className="text-gray-500 text-sm">All memories in one place ✨</p>
-      </div>
-
       {/* Image Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 max-w-7xl mx-auto px-4">
         {timelineImages.map((image, index) => (
@@ -118,10 +110,11 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
             }}
             className="group cursor-pointer"
             onClick={() => {
-              // Use the onImageClick prop if provided
-              if (onImageClick) {
-                onImageClick(image.url);
-              }
+              // Find the image in the carousel and open it
+              const event = new CustomEvent('openTimelineCarouselFromHome', { 
+                detail: { imageUrl: image.url } 
+              });
+              window.dispatchEvent(event);
             }}
           >
             <div className="relative aspect-square overflow-hidden rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300">
