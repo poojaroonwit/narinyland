@@ -59,6 +59,57 @@ const Timeline: React.FC<TimelineProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
 
+  // Touch gesture state for pinch-to-zoom
+  const [touchStartDistance, setTouchStartDistance] = useState(0);
+  const [touchStartZoom, setTouchStartZoom] = useState(0);
+
+  // Calculate distance between two touch points
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Handle touch start
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = getTouchDistance(e.touches);
+      setTouchStartDistance(distance);
+      setTouchStartZoom(effectiveZoom);
+    }
+  };
+
+  // Handle touch move for pinch-to-zoom
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDistance > 0) {
+      e.preventDefault(); // Prevent default scroll behavior
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / touchStartDistance;
+      
+      // Calculate zoom level change based on scale
+      const currentLevel = ZOOM_LEVELS.findIndex(z => z === effectiveZoom);
+      let newLevel = currentLevel;
+      
+      // More sensitive scaling - adjust level based on scale
+      if (scale > 1.1) { // Pinch out - zoom in
+        newLevel = Math.min(currentLevel + Math.floor((scale - 1) * 2), ZOOM_LEVELS.length - 1);
+      } else if (scale < 0.9) { // Pinch in - zoom out
+        newLevel = Math.max(currentLevel - Math.floor((1 - scale) * 2), 0);
+      }
+      
+      if (newLevel !== currentLevel && newLevel >= 0 && newLevel < ZOOM_LEVELS.length) {
+        handleZoomLevelChange(ZOOM_LEVELS[newLevel]);
+      }
+    }
+  };
+
+  // Handle touch end
+  const handleTouchEnd = () => {
+    setTouchStartDistance(0);
+    setTouchStartZoom(0);
+  };
+
   useEffect(() => {
     if (containerRef.current) {
       const updateWidth = () => {
@@ -607,6 +658,34 @@ const Timeline: React.FC<TimelineProps> = ({
                   </button>
               </div>
 
+              {/* Zoom Controls */}
+              <div className="flex flex-col gap-2 mb-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
+                  <button 
+                     onClick={() => {
+                        // Zoom in logic using proper zoom system
+                        const currentLevel = ZOOM_LEVELS.findIndex(z => z === effectiveZoom);
+                        const newLevel = Math.min(currentLevel + 1, ZOOM_LEVELS.length - 1);
+                        handleZoomLevelChange(ZOOM_LEVELS[newLevel]);
+                     }}
+                     className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition-all border border-blue-100"
+                     title="Zoom In"
+                  >
+                     <i className="fas fa-search-plus"></i>
+                  </button>
+                  <button 
+                     onClick={() => {
+                        // Zoom out logic using proper zoom system
+                        const currentLevel = ZOOM_LEVELS.findIndex(z => z === effectiveZoom);
+                        const newLevel = Math.max(currentLevel - 1, 0);
+                        handleZoomLevelChange(ZOOM_LEVELS[newLevel]);
+                     }}
+                     className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition-all border border-blue-100"
+                     title="Zoom Out"
+                  >
+                     <i className="fas fa-search-minus"></i>
+                  </button>
+              </div>
+
               <button 
                   onClick={() => onOpenSpreadsheet?.()}
                   className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-pink-500 hover:bg-pink-50 transition-all border border-pink-100"
@@ -651,7 +730,13 @@ const Timeline: React.FC<TimelineProps> = ({
       )}
 
       {/* WAVE / SNAKE / GALLERY VIEW */}
-      <div className="w-full flex justify-center pt-5 pb-40 relative" ref={containerRef}>
+      <div 
+        className="w-full flex justify-center pt-5 pb-40 relative" 
+        ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Subtle Stage Background */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 md:w-96 h-32 bg-gradient-to-b from-pink-50/50 to-transparent rounded-full blur-3xl -z-10 pointer-events-none"></div>
         
