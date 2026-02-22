@@ -5,6 +5,13 @@ A romantic, AI-powered virtual companion for couples that reacts to your presenc
 
 <img width="1901" height="945" alt="image" src="https://github.com/user-attachments/assets/53ef5ade-b2f3-494e-8235-d563f31893e0" />
 
+<img width="1885" height="948" alt="image" src="https://github.com/user-attachments/assets/66d47175-0142-4c6e-aa5c-f7180bb5ec5f" />
+
+<img width="1895" height="939" alt="image" src="https://github.com/user-attachments/assets/f6c9679c-a915-496b-a32e-0cbeaf779f73" />
+<img width="1909" height="943" alt="image" src="https://github.com/user-attachments/assets/bea3f0ba-8ec2-49ba-b7d2-76cae4c20cf0" />
+
+<img width="1913" height="942" alt="image" src="https://github.com/user-attachments/assets/047dcc34-5d3a-4cb0-a5de-2b07024b0e12" />
+<img width="1899" height="936" alt="image" src="https://github.com/user-attachments/assets/9d39255d-b1e1-407e-8efa-44553ed11701" />
 
 
 ## ✨ Features
