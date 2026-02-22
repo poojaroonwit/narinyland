@@ -3,7 +3,8 @@
 
 A romantic, AI-powered virtual companion for couples that reacts to your presence and expressions in real-time. Build your love story together with an interactive virtual pet, shared memories, timeline events, and personalized experiences.
 
-View your app in AI Studio: https://ai.studio/apps/drive/18MW7NnNSahZjJAkT3cJbVfTglGRQu4cP
+![Uploading image.png…]()
+
 
 ## ✨ Features
 
