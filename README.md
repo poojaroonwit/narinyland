@@ -3,7 +3,8 @@
 
 A romantic, AI-powered virtual companion for couples that reacts to your presence and expressions in real-time. Build your love story together with an interactive virtual pet, shared memories, timeline events, and personalized experiences.
 
-![Uploading image.png…]()
+<img width="1901" height="945" alt="image" src="https://github.com/user-attachments/assets/53ef5ade-b2f3-494e-8235-d563f31893e0" />
+
 
 
 ## ✨ Features
