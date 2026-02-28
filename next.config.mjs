@@ -26,6 +26,11 @@ const nextConfig = {
     },
     // Configure middleware body size limit
     middlewareClientMaxBodySize: '50mb',
+    // Explicitly expose environment variables to the client
+    env: {
+        NEXT_PUBLIC_APPKIT_DOMAIN: process.env.NEXT_PUBLIC_APPKIT_DOMAIN,
+        NEXT_PUBLIC_APPKIT_CLIENT_ID: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID,
+    },
 };
 
 export default nextConfig;
