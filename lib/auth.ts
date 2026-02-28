@@ -3,8 +3,8 @@
  * Handles OAuth2 Authorization Code flow with PKCE
  */
 
-const DOMAIN = process.env.NEXT_PUBLIC_ALPHAYARD_DOMAIN || 'https://appkits.up.railway.app';
-const CLIENT_ID = process.env.NEXT_PUBLIC_ALPHAYARD_CLIENT_ID || '';
+const DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
+const CLIENT_ID = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
 
 // Storage keys
 const TOKEN_KEY = 'appkit_access_token';
