@@ -149,17 +149,25 @@ export default function LoginPage() {
 
         {/* AppKit Branding */}
         <div 
-          className="flex items-center justify-center gap-2 text-gray-400 text-xs cursor-help"
+          className="flex items-center justify-center gap-2 text-gray-400 text-xs cursor-help p-2 hover:bg-gray-100 rounded-lg transition-colors"
           onClick={() => {
-            console.table({
-              'NEXT_PUBLIC_APPKIT_CLIENT_ID': process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 'MISSING',
-              'NEXT_PUBLIC_APPKIT_DOMAIN': process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'MISSING',
+            const config = {
+              'SDK_DOMAIN': process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'MISSING',
+              'SDK_CLIENT_ID': process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 'MISSING',
+              'NEXT_API_URL': process.env.NEXT_PUBLIC_API_URL || 'DEFAULT (/api)',
               'NODE_ENV': process.env.NODE_ENV
-            });
-            alert(`AppKit Config:\nID: ${process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 'MISSING'}\nDomain: ${process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'MISSING'}`);
+            };
+            console.table(config);
+            alert(
+              `🔍 AppKit Diagnostic Console\n\n` +
+              `Domain: ${config.SDK_DOMAIN}\n` +
+              `Client ID: ${config.SDK_CLIENT_ID}\n\n` +
+              `Status: ${config.SDK_CLIENT_ID === 'MISSING' ? '❌ CONFIG ERROR' : '✅ CONFIGURED'}\n\n` +
+              `If MISSING, ensure variables are added to Railway UI and redeployed.`
+            );
           }}
         >
-          <span style={{ fontFamily: "'Outfit', sans-serif" }}>AlphaYard AppKit</span>
+          <span style={{ fontFamily: "'Outfit', sans-serif" }}>AlphaYard AppKit Support</span>
           <span>🔒</span>
         </div>
       </motion.div>
