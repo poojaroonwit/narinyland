@@ -4,34 +4,45 @@ import { AppKit } from 'alphayard-appkit';
  * AlphaYard AppKit Authentication Library
  */
 
-const DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
-const CLIENT_ID = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
+let appKitInstance: AppKit | null = null;
 
-// Initialize the AppKit client
-export const appKit = new AppKit({
-  clientId: CLIENT_ID,
-  domain: DOMAIN,
-  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-  scopes: ['openid', 'profile', 'email'],
-  storage: 'localStorage'
-});
+/**
+ * Lazy initializer for AppKit client to ensure environment variables are captured
+ */
+export function getAppKit(): AppKit {
+  if (!appKitInstance) {
+    const domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
+    const clientId = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
+    
+    if (typeof window !== 'undefined') {
+      console.log('AppKit SDK Initialization:', {
+        domain,
+        clientId: clientId ? `${clientId.substring(0, 8)}...` : 'MISSING',
+        location: window.location.href
+      });
+      
+      if (!clientId) {
+        console.error('CRITICAL: NEXT_PUBLIC_APPKIT_CLIENT_ID is missing in the browser!');
+      }
+    }
 
-if (typeof window !== 'undefined') {
-  console.log('AppKit Config (Client-Side):', {
-    DOMAIN,
-    CLIENT_ID: CLIENT_ID ? 'Available' : 'MISSING',
-    raw_env: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID
-  });
+    appKitInstance = new AppKit({
+      clientId: clientId,
+      domain: domain,
+      redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+      scopes: ['openid', 'profile', 'email'],
+      storage: 'localStorage'
+    });
+  }
+  return appKitInstance;
 }
 
 /**
  * Start the login/signup flow
  */
 export async function login(): Promise<void> {
-  if (!CLIENT_ID) {
-    console.warn('AppKit Client ID is missing. Attempting login anyway...');
-  }
-  await appKit.login();
+  const client = getAppKit();
+  await client.login();
 }
 
 /**
@@ -39,7 +50,8 @@ export async function login(): Promise<void> {
  */
 export async function handleCallback(): Promise<boolean> {
   try {
-    await appKit.handleCallback();
+    const client = getAppKit();
+    await client.handleCallback();
     return true;
   } catch (err) {
     console.error('AppKit handleCallback error:', err);
@@ -52,7 +64,8 @@ export async function handleCallback(): Promise<boolean> {
  */
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  const tokens = appKit.getTokens();
+  const client = getAppKit();
+  const tokens = client.getTokens();
   return tokens?.accessToken || null;
 }
 
@@ -60,7 +73,8 @@ export function getAccessToken(): string | null {
  * Check if the user is authenticated
  */
 export function isAuthenticated(): boolean {
-  return appKit.isAuthenticated();
+  if (typeof window === 'undefined') return false;
+  return getAppKit().isAuthenticated();
 }
 
 /**
@@ -70,8 +84,9 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
   if (typeof window === 'undefined') return null;
   
   try {
-    if (!isAuthenticated()) return null;
-    const user = await appKit.getUser();
+    const client = getAppKit();
+    if (!client.isAuthenticated()) return null;
+    const user = await client.getUser();
     return {
       sub: user.id,
       name: user.name || '',
@@ -88,7 +103,8 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
  * Logout
  */
 export async function logout(): Promise<void> {
-  await appKit.logout({
+  const client = getAppKit();
+  await client.logout({
     post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
   });
 }

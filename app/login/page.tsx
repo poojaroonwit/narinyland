@@ -148,7 +148,17 @@ export default function LoginPage() {
         </div>
 
         {/* AppKit Branding */}
-        <div className="flex items-center justify-center gap-2 text-gray-400 text-xs">
+        <div 
+          className="flex items-center justify-center gap-2 text-gray-400 text-xs cursor-help"
+          onClick={() => {
+            console.table({
+              'NEXT_PUBLIC_APPKIT_CLIENT_ID': process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 'MISSING',
+              'NEXT_PUBLIC_APPKIT_DOMAIN': process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'MISSING',
+              'NODE_ENV': process.env.NODE_ENV
+            });
+            alert(`AppKit Config:\nID: ${process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 'MISSING'}\nDomain: ${process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'MISSING'}`);
+          }}
+        >
           <span style={{ fontFamily: "'Outfit', sans-serif" }}>AlphaYard AppKit</span>
           <span>🔒</span>
         </div>
