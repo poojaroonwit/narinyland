@@ -1,137 +1,68 @@
+import { AppKit } from 'alphayard-appkit';
+
 /**
  * AlphaYard AppKit Authentication Library
- * Handles OAuth2 Authorization Code flow with PKCE
+ * Using the Official SDK for more reliable endpoint handling
  */
 
-const DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
-const CLIENT_ID = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
+// Hardcoded fallback for narinyland if env vars are missing
+const DEFAULT_DOMAIN = 'https://appkits.up.railway.app';
+const DEFAULT_CLIENT_ID = '132bb02d-212b-43dc-b74c-79a42f4dbffa';
 
-// Storage keys
-const TOKEN_KEY = 'appkit_access_token';
-const REFRESH_TOKEN_KEY = 'appkit_refresh_token';
-const CODE_VERIFIER_KEY = 'appkit_code_verifier';
-const STATE_KEY = 'appkit_state';
-const USER_KEY = 'appkit_user';
+const DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 
+               process.env.EXT_PUBLIC_APPKIT_DOMAIN || 
+               DEFAULT_DOMAIN;
 
-// ─── PKCE Helpers ────────────────────────────────────────────────────
+const CLIENT_ID = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 
+                  process.env.EXT_PUBLIC_APPKIT_CLIENT_ID || 
+                  DEFAULT_CLIENT_ID;
 
-function generateRandomString(length: number): string {
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, length);
+if (typeof window !== 'undefined') {
+  console.log('AppKit Debug Initialization:', {
+    domain: DOMAIN,
+    clientId: CLIENT_ID ? 'Available' : 'MISSING',
+    source: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID ? 'NEXT_PUBLIC' : 
+            process.env.EXT_PUBLIC_APPKIT_CLIENT_ID ? 'EXT_PUBLIC' : 'Hardcoded Fallback'
+  });
 }
 
-async function sha256(plain: string): Promise<ArrayBuffer> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plain);
-  return crypto.subtle.digest('SHA-256', data);
-}
-
-function base64UrlEncode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  bytes.forEach((b) => (binary += String.fromCharCode(b)));
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function generateCodeChallenge(verifier: string): Promise<string> {
-  const hashed = await sha256(verifier);
-  return base64UrlEncode(hashed);
-}
-
-// ─── Auth Functions ──────────────────────────────────────────────────
+// Initialize the AppKit client
+export const appKit = new AppKit({
+  clientId: CLIENT_ID,
+  domain: DOMAIN,
+  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+  scopes: ['openid', 'profile', 'email'],
+  storage: 'localStorage'
+});
 
 /**
- * Get the current redirect URI based on the window location
- */
-function getRedirectUri(): string {
-  if (typeof window === 'undefined') return '';
-  return `${window.location.origin}/auth/callback`;
-}
-
-/**
- * Start the login/signup flow — redirects the user to AppKit's hosted auth page
+ * Start the login/signup flow
  */
 export async function login(): Promise<void> {
-  const codeVerifier = generateRandomString(64);
-  const codeChallenge = await generateCodeChallenge(codeVerifier);
-  const state = generateRandomString(32);
-
-  // Store PKCE verifier and state for the callback
-  sessionStorage.setItem(CODE_VERIFIER_KEY, codeVerifier);
-  sessionStorage.setItem(STATE_KEY, state);
-
-  const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    redirect_uri: getRedirectUri(),
-    response_type: 'code',
-    scope: 'openid profile email',
-    state: state,
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-  });
-
-  window.location.href = `${DOMAIN}/oauth/authorize?${params.toString()}`;
+  if (!CLIENT_ID) {
+    console.error('AppKit Client ID is missing. Please check your environment variables.');
+    alert('Configuration error: APP_ID is missing.');
+    return;
+  }
+  
+  // Use the SDK's login method which handles redirect + PKCE
+  await appKit.login();
 }
 
 /**
- * Handle the OAuth callback — exchange the authorization code for tokens
+ * Handle the OAuth callback
  */
 export async function handleCallback(code: string, state: string): Promise<boolean> {
-  // Verify state
-  const storedState = sessionStorage.getItem(STATE_KEY);
-  if (state !== storedState) {
-    throw new Error('Invalid state parameter — possible CSRF attack.');
+  // Use the SDK's handleCallback method
+  // Note: the SDK might already read code/state from the URL if not provided,
+  // but we pass them for clarity if our page already parsed them.
+  try {
+    await appKit.handleCallback();
+    return true;
+  } catch (err) {
+    console.error('AppKit handleCallback error:', err);
+    throw err;
   }
-
-  const codeVerifier = sessionStorage.getItem(CODE_VERIFIER_KEY);
-  if (!codeVerifier) {
-    throw new Error('Code verifier not found. Please try logging in again.');
-  }
-
-  // Exchange code for tokens
-  const response = await fetch(`${DOMAIN}/api/v1/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      client_id: CLIENT_ID,
-      redirect_uri: getRedirectUri(),
-      code_verifier: codeVerifier,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Token exchange failed' }));
-    throw new Error(error.error_description || error.error || 'Token exchange failed');
-  }
-
-  const tokens = await response.json();
-
-  // Store tokens
-  localStorage.setItem(TOKEN_KEY, tokens.access_token);
-  if (tokens.refresh_token) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
-  }
-  if (tokens.id_token) {
-    // Decode the ID token payload to get user info
-    try {
-      const payload = JSON.parse(atob(tokens.id_token.split('.')[1]));
-      localStorage.setItem(USER_KEY, JSON.stringify({
-        sub: payload.sub,
-        name: payload.name || payload.preferred_username || '',
-        email: payload.email || '',
-        picture: payload.picture || '',
-      }));
-    } catch { /* ignore decode errors */ }
-  }
-
-  // Clean up session storage
-  sessionStorage.removeItem(CODE_VERIFIER_KEY);
-  sessionStorage.removeItem(STATE_KEY);
-
-  return true;
 }
 
 /**
@@ -139,26 +70,36 @@ export async function handleCallback(code: string, state: string): Promise<boole
  */
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+  // Use the SDK's getTokens method or just read from localStorage directly
+  // The SDK stores it with a specific key.
+  const tokens = appKit.getTokens();
+  return tokens?.accessToken || null;
 }
 
 /**
  * Check if the user is authenticated
  */
 export function isAuthenticated(): boolean {
-  return !!getAccessToken();
+  return appKit.isAuthenticated();
 }
 
 /**
  * Get stored user info
  */
-export function getUser(): { sub: string; name: string; email: string; picture: string } | null {
+export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string } | null> {
   if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(USER_KEY);
-  if (!stored) return null;
+  
   try {
-    return JSON.parse(stored);
-  } catch {
+    if (!isAuthenticated()) return null;
+    const user = await appKit.getUser();
+    return {
+      sub: user.id,
+      name: user.name || '',
+      email: user.email || '',
+      picture: user.avatar || ''
+    };
+  } catch (err) {
+    console.error('AppKit getUser error:', err);
     return null;
   }
 }
@@ -166,9 +107,8 @@ export function getUser(): { sub: string; name: string; email: string; picture: 
 /**
  * Logout — clear tokens and redirect to login
  */
-export function logout(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  window.location.href = '/login';
+export async function logout(): Promise<void> {
+  await appKit.logout({
+    post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
+  });
 }
