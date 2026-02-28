@@ -2,29 +2,10 @@ import { AppKit } from 'alphayard-appkit';
 
 /**
  * AlphaYard AppKit Authentication Library
- * Using the Official SDK for more reliable endpoint handling
  */
 
-// Hardcoded fallback for narinyland if env vars are missing
-const DEFAULT_DOMAIN = 'https://appkits.up.railway.app';
-const DEFAULT_CLIENT_ID = '132bb02d-212b-43dc-b74c-79a42f4dbffa';
-
-const DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 
-               process.env.EXT_PUBLIC_APPKIT_DOMAIN || 
-               DEFAULT_DOMAIN;
-
-const CLIENT_ID = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || 
-                  process.env.EXT_PUBLIC_APPKIT_CLIENT_ID || 
-                  DEFAULT_CLIENT_ID;
-
-if (typeof window !== 'undefined') {
-  console.log('AppKit Debug Initialization:', {
-    domain: DOMAIN,
-    clientId: CLIENT_ID ? 'Available' : 'MISSING',
-    source: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID ? 'NEXT_PUBLIC' : 
-            process.env.EXT_PUBLIC_APPKIT_CLIENT_ID ? 'EXT_PUBLIC' : 'Hardcoded Fallback'
-  });
-}
+const DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
+const CLIENT_ID = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
 
 // Initialize the AppKit client
 export const appKit = new AppKit({
@@ -35,27 +16,28 @@ export const appKit = new AppKit({
   storage: 'localStorage'
 });
 
+if (typeof window !== 'undefined') {
+  console.log('AppKit Config (Client-Side):', {
+    DOMAIN,
+    CLIENT_ID: CLIENT_ID ? 'Available' : 'MISSING',
+    raw_env: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID
+  });
+}
+
 /**
  * Start the login/signup flow
  */
 export async function login(): Promise<void> {
   if (!CLIENT_ID) {
-    console.error('AppKit Client ID is missing. Please check your environment variables.');
-    alert('Configuration error: APP_ID is missing.');
-    return;
+    console.warn('AppKit Client ID is missing. Attempting login anyway...');
   }
-  
-  // Use the SDK's login method which handles redirect + PKCE
   await appKit.login();
 }
 
 /**
  * Handle the OAuth callback
  */
-export async function handleCallback(code: string, state: string): Promise<boolean> {
-  // Use the SDK's handleCallback method
-  // Note: the SDK might already read code/state from the URL if not provided,
-  // but we pass them for clarity if our page already parsed them.
+export async function handleCallback(): Promise<boolean> {
   try {
     await appKit.handleCallback();
     return true;
@@ -70,8 +52,6 @@ export async function handleCallback(code: string, state: string): Promise<boole
  */
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  // Use the SDK's getTokens method or just read from localStorage directly
-  // The SDK stores it with a specific key.
   const tokens = appKit.getTokens();
   return tokens?.accessToken || null;
 }
@@ -84,7 +64,7 @@ export function isAuthenticated(): boolean {
 }
 
 /**
- * Get stored user info
+ * Get stored user info (Async)
  */
 export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string } | null> {
   if (typeof window === 'undefined') return null;
@@ -105,7 +85,7 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
 }
 
 /**
- * Logout — clear tokens and redirect to login
+ * Logout
  */
 export async function logout(): Promise<void> {
   await appKit.logout({

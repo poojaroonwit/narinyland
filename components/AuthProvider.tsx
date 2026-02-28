@@ -34,10 +34,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const authenticated = isAuthenticated();
       setIsLoggedIn(authenticated);
-      setUser(getUser());
+      
+      if (authenticated) {
+        const userInfo = await getUser();
+        setUser(userInfo);
+      } else {
+        setUser(null);
+      }
+      
       setToken(getAccessToken());
       setLoading(false);
 
