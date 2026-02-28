@@ -1,5 +1,6 @@
 import { Metadata, Viewport } from 'next';
 import prisma from '@/lib/prisma';
+import AuthProvider from '@/components/AuthProvider';
 import './globals.css';
 
 // Helper to get config
@@ -58,7 +59,9 @@ export default function RootLayout({
         {/* Google Fonts */}
         <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&family=Pacifico&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

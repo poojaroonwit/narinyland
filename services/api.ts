@@ -3,12 +3,18 @@
  * Connects the frontend to the Express + Prisma backend
  */
 
+import { getAccessToken } from '@/lib/auth';
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
 // This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // ─── Helper ──────────────────────────────────────────────────────────
+
+function getAuthHeaders(): Record<string, string> {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function fetchAPI<T>(
   path: string,
@@ -18,6 +24,7 @@ async function fetchAPI<T>(
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...options.headers,
     },
     ...options,
@@ -35,6 +42,9 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
   const url = `${API_BASE}${path}`;
   const response = await fetch(url, {
     method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+    },
     body: formData,
   });
 

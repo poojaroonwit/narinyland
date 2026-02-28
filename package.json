@@ -26,6 +26,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@types/three": "^0.182.0",
+    "alphayard-appkit": "^1.0.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
     "eslint-config-next": "^16.1.6",
