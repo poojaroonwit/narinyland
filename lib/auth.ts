@@ -6,31 +6,70 @@ import { AppKit } from 'alphayard-appkit';
 
 let appKitInstance: AppKit | null = null;
 
+let isInitializing = false;
+let initPromise: Promise<void> | null = null;
+
 /**
- * Lazy initializer for AppKit client to ensure environment variables are captured
+ * Asynchronously initialize the AppKit client
+ * This fetches the Client ID from the server at runtime, bypassing Next.js build-time injection issues on Railway.
  */
-export function getAppKit(): AppKit {
-  if (!appKitInstance) {
-    const domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
-    const clientId = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
-    
-    if (typeof window !== 'undefined') {
-      console.log('AppKit SDK Initialization:', {
-        domain,
-        clientId: clientId ? `${clientId.substring(0, 8)}...` : 'MISSING',
-        location: window.location.href
-      });
-      
-      if (!clientId) {
-        console.error('CRITICAL: NEXT_PUBLIC_APPKIT_CLIENT_ID is missing in the browser!');
+export async function initAppKit(): Promise<void> {
+  if (appKitInstance) return;
+  if (isInitializing && initPromise) return initPromise;
+  
+  isInitializing = true;
+  initPromise = (async () => {
+    let domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || '';
+    let clientId = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
+
+    // If variables failed to inject during the build step, fetch them at runtime from our API
+    if (typeof window !== 'undefined' && (!clientId || !domain)) {
+      try {
+        const res = await fetch('/api/config/appkit');
+        if (res.ok) {
+          const config = await res.json();
+          clientId = config.clientId || clientId;
+          domain = config.domain || domain || 'https://appkits.up.railway.app';
+          
+          console.log('AppKit Config (Runtime Fetched):', { clientId: clientId ? `Available (${clientId.substring(0,8)}...)` : 'MISSING', domain });
+        }
+      } catch (err) {
+        console.error('Failed to fetch runtime AppKit config:', err);
       }
+    } else if (typeof window !== 'undefined') {
+       console.log('AppKit Config (Build-time):', { clientId: clientId ? 'Available' : 'MISSING' });
     }
 
+    if (!domain) domain = 'https://appkits.up.railway.app';
+
     appKitInstance = new AppKit({
-      clientId: clientId,
+      clientId: clientId || '',
       domain: domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       scopes: ['openid', 'profile', 'email'],
+      storage: 'localStorage'
+    });
+    
+    isInitializing = false;
+  })();
+
+  return initPromise;
+}
+
+/**
+ * Synchronous getter for AppKit client. 
+ * Must call `await initAppKit()` at least once before using this.
+ */
+export function getAppKit(): AppKit {
+  if (!appKitInstance) {
+    console.warn('getAppKit called before initAppKit completed. Falling back to build-time environment variables.');
+    // Emergency synchronous fallback
+    const domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
+    const clientId = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
+    return new AppKit({
+      clientId, 
+      domain,
+      redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       storage: 'localStorage'
     });
   }
@@ -41,6 +80,7 @@ export function getAppKit(): AppKit {
  * Start the login/signup flow
  */
 export async function login(): Promise<void> {
+  await initAppKit();
   const client = getAppKit();
   await client.login();
 }
@@ -50,6 +90,7 @@ export async function login(): Promise<void> {
  */
 export async function handleCallback(): Promise<boolean> {
   try {
+    await initAppKit();
     const client = getAppKit();
     await client.handleCallback();
     return true;
@@ -84,6 +125,7 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
   if (typeof window === 'undefined') return null;
   
   try {
+    await initAppKit();
     const client = getAppKit();
     if (!client.isAuthenticated()) return null;
     const user = await client.getUser();
@@ -103,6 +145,7 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
  * Logout
  */
 export async function logout(): Promise<void> {
+  await initAppKit();
   const client = getAppKit();
   await client.logout({
     post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined

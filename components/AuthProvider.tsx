@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { isAuthenticated, getUser, logout as authLogout, getAccessToken } from '@/lib/auth';
+import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit } from '@/lib/auth';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -35,6 +35,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const checkAuth = async () => {
+      try {
+        await initAppKit();
+      } catch (err) {
+        console.error('Failed to initialize AppKit:', err);
+      }
+      
       const authenticated = isAuthenticated();
       setIsLoggedIn(authenticated);
       
