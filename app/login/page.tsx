@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 const dict = {
   en: {
     signIn: "Sign In",
-    getStarted: "Get Started",
+    getStarted: "Sign Up",
     heroTitlePrefix: "Nurture your love story in a ",
     heroTitleHighlight: "digital garden.",
     heroDesc: "Grow a beautiful 3D tree together, save precious memories on an interactive timeline, and exchange digital love letters that unlock over time.",
@@ -47,7 +47,7 @@ const dict = {
   },
   th: {
     signIn: "เข้าสู่ระบบ",
-    getStarted: "เริ่มต้นใช้งาน",
+    getStarted: "ลงทะเบียน",
     heroTitlePrefix: "หล่อเลี้ยงเรื่องราวความรักของคุณใน",
     heroTitleHighlight: "สวนดิจิทัล",
     heroDesc: "ปลูกต้นไม้ 3 มิติที่สวยงามด้วยกัน บันทึกความทรงจำอันมีค่าบนไทม์ไลน์ที่โต้ตอบได้ และแลกเปลี่ยนจดหมายรักดิจิทัลที่จะปลดล็อคเมื่อเวลาผ่านไป",
@@ -85,7 +85,7 @@ const dict = {
   },
   zh: {
     signIn: "登录",
-    getStarted: "开始使用",
+    getStarted: "注册",
     heroTitlePrefix: "在数字花园中培育你的",
     heroTitleHighlight: "爱情故事",
     heroDesc: "一起种植美丽的3D树，在互动的相册时间轴上保存珍贵的记忆，并交换随时间解锁的数字情书。",
@@ -123,7 +123,7 @@ const dict = {
   },
   ja: {
     signIn: "ログイン",
-    getStarted: "はじめる",
+    getStarted: "登録する",
     heroTitlePrefix: "デジタルガーデンで育む",
     heroTitleHighlight: "愛の物語",
     heroDesc: "美しい3Dの木を一緒に育て、インタラクティブなタイムラインに大切な思い出を保存し、時が来るとロック解除されるデジタルラブレターを交換しましょう。",
@@ -161,7 +161,7 @@ const dict = {
   },
   ko: {
     signIn: "로그인",
-    getStarted: "시작하기",
+    getStarted: "가입하기",
     heroTitlePrefix: "디지털 정원에서 가꾸는 ",
     heroTitleHighlight: "사랑 이야기",
     heroDesc: "아름다운 3D 나무를 함께 키우고, 대화형 타임라인에 소중한 추억을 저장하며, 시간이 지나면 열리는 디지털 러브레터를 교환하세요.",
@@ -199,7 +199,7 @@ const dict = {
   },
   es: {
     signIn: "Iniciar sesión",
-    getStarted: "Comenzar",
+    getStarted: "Registrarse",
     heroTitlePrefix: "Cultiva tu historia de amor en un ",
     heroTitleHighlight: "jardín digital.",
     heroDesc: "Hagan crecer un hermoso árbol 3D juntos, guarden recuerdos valiosos en una línea de tiempo interactiva e intercambien cartas de amor que se desbloquean con el tiempo.",
@@ -237,7 +237,7 @@ const dict = {
   },
   fr: {
     signIn: "Se connecter",
-    getStarted: "Commencer",
+    getStarted: "S'inscrire",
     heroTitlePrefix: "Cultivez votre histoire d'amour dans un ",
     heroTitleHighlight: "jardin numérique.",
     heroDesc: "Faites pousser un bel arbre 3D ensemble, enregistrez de précieux souvenirs sur une chronologie interactive et échangez des lettres d'amour qui se déverrouillent avec le temps.",
