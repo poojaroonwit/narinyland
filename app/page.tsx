@@ -883,66 +883,67 @@ const Home: React.FC = () => {
         </motion.div>
       )}
 
+      {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
+      
+      {/* Config & Top Menu - Persistently Visible */}
+      <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
+         <button 
+           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)} 
+           className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
+             isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
+           }`}
+         >
+           <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
+         </button>
+         <button onClick={() => setIsEditDrawerOpen(true)} className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:bg-white transition-all transform hover:scale-110 border border-white/50"><i className="fas fa-cog text-sm"></i></button>
+         <UserDropdown 
+            user={user} 
+            onLogout={logout} 
+            onEditUserInfo={() => alert("Edit user info logic (opening AppKit widget) goes here!")} 
+          />
+      </div>
+
+      {/* Music Adjustment Modal */}
+      <AnimatePresence>
+        {isVolumeModalOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
+          >
+             <label className="text-[8px] font-black text-pink-500 uppercase tracking-tighter w-full text-center mb-2">VOL</label>
+             <div className="h-32 w-1.5 bg-gray-100 rounded-full relative overflow-hidden group">
+                <input 
+                   type="range"
+                   min="0"
+                   max="1"
+                   step="0.01"
+                   value={isMusicMuted ? 0 : musicVolume}
+                   onChange={(e) => {
+                     setMusicVolume(parseFloat(e.target.value));
+                     setIsMusicMuted(false);
+                   }}
+                   className="absolute inset-0 w-32 h-1.5 appearance-none bg-transparent cursor-pointer -rotate-90 origin-left translate-y-[128px] translate-x-[-1px] z-10"
+                   style={{ width: '128px' }}
+                />
+                <div 
+                   className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-pink-500 to-rose-400 transition-all duration-150"
+                   style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }}
+                />
+             </div>
+             <button 
+               onClick={() => setIsMusicMuted(!isMusicMuted)}
+               className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isMusicMuted ? 'bg-gray-100 text-gray-400' : 'bg-pink-100 text-pink-500'}`}
+             >
+               <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
+             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {hasAcceptedProposal && (
         <>
-          {/* Fixed UI Overlays - Outside the scrollable content flow */}
-          
-          {/* Config & Garden Stats - Persistently Visible */}
-           <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
-             <button 
-               onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)} 
-               className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
-                 isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
-               }`}
-             >
-               <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
-             </button>
-             <button onClick={() => setIsEditDrawerOpen(true)} className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:bg-white transition-all transform hover:scale-110 border border-white/50"><i className="fas fa-cog text-sm"></i></button>
-             <UserDropdown 
-                user={user} 
-                onLogout={logout} 
-                onEditUserInfo={() => alert("Edit user info logic (opening AppKit widget) goes here!")} 
-              />
-          </div>
-          {/* Music Adjustment Modal */}
-          <AnimatePresence>
-            {isVolumeModalOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
-              >
-                 <label className="text-[8px] font-black text-pink-500 uppercase tracking-tighter w-full text-center mb-2">VOL</label>
-                 <div className="h-32 w-1.5 bg-gray-100 rounded-full relative overflow-hidden group">
-                    <input 
-                       type="range"
-                       min="0"
-                       max="1"
-                       step="0.01"
-                       value={isMusicMuted ? 0 : musicVolume}
-                       onChange={(e) => {
-                         setMusicVolume(parseFloat(e.target.value));
-                         setIsMusicMuted(false);
-                       }}
-                       className="absolute inset-0 w-32 h-1.5 appearance-none bg-transparent cursor-pointer -rotate-90 origin-left translate-y-[128px] translate-x-[-1px] z-10"
-                       style={{ width: '128px' }}
-                    />
-                    <div 
-                       className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-pink-500 to-rose-400 transition-all duration-150"
-                       style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }}
-                    />
-                 </div>
-                 <button 
-                   onClick={() => setIsMusicMuted(!isMusicMuted)}
-                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isMusicMuted ? 'bg-gray-100 text-gray-400' : 'bg-pink-100 text-pink-500'}`}
-                 >
-                   <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
-                 </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* CENTERED STATUS BAR - HOME ONLY */}
           {activeTab === 'home' && (
             <div 
