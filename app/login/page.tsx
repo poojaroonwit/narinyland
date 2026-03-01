@@ -338,8 +338,8 @@ export default function LoginPage() {
             key={i}
             className="absolute text-pink-400 select-none drop-shadow-sm"
             initial={{
-              x: \`\${Math.random() * 100}vw\`,
-              y: \`\${Math.random() * 100}vh\`,
+              x: `${Math.random() * 100}vw`,
+              y: `${Math.random() * 100}vh`,
               scale: 0.3 + Math.random() * 0.7,
               rotate: Math.random() * 360,
             }}
@@ -353,7 +353,7 @@ export default function LoginPage() {
               repeatType: 'mirror',
               delay: Math.random() * 5,
             }}
-            style={{ fontSize: \`\${20 + Math.random() * 40}px\` }}
+            style={{ fontSize: `${20 + Math.random() * 40}px` }}
           >
             {['🌸', '💕', '✨', '🌷', '🌿', '🪴'][i % 6]}
           </motion.div>
@@ -375,7 +375,7 @@ export default function LoginPage() {
             🌳
           </div>
           <span
-            className={\`text-2xl font-bold tracking-tight \${lang === 'th' ? 'mt-1' : ''}\`}
+            className={`text-2xl font-bold tracking-tight ${lang === 'th' ? 'mt-1' : ''}`}
             style={{
               fontFamily: customTitleFont,
               background: 'linear-gradient(135deg, #be185d, #ec4899)',
@@ -736,7 +736,8 @@ export default function LoginPage() {
               'NEXT_API_URL': process.env.NEXT_PUBLIC_API_URL || 'DEFAULT (/api)',
             };
             console.table(config);
-            alert(`🔍 AppKit Status: ${config.SDK_CLIENT_ID === 'MISSING' ? '❌ ERROR' : '✅ CONFIGURED'}`);
+            const status = config.SDK_CLIENT_ID === 'MISSING' ? '❌ ERROR' : '✅ CONFIGURED';
+            alert('🔍 AppKit Status: ' + status);
           }}
         >
           <span>AlphaYard AppKit Support</span>
