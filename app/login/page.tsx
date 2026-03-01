@@ -100,12 +100,16 @@ export default function LoginPage() {
 
   const t = dict[lang];
 
+  // Dynamic font based on language
+  const customFont = lang === 'en' ? "'Outfit', sans-serif" : "'Kanit', sans-serif";
+  const customTitleFont = lang === 'en' ? "'Pacifico', cursive" : "'Kanit', sans-serif";
+
   return (
     <div
       className="min-h-screen text-gray-800 relative selection:bg-pink-300 selection:text-pink-900"
       style={{
         background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 30%, #fbcfe8 70%, #f9a8d4 100%)',
-        fontFamily: "'Outfit', sans-serif"
+        fontFamily: customFont,
       }}
     >
       {/* Decorative Floating Elements (Background) */}
@@ -152,9 +156,9 @@ export default function LoginPage() {
             🌳
           </div>
           <span
-            className="text-2xl font-bold tracking-tight"
+            className={`text-2xl font-bold tracking-tight ${lang === 'th' ? 'mt-1' : ''}`}
             style={{
-              fontFamily: "'Pacifico', cursive",
+              fontFamily: customTitleFont,
               background: 'linear-gradient(135deg, #be185d, #ec4899)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -311,7 +315,12 @@ export default function LoginPage() {
         <section className="w-full max-w-4xl text-center mb-20 relative">
           <div className="absolute inset-0 bg-gradient-to-r from-pink-300 to-rose-300 rounded-[3rem] opacity-20 blur-3xl -z-10"></div>
           <div className="bg-white/60 backdrop-blur-xl border border-white/60 rounded-[3rem] p-12 md:p-20 shadow-2xl">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-['Pacifico',_cursive]">{t.ctaTitle}</h2>
+            <h2 
+              className="text-4xl md:text-5xl font-bold text-gray-900 mb-6"
+              style={{ fontFamily: customTitleFont }}
+            >
+              {t.ctaTitle}
+            </h2>
             <p className="text-xl text-gray-600 mb-10 max-w-xl mx-auto">{t.ctaDesc}</p>
             <button 
               onClick={() => handleAuth(true)}
@@ -329,7 +338,12 @@ export default function LoginPage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
            <div className="flex items-center gap-2">
              <span className="text-xl">🌳</span>
-             <span className="text-xl font-bold text-pink-700" style={{ fontFamily: "'Pacifico', cursive" }}>Narinyland</span>
+             <span 
+               className="text-xl font-bold text-pink-700" 
+               style={{ fontFamily: customTitleFont }}
+              >
+                Narinyland
+              </span>
            </div>
            
            <div className="flex gap-6 text-gray-500 font-medium">
