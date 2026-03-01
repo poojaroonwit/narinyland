@@ -28,7 +28,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo }: UserDro
     };
   }, [dropdownRef]);
 
-  if (!user) return null;
+  const displayUser = user || { name: 'User', email: 'guest@narinyland.com', picture: '' };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -37,11 +37,11 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo }: UserDro
         onClick={() => setIsOpen(!isOpen)}
         className="w-10 h-10 rounded-full shadow-lg overflow-hidden border-2 border-white/50 hover:border-pink-300 transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-400"
       >
-        {user.picture ? (
-          <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
+        {displayUser.picture ? (
+          <img src={displayUser.picture} alt={displayUser.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white font-bold text-lg">
-            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+            {displayUser.name ? displayUser.name.charAt(0).toUpperCase() : 'U'}
           </div>
         )}
       </button>
@@ -57,8 +57,8 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo }: UserDro
             className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-pink-100 overflow-hidden z-[80]"
           >
             <div className="p-4 border-b border-pink-50">
-              <p className="text-sm font-bold text-gray-800 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <p className="text-sm font-bold text-gray-800 truncate">{displayUser.name}</p>
+              <p className="text-xs text-gray-500 truncate">{displayUser.email}</p>
             </div>
             <div className="p-1">
               <button

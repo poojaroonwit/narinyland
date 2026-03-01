@@ -390,7 +390,7 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="hidden lg:flex items-center gap-8 absolute left-1/2 -translate-x-1/2"
+          className="hidden md:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-4 lg:gap-8 w-max"
         >
           <a href="#features" className="text-gray-600 hover:text-pink-600 font-medium transition-colors text-sm">Product</a>
           <a href="#showcase" className="text-gray-600 hover:text-pink-600 font-medium transition-colors text-sm">Service</a>
@@ -399,7 +399,7 @@ export default function LoginPage() {
             <span className="text-[9px] font-bold uppercase tracking-wider bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-sm">Coming Soon</span>
           </div>
           <a 
-            href="https://github.com" 
+            href="https://github.com/poojaroonwit/narinyland" 
             target="_blank" 
             rel="noopener noreferrer" 
             className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm"
