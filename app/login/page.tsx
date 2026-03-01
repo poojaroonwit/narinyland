@@ -383,8 +383,31 @@ export default function LoginPage() {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            Narinyland
           </span>
+        </motion.div>
+
+        {/* Center Desktop Navigation */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="hidden lg:flex items-center gap-8 absolute left-1/2 -translate-x-1/2"
+        >
+          <a href="#features" className="text-gray-600 hover:text-pink-600 font-medium transition-colors text-sm">Product</a>
+          <a href="#showcase" className="text-gray-600 hover:text-pink-600 font-medium transition-colors text-sm">Service</a>
+          <div className="flex items-center gap-1.5 opacity-60 cursor-not-allowed group">
+            <span className="text-gray-500 font-medium text-sm">Pricing</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-sm">Coming Soon</span>
+          </div>
+          <a 
+            href="https://github.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm"
+          >
+             <i className="fab fa-github"></i>
+             GitHub Open Source
+             <i className="fas fa-external-link-alt text-[10px] opacity-50 relative -top-0.5"></i>
+          </a>
         </motion.div>
 
         <motion.div
@@ -432,8 +455,8 @@ export default function LoginPage() {
       {/* Main Content Container */}
       <main className="relative z-10 pt-28 pb-20 px-6 md:px-12 max-w-7xl mx-auto flex flex-col items-center">
         
-        {/* Hero Section */}
-        <section className="text-center max-w-4xl mx-auto mt-10 md:mt-20 mb-24 md:mb-32">
+        {/* Hero & Features Section */}
+        <section id="features" className="text-center max-w-4xl mx-auto mt-10 md:mt-20 mb-24 md:mb-32">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -466,7 +489,7 @@ export default function LoginPage() {
         </section>
 
         {/* Visual Showcase 1: Timeline */}
-        <div className="w-full max-w-6xl mb-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+        <div id="showcase" className="w-full max-w-6xl mb-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           <motion.div 
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
