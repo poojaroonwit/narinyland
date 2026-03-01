@@ -47,7 +47,36 @@ export async function initAppKit(): Promise<void> {
       domain: domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       scopes: ['openid', 'profile', 'email'],
-      storage: 'localStorage'
+      storage: 'localStorage',
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const urlStr = input.toString();
+        // Proxy token exchange and revocation through our backend APIs
+        if (urlStr.endsWith('/oauth/token')) {
+          // Parse x-www-form-urlencoded body to json to send to our proxy
+          const rawParams = new URLSearchParams(init?.body as string);
+          const bodyData = Object.fromEntries(rawParams);
+          
+          return globalThis.fetch('/api/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData),
+          });
+        }
+        
+        if (urlStr.endsWith('/oauth/revoke')) {
+          const rawParams = new URLSearchParams(init?.body as string);
+          const bodyData = Object.fromEntries(rawParams);
+          
+          return globalThis.fetch('/api/auth/revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData),
+          });
+        }
+        
+        // Let everything else pass through normally
+        return globalThis.fetch(input, init);
+      }
     });
     
     isInitializing = false;
@@ -70,7 +99,27 @@ export function getAppKit(): AppKit {
       clientId, 
       domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      storage: 'localStorage'
+      storage: 'localStorage',
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const urlStr = input.toString();
+        if (urlStr.endsWith('/oauth/token')) {
+          const rawParams = new URLSearchParams(init?.body as string);
+          return globalThis.fetch('/api/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.fromEntries(rawParams)),
+          });
+        }
+        if (urlStr.endsWith('/oauth/revoke')) {
+          const rawParams = new URLSearchParams(init?.body as string);
+          return globalThis.fetch('/api/auth/revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.fromEntries(rawParams)),
+          });
+        }
+        return globalThis.fetch(input, init);
+      }
     });
   }
   return appKitInstance;
