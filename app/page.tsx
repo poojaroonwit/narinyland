@@ -19,9 +19,9 @@ import GlobalImageModal from '../components/GlobalImageModal';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../types';
 import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../services/api';
 import { useAuth } from '../components/AuthProvider';
+import UserDropdown from '../components/UserDropdown';
 
 const INITIAL_MEMORIES: MemoryItem[] = [];
-
 const INITIAL_TIMELINE: Interaction[] = [];
 
 const INITIAL_COUPONS: any[] = [];
@@ -888,7 +888,7 @@ const Home: React.FC = () => {
           {/* Fixed UI Overlays - Outside the scrollable content flow */}
           
           {/* Config & Garden Stats - Persistently Visible */}
-          <div className="fixed top-4 right-4 md:right-6 flex items-center gap-2 md:gap-4 z-[60]">
+           <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
              <button 
                onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)} 
                className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
@@ -898,9 +898,12 @@ const Home: React.FC = () => {
                <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
              </button>
              <button onClick={() => setIsEditDrawerOpen(true)} className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:bg-white transition-all transform hover:scale-110 border border-white/50"><i className="fas fa-cog text-sm"></i></button>
-             <button onClick={logout} title={user?.name ? `Logout (${user.name})` : 'Logout'} className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:bg-red-50 hover:text-red-500 transition-all transform hover:scale-110 border border-white/50"><i className="fas fa-sign-out-alt text-sm"></i></button>
+             <UserDropdown 
+                user={user} 
+                onLogout={logout} 
+                onEditUserInfo={() => alert("Edit user info logic (opening AppKit widget) goes here!")} 
+              />
           </div>
-
           {/* Music Adjustment Modal */}
           <AnimatePresence>
             {isVolumeModalOpen && (
