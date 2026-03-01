@@ -57,7 +57,7 @@ export default function RootLayout({
         {/* Font Awesome */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         {/* Google Fonts */}
-        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&family=Pacifico&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Pacifico&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
       </head>
       <body>
         <AuthProvider>{children}</AuthProvider>
