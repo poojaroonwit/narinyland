@@ -493,9 +493,9 @@ export default function LoginPage() {
                 <div className="absolute left-8 top-10 bottom-10 w-1 bg-gradient-to-b from-pink-300 to-rose-300 rounded-full opacity-50 z-0"></div>
                 <div className="flex-1 overflow-hidden z-10 space-y-6 pt-4">
                   {[
-                    { title: "First Date at the Park", sub: "Oct 12, 2023", icon: "🌳" },
-                    { title: "Our Anniversary Trip", sub: "Feb 14, 2024", icon: "✈️" },
-                    { title: "Adopted Nari!", sub: "Mar 1, 2024", icon: "🐾" }
+                    { title: "First Date at the Park", sub: "Oct 12, 2023", icon: "🌳", desc: "We talked for hours on the bench under the big oak tree.", imgCount: 0 },
+                    { title: "Our Anniversary Trip", sub: "Feb 14, 2024", icon: "✈️", desc: "The sunset over the ocean was breathtaking!", imgCount: 4 },
+                    { title: "Adopted Nari!", sub: "Mar 1, 2024", icon: "🐾", desc: "Welcome to our family, little one 🐕", imgCount: 2 }
                   ].map((item, i) => (
                     <motion.div 
                       key={i}
@@ -505,12 +505,27 @@ export default function LoginPage() {
                       transition={{ duration: 0.5, delay: 0.3 + i * 0.2 }}
                       className="ml-10 bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-white/50 shadow-sm relative group"
                     >
-                      <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border-4 border-pink-400 flex items-center justify-center text-xs shadow-md z-20"></div>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center text-2xl">{item.icon}</div>
-                        <div>
-                          <h4 className="font-bold text-gray-800">{item.title}</h4>
-                          <p className="text-sm text-pink-500 font-medium">{item.sub}</p>
+                      <div className="absolute -left-10 top-6 -translate-y-1/2 w-8 h-8 rounded-full bg-white border-4 border-pink-400 flex items-center justify-center text-xs shadow-md z-20"></div>
+                      <div className="flex gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-pink-100 flex-shrink-0 flex items-center justify-center text-2xl mt-1">{item.icon}</div>
+                        <div className="flex-1 w-full">
+                          <h4 className="font-bold text-gray-800 leading-tight">{item.title}</h4>
+                          <p className="text-[10px] text-pink-500 font-bold mb-1 uppercase tracking-wide">{item.sub}</p>
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{item.desc}</p>
+                          
+                          {item.imgCount > 0 && (
+                            <div className="flex gap-2 mb-2">
+                               <div className="w-16 h-12 bg-gray-200 rounded-lg overflow-hidden relative border border-gray-100 animate-pulse">
+                                   <div className="absolute inset-0 bg-gradient-to-br from-pink-100 to-rose-50"></div>
+                               </div>
+                               {item.imgCount > 1 && (
+                                   <div className="w-16 h-12 bg-gray-100 rounded-lg overflow-hidden relative border border-gray-100 flex items-center justify-center group">
+                                     <div className="absolute inset-0 bg-gradient-to-br from-pink-50 to-rose-50 opacity-50"></div>
+                                     <span className="text-xs font-bold text-gray-500 z-10">+{item.imgCount - 1}</span>
+                                   </div>
+                               )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
