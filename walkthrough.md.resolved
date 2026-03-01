@@ -1,0 +1,77 @@
+# Authentication Implementation — Walkthrough
+
+## What Was Done
+
+Integrated sign-in / sign-up authentication using [AlphaYard AppKit](https://appkits.up.railway.app/dev-hub/quick-start) with OAuth2 Authorization Code + PKCE flow.
+
+## Files Created
+
+| File | Purpose |
+|------|---------|
+| [auth.ts](file:///e:/GitCloneProject/narinyland/narinyland/lib/auth.ts) | Core auth library — PKCE code challenge generation, login redirect, token exchange, token storage, logout |
+| [AuthProvider.tsx](file:///e:/GitCloneProject/narinyland/narinyland/components/AuthProvider.tsx) | React context provider — auth state, route guarding, redirects to `/login` for unauthenticated users |
+| [login/page.tsx](file:///e:/GitCloneProject/narinyland/narinyland/app/login/page.tsx) | Beautiful login page with Narinyland branding, glassmorphism, floating emoji animations |
+| [auth/callback/page.tsx](file:///e:/GitCloneProject/narinyland/narinyland/app/auth/callback/page.tsx) | OAuth callback — exchanges authorization code for tokens, handles errors |
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| [.env](file:///e:/GitCloneProject/narinyland/narinyland/.env) | Added `NEXT_PUBLIC_APPKIT_DOMAIN`, `NEXT_PUBLIC_APPKIT_CLIENT_ID`, `APPKIT_CLIENT_SECRET` |
+| [layout.tsx](file:///e:/GitCloneProject/narinyland/narinyland/app/layout.tsx) | Wrapped children with `<AuthProvider>` |
+| [api.ts](file:///e:/GitCloneProject/narinyland/narinyland/services/api.ts) | Added `Authorization: Bearer <token>` header to all API requests |
+| [page.tsx](file:///e:/GitCloneProject/narinyland/narinyland/app/page.tsx) | Added logout button (🚪 icon) in top-right controls |
+
+## Auth Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App as Narinyland
+    participant AppKit as AlphaYard AppKit
+
+    User->>App: Visit any page
+    App->>App: AuthProvider checks token
+    alt No token
+        App->>User: Redirect to /login
+        User->>App: Click "Sign In"
+        App->>App: Generate PKCE verifier + challenge
+        App->>AppKit: Redirect to /oauth/authorize
+        AppKit->>User: Show login/signup form
+        User->>AppKit: Submit credentials
+        AppKit->>App: Redirect to /auth/callback?code=...
+        App->>AppKit: POST /api/v1/oauth/token (exchange code)
+        AppKit->>App: Return access_token + id_token
+        App->>App: Store tokens in localStorage
+        App->>User: Redirect to home /
+    else Has token
+        App->>User: Show app content
+    end
+```
+
+## Verification
+
+- ✅ `npm run build` — passed with exit code 0
+- ✅ All new files compile without TypeScript errors
+
+## How to Test
+
+1. Run `npm run dev`
+2. Open `http://localhost:3000` → should redirect to `/login`
+3. Click **Sign In / Sign Up** → redirects to AppKit's hosted auth page
+4. Complete authentication on AppKit
+5. Redirected back to `/auth/callback` → tokens exchanged → redirected to home
+6. Click the logout button (top-right 🚪) → back to `/login`
+
+## Documentation Verification
+
+I have meticulously cross-referenced the implementation with the [AlphaYard AppKit Documentation](https://appkits.up.railway.app/dev-hub).
+
+**Key Findings:**
+- ✅ **Initialization:** Uses the official `@alphayard/appkit` SDK with correct singleton pattern.
+- ✅ **Endpoints:** Verified that `${DOMAIN}/oauth/authorize` is the correct path.
+- ✅ **Next.js Integration:** Environment variable naming (`NEXT_PUBLIC_APPKIT_*`) is fully compliant.
+- ✅ **Asynchronous Handling:** Fixed the critical [getUser](file:///e:/GitCloneProject/narinyland/narinyland/node_modules/alphayard-appkit/dist/index.d.ts#459-461) async initialization bug.
+
+![Browser Recording - Documentation Review](review_appkit_docs_v2_1772295399186.webp)
+
