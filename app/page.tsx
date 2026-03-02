@@ -28,7 +28,7 @@ const INITIAL_TIMELINE: Interaction[] = [];
 const INITIAL_COUPONS: any[] = [];
 
 const Home: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const [hasAcceptedProposal, setHasAcceptedProposal] = useState(false);
   const [isLetterOpen, setIsLetterOpen] = useState(false); 
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -902,6 +902,7 @@ const Home: React.FC = () => {
             user={user} 
             onLogout={logout} 
             onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
+            loading={authLoading}
           />
       </div>
 

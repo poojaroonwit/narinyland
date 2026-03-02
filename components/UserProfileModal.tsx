@@ -14,6 +14,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   const { user, refreshUser } = useAuth();
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [attributes, setAttributes] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     if (isOpen && user) {
       setName(user.name || '');
       setAvatar(user.picture || '');
+      setAttributes(user.attributes || {});
       setError(null);
     }
   }, [isOpen, user]);
@@ -29,7 +31,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     setIsSaving(true);
     setError(null);
     try {
-      const success = await updateProfile({ name, avatar });
+      const success = await updateProfile({ name, avatar, attributes });
       if (success) {
         await refreshUser();
         onClose();
@@ -98,6 +100,46 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                   placeholder="https://example.com/photo.jpg"
                   className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-sm"
                 />
+              </div>
+
+              {/* Attributes Section */}
+              <div className="pt-4 border-t border-gray-50">
+                 <h3 className="text-[10px] font-black text-pink-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i className="fas fa-tags"></i> Attributes & Bio
+                 </h3>
+                 <div className="space-y-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-0.5">Bio</label>
+                      <textarea 
+                        value={attributes.bio || ''} 
+                        onChange={(e) => setAttributes({...attributes, bio: e.target.value})}
+                        placeholder="Tell us about yourself..."
+                        className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs h-20 resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-0.5">Location</label>
+                         <input 
+                           type="text" 
+                           value={attributes.location || ''} 
+                           onChange={(e) => setAttributes({...attributes, location: e.target.value})}
+                           placeholder="Digital World"
+                           className="w-full border-2 border-gray-50 rounded-xl p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-0.5">Birthday</label>
+                         <input 
+                           type="text" 
+                           value={attributes.birthday || ''} 
+                           onChange={(e) => setAttributes({...attributes, birthday: e.target.value})}
+                           placeholder="YYYY-MM-DD"
+                           className="w-full border-2 border-gray-50 rounded-xl p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
+                         />
+                       </div>
+                    </div>
+                 </div>
               </div>
             </div>
 

@@ -9,9 +9,10 @@ interface UserDropdownProps {
   } | null;
   onLogout: () => void;
   onEditUserInfo?: () => void;
+  loading?: boolean;
 }
 
-export default function UserDropdown({ user, onLogout, onEditUserInfo }: UserDropdownProps) {
+export default function UserDropdown({ user, onLogout, onEditUserInfo, loading }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -35,9 +36,14 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo }: UserDro
       {/* Avatar Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full shadow-lg overflow-hidden border-2 border-white/50 hover:border-pink-300 transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-400"
+        disabled={loading}
+        className={`w-10 h-10 rounded-full shadow-lg overflow-hidden border-2 border-white/50 hover:border-pink-300 transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-400 ${loading ? 'animate-pulse bg-gray-200' : ''}`}
       >
-        {displayUser.picture ? (
+        {loading ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <i className="fas fa-circle-notch animate-spin text-pink-300"></i>
+          </div>
+        ) : displayUser.picture ? (
           <img src={displayUser.picture} alt={displayUser.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white font-bold text-lg">

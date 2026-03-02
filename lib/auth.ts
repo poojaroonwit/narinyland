@@ -170,7 +170,7 @@ export function isAuthenticated(): boolean {
 /**
  * Get stored user info (Async)
  */
-export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string } | null> {
+export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string; attributes: Record<string, any> } | null> {
   if (typeof window === 'undefined') return null;
   
   try {
@@ -182,7 +182,8 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
       sub: user.id,
       name: user.name || '',
       email: user.email || '',
-      picture: user.avatar || ''
+      picture: user.avatar || '',
+      attributes: user.attributes || {}
     };
   } catch (err) {
     console.error('AppKit getUser error:', err);
@@ -203,7 +204,7 @@ export async function logout(): Promise<void> {
 /**
  * Update the current user's profile
  */
-export async function updateProfile(data: { name?: string; avatar?: string }): Promise<boolean> {
+export async function updateProfile(data: { name?: string; avatar?: string; attributes?: Record<string, any> }): Promise<boolean> {
   try {
     await initAppKit();
     const client = getAppKit();
@@ -217,6 +218,10 @@ export async function updateProfile(data: { name?: string; avatar?: string }): P
       lastName: lastName || undefined,
       avatar: data.avatar || undefined
     });
+
+    if (data.attributes) {
+      await client.updateAttributes(data.attributes);
+    }
     
     return true;
   } catch (err) {

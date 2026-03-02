@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  user: { sub: string; name: string; email: string; picture: string } | null;
+  user: { sub: string; name: string; email: string; picture: string; attributes: Record<string, any> } | null;
   token: string | null;
   logout: () => void;
   refreshUser: () => Promise<void>;
