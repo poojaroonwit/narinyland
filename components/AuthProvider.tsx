@@ -9,6 +9,7 @@ interface AuthContextType {
   user: { sub: string; name: string; email: string; picture: string } | null;
   token: string | null;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   loading: boolean;
 }
 
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   logout: () => {},
+  refreshUser: async () => {},
   loading: true,
 });
 
@@ -33,34 +35,34 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
 
+  const checkAuth = async () => {
+    try {
+      await initAppKit();
+    } catch (err) {
+      console.error('Failed to initialize AppKit:', err);
+    }
+    
+    const authenticated = isAuthenticated();
+    setIsLoggedIn(authenticated);
+    
+    if (authenticated) {
+      const userInfo = await getUser();
+      setUser(userInfo);
+    } else {
+      setUser(null);
+    }
+    
+    setToken(getAccessToken());
+    setLoading(false);
+
+    // Redirect to login if not authenticated and not on a public route
+    const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+    if (!authenticated && !isPublicRoute) {
+      router.replace('/login');
+    }
+  };
+
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await initAppKit();
-      } catch (err) {
-        console.error('Failed to initialize AppKit:', err);
-      }
-      
-      const authenticated = isAuthenticated();
-      setIsLoggedIn(authenticated);
-      
-      if (authenticated) {
-        const userInfo = await getUser();
-        setUser(userInfo);
-      } else {
-        setUser(null);
-      }
-      
-      setToken(getAccessToken());
-      setLoading(false);
-
-      // Redirect to login if not authenticated and not on a public route
-      const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-      if (!authenticated && !isPublicRoute) {
-        router.replace('/login');
-      }
-    };
-
     checkAuth();
   }, [pathname, router]);
 
@@ -95,7 +97,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, token, logout: handleLogout, loading }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, token, logout: handleLogout, refreshUser: checkAuth, loading }}>
       {children}
     </AuthContext.Provider>
   );

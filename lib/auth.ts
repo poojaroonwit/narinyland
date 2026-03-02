@@ -200,3 +200,27 @@ export async function logout(): Promise<void> {
     post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
   });
 }
+/**
+ * Update the current user's profile
+ */
+export async function updateProfile(data: { name?: string; avatar?: string }): Promise<boolean> {
+  try {
+    await initAppKit();
+    const client = getAppKit();
+    
+    const nameParts = data.name?.trim().split(/\s+/) || [];
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    await client.updateProfile({
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      avatar: data.avatar || undefined
+    });
+    
+    return true;
+  } catch (err) {
+    console.error('AppKit updateProfile error:', err);
+    return false;
+  }
+}

@@ -20,6 +20,7 @@ import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConf
 import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../services/api';
 import { useAuth } from '../components/AuthProvider';
 import UserDropdown from '../components/UserDropdown';
+import UserProfileModal from '../components/UserProfileModal';
 
 const INITIAL_MEMORIES: MemoryItem[] = [];
 const INITIAL_TIMELINE: Interaction[] = [];
@@ -40,6 +41,7 @@ const Home: React.FC = () => {
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [toast, setToast] = useState({ message: '', isVisible: false });
 
@@ -899,9 +901,14 @@ const Home: React.FC = () => {
          <UserDropdown 
             user={user} 
             onLogout={logout} 
-            onEditUserInfo={() => alert("Edit user info logic (opening AppKit widget) goes here!")} 
+            onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
           />
       </div>
+
+      <UserProfileModal 
+        isOpen={isUserProfileModalOpen} 
+        onClose={() => setIsUserProfileModalOpen(false)} 
+      />
 
       {/* Music Adjustment Modal */}
       <AnimatePresence>
