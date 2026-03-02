@@ -161,15 +161,15 @@ const CouponCard: React.FC<{
              </span>
           </div>
           
-          {/* Redeemed Stamp */}
+           {/* Redeemed Stamp */}
           {isRedeemed && (
             <motion.div 
                initial={{ scale: 2, opacity: 0, rotate: -20 }}
                animate={{ scale: 1, opacity: 1, rotate: -15 }}
                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
             >
-               <div className="border-4 border-red-500/60 px-6 py-2 rounded-full rotate-[-15deg] flex items-center justify-center bg-transparent mix-blend-multiply">
-                  <span className="text-red-500/60 font-black text-2xl uppercase tracking-[0.3em] font-mono">REDEEMED</span>
+               <div className="border-4 border-red-500/60 w-32 h-32 rounded-full rotate-[-15deg] flex flex-col items-center justify-center bg-transparent mix-blend-multiply">
+                  <span className="text-red-500/60 font-black text-xl uppercase tracking-[0.2em] font-mono leading-none">REDEEMED</span>
                </div>
             </motion.div>
           )}
@@ -250,7 +250,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       const targetId = selectedCoupon.id;
       setIsRedeeming(true);
       
-      // Wait for stamp animation
+      // Wait for stamp animation to complete on modal
       await new Promise(resolve => setTimeout(resolve, 800));
       
       onRedeem(targetId);
@@ -452,8 +452,8 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                     animate={{ scale: 1, opacity: 1, rotate: -15 }}
                     className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
                   >
-                    <div className="border-8 border-red-500 px-8 py-3 rounded-full shadow-[0_0_40px_rgba(239,68,68,0.3)] bg-transparent mix-blend-multiply">
-                      <span className="text-red-500 font-black text-4xl md:text-5xl uppercase tracking-[0.4em] font-mono">REDEEMED</span>
+                    <div className="border-8 border-red-500 w-64 h-64 rounded-full shadow-[0_0_40px_rgba(239,68,68,0.3)] bg-transparent mix-blend-multiply flex items-center justify-center flex-col">
+                      <span className="text-red-500 font-black text-3xl md:text-4xl uppercase tracking-[0.2em] font-mono">REDEEMED</span>
                     </div>
                   </motion.div>
                 )}

@@ -16,6 +16,8 @@ export async function GET() {
       include: {
         partners: true,
         coupons: { orderBy: { createdAt: 'asc' } },
+        albums: { orderBy: { createdAt: 'desc' } },
+        lands: { orderBy: { createdAt: 'desc' }, include: { items: true } },
       },
     });
 
@@ -34,6 +36,8 @@ export async function GET() {
         include: {
           partners: true,
           coupons: { orderBy: { createdAt: 'asc' } },
+          albums: { orderBy: { createdAt: 'desc' } },
+          lands: { orderBy: { createdAt: 'desc' }, include: { items: true } },
         },
       });
     }
@@ -86,6 +90,8 @@ export async function GET() {
         redeemedAt: c.redeemedAt,
         points: c.points || 0,
       })),
+      albums: (config as any).albums || [],
+      lands: (config as any).lands || [],
       gallery: (config as any).gallery || [],
     };
 
@@ -281,7 +287,8 @@ export async function PUT(request: Request) {
                url: item.url,
                privacy: item.privacy,
                sortOrder: i,
-               caption: item.caption
+               caption: item.caption,
+               albumId: item.albumId || null
              }
            });
         }

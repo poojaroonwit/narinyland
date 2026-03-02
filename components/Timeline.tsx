@@ -10,6 +10,7 @@ import DatePicker from 'react-datepicker';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import "react-datepicker/dist/react-datepicker.css";
 import OptimizedImage from './OptimizedImage';
+import LocationPicker from './LocationPicker';
 import TimelineImages from './TimelineImages';
 
 interface TimelineProps {
@@ -121,7 +122,7 @@ const Timeline: React.FC<TimelineProps> = ({
     }
   }, []);
 
-  const handleLayoutModeChange = (newMode: 'vertical' | 'wave' | 'snake') => {
+  const handleLayoutModeChange = (newMode: 'vertical' | 'wave' | 'snake' | 'gallery') => {
     setLayoutMode(newMode);
     onUpdateConfig?.({ layoutMode: newMode });
   };
@@ -1073,19 +1074,13 @@ const Timeline: React.FC<TimelineProps> = ({
                  </div>
 
                 <div>
-                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Location</label>
-                   <div className="relative">
-                     <i className={`fas fa-map-pin absolute left-4 top-1/2 -translate-y-1/2 ${isFutureDate ? 'text-purple-400' : 'text-pink-400'}`}></i>
-                      <input 
-                        type="text" 
-                        value={activeItem.location || ""} 
-                        onChange={(e) => setActiveItem({ ...activeItem!, location: e.target.value })}
-                       className={`w-full border-2 rounded-xl p-4 pl-10 text-sm font-bold text-gray-700 outline-none transition-all bg-gray-50/50 ${
-                         isFutureDate ? 'border-purple-50 focus:ring-purple-300' : 'border-pink-50 focus:ring-pink-300'
-                       }`}
-                       placeholder="Where did it happen?"
-                     />
-                   </div>
+                  <LocationPicker 
+                    location={activeItem.location || ""}
+                    latitude={activeItem.latitude}
+                    longitude={activeItem.longitude}
+                    onChange={(location, latitude, longitude) => setActiveItem({ ...activeItem!, location, latitude, longitude })}
+                    isFutureDate={!!isFutureDate}
+                  />
                 </div>
 
                 <div>

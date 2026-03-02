@@ -6,9 +6,35 @@ export interface MediaContent {
   url: string;
 }
 
+export interface Album {
+  id: string;
+  name: string;
+}
+
+export interface Land {
+  id: string;
+  name: string;
+  isActive: boolean;
+  items?: PurchasedItem[];
+}
+
+export interface PurchasedItem {
+  id: string;
+  type: string;
+  modelUrl?: string | null;
+  x: number;
+  y: number;
+  z: number;
+  rotation: number;
+  landId: string;
+}
+
 export interface MemoryItem {
+  id?: string;
   url: string;
   privacy: 'public' | 'private';
+  albumId?: string | null;
+  caption?: string | null;
 }
 
 export interface Interaction {
@@ -17,6 +43,8 @@ export interface Interaction {
   timestamp: Date;
   type: 'pet' | 'system' | 'letter' | 'quest';
   location?: string;
+  latitude?: number;
+  longitude?: number;
   media?: MediaContent;
   mediaItems?: MediaContent[];
 }
@@ -90,6 +118,8 @@ export interface AppConfig {
   };
   gallery: MemoryItem[];
   timeline: Interaction[];
+  albums?: Album[];
+  lands?: Land[];
   partners: {
     partner1: { name: string; avatar: string };
     partner2: { name: string; avatar: string };

@@ -118,7 +118,7 @@ export const memoriesAPI = {
 export const timelineAPI = {
   list: () => fetchAPI<any[]>('/timeline'),
 
-  create: (data: { text: string; type?: string; location?: string; timestamp?: string; files?: File[] }) => {
+  create: (data: { text: string; type?: string; location?: string; latitude?: number; longitude?: number; timestamp?: string; files?: File[] }) => {
     if (data.files && data.files.length > 0) {
       const formData = new FormData();
       data.files.forEach(file => {
@@ -127,6 +127,8 @@ export const timelineAPI = {
       formData.append('text', data.text);
       if (data.type) formData.append('type', data.type);
       if (data.location) formData.append('location', data.location);
+      if (data.latitude !== undefined) formData.append('latitude', data.latitude.toString());
+      if (data.longitude !== undefined) formData.append('longitude', data.longitude.toString());
       if (data.timestamp) formData.append('timestamp', data.timestamp);
       return fetchFormData<any>('/timeline', formData);
     }
@@ -136,7 +138,7 @@ export const timelineAPI = {
     });
   },
 
-  update: (id: string, data: { text?: string; type?: string; location?: string; timestamp?: string; files?: File[] }) => {
+  update: (id: string, data: { text?: string; type?: string; location?: string; latitude?: number; longitude?: number; timestamp?: string; files?: File[] }) => {
     if (data.files && data.files.length > 0) {
       const formData = new FormData();
       data.files.forEach(file => {
@@ -145,6 +147,8 @@ export const timelineAPI = {
       if (data.text !== undefined) formData.append('text', data.text);
       if (data.type !== undefined) formData.append('type', data.type);
       if (data.location !== undefined) formData.append('location', data.location);
+      if (data.latitude !== undefined) formData.append('latitude', data.latitude.toString());
+      if (data.longitude !== undefined) formData.append('longitude', data.longitude.toString());
       if (data.timestamp !== undefined) formData.append('timestamp', data.timestamp);
       return fetchFormData<any>(`/timeline/${id}`, formData);
     }

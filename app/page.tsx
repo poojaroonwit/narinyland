@@ -8,12 +8,11 @@ import MemoryFrame from '../components/MemoryFrame';
 import ProposalScreen from '../components/ProposalScreen';
 import LoveCoupons from '../components/LoveCoupons';
 import LoveLetter from '../components/LoveLetter';
-import LoveTree from '../components/LoveTree';
+import LoveTree3D from '../components/LoveTree3D';
 import EditDrawer from '../components/EditDrawer';
 import Logo from '../components/Logo';
 import SimplePlayer from '../components/SimplePlayer';
 import Toast from '../components/Toast';
-import TimelineDebug from '../components/TimelineDebug';
 import TimelineSpreadsheet from '../components/TimelineSpreadsheet';
 import GlobalImageModal from '../components/GlobalImageModal';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../types';
@@ -21,6 +20,8 @@ import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI }
 import { useAuth } from '../components/AuthProvider';
 import UserDropdown from '../components/UserDropdown';
 import UserProfileModal from '../components/UserProfileModal';
+import Shop, { ShopItem } from '../components/Shop';
+import World3D from '../components/World3D';
 
 const INITIAL_MEMORIES: MemoryItem[] = [];
 const INITIAL_TIMELINE: Interaction[] = [];
@@ -97,7 +98,9 @@ const Home: React.FC = () => {
   });
 
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
-  const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters'>('home'); // Add activeTab state
+  const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
+  const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
+  const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   
   // Global image modal state
@@ -541,6 +544,8 @@ const Home: React.FC = () => {
           text: updated.text,
           type: updated.type,
           location: updated.location,
+          latitude: updated.latitude,
+          longitude: updated.longitude,
           timestamp: updated.timestamp.toISOString(),
           files: files.length > 0 ? files : undefined
         });
@@ -594,6 +599,8 @@ const Home: React.FC = () => {
           text: interaction.text,
           type: interaction.type,
           location: interaction.location,
+          latitude: interaction.latitude,
+          longitude: interaction.longitude,
           timestamp: interaction.timestamp.toISOString(),
           files: files.length > 0 ? files : undefined
         });
@@ -706,29 +713,130 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden">
-        {/* Fullscreen Background & Tree */}
+        {/* Fullscreen Background & Tree/Globe */}
         <div className="fixed inset-0 z-0">
-           <LoveTree 
-             anniversaryDate={appConfig.anniversaryDate} 
-             treeStyle={appConfig.treeStyle} 
-             petEmotion={petEmotion}
-             petMessage={petMessage}
-             level={loveStats.level}
-             daysPerTree={appConfig.daysPerTree}
-             daysPerFlower={appConfig.daysPerFlower}
-             flowerType={appConfig.flowerType}
-             mixedFlowers={appConfig.mixedFlowers}
-             viewMode={appConfig.viewMode}
-             leaves={loveStats.leaves}
-             points={loveStats.points}
-             skyMode={appConfig.skyMode}
-             showQRCode={appConfig.showQRCode}
-             petType={appConfig.petType}
-             pets={appConfig.pets}
-             graphicsQuality={appConfig.graphicsQuality}
-             onAddLeaf={handleAddLeaf}
-           />
+           {worldMode === 'tree' ? (
+             <LoveTree3D 
+               anniversaryDate={appConfig.anniversaryDate} 
+               treeStyle={appConfig.treeStyle} 
+               petEmotion={petEmotion}
+               petMessage={petMessage}
+               level={loveStats.level}
+               daysPerTree={appConfig.daysPerTree}
+               daysPerFlower={appConfig.daysPerFlower}
+               flowerType={appConfig.flowerType}
+               mixedFlowers={appConfig.mixedFlowers}
+               leaves={loveStats.xp}
+               points={loveStats.points}
+               skyMode={appConfig.skyMode}
+               showQRCode={appConfig.showQRCode}
+               petType={appConfig.petType}
+               pets={appConfig.pets}
+               albums={appConfig.albums}
+               graphicsQuality={appConfig.graphicsQuality}
+               onAddLeaf={handleAddLeaf}
+               purchasedItems={appConfig.lands?.find(l => l.isActive)?.items}
+               onUpdateItemPosition={async (itemId: string, x: number, y: number, z: number) => {
+                  try {
+                     setAppConfig(prev => {
+                        if (!prev.lands) return prev;
+                        const newLands = prev.lands.map(l => {
+                           if (!l.isActive) return l;
+                           return {
+                              ...l,
+                              items: l.items?.map(it => it.id === itemId ? { ...it, x, y, z } : it)
+                           };
+                        });
+                        return { ...prev, lands: newLands };
+                     });
+                     
+                     await fetch(`/api/purchased-items/${itemId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ x, y, z })
+                     });
+                  } catch (e) {
+                     console.error("Failed to update item position", e);
+                  }
+               }}
+             />
+           ) : (
+             <World3D 
+                timeline={appConfig.timeline} 
+                onFlagClick={(item) => setSelectedFlagItem(item)} 
+             />
+           )}
         </div>
+
+        {/* 3D World Toggle Button */}
+        {activeTab === 'home' && (
+          <div className="fixed top-24 right-4 z-50">
+            <button 
+              onClick={() => setWorldMode(prev => prev === 'tree' ? 'globe' : 'tree')}
+              className="bg-white/80 backdrop-blur-md border border-pink-200 text-pink-500 shadow-lg rounded-full px-4 py-2 font-bold text-sm tracking-widest uppercase hover:bg-pink-50 transition-colors flex items-center gap-2"
+            >
+              <i className={`fas ${worldMode === 'tree' ? 'fa-globe-americas' : 'fa-tree'}`}></i>
+              {worldMode === 'tree' ? 'Reality World' : 'Fantasy World'}
+            </button>
+          </div>
+        )}
+
+        {/* Selected Flag Modal */}
+        <AnimatePresence>
+          {selectedFlagItem && (
+             <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                onClick={() => setSelectedFlagItem(null)}
+             >
+                <motion.div 
+                   className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl overflow-hidden"
+                   onClick={(e) => e.stopPropagation()}
+                   initial={{ scale: 0.9, y: 20 }}
+                   animate={{ scale: 1, y: 0 }}
+                   exit={{ scale: 0.9, y: 20 }}
+                >
+                   <div className="flex justify-between items-start mb-4">
+                      <div>
+                         <h3 className="font-pacifico text-2xl text-pink-500">Memory</h3>
+                         <p className="text-xs font-bold text-gray-400">{new Date(selectedFlagItem.timestamp).toLocaleDateString()}</p>
+                      </div>
+                      <button onClick={() => setSelectedFlagItem(null)} className="text-gray-400 hover:text-gray-600">
+                         <i className="fas fa-times text-xl"></i>
+                      </button>
+                   </div>
+                   
+                   {selectedFlagItem.mediaItems?.[0] && selectedFlagItem.mediaItems[0].type === 'image' && (
+                     <div className="rounded-xl overflow-hidden mb-4 shadow-sm border-2 border-pink-50 max-h-48">
+                        <img src={selectedFlagItem.mediaItems[0].url} alt="" className="w-full object-cover" />
+                     </div>
+                   )}
+                   
+                   <p className="text-gray-700 font-medium mb-4">{selectedFlagItem.text}</p>
+                   
+                   {selectedFlagItem.location && (
+                     <div className="flex items-center gap-2 text-xs font-bold font-mono text-purple-500 bg-purple-50 px-3 py-2 rounded-lg">
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span>{selectedFlagItem.location}</span>
+                     </div>
+                   )}
+                   
+                   <button 
+                     onClick={() => {
+                       setSelectedFlagItem(null);
+                       setWorldMode('tree');
+                       setActiveTab('timeline');
+                     }} 
+                     className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+                   >
+                      View on Timeline
+                   </button>
+                </motion.div>
+             </motion.div>
+          )}
+        </AnimatePresence>
 
       
       <AnimatePresence>
@@ -759,6 +867,7 @@ const Home: React.FC = () => {
                  <MemoryFrame 
                     isVisible={true} 
                     items={appConfig.gallery} 
+                    albums={appConfig.albums}
                     style={appConfig.galleryStyle} 
                     source={appConfig.gallerySource}
                     username={appConfig.instagramUsername}
@@ -822,6 +931,51 @@ const Home: React.FC = () => {
                 </motion.div>
              )}
 
+             {activeTab === 'shop' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full flex justify-center pt-12 md:pt-24 px-4 overflow-y-auto"
+                >
+                  <Shop 
+                    points={loveStats.points} 
+                    activeLandId={appConfig.lands?.find(l => l.isActive)?.id}
+                    onPurchase={async (item) => {
+                       try {
+                         const landId = appConfig.lands?.find(l => l.isActive)?.id;
+                         if (!landId) return;
+                         
+                         // Deduct points locally (temporary until synced)
+                         setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
+                         
+                         const res = await fetch('/api/purchased-items', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: item.type, landId })
+                         });
+                         
+                         if (!res.ok) throw new Error("Failed to purchase");
+                         
+                         const newItem = await res.json();
+                         // Add to local config
+                         setAppConfig(prev => ({
+                           ...prev,
+                           lands: prev.lands?.map(l => l.id === landId ? { ...l, items: [...(l.items || []), newItem] } : l)
+                         }));
+                         
+                         showToast(`You bought a ${item.name}! 🛍️`);
+                       } catch (err) {
+                         console.error("Purchase error", err);
+                         setLoveStats(prev => ({ ...prev, points: prev.points + item.price })); // Refund
+                         showToast("Purchase failed. Please try again.");
+                       }
+                    }} 
+                  />
+                </motion.div>
+             )}
+
              {activeTab === 'letters' && (
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
@@ -866,6 +1020,14 @@ const Home: React.FC = () => {
              >
                <i className="fas fa-ticket-alt text-xl"></i>
                <span className="text-[10px] font-bold uppercase tracking-wide">Coupons</span>
+             </button>
+
+             <button 
+               onClick={() => setActiveTab('shop')}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'shop' ? 'text-amber-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+             >
+               <i className="fas fa-store text-xl"></i>
+               <span className="text-[10px] font-bold uppercase tracking-wide">Shop</span>
              </button>
 
              <button 

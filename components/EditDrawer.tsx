@@ -16,7 +16,7 @@ interface EditDrawerProps {
 }
 
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig, onSave }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world'>('general');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   
   // Local draft state so changes only apply when "Save" is clicked
@@ -298,7 +298,109 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
       type: 'system',
       timestamp: new Date()
     };
-    updateLocal(prev => ({ ...prev, timeline: [...prev.timeline, newEvent] }));
+    updateLocal(prev => ({
+      ...prev,
+      timeline: [newEvent, ...prev.timeline]
+    }));
+  };
+
+  const addAlbum = async (name: string) => {
+    if (!name.trim()) return;
+    try {
+      const res = await fetch('/api/albums', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+        const newAlbum = await res.json();
+        updateLocal(prev => ({
+          ...prev,
+          albums: [newAlbum, ...(prev.albums || [])]
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to add album:", err);
+    }
+  };
+
+  const deleteAlbum = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this album? Memories inside will remain but unlinked.")) return;
+    try {
+      const res = await fetch(`/api/albums/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        updateLocal(prev => ({
+          ...prev,
+          albums: (prev.albums || []).filter(a => a.id !== id),
+          gallery: prev.gallery.map(g => g.albumId === id ? { ...g, albumId: null } : g)
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to delete album:", err);
+    }
+  };
+
+  const addLand = async (name: string) => {
+    if (!name.trim()) return;
+    try {
+      const isFirst = !(localConfig.lands && localConfig.lands.length > 0);
+      const res = await fetch('/api/lands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, isActive: isFirst })
+      });
+      if (res.ok) {
+        const newLand = await res.json();
+        updateLocal(prev => ({
+          ...prev,
+          lands: [newLand, ...(prev.lands || [])].map(l => l.id === newLand.id ? l : { ...l, isActive: isFirst ? false : l.isActive })
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to add land:", err);
+    }
+  };
+
+  const deleteLand = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this world? All objects inside will be destroyed.")) return;
+    try {
+      const res = await fetch(`/api/lands/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        updateLocal(prev => ({
+          ...prev,
+          lands: (prev.lands || []).filter(l => l.id !== id)
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to delete land:", err);
+    }
+  };
+
+  const toggleLandActive = async (id: string) => {
+    if (localConfig.lands?.find(l => l.id === id)?.isActive) return; // Already active
+    try {
+      const res = await fetch(`/api/lands/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true })
+      });
+      if (res.ok) {
+        updateLocal(prev => ({
+          ...prev,
+          lands: (prev.lands || []).map(l => ({ ...l, isActive: l.id === id }))
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to update land active status:", err);
+    }
+  };
+
+  const handleGalleryAlbumChange = (index: number, albumId: string | null) => {
+    updateLocal(prev => {
+      const newGallery = [...prev.gallery];
+      newGallery[index] = { ...newGallery[index], albumId };
+      return { ...prev, gallery: newGallery };
+    });
   };
 
   const handleCouponChange = (id: string, field: string, value: any) => {
@@ -420,7 +522,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
       {/* Tabs */}
       <div className="px-6 pt-4 pb-0 bg-gray-50 border-b overflow-x-auto no-scrollbar shrink-0">
         <div className="flex space-x-4">
-          {['general', 'proposal', 'gallery', 'timeline', 'coupons'].map((tab) => (
+          {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -1102,7 +1204,46 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 </AnimatePresence>
              </div>
 
-             <div className="flex justify-between items-center px-1 mb-2">
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo Albums</label>
+                
+                <div className="flex gap-2">
+                   <input 
+                     type="text" 
+                     id="newAlbumInput"
+                     placeholder="New Album Name..."
+                     className="flex-1 border-2 border-gray-50 rounded-2xl p-3 text-xs font-bold outline-none focus:border-pink-200"
+                   />
+                   <button 
+                     onClick={() => {
+                       const input = document.getElementById('newAlbumInput') as HTMLInputElement;
+                       if (input && input.value) {
+                         addAlbum(input.value);
+                         input.value = '';
+                       }
+                     }}
+                     className="bg-pink-500 text-white px-4 rounded-2xl font-black text-xs shadow-md hover:bg-pink-600 transition-colors"
+                   >
+                     Create
+                   </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-2">
+                   {(localConfig.albums || []).map(album => (
+                      <div key={album.id} className="bg-pink-50 border border-pink-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                         <span className="text-xs font-bold text-pink-600 truncate max-w-[120px]">{album.name}</span>
+                         <button onClick={() => deleteAlbum(album.id)} className="text-pink-300 hover:text-red-500 transition-colors bg-white rounded-full w-4 h-4 flex items-center justify-center">
+                            <i className="fas fa-times text-[8px]"></i>
+                         </button>
+                      </div>
+                   ))}
+                   {(!localConfig.albums || localConfig.albums.length === 0) && (
+                      <p className="text-xs text-gray-400 italic">No albums created yet.</p>
+                   )}
+                </div>
+             </div>
+
+             <div className="flex justify-between items-center px-1 mb-2 mt-4">
                <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Memories & Links</h3>
              </div>
 
@@ -1181,23 +1322,38 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     </div>
 
                     {/* Compact Controls */}
-                    <div className="flex items-center gap-1.5 px-1">
-                        <div className="flex-1 min-w-0">
-                           {/* Privacy Toggle as a tiny dot/icon */}
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); toggleGalleryPrivacy(idx); }}
-                             className={`w-full text-xs font-bold py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-colors ${item.privacy === 'public' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}
-                           >
-                             <i className={`fas fa-${item.privacy === 'public' ? 'globe' : 'lock'} text-[9px]`}></i>
-                             <span className="text-[9px] uppercase tracking-wider">{item.privacy === 'public' ? 'Public' : 'Private'}</span>
-                           </button>
+                    <div className="flex flex-col gap-1.5 px-1 pb-1">
+                        <div className="flex items-center gap-1.5">
+                            <div className="flex-1 min-w-0">
+                               {/* Privacy Toggle as a tiny dot/icon */}
+                               <button 
+                                 onClick={(e) => { e.stopPropagation(); toggleGalleryPrivacy(idx); }}
+                                 className={`w-full text-xs font-bold py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-colors ${item.privacy === 'public' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}
+                               >
+                                 <i className={`fas fa-${item.privacy === 'public' ? 'globe' : 'lock'} text-[9px]`}></i>
+                                 <span className="text-[9px] uppercase tracking-wider">{item.privacy === 'public' ? 'Public' : 'Private'}</span>
+                               </button>
+                            </div>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); removeGalleryImage(idx); }}
+                              className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0"
+                            >
+                              <i className="fas fa-trash-alt text-[10px]"></i>
+                            </button>
                         </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); removeGalleryImage(idx); }}
-                          className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                        >
-                          <i className="fas fa-trash-alt text-[10px]"></i>
-                        </button>
+                        
+                        {(localConfig.albums && localConfig.albums.length > 0) && (
+                            <select
+                               value={item.albumId || ''}
+                               onChange={(e) => handleGalleryAlbumChange(idx, e.target.value || null)}
+                               className="w-full text-[9px] font-bold text-gray-600 bg-gray-50 border border-gray-100 rounded-md p-1 outline-none focus:border-pink-200 truncate"
+                            >
+                               <option value="">No Album</option>
+                               {localConfig.albums.map(a => (
+                                   <option key={a.id} value={a.id}>{a.name}</option>
+                               ))}
+                            </select>
+                        )}
                     </div>
                   </motion.div>
                  );
@@ -1511,6 +1667,63 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   </div>
                  );
               })}
+            </motion.div>
+        )}
+
+        {activeTab === 'world' && (
+           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+                <div className="flex justify-between items-center px-1 mb-2">
+                   <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest"><i className="fas fa-globe-asia text-emerald-500 mr-2"></i>My Worlds</h3>
+                   <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{localConfig.lands?.length || 0} Worlds</div>
+                </div>
+
+                <div className="flex gap-2">
+                   <input 
+                     type="text" 
+                     id="newLandInput"
+                     placeholder="New World Name..."
+                     className="flex-1 border-2 border-gray-50 rounded-2xl p-3 text-xs font-bold outline-none focus:border-emerald-200"
+                   />
+                   <button 
+                     onClick={() => {
+                       const input = document.getElementById('newLandInput') as HTMLInputElement;
+                       if (input && input.value) {
+                         addLand(input.value);
+                         input.value = '';
+                       }
+                     }}
+                     className="bg-emerald-500 text-white px-4 rounded-2xl font-black text-xs shadow-md hover:bg-emerald-600 transition-colors"
+                   >
+                     Create
+                   </button>
+                </div>
+
+                <div className="flex flex-col gap-2 mt-2">
+                   {(localConfig.lands || []).map(land => (
+                      <div key={land.id} className={`border rounded-xl p-3 flex items-center justify-between gap-2 transition-all ${land.isActive ? 'border-emerald-300 bg-emerald-50 shadow-sm' : 'border-gray-100 bg-white'}`}>
+                         <div className="flex items-center gap-3">
+                           <button 
+                              onClick={() => toggleLandActive(land.id)}
+                              className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${land.isActive ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-transparent hover:bg-emerald-100'}`}
+                           >
+                              <i className="fas fa-check text-[10px]"></i>
+                           </button>
+                           <span className={`text-xs font-bold ${land.isActive ? 'text-emerald-700' : 'text-gray-600'}`}>{land.name}</span>
+                         </div>
+                         <button onClick={() => deleteLand(land.id)} className="text-gray-300 hover:text-red-500 transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50">
+                            <i className="fas fa-trash-alt text-[10px]"></i>
+                         </button>
+                      </div>
+                   ))}
+                   {(!localConfig.lands || localConfig.lands.length === 0) && (
+                      <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                         <i className="fas fa-globe-americas text-2xl text-gray-300 mb-2"></i>
+                         <p className="text-xs font-bold text-gray-400">No worlds created yet.</p>
+                      </div>
+                   )}
+                </div>
+             </div>
            </motion.div>
         )}
       </div>

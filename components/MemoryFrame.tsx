@@ -8,6 +8,7 @@ import OptimizedImage from './OptimizedImage';
 interface MemoryFrameProps {
   isVisible: boolean;
   items: MemoryItem[];
+  albums?: Array<{ id: string; name: string }>; // Added albums prop
   style?: string; // 'polaroid' | 'carousel'
   source?: 'manual' | 'instagram';
   username?: string;
@@ -21,6 +22,7 @@ interface MemoryFrameProps {
 const MemoryFrame: React.FC<MemoryFrameProps> = ({ 
   isVisible, 
   items, 
+  albums = [], 
   style = 'polaroid', 
   source = 'manual', 
   username,
@@ -33,6 +35,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null); // New state for filtering
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
@@ -66,6 +69,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
         const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
         const firstImage = mediaItems.find((media: any) => media.type === 'image');
         return {
+          id: interaction.id,
           url: firstImage?.url || '',
           privacy: 'public' as 'public' | 'private', // Default to public for timeline images
           caption: interaction.text || `Memory ${index + 1}`
@@ -82,13 +86,19 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
   }, [items, timelineItems, includeTimelineInGallery]);
 
   const filteredItems = useMemo(() => {
-    if (viewMode === 'all') return allItems;
-    return allItems.filter(item => item.privacy === viewMode);
-  }, [allItems, viewMode]);
+    let result = allItems;
+    if (viewMode !== 'all') {
+      result = result.filter(item => item.privacy === viewMode);
+    }
+    if (selectedAlbumId) {
+      result = result.filter(item => item.albumId === selectedAlbumId);
+    }
+    return result;
+  }, [allItems, viewMode, selectedAlbumId]);
 
   useEffect(() => {
     setCurrentIndex(0);
-  }, [viewMode]);
+  }, [viewMode, selectedAlbumId]);
 
   useEffect(() => {
     if (isVisible && !isZoomed && style === 'polaroid' && filteredItems.length > 0) {
@@ -283,31 +293,54 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
               )}
            </div>
 
-           <div className={`flex bg-white/40 backdrop-blur-xl p-1.5 rounded-2xl shadow-inner border border-white`}>
-              <button
-                onClick={() => onViewModeChange('all')}
-                className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
-                  viewMode === 'all' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => onViewModeChange('public')}
-                className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
-                  viewMode === 'public' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
-                }`}
-              >
-                <i className="fas fa-eye text-[8px]"></i> Public
-              </button>
-              <button
-                onClick={() => onViewModeChange('private')}
-                className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
-                  viewMode === 'private' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-purple-600'
-                }`}
-              >
-                <i className="fas fa-lock text-[8px]"></i> Private
-              </button>
+           <div className="flex flex-col gap-3">
+              <div className={`flex bg-white/40 backdrop-blur-xl p-1.5 rounded-2xl shadow-inner border border-white self-center lg:self-end`}>
+                 <button
+                   onClick={() => onViewModeChange('all')}
+                   className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
+                     viewMode === 'all' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
+                   }`}
+                 >
+                   All
+                 </button>
+                 <button
+                   onClick={() => onViewModeChange('public')}
+                   className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
+                     viewMode === 'public' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
+                   }`}
+                 >
+                   <i className="fas fa-globe"></i> World
+                 </button>
+                 <button
+                   onClick={() => onViewModeChange('private')}
+                   className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
+                     viewMode === 'private' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
+                   }`}
+                 >
+                   <i className="fas fa-lock text-xs"></i> Us
+                 </button>
+              </div>
+
+              {/* Album Selection Row */}
+              {albums && albums.length > 0 && (
+                <div className="flex gap-2 w-full justify-center md:justify-end overflow-x-auto no-scrollbar pt-2 pb-1 max-w-full">
+                  <button
+                    onClick={() => setSelectedAlbumId(null)}
+                    className={`px-4 py-1.5 rounded-full text-[9px] font-black border uppercase whitespace-nowrap transition-colors ${!selectedAlbumId ? 'bg-pink-500 text-white border-pink-500 shadow-sm' : 'bg-white/80 text-pink-500 border-pink-200 hover:bg-pink-50'}`}
+                  >
+                    All Pictures
+                  </button>
+                  {albums.map((album) => (
+                     <button
+                       key={album.id}
+                       onClick={() => setSelectedAlbumId(album.id)}
+                       className={`px-4 py-1.5 rounded-full text-[9px] font-black border uppercase whitespace-nowrap transition-colors ${selectedAlbumId === album.id ? 'bg-pink-500 text-white border-pink-500 shadow-sm' : 'bg-white/80 text-gray-500 border-gray-200 hover:border-pink-300 hover:text-pink-500'}`}
+                     >
+                       {album.name}
+                     </button>
+                  ))}
+                </div>
+              )}
            </div>
         </div>
 

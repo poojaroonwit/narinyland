@@ -52,6 +52,43 @@ model AppConfig {
   partners Partner[]
   coupons  Coupon[]
   timeline TimelineEvent[]
+  albums   Album[]
+  lands    Land[]
+}
+
+model Album {
+  id        String    @id @default(uuid())
+  name      String
+  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId  String    @default("default")
+  memories  Memory[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Land {
+  id        String    @id @default(uuid())
+  name      String
+  isActive  Boolean   @default(false)
+  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId  String    @default("default")
+  items     PurchasedItem[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model PurchasedItem {
+  id        String   @id @default(uuid())
+  type      String   // e.g., 'pet-dog', 'flower-rose', 'rock', 'house', 'custom_3d'
+  modelUrl  String?  // URL to the custom uploaded .glb/.gltf file
+  x         Float    @default(0)
+  y         Float    @default(0)
+  z         Float    @default(0)
+  rotation  Float    @default(0)
+  land      Land     @relation(fields: [landId], references: [id], onDelete: Cascade)
+  landId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Partner {
@@ -74,6 +111,8 @@ model Memory {
   privacy   String   @default("public")
   caption   String?
   sortOrder Int      @default(0)
+  album     Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  albumId   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -83,6 +122,8 @@ model TimelineEvent {
   text      String
   type      String   
   location  String?
+  latitude  Float?
+  longitude Float?
   timestamp DateTime
   mediaType String?   
   mediaUrl  String?   

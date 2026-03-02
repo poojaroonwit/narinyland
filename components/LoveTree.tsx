@@ -24,6 +24,7 @@ interface LoveTreeProps {
   showQRCode?: boolean;
   petType?: string;
   pets?: Array<{ id: string; type: string; name?: string }>;
+  albums?: Array<{ id: string; name: string }>;
   graphicsQuality?: 'low' | 'medium' | 'high';
 }
 

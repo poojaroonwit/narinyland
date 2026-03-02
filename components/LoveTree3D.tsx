@@ -3,11 +3,11 @@
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, SoftShadows } from '@react-three/drei';
+import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, SoftShadows, DragControls } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 
-import { Emotion } from '../types';
+import { Emotion, PurchasedItem } from '../types';
 import { THEMES } from './3d/GardenConstants';
 import { Pet3D } from './3d/Pet';
 import { Tree } from './3d/Tree';
@@ -32,19 +32,55 @@ interface LoveTree3DProps {
   showQRCode?: boolean;
   petType?: string;
   pets?: Array<{ id: string; type: string; name?: string }>;
+  albums?: Array<{ id: string; name: string }>;
   graphicsQuality?: 'low' | 'medium' | 'high';
+  purchasedItems?: PurchasedItem[];
+  onUpdateItemPosition?: (id: string, x: number, y: number, z: number) => void;
 }
+
+const DraggableItem = ({ item, onUpdate, children }: { item: PurchasedItem, onUpdate?: (id: string, x: number, y: number, z: number) => void, children: React.ReactNode }) => {
+  const [position, setPosition] = useState<[number, number, number]>([item.x || 0, item.y || 0, item.z || 0]);
+  const groupRef = useRef<THREE.Group>(null);
+  
+  return (
+    <DragControls 
+      autoTransform={true} 
+      dragLimits={[[-20, 20], [0, 0], [-20, 20]]} 
+      onDragEnd={() => {
+        if (groupRef.current) {
+           const p = groupRef.current.position;
+           setPosition([p.x, 0, p.z]); // restrict to floor
+           if (onUpdate) onUpdate(item.id, p.x, 0, p.z);
+        }
+      }}
+    >
+      <group ref={groupRef} position={position}>
+        {children}
+      </group>
+    </DragControls>
+  );
+};
+
+const CustomGLTFModel = ({ url, scale = 1 }: { url: string, scale?: number }) => {
+  const { useGLTF } = require('@react-three/drei');
+  const { scene } = useGLTF(url);
+  // Clone the scene so multiple of the same model can be rendered
+  const clone = useMemo(() => scene.clone(), [scene]);
+  return <primitive object={clone} scale={scale} />;
+};
 
 const LoveTree3D: React.FC<LoveTree3DProps> = ({ 
     anniversaryDate, treeStyle = 'oak', petEmotion, petMessage, level,
      leaves, points, onAddLeaf, daysPerFlower = 7, flowerType = 'sunflower',
      mixedFlowers = ['sunflower', 'tulip', 'rose', 'cherry', 'lavender', 'heart'],
      skyMode = 'follow_timezone', showQRCode = false, petType = 'cat',
-     pets = [],
-     graphicsQuality = 'medium'
+     pets = [], albums = [],
+     graphicsQuality = 'medium',
+     purchasedItems = [], onUpdateItemPosition
  }) => {
    const theme = THEMES[treeStyle] || THEMES['oak'];
    const [isQRUploadOpen, setIsQRUploadOpen] = useState(false);
+   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
    const [showExplosion, setShowExplosion] = useState(false);
    const [shakeTree, setShakeTree] = useState(false);
    const [floatingTexts, setFloatingTexts] = useState<Array<{ id: number; text: string; position: [number, number, number]; color: string }>>([]);
@@ -477,6 +513,33 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             });
          })()}
 
+         {purchasedItems?.map((item) => {
+            if (item.type === 'dog' || item.type === 'cat') {
+               // Render purchased pets bouncing around (non-draggable)
+               return <Pet3D key={item.id} emotion={petEmotion} theme={theme} petType={item.type} startPos={[item.x || 0, 0, item.z || 0]} quality={graphicsQuality} />;
+            }
+            
+            // Render draggable purchased items
+            return (
+               <DraggableItem key={item.id} item={item} onUpdate={onUpdateItemPosition}>
+                  {item.type === 'custom_3d' && item.modelUrl && <CustomGLTFModel url={item.modelUrl} scale={1} />}
+                  {item.type === 'flower1' && <Flower type="sunflower" position={[0, 0, 0]} scale={1.5} windFactor={windFactor} />}
+                  {item.type === 'rock1' && <GardenProp type="rock" position={[0, 0, 0]} />}
+                  {item.type === 'tree1' && <Tree theme={theme} scale={0.5} leafCount={20} branchCount={4} quality={graphicsQuality} />}
+                  {item.type === 'house1' && (
+                     <mesh position={[0, 1.5, 0]}>
+                        <boxGeometry args={[3, 3, 3]} />
+                        <meshStandardMaterial color="#fcd34d" />
+                        <mesh position={[0, 2, 0]}>
+                           <coneGeometry args={[2.5, 2, 4]} />
+                           <meshStandardMaterial color="#ef4444" />
+                        </mesh>
+                     </mesh>
+                  )}
+               </DraggableItem>
+            );
+         })}
+
           <group>
              {flowerPositions.map((pos, i) => (
                 <Flower 
@@ -543,7 +606,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 onClick={() => setIsQRUploadOpen(true)}
               >
                  <img 
-                   src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://example.com/upload&color=ec4899`} 
+                   src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
                    alt="Upload QR" 
                    className="w-24 h-24 rounded-2xl"
                  />
@@ -577,23 +640,38 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
               >
                  <div className="p-8 text-center space-y-4">
                     <div className="w-20 h-20 bg-pink-100 rounded-[2rem] flex items-center justify-center text-pink-500 text-3xl mx-auto mb-2">
-                       <i className="fas fa-mobile-alt"></i>
+                       <i className="fas fa-qrcode"></i>
                     </div>
-                    <h2 className="text-2xl font-black text-gray-800 tracking-tight">Mobile Memory Upload</h2>
-                    <p className="text-sm text-gray-400 font-medium">Scanning this QR code on your phone opens a mobile-optimized upload page to instantly add memories to your garden!</p>
+                    <h2 className="text-2xl font-black text-gray-800 tracking-tight">Upload via Phone</h2>
+                    <p className="text-sm text-gray-400 font-medium pb-2">Scan this QR code with your phone camera to open the uploader.</p>
                     
-                    <div className="bg-gray-50 p-6 rounded-[2.5rem] border-2 border-dashed border-gray-100 mt-6 group hover:border-pink-200 transition-all cursor-pointer" onClick={() => setIsQRUploadOpen(false)}>
-                       <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-gray-400 group-hover:text-pink-500 shadow-sm mx-auto mb-3 transition-colors">
-                          <i className="fas fa-cloud-upload-alt"></i>
-                       </div>
-                       <p className="text-xs font-bold text-gray-500 group-hover:text-pink-500">Demo: Simulate a mobile file select</p>
-                    </div>
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
+                      alt="Large Upload QR" 
+                      className="w-48 h-48 mx-auto rounded-3xl shadow-sm border border-pink-50"
+                    />
+
+                    {albums.length > 0 && (
+                      <div className="text-left bg-pink-50 rounded-2xl p-4 mt-6">
+                        <label className="block text-[10px] uppercase font-black text-pink-500 tracking-widest mb-2 ml-1">Destination Album</label>
+                        <select
+                          value={selectedAlbumId}
+                          onChange={(e) => setSelectedAlbumId(e.target.value)}
+                          className="w-full bg-white border border-pink-100 rounded-xl p-3 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:border-pink-300 transition-colors"
+                        >
+                          <option value="">No Album (Global Gallery)</option>
+                          {albums.map(a => (
+                            <option key={a.id} value={a.id}>{a.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <button 
                       onClick={() => setIsQRUploadOpen(false)}
                       className="w-full bg-gray-100 text-gray-500 font-black py-4 rounded-3xl mt-4 hover:bg-gray-200 transition-all uppercase tracking-widest text-xs"
                     >
-                       Close Preview
+                       Close
                     </button>
                  </div>
                  <div className="bg-pink-500 p-1"></div>

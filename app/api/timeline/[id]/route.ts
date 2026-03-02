@@ -52,6 +52,8 @@ export async function POST(
     let text: string | null;
     let type: string | null;
     let location: string | null;
+    let latitude: string | null;
+    let longitude: string | null;
     let timestampStr: string | null;
     let files: File[];
     
@@ -60,6 +62,8 @@ export async function POST(
       text = formData.get('text') as string | null;
       type = formData.get('type') as string | null;
       location = formData.get('location') as string | null;
+      latitude = formData.get('latitude') as string | null;
+      longitude = formData.get('longitude') as string | null;
       timestampStr = formData.get('timestamp') as string | null;
       files = formData.getAll('media') as File[];
     } catch (formDataError) {
@@ -75,6 +79,8 @@ export async function POST(
     if (text !== null && text !== '') updateData.text = text;
     if (type !== null && type !== '') updateData.type = type;
     if (location !== null && location !== '') updateData.location = location;
+    if (latitude !== null && !isNaN(parseFloat(latitude))) updateData.latitude = parseFloat(latitude);
+    if (longitude !== null && !isNaN(parseFloat(longitude))) updateData.longitude = parseFloat(longitude);
     if (timestampStr !== null && timestampStr !== '') updateData.timestamp = new Date(timestampStr);
 
     if (files && files.length > 0) {
@@ -192,7 +198,7 @@ export async function POST(
       media: mediaItems[0],
       mediaItems: mediaItems
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error updating timeline event:', error);
     console.error('❌ Full error details:', error.stack);
     return NextResponse.json({ error: 'Failed to update timeline event', details: error.message }, { status: 500 });
@@ -212,6 +218,8 @@ export async function PUT(
     let text: string | null = null;
     let type: string | null = null;
     let location: string | null = null;
+    let latitude: number | null = null;
+    let longitude: number | null = null;
     let timestampStr: string | null = null;
 
     if (contentType.includes('application/json')) {
@@ -219,6 +227,8 @@ export async function PUT(
       text = body.text ?? null;
       type = body.type ?? null;
       location = body.location ?? null;
+      latitude = body.latitude ?? null;
+      longitude = body.longitude ?? null;
       timestampStr = body.timestamp ?? null;
     }
 
@@ -226,6 +236,8 @@ export async function PUT(
     if (text !== null && text !== '') updateData.text = text;
     if (type !== null && type !== '') updateData.type = type;
     if (location !== null && location !== '') updateData.location = location;
+    if (latitude !== null) updateData.latitude = latitude;
+    if (longitude !== null) updateData.longitude = longitude;
     if (timestampStr !== null && timestampStr !== '') updateData.timestamp = new Date(timestampStr);
 
     const event = await prisma.timelineEvent.update({
@@ -280,8 +292,9 @@ export async function DELETE(
     await prisma.timelineEvent.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting timeline event:', error);
-    return NextResponse.json({ error: 'Failed to delete timeline event' }, { status: 500 });
+    } catch (error: any) {
+      console.error('Error deleting interaction:', error);
+      return NextResponse.json(
+        { error: 'Failed to delete interaction', details: error.message }, { status: 500 });
   }
 }
