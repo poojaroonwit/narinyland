@@ -202,16 +202,30 @@ export async function logout(): Promise<void> {
   });
 }
 /**
- * Get all circles/worlds the current user belongs to
+ * Get all circles/worlds the current user belongs to.
+ * Proxied through our own backend to avoid CORS restrictions when calling
+ * the AppKit API directly from the browser.
  */
 export async function getUserCircles(): Promise<Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }>> {
   try {
+    if (typeof window === 'undefined') return [];
     await initAppKit();
     const client = getAppKit();
     if (!client.isAuthenticated()) return [];
-    return await client.groups.getUserCircles();
+
+    const tokens = client.getTokens();
+    if (!tokens?.accessToken) return [];
+
+    // Use our server-side proxy to avoid CORS (AppKit may not whitelist the app's origin)
+    const res = await fetch('/api/circles', {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    // API may return array directly or wrapped in { circles: [] }
+    return Array.isArray(data) ? data : (data.circles || data.data || []);
   } catch (err) {
-    console.error('AppKit getUserCircles error:', err);
+    console.error('getUserCircles error:', err);
     return [];
   }
 }

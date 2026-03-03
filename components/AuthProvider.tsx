@@ -58,6 +58,22 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     if (authenticated) {
       const userInfo = await getUser();
+
+      // Token expired/invalid — getUser() returns null even though isAuthenticated() = true.
+      // Treat as logged out to prevent an infinite redirect loop to /onboarding.
+      if (!userInfo) {
+        setIsLoggedIn(false);
+        setUser(null);
+        setCircles([]);
+        setActiveCircleIdState(null);
+        setActiveCircleId(null);
+        setToken(null);
+        setLoading(false);
+        const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+        if (!isPublicRoute) router.replace('/login');
+        return;
+      }
+
       setUser(userInfo);
 
       // Fetch circles and determine active circle
@@ -67,7 +83,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       // Use the explicitly stored circle ID (from user attributes or localStorage).
       // If none is stored, default to null so backend falls back to 'default' config —
       // preserving existing data for users who haven't set up a circle yet.
-      const savedCircleId = userInfo?.attributes?.circleId as string | undefined;
+      const savedCircleId = userInfo.attributes?.circleId as string | undefined;
       const storedCircleId = typeof window !== 'undefined' ? localStorage.getItem('narinyland_circle_id') : null;
       const resolvedCircleId = savedCircleId || storedCircleId || null;
       setActiveCircleIdState(resolvedCircleId);
@@ -106,9 +122,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  // Run once on mount. Route-guard redirects happen inside checkAuth itself.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkAuth();
-  }, [pathname, router]);
+  }, []);
 
   const handleLogout = () => {
     authLogout();
