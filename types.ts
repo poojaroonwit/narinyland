@@ -15,6 +15,7 @@ export interface Land {
   id: string;
   name: string;
   isActive: boolean;
+  icon?: string;
   items?: PurchasedItem[];
 }
 
@@ -101,7 +102,7 @@ export interface AppConfig {
   timelineCardScale?: number;
   timelineDefaultRows: number;
   timelineZoomLevel?: number;
-  timelineLayoutMode?: 'wave' | 'snake' | 'vertical' | 'gallery';
+  timelineLayoutMode?: 'wave' | 'vertical' | 'gallery';
   timelineThumbnailHeight?: number;
   showTimelineImagesOnHomepage?: boolean;
   includeTimelineInGallery?: boolean;

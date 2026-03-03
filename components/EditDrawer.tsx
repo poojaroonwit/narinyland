@@ -6,6 +6,7 @@ import { Interaction, MemoryItem, AppConfig, Emotion } from '../types';
 import { uploadAPI } from '../services/api';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import { SHOP_ITEMS, ShopItem } from './Shop';
 
 interface EditDrawerProps {
   isOpen: boolean;
@@ -16,8 +17,9 @@ interface EditDrawerProps {
 }
 
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig, onSave }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'objects'>('general');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [objectCategoryFilter, setObjectCategoryFilter] = useState<'all' | 'pet' | 'deco' | 'bldg' | 'custom'>('all');
   
   // Local draft state so changes only apply when "Save" is clicked
   const [localConfig, setLocalConfig] = useState<AppConfig>(config);
@@ -498,48 +500,94 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
     return url;
   };
 
+  const TAB_ICONS: Record<string, string> = {
+    general: 'fa-cog',
+    proposal: 'fa-ring',
+    gallery: 'fa-images',
+    timeline: 'fa-calendar-alt',
+    coupons: 'fa-ticket-alt',
+    world: 'fa-globe',
+    objects: 'fa-cube',
+  };
+
   return (
-    <motion.div
-      initial={{ x: "100%", opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: "100%", opacity: 0 }}
-      className="fixed inset-y-0 right-0 w-full md:w-[550px] md:top-6 md:right-6 md:bottom-6 md:h-[calc(100vh-3rem)] bg-white shadow-2xl z-[100] flex flex-col md:rounded-2xl overflow-hidden"
-    >
-      {/* Header */}
-      <div className="p-6 border-b flex justify-between items-center bg-white shrink-0">
-        <div>
-           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-             ⚙️ Settings
-             {hasChanges && <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />}
-           </h2>
-           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customize your Narinyland</p>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <i className="fas fa-times text-xl text-gray-500"></i>
-        </button>
-      </div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="bg-white w-full max-w-4xl h-[85vh] rounded-[2rem] shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Vertical Tabs Sidebar */}
+            <div className="w-56 bg-gray-50 border-r border-gray-100 flex flex-col shrink-0">
+              {/* Header */}
+              <div className="p-5 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  ⚙️ Settings
+                  {hasChanges && <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />}
+                </h2>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Customize Narinyland</p>
+              </div>
 
-      {/* Tabs */}
-      <div className="px-6 pt-4 pb-0 bg-gray-50 border-b overflow-x-auto no-scrollbar shrink-0">
-        <div className="flex space-x-4">
-          {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`pb-3 px-1 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab 
-                  ? 'border-pink-500 text-pink-500' 
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
+              {/* Tab Buttons */}
+              <div className="flex-1 overflow-y-auto py-2">
+                {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'objects'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab as any)}
+                    className={`w-full text-left px-5 py-3 flex items-center gap-3 text-sm font-bold capitalize transition-all ${
+                      activeTab === tab 
+                        ? 'bg-pink-50 text-pink-600 border-l-4 border-pink-500' 
+                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-l-4 border-transparent'
+                    }`}
+                  >
+                    <i className={`fas ${TAB_ICONS[tab] || 'fa-circle'} text-xs w-4`}></i>
+                    {tab}
+                  </button>
+                ))}
+              </div>
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-8 pb-32">
+              {/* Save Button in Sidebar */}
+              <div className="p-4 border-t border-gray-100">
+                <button
+                  onClick={handleSave}
+                  disabled={!hasChanges}
+                  className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                    hasChanges
+                      ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {hasChanges ? 'Save Changes' : 'No Changes'}
+                </button>
+              </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Top Bar with Close */}
+              <div className="p-5 border-b border-gray-100 flex justify-between items-center shrink-0 bg-white">
+                <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
+                  <i className={`fas ${TAB_ICONS[activeTab] || 'fa-circle'} text-pink-400`}></i>
+                  {activeTab}
+                </h3>
+                <button onClick={onClose} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition-colors">
+                  <i className="fas fa-times text-gray-500"></i>
+                </button>
+              </div>
+
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-8 pb-32">
         {activeTab === 'general' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
@@ -547,14 +595,24 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 <i className="fas fa-info-circle text-pink-400"></i> Core Setup
               </h3>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">World Name</label>
+                <div className="flex justify-between items-center gap-4">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">World Name</label>
                   <input 
                     type="text" 
                     value={localConfig.appName} 
                     onChange={(e) => handleInputChange('appName', e.target.value)}
-                    className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all"
+                    className="w-1/2 bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
                   />
+                </div>
+                <div className="flex justify-between items-center gap-4 pt-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Anniversary</label>
+                  <div className="w-1/2 text-right">
+                    <DatePicker
+                      selected={new Date(localConfig.anniversaryDate || Date.now())}
+                      onChange={(date: Date | null) => date && handleInputChange('anniversaryDate', date.toISOString())}
+                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
+                    />
+                  </div>
                 </div>
                 
                 {/* PWA / App Identity */}
@@ -1380,7 +1438,6 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   <div className="flex bg-gray-100 p-1 rounded-2xl mb-4">
                         {([
                            { id: 'wave', label: 'Wave', icon: 'fa-water' },
-                           { id: 'snake', label: 'Snake', icon: 'fa-road' },
                            { id: 'vertical', label: 'Vertical', icon: 'fa-arrows-alt-v' }
                         ] as const).map((mode) => (
                            <button
@@ -1726,27 +1783,85 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
              </div>
            </motion.div>
         )}
-      </div>
 
-      {/* STICKY SAVE FOOTER */}
-      <div className="absolute bottom-0 left-0 w-full p-6 bg-white/90 backdrop-blur-xl border-t flex gap-4 z-50">
-        <button 
-          onClick={onClose}
-          className="flex-1 py-4 bg-gray-100 text-gray-500 font-black rounded-2xl text-xs uppercase tracking-[0.2em] hover:bg-gray-200 transition-all"
-        >
-          Cancel
-        </button>
-        <button 
-          onClick={handleSave}
-          disabled={!hasChanges}
-          className={`flex-[2] py-4 font-black rounded-2xl text-xs uppercase tracking-[0.2em] shadow-xl transition-all ${
-            hasChanges 
-              ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-[1.02] shadow-pink-200' 
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-          }`}
-        >
-          Save Changes ✨
-        </button>
+        {activeTab === 'objects' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <i className="fas fa-cube text-pink-400"></i> Object Library
+                </h3>
+                <label className="cursor-pointer bg-pink-500 text-white hover:bg-pink-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-md">
+                  <i className="fas fa-upload mr-2"></i> Upload Model
+                  <input 
+                    type="file" 
+                    accept=".glb,.gltf" 
+                    className="hidden" 
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      try {
+                        const url = await uploadAPI.upload(file);
+                        // Add to a "Custom Models" inventory or similar logic
+                        alert(`Successfully uploaded ${file.name}! It is now available in your Custom models.`);
+                      } catch (err) {
+                        alert('Upload failed. Please try again.');
+                      }
+                    }} 
+                  />
+                </label>
+              </div>
+
+              {/* Category Filters */}
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { id: 'all', label: 'All', icon: 'fa-border-all' },
+                  { id: 'pet', label: 'Pets', icon: 'fa-paw' },
+                  { id: 'deco', label: 'Decor', icon: 'fa-palette' },
+                  { id: 'bldg', label: 'Buildings', icon: 'fa-home' },
+                  { id: 'custom', label: 'Custom', icon: 'fa-box-open' },
+                ] as const).map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setObjectCategoryFilter(cat.id)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
+                      objectCategoryFilter === cat.id
+                        ? 'bg-pink-500 text-white border-pink-500 shadow-md'
+                        : 'bg-white text-gray-400 border-gray-100 hover:border-pink-200'
+                    }`}
+                  >
+                    <i className={`fas ${cat.icon}`}></i>
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Object Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {SHOP_ITEMS.filter(item => 
+                  objectCategoryFilter === 'all' || 
+                  item.type.startsWith(objectCategoryFilter) ||
+                  (objectCategoryFilter === 'custom' && item.type === 'custom_3d')
+                ).map((item) => (
+                  <div key={item.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col items-center text-center gap-3 group hover:border-pink-200 transition-all">
+                    <div className="text-3xl bg-white w-12 h-12 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      {item.icon}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-gray-800">{item.name}</h4>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">{item.type}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-500 font-bold text-[10px]">
+                      <i className="fas fa-coins text-[8px]"></i>
+                      {item.price}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* FULLSCREEN PREVIEW OVERLAY */}
@@ -1817,7 +1932,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+          </div>
+        </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

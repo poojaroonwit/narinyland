@@ -3,9 +3,10 @@
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, SoftShadows, DragControls } from '@react-three/drei';
+import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, SoftShadows, DragControls, Grid } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
+import Shop, { ShopItem } from './Shop';
 
 import { Emotion, PurchasedItem } from '../types';
 import { THEMES } from './3d/GardenConstants';
@@ -26,7 +27,7 @@ interface LoveTree3DProps {
   flowerType?: string;
   mixedFlowers?: string[];
   leaves: number;
-  points: number;
+  points?: number;
   onAddLeaf: () => void;
   skyMode?: string;
   showQRCode?: boolean;
@@ -36,6 +37,8 @@ interface LoveTree3DProps {
   graphicsQuality?: 'low' | 'medium' | 'high';
   purchasedItems?: PurchasedItem[];
   onUpdateItemPosition?: (id: string, x: number, y: number, z: number) => void;
+  activeLandId?: string;
+  onPurchase?: (item: ShopItem) => Promise<void>;
 }
 
 const DraggableItem = ({ item, onUpdate, children }: { item: PurchasedItem, onUpdate?: (id: string, x: number, y: number, z: number) => void, children: React.ReactNode }) => {
@@ -71,13 +74,16 @@ const CustomGLTFModel = ({ url, scale = 1 }: { url: string, scale?: number }) =>
 
 const LoveTree3D: React.FC<LoveTree3DProps> = ({ 
     anniversaryDate, treeStyle = 'oak', petEmotion, petMessage, level,
-     leaves, points, onAddLeaf, daysPerFlower = 7, flowerType = 'sunflower',
+     leaves, points = 0, onAddLeaf, daysPerFlower = 7, flowerType = 'sunflower',
      mixedFlowers = ['sunflower', 'tulip', 'rose', 'cherry', 'lavender', 'heart'],
      skyMode = 'follow_timezone', showQRCode = false, petType = 'cat',
      pets = [], albums = [],
      graphicsQuality = 'medium',
-     purchasedItems = [], onUpdateItemPosition
+     purchasedItems = [], onUpdateItemPosition,
+     activeLandId, onPurchase
  }) => {
+   const [isEditMode, setIsEditMode] = useState(false);
+   const [isShopPopoverOpen, setIsShopPopoverOpen] = useState(false);
    const theme = THEMES[treeStyle] || THEMES['oak'];
    const [isQRUploadOpen, setIsQRUploadOpen] = useState(false);
    const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
@@ -591,8 +597,115 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
          {graphicsQuality === 'high' && <ContactShadows scale={30} blur={2.5} far={4} opacity={0.4} resolution={512} frames={1} />}
 
+         {/* Edit Mode Grid Overlay */}
+         {isEditMode && (
+           <Grid
+             args={[50, 50]}
+             position={[0, 0.01, 0]}
+             cellSize={1}
+             cellThickness={0.6}
+             cellColor="#6b7280"
+             sectionSize={5}
+             sectionThickness={1.2}
+             sectionColor="#ec4899"
+             fadeDistance={30}
+             fadeStrength={1}
+             followCamera={false}
+             infiniteGrid={true}
+           />
+         )}
+
       </Canvas>
       
+      {/* Edit Mode Floating FAB */}
+      <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            setIsEditMode(!isEditMode);
+            if (isEditMode) setIsShopPopoverOpen(false);
+          }}
+          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
+            isEditMode
+              ? 'bg-pink-500 text-white border-pink-400 shadow-pink-500/40'
+              : 'bg-white/80 backdrop-blur-md text-gray-600 border-white/50 hover:bg-white'
+          }`}
+          title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+        >
+          <i className={`fas ${isEditMode ? 'fa-times' : 'fa-pencil-alt'}`}></i>
+        </motion.button>
+
+        <AnimatePresence>
+          {isEditMode && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsShopPopoverOpen(!isShopPopoverOpen)}
+              className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
+                isShopPopoverOpen
+                  ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
+                  : 'bg-white/80 backdrop-blur-md text-amber-600 border-white/50 hover:bg-white'
+              }`}
+              title="Open Shop"
+            >
+              <i className="fas fa-store"></i>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Edit Mode Badge */}
+      <AnimatePresence>
+        {isEditMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-pink-500/90 backdrop-blur-md text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-2"
+          >
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="text-xs font-black uppercase tracking-widest">Edit Mode</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Shop Popover */}
+      <AnimatePresence>
+        {isShopPopoverOpen && isEditMode && onPurchase && (
+          <motion.div
+            initial={{ opacity: 0, x: -20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.95 }}
+            className="fixed bottom-24 left-24 z-[80] w-80 max-h-[60vh] bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50 overflow-hidden flex flex-col"
+          >
+            <div className="p-4 border-b border-amber-100 flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="font-black text-amber-700 flex items-center gap-2">
+                  <i className="fas fa-store"></i> Shop
+                </h3>
+                <p className="text-[9px] font-bold text-amber-500/80 uppercase tracking-widest">Drag items to your world</p>
+              </div>
+              <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-xl flex items-center gap-1.5 text-sm shadow-sm border border-amber-200">
+                <i className="fas fa-coins text-amber-500 text-xs"></i>
+                <span className="font-black">{points}</span>
+              </div>
+            </div>
+            <div className="overflow-y-auto p-3 space-y-2 custom-scrollbar">
+              <Shop
+                points={points}
+                activeLandId={activeLandId}
+                onPurchase={onPurchase}
+                compact={true}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showQRCode && (
           <motion.div 

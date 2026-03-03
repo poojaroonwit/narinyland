@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login, isAuthenticated } from '@/lib/auth';
 import { motion } from 'framer-motion';
+import LandingBackground from '@/components/LandingBackground';
 
 // Translation Dictionary
 const dict = {
@@ -327,38 +328,10 @@ export default function LoginPage() {
     <div
       className="min-h-screen text-gray-800 relative selection:bg-pink-300 selection:text-pink-900"
       style={{
-        background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 30%, #fbcfe8 70%, #f9a8d4 100%)',
         fontFamily: customFont,
       }}
     >
-      {/* Decorative Floating Elements (Background) */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute text-pink-400 select-none drop-shadow-sm"
-            initial={{
-              x: `${Math.random() * 100}vw`,
-              y: `${Math.random() * 100}vh`,
-              scale: 0.3 + Math.random() * 0.7,
-              rotate: Math.random() * 360,
-            }}
-            animate={{
-              y: [null, '-30px', '20px', '-10px'],
-              rotate: [null, 15, -15, 0],
-            }}
-            transition={{
-              duration: 8 + Math.random() * 7,
-              repeat: Infinity,
-              repeatType: 'mirror',
-              delay: Math.random() * 5,
-            }}
-            style={{ fontSize: `${20 + Math.random() * 40}px` }}
-          >
-            {['🌸', '💕', '✨', '🌷', '🌿', '🪴'][i % 6]}
-          </motion.div>
-        ))}
-      </div>
+      <LandingBackground />
 
       {/* Navigation Bar */}
       <nav className="fixed top-0 left-0 right-0 py-4 px-6 md:px-12 z-50 flex items-center justify-between"

@@ -12,6 +12,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import OptimizedImage from './OptimizedImage';
 import LocationPicker from './LocationPicker';
 import TimelineImages from './TimelineImages';
+import GlobalImageModal from './GlobalImageModal';
 
 interface TimelineProps {
   interactions: Interaction[];
@@ -23,17 +24,19 @@ interface TimelineProps {
   onOpenSpreadsheet?: () => void;
 
   cardScale?: number;
-  layoutMode?: 'vertical' | 'wave' | 'snake' | 'gallery';
+  layoutMode?: 'vertical' | 'wave' | 'gallery';
   zoomLevel?: number; // 0-7 index
   thumbnailHeight?: number;
   onOpenSettings?: () => void;
-  onUpdateConfig?: (config: { layoutMode?: 'vertical' | 'wave' | 'snake' | 'gallery', zoomLevel?: number }) => void;
+  onUpdateConfig?: (config: { layoutMode?: 'vertical' | 'wave' | 'gallery', zoomLevel?: number }) => void;
   
   // Image modal props
   showImageModal?: boolean;
   onSetShowImageModal?: (show: boolean) => void;
   modalImageIndex?: number;
   onSetModalImageIndex?: (index: number) => void;
+  modalInteractionId?: string | null;
+  onSetModalInteractionId?: (id: string | null) => void;
 }
 
 const Timeline: React.FC<TimelineProps> = ({ 
@@ -53,7 +56,9 @@ const Timeline: React.FC<TimelineProps> = ({
   showImageModal: externalShowImageModal,
   onSetShowImageModal: externalSetShowImageModal,
   modalImageIndex: externalModalImageIndex,
-  onSetModalImageIndex: externalSetModalImageIndex
+  onSetModalImageIndex: externalSetModalImageIndex,
+  modalInteractionId: externalModalInteractionId,
+  onSetModalInteractionId: externalSetModalInteractionId
 }) => {
   const [layoutMode, setLayoutMode] = useState(initialLayoutMode);
   const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
@@ -122,7 +127,7 @@ const Timeline: React.FC<TimelineProps> = ({
     }
   }, []);
 
-  const handleLayoutModeChange = (newMode: 'vertical' | 'wave' | 'snake' | 'gallery') => {
+  const handleLayoutModeChange = (newMode: 'vertical' | 'wave' | 'gallery') => {
     setLayoutMode(newMode);
     onUpdateConfig?.({ layoutMode: newMode });
   };
@@ -141,27 +146,22 @@ const Timeline: React.FC<TimelineProps> = ({
   const [activeItem, setActiveItem] = useState<Interaction | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
-  // Use external modal state if provided, otherwise use internal state
-  const showImageModal = externalShowImageModal ?? false;
-  const setShowImageModal = externalSetShowImageModal ?? (() => {});
-  const modalImageIndex = externalModalImageIndex ?? 0;
-  const setModalImageIndex = externalSetModalImageIndex ?? (() => {});
 
+  const [internalShowModal, setInternalShowModal] = useState(false);
+  const [internalModalIndex, setInternalModalIndex] = useState(0);
+  const [internalInteractionId, setInternalInteractionId] = useState<string | null>(null);
+
+  const showImageModal = externalShowImageModal ?? internalShowModal;
+  const setShowImageModal = externalSetShowImageModal ?? setInternalShowModal;
+  const modalImageIndex = externalModalImageIndex ?? internalModalIndex;
+  const setModalImageIndex = externalSetModalImageIndex ?? setInternalModalIndex;
+  const modalInteractionId = externalModalInteractionId ?? internalInteractionId;
+  const setModalInteractionId = externalSetModalInteractionId ?? setInternalInteractionId;
+  
   // Add keyboard navigation for image carousel and modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (viewingImage) {
-        if (e.key === 'ArrowLeft') {
-          handlePreviousImage();
-        } else if (e.key === 'ArrowRight') {
-          handleNextImage();
-        } else if (e.key === 'Escape') {
-          setViewingImage(null);
-        }
-      } else if (showImageModal) {
+      if (showImageModal) {
         if (e.key === 'ArrowLeft') {
           handleModalPreviousImage();
         } else if (e.key === 'ArrowRight') {
@@ -174,7 +174,7 @@ const Timeline: React.FC<TimelineProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewingImage, currentImageIndex, showImageModal, modalImageIndex]);
+  }, [showImageModal, modalImageIndex, modalInteractionId]);
 
   // Handle custom events from homepage
   useEffect(() => {
@@ -254,10 +254,10 @@ const Timeline: React.FC<TimelineProps> = ({
   const timelineLayout = useMemo(() => {
     // Handle gallery mode - return empty layout since gallery view is handled separately
     if (layoutMode === 'gallery') {
-      return { items: [], height: 0, path: '', nowY: -1, centerX: 0, nowX: -1, snakeMode: false };
+      return { items: [], height: 0, path: '', nowY: -1, centerX: 0, nowX: -1 };
     }
 
-    if (allInteractions.length === 0) return { items: [], height: 0, path: '', nowY: -1, centerX: 0, nowX: -1, snakeMode: false };
+    if (allInteractions.length === 0) return { items: [], height: 0, path: '', nowY: -1, centerX: 0, nowX: -1 };
 
     const sorted = [...allInteractions];
     const startDate = sorted[0].timestamp;
@@ -287,99 +287,8 @@ const Timeline: React.FC<TimelineProps> = ({
            height: itemsWithPos.length * rowHeight + 200, 
            path: `M ${centerX} 0 L ${centerX} ${itemsWithPos.length * rowHeight + 200}`, 
            centerX, 
-           nowY: -1, 
-           snakeMode: false 
+           nowY: -1 
         };
-    }
-
-    // --- SNAKE MODE CALCULATION ---
-    if (layoutMode === 'snake') {
-        const startYear = startDate.getFullYear();
-        // Ensure endYear covers current year for "Today" marker
-        const endYear = Math.max(new Date().getFullYear(), endDate.getFullYear());
-        const totalRows = endYear - startYear + 1;
-        const rowHeight = effectiveZoom === 1 ? 180 : effectiveZoom === 5 ? 300 : effectiveZoom === 10 ? 500 : effectiveZoom === 30 ? 1000 : effectiveZoom === 60 ? 2000 : effectiveZoom === 100 ? 3500 : effectiveZoom === 200 ? 7000 : 15000;
-        const localContainerWidth = containerWidth || Math.min(windowWidth, 800); 
-        const sidePad = windowWidth < 640 ? 15 : (effectiveZoom === 1 ? 160 : effectiveZoom === 5 ? 100 : effectiveZoom === 10 ? 60 : 40);
-        const activeWidth = localContainerWidth - (sidePad * 2);
-        
-        let pathD = '';
-        const itemsWithPos: any[] = [];
-        
-        // Generate Path & Place Items
-        for (let i = 0; i < totalRows; i++) {
-           const currentYear = startYear + i;
-           const isEven = i % 2 === 0;
-           const rowY = i * rowHeight + 100; // Start with some padding
-           
-           // Path Points
-           const startX = isEven ? sidePad : localContainerWidth - sidePad;
-           const endX = isEven ? localContainerWidth - sidePad : sidePad;
-           
-           if (i === 0) pathD += `M ${startX} ${rowY}`;
-           
-           // Line across the year
-           pathD += ` L ${endX} ${rowY}`;
-           
-           // Connector to next row (if not last)
-             if (i < totalRows - 1) {
-               const nextRowY = rowY + rowHeight;
-               const cp1x = isEven ? localContainerWidth : 0;
-               const cp1y = rowY;
-               const cp2x = isEven ? localContainerWidth : 0;
-               const cp2y = nextRowY;
-               pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${nextRowY}`;
-             }
-
-           // Place items for this year only
-           const yearItems = sorted.filter(item => item.timestamp.getFullYear() === currentYear);
-           const yearStart = new Date(currentYear, 0, 1).getTime();
-           const yearEnd = new Date(currentYear + 1, 0, 1).getTime();
-           const yearDuration = yearEnd - yearStart;
-
-           yearItems.forEach((item, index) => {
-              const progress = (item.timestamp.getTime() - yearStart) / yearDuration;
-              const visualProgress = progress; 
-              
-              const x = isEven 
-                ? sidePad + (visualProgress * activeWidth)
-                : (localContainerWidth - sidePad) - (visualProgress * activeWidth);
-                
-              // Staggering: Offset Y slightly if items are tight
-              const staggerY = yearItems.length > 1 ? (index % 2 === 0 ? -30 : 30) : 0;
-                
-              itemsWithPos.push({
-                 ...item,
-                 x,
-                 y: rowY + staggerY,
-                 isRightSide: !isEven, 
-                 isEvenRow: isEven,
-                 isFuture: item.timestamp.getTime() > Date.now(),
-                 rotation: (index % 3 - 1) * 2 // -2, 0, 2
-              });
-           });
-        }
-
-        // Calculate "Now" Position (Snake)
-        let nowY = -1;
-        let nowX = -1;
-        const now = new Date();
-        const nowYear = now.getFullYear();
-        if (nowYear >= startYear && nowYear <= endYear) {
-           const i = nowYear - startYear;
-           const isEven = i % 2 === 0;
-           nowY = i * rowHeight + 100;
-           
-           const yearStart = new Date(nowYear, 0, 1).getTime();
-           const yearEnd = new Date(nowYear + 1, 0, 1).getTime();
-           const progress = (now.getTime() - yearStart) / (yearEnd - yearStart);
-           
-           nowX = isEven 
-                ? sidePad + (progress * activeWidth)
-                : (localContainerWidth - sidePad) - (progress * activeWidth);
-        }
-
-        return { items: itemsWithPos, height: totalRows * rowHeight + 200, path: pathD, centerX: localContainerWidth/2, nowY, nowX, snakeMode: true };
     }
 
     // --- WAVE MODE CALCULATION ---
@@ -445,7 +354,7 @@ const Timeline: React.FC<TimelineProps> = ({
       };
     });
 
-    return { items: itemsWithPos, height: totalHeight, path: pathData, centerX, nowY, snakeMode: false };
+    return { items: itemsWithPos, height: totalHeight, path: pathData, centerX, nowY };
   }, [allInteractions, effectiveZoom, containerWidth, layoutMode]);
 
 
@@ -459,70 +368,62 @@ const Timeline: React.FC<TimelineProps> = ({
     }
   };
 
-  // Get all images from all interactions
-  const getAllImages = () => {
+  // Get all images from a specific interaction
+  const getImagesForInteraction = (interactionId?: string | null) => {
     const allImages: { url: string; interactionId: string; interactionTitle: string }[] = [];
-    interactions.forEach(interaction => {
-      if (interaction.media) {
-        // Handle single media or media array
-        const mediaItems = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
-        mediaItems.forEach((media: any) => {
-          if (media.type === 'image') {
-            allImages.push({
-              url: media.url,
-              interactionId: interaction.id,
-              interactionTitle: (interaction as any).message || 'Untitled'
-            });
-          }
-        });
-      }
-    });
+    interactions
+      .filter(i => !interactionId || i.id === interactionId)
+      .forEach(interaction => {
+        if (interaction.media) {
+          // Handle single media or media array
+          const mediaItems = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
+          mediaItems.forEach((media: any) => {
+            if (media.type === 'image') {
+              allImages.push({
+                url: media.url,
+                interactionId: interaction.id,
+                interactionTitle: (interaction as any).message || 'Untitled'
+              });
+            }
+          });
+        }
+      });
     return allImages;
   };
 
   // Handle image click to open carousel
   const handleImageClick = (imageUrl: string) => {
-    const allImages = getAllImages();
-    const imageIndex = allImages.findIndex(img => img.url === imageUrl);
+    // Find interaction id first
+    const interaction = interactions.find(i => {
+      const mediaItems = Array.isArray(i.mediaItems) ? i.mediaItems : (i.media ? [i.media] : []);
+      return mediaItems.some((m: any) => m.url === imageUrl);
+    });
+
+    const targetInteractionId = interaction?.id || null;
+    setModalInteractionId(targetInteractionId);
+
+    const images = getImagesForInteraction(targetInteractionId);
+    const imageIndex = images.findIndex(img => img.url === imageUrl);
+    
     setModalImageIndex(imageIndex >= 0 ? imageIndex : 0);
     setShowImageModal(true);
   };
 
-  // Navigate to previous image
-  const handlePreviousImage = () => {
-    const allImages = getAllImages();
-    if (allImages.length === 0) return;
-    
-    const newIndex = currentImageIndex === 0 ? allImages.length - 1 : currentImageIndex - 1;
-    setCurrentImageIndex(newIndex);
-    setViewingImage(allImages[newIndex].url);
-  };
-
-  // Navigate to next image
-  const handleNextImage = () => {
-    const allImages = getAllImages();
-    if (allImages.length === 0) return;
-    
-    const newIndex = (currentImageIndex + 1) % allImages.length;
-    setCurrentImageIndex(newIndex);
-    setViewingImage(allImages[newIndex].url);
-  };
-
   // Navigate to previous image in modal
   const handleModalPreviousImage = () => {
-    const allImages = getAllImages();
-    if (allImages.length === 0) return;
+    const images = getImagesForInteraction(modalInteractionId);
+    if (images.length === 0) return;
     
-    const newIndex = modalImageIndex === 0 ? allImages.length - 1 : modalImageIndex - 1;
+    const newIndex = modalImageIndex === 0 ? images.length - 1 : modalImageIndex - 1;
     setModalImageIndex(newIndex);
   };
 
   // Navigate to next image in modal
   const handleModalNextImage = () => {
-    const allImages = getAllImages();
-    if (allImages.length === 0) return;
+    const images = getImagesForInteraction(modalInteractionId);
+    if (images.length === 0) return;
     
-    const newIndex = modalImageIndex === allImages.length - 1 ? 0 : modalImageIndex + 1;
+    const newIndex = modalImageIndex === images.length - 1 ? 0 : modalImageIndex + 1;
     setModalImageIndex(newIndex);
   };
 
@@ -648,14 +549,14 @@ const Timeline: React.FC<TimelineProps> = ({
               <div className="flex flex-col gap-2 mb-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
                   <button 
                      onClick={() => {
-                        const modes: ('vertical' | 'wave' | 'snake' | 'gallery')[] = ['vertical', 'wave', 'snake', 'gallery'];
-                        const next = modes[(modes.indexOf(layoutMode) + 1) % 4];
+                        const modes: ('vertical' | 'wave' | 'gallery')[] = ['vertical', 'wave', 'gallery'];
+                        const next = modes[(modes.indexOf(layoutMode) + 1) % 3];
                         handleLayoutModeChange(next);
                      }}
                      className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-purple-500 hover:bg-purple-50 transition-all border border-purple-100"
                      title={`Switch View: ${layoutMode}`}
                   >
-                     <i className={`fas ${layoutMode === 'vertical' ? 'fa-stream' : layoutMode === 'wave' ? 'fa-water' : layoutMode === 'snake' ? 'fa-route' : 'fa-images'}`}></i>
+                     <i className={`fas ${layoutMode === 'vertical' ? 'fa-stream' : layoutMode === 'wave' ? 'fa-water' : 'fa-images'}`}></i>
                   </button>
               </div>
 
@@ -733,7 +634,6 @@ const Timeline: React.FC<TimelineProps> = ({
       {/* WAVE / SNAKE / GALLERY VIEW */}
       <div 
         className="w-full flex justify-center pt-5 pb-40 relative" 
-        ref={containerRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -741,7 +641,7 @@ const Timeline: React.FC<TimelineProps> = ({
         {/* Subtle Stage Background */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 md:w-96 h-32 bg-gradient-to-b from-pink-50/50 to-transparent rounded-full blur-3xl -z-10 pointer-events-none"></div>
         
-        <div style={{ height: layoutMode === 'gallery' ? 'auto' : timelineLayout.height, width: '100%', maxWidth: windowWidth < 640 ? '100%' : '1200px', position: 'relative' }}>
+        <div ref={containerRef} style={{ height: layoutMode === 'gallery' ? 'auto' : timelineLayout.height, width: '100%', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
           
           {/* GALLERY CONTENT */}
           {layoutMode === 'gallery' && (
@@ -776,7 +676,7 @@ const Timeline: React.FC<TimelineProps> = ({
                     d={timelineLayout.path}
                     fill="none"
                     stroke="white"
-                    strokeWidth={layoutMode === 'snake' ? 3 : 2}
+                    strokeWidth={2}
                     strokeDasharray="10 10"
                     strokeOpacity="0.5"
                     strokeLinecap="round"
@@ -793,26 +693,15 @@ const Timeline: React.FC<TimelineProps> = ({
                    className="absolute flex items-center justify-center pointer-events-none z-0"
                    style={{ 
                       top: timelineLayout.nowY,
-                      left: timelineLayout.snakeMode && timelineLayout.nowX !== -1 ? timelineLayout.nowX : '50%',
-                      width: timelineLayout.snakeMode ? 'auto' : '100%',
-                      transform: timelineLayout.snakeMode ? 'translate(-50%, -50%)' : 'translateY(0)' 
+                      left: '50%',
+                      width: '100%',
+                      transform: 'translateY(0)' 
                    }}
                  >
-                    {timelineLayout.snakeMode ? (
-                       <div className="relative">
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-pink-500 animate-ping opacity-50"></div>
-                          <div className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded-md shadow-sm uppercase z-10 relative whitespace-nowrap">
-                             Today
-                          </div>
-                       </div>
-                    ) : (
-                       <>
-                          <div className="h-px bg-pink-500/50 w-full max-w-md absolute border-t border-dashed border-pink-400"></div>
-                          <div className="bg-pink-500 text-white text-[10px] font-black px-3 py-1 rounded-full relative z-10 shadow-sm uppercase tracking-widest">
-                             Today
-                          </div>
-                       </>
-                    )}
+                   <div className="h-px bg-pink-500/50 w-full max-w-md absolute border-t border-dashed border-pink-400"></div>
+                   <div className="bg-pink-500 text-white text-[10px] font-black px-3 py-1 rounded-full relative z-10 shadow-sm uppercase tracking-widest">
+                      Today
+                   </div>
                  </div>
               )}
 
@@ -835,11 +724,11 @@ const Timeline: React.FC<TimelineProps> = ({
                              viewport={{ once: true }}
                              className="absolute font-black text-pink-500/10 md:text-pink-500/30 select-none font-pacifico z-0"
                              style={{ 
-                               top: timelineLayout.snakeMode ? item.y - 40 : item.y - 60, 
-                               left: timelineLayout.snakeMode ? (item.isEvenRow ? 20 : 'auto') : (item.isRightSide ? item.x - 200 : item.x + 50),
-                               right: timelineLayout.snakeMode ? (!item.isEvenRow ? 20 : 'auto') : 'auto',
-                               transform: timelineLayout.snakeMode ? 'none' : 'translateX(-50%)',
-                               fontSize: windowWidth < 640 ? '2.5rem' : (timelineLayout.snakeMode ? '4rem' : '5rem')
+                               top: item.y - 60, 
+                               left: item.isRightSide ? item.x - 200 : item.x + 50,
+                               right: 'auto',
+                               transform: 'translateX(-50%)',
+                               fontSize: windowWidth < 640 ? '2.5rem' : '5rem'
                              }}
                            >
                              {item.timestamp.getFullYear()}
@@ -875,9 +764,7 @@ const Timeline: React.FC<TimelineProps> = ({
                          {/* CONTENT CARD */}
                          <div 
                            className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-2 w-max max-w-[140px] md:max-w-[200px] group cursor-pointer z-30 ${
-                             timelineLayout.snakeMode 
-                               ? 'flex-col -translate-y-[calc(100%+20px)]' 
-                               : (item.isRightSide ? 'flex-row left-5 md:left-10' : 'flex-row-reverse right-5 md:right-10')
+                              item.isRightSide ? 'flex-row left-5 md:left-10' : 'flex-row-reverse right-5 md:right-10'
                            }`}
                            onClick={(e) => {
                            // Check if the click target is an image
@@ -891,11 +778,7 @@ const Timeline: React.FC<TimelineProps> = ({
                          }}
                          >
                             {/* Connecting Line */}
-                            <div className={`absolute ${
-                              timelineLayout.snakeMode
-                                ? 'w-[2px] h-5 bg-pink-200 -bottom-5 left-1/2 -translate-x-1/2'
-                                : `h-[2px] w-5 md:w-10 top-1/2 -translate-y-1/2 ${item.isFuture ? 'bg-purple-200' : 'bg-pink-200'} ${item.isRightSide ? '-left-5 md:-left-10' : '-right-5 md:-right-10'}`
-                            }`} />
+                            <div className={`absolute h-[2px] w-5 md:w-10 top-1/2 -translate-y-1/2 ${item.isFuture ? 'bg-purple-200' : 'bg-pink-200'} ${item.isRightSide ? '-left-5 md:-left-10' : '-right-5 md:-right-10'}`} />
 
                               <div 
                                 className={`relative group transition-transform ${item.mediaItems && item.mediaItems.filter((mi: MediaContent) => mi.type === 'image').length > 1 ? 'hover:scale-105' : ''}`}
@@ -982,13 +865,13 @@ const Timeline: React.FC<TimelineProps> = ({
                                       
                                       <div className="flex items-center gap-1.5">
                                          {item.location && <i className="fas fa-map-marker-alt text-[8px] text-pink-300"></i>}
-                                         {((item.mediaItems?.length || 0) > 0 || !!item.media) && (
-                                            <i className={`fas ${
-                                               (item.mediaItems?.filter((mi: MediaContent) => mi.type === 'video').length > 0 || item.media?.type === 'video')
-                                                 ? 'fa-video text-blue-300' 
-                                                 : 'fa-camera text-pink-300'
-                                            } text-[8px]`}></i>
-                                         )}
+                                          {((item.mediaItems?.length || 0) > 0 || !!item.media) && (
+                                             <i className={`fas ${
+                                                ((item.mediaItems?.filter((mi: MediaContent) => mi.type === 'video')?.length || 0) > 0 || item.media?.type === 'video')
+                                                  ? 'fa-video text-blue-300' 
+                                                  : 'fa-camera text-pink-300'
+                                             } text-[8px]`}></i>
+                                          )}
                                       </div>
                                    </div>
                                 </div>
@@ -1171,6 +1054,21 @@ const Timeline: React.FC<TimelineProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <GlobalImageModal
+        show={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        interactions={getImagesForInteraction(modalInteractionId).map(img => ({
+           id: img.interactionId,
+           text: img.interactionTitle,
+           timestamp: new Date(),
+           type: 'system',
+           media: { type: 'image', url: img.url }
+        }) as Interaction)}
+        currentIndex={modalImageIndex}
+        onPrevious={handleModalPreviousImage}
+        onNext={handleModalNextImage}
+      />
     </div>
   );
 };

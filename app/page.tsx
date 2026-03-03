@@ -14,7 +14,6 @@ import Logo from '../components/Logo';
 import SimplePlayer from '../components/SimplePlayer';
 import Toast from '../components/Toast';
 import TimelineSpreadsheet from '../components/TimelineSpreadsheet';
-import GlobalImageModal from '../components/GlobalImageModal';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../types';
 import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../services/api';
 import { useAuth } from '../components/AuthProvider';
@@ -102,11 +101,6 @@ const Home: React.FC = () => {
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
-  
-  // Global image modal state
-  const [showGlobalImageModal, setShowGlobalImageModal] = useState(false);
-  const [globalModalImageIndex, setGlobalModalImageIndex] = useState(0);
-
   // ─── Load config & data from database on mount ─────────────────────────────
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -663,49 +657,12 @@ const Home: React.FC = () => {
     return interactions;
   }, [appConfig.timeline, appConfig.coupons, appConfig.showCouponsOnTimeline]);
 
-  const handleTimelineConfigUpdate = (updates: { layoutMode?: 'vertical' | 'wave' | 'snake' | 'gallery', zoomLevel?: number }) => {
+  const handleTimelineConfigUpdate = (updates: { layoutMode?: 'vertical' | 'wave' | 'gallery', zoomLevel?: number }) => {
     handleSetAppConfig(prev => ({
       ...prev,
       timelineLayoutMode: updates.layoutMode || prev.timelineLayoutMode,
       timelineZoomLevel: updates.zoomLevel !== undefined ? updates.zoomLevel : prev.timelineZoomLevel
     }));
-  };
-
-  // Global image modal functions
-  const handleGlobalModalPrevious = () => {
-    const allImages = [];
-    appConfig.timeline.forEach(interaction => {
-      if (interaction.media) {
-        const mediaItems = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
-        mediaItems.forEach((media: any) => {
-          if (media.type === 'image') {
-            allImages.push(media.url);
-          }
-        });
-      }
-    });
-    
-    if (allImages.length === 0) return;
-    const newIndex = globalModalImageIndex === 0 ? allImages.length - 1 : globalModalImageIndex - 1;
-    setGlobalModalImageIndex(newIndex);
-  };
-
-  const handleGlobalModalNext = () => {
-    const allImages = [];
-    appConfig.timeline.forEach(interaction => {
-      if (interaction.media) {
-        const mediaItems = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
-        mediaItems.forEach((media: any) => {
-          if (media.type === 'image') {
-            allImages.push(media.url);
-          }
-        });
-      }
-    });
-    
-    if (allImages.length === 0) return;
-    const newIndex = (globalModalImageIndex + 1) % allImages.length;
-    setGlobalModalImageIndex(newIndex);
   };
 
   const daysTogether = Math.max(0, Math.floor((new Date().getTime() - new Date(appConfig.anniversaryDate).getTime()) / (1000 * 60 * 60 * 24)));
@@ -759,6 +716,30 @@ const Home: React.FC = () => {
                      console.error("Failed to update item position", e);
                   }
                }}
+               activeLandId={appConfig.lands?.find(l => l.isActive)?.id}
+               onPurchase={async (item) => {
+                  try {
+                    const landId = appConfig.lands?.find(l => l.isActive)?.id;
+                    if (!landId) return;
+                    setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
+                    const res = await fetch('/api/purchased-items', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify({ type: item.type, landId, modelUrl: item.modelUrl })
+                    });
+                    if (!res.ok) throw new Error("Failed to purchase");
+                    const newItem = await res.json();
+                    setAppConfig(prev => ({
+                      ...prev,
+                      lands: prev.lands?.map(l => l.id === landId ? { ...l, items: [...(l.items || []), newItem] } : l)
+                    }));
+                    showToast(`You bought a ${item.name}! 🛍️`);
+                  } catch (err) {
+                    console.error("Purchase error", err);
+                    setLoveStats(prev => ({ ...prev, points: prev.points + item.price }));
+                    showToast("Purchase failed. Please try again.");
+                  }
+               }}
              />
            ) : (
              <World3D 
@@ -770,14 +751,58 @@ const Home: React.FC = () => {
 
         {/* 3D World Toggle Button */}
         {activeTab === 'home' && (
-          <div className="fixed top-24 right-4 z-50">
+          <div className="fixed top-24 right-4 z-50 flex flex-col items-end gap-2">
             <button 
               onClick={() => setWorldMode(prev => prev === 'tree' ? 'globe' : 'tree')}
-              className="bg-white/80 backdrop-blur-md border border-pink-200 text-pink-500 shadow-lg rounded-full px-4 py-2 font-bold text-sm tracking-widest uppercase hover:bg-pink-50 transition-colors flex items-center gap-2"
+              className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-5 py-3 font-black text-[10px] tracking-widest uppercase hover:bg-pink-50 transition-all flex items-center gap-3 group"
             >
-              <i className={`fas ${worldMode === 'tree' ? 'fa-globe-americas' : 'fa-tree'}`}></i>
-              {worldMode === 'tree' ? 'Reality World' : 'Fantasy World'}
+              <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i className={`fas ${worldMode === 'tree' ? 'fa-globe-americas' : 'fa-tree'}`}></i>
+              </div>
+              <div className="text-left">
+                <p className="opacity-60 leading-none mb-0.5">Switch View</p>
+                <p className="text-sm leading-none">{worldMode === 'tree' ? 'Reality World' : 'Fantasy World'}</p>
+              </div>
             </button>
+
+            {/* Land Selector (Only in Tree Mode) */}
+            <AnimatePresence>
+              {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 1 && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-50 shadow-2xl rounded-[2rem] p-4 flex flex-col gap-2 min-w-[200px]"
+                >
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Select Land</p>
+                  <div className="flex flex-col gap-1">
+                    {appConfig.lands.map(land => (
+                      <button
+                        key={land.id}
+                        onClick={() => {
+                           setAppConfig(prev => ({
+                              ...prev,
+                              lands: prev.lands?.map(l => ({ ...l, isActive: l.id === land.id }))
+                           }));
+                           showToast(`Switched to ${land.name}! ✨`);
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-2xl transition-all ${
+                          land.isActive 
+                            ? 'bg-pink-500 text-white shadow-lg' 
+                            : 'hover:bg-pink-50 text-gray-600 hover:text-pink-500'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
+                          {land.icon || '🏞️'}
+                        </div>
+                        <span className="font-bold text-sm">{land.name}</span>
+                        {land.isActive && <i className="fas fa-check-circle ml-auto text-xs opacity-70"></i>}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -905,10 +930,6 @@ const Home: React.FC = () => {
                     thumbnailHeight={appConfig.timelineThumbnailHeight}
                     onOpenSettings={() => setIsEditDrawerOpen(true)}
                     onUpdateConfig={handleTimelineConfigUpdate}
-                    showImageModal={showGlobalImageModal}
-                    onSetShowImageModal={setShowGlobalImageModal}
-                    modalImageIndex={globalModalImageIndex}
-                    onSetModalImageIndex={setGlobalModalImageIndex}
                  />
                 </motion.div>
              )}
@@ -1020,14 +1041,6 @@ const Home: React.FC = () => {
              >
                <i className="fas fa-ticket-alt text-xl"></i>
                <span className="text-[10px] font-bold uppercase tracking-wide">Coupons</span>
-             </button>
-
-             <button 
-               onClick={() => setActiveTab('shop')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'shop' ? 'text-amber-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
-             >
-               <i className="fas fa-store text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-wide">Shop</span>
              </button>
 
              <button 
@@ -1410,15 +1423,6 @@ const Home: React.FC = () => {
             interactions={appConfig.timeline}
             onSave={handleMassTimelineUpdate}
             onDelete={handleDeleteTimeline}
-          />
-          
-          <GlobalImageModal
-            show={showGlobalImageModal}
-            onClose={() => setShowGlobalImageModal(false)}
-            interactions={appConfig.timeline}
-            currentIndex={globalModalImageIndex}
-            onPrevious={handleGlobalModalPrevious}
-            onNext={handleGlobalModalNext}
           />
         </>
       )}
