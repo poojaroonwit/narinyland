@@ -6,12 +6,11 @@ import { useAuth } from '@/components/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { getAccessToken } from '@/lib/auth';
-import { setActiveCircleId } from '@/lib/circle-store';
 
 type Mode = 'select' | 'create' | 'join';
 
 export default function OnboardingPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setActiveCircle } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('select');
   const [worldName, setWorldName] = useState('');
@@ -44,9 +43,8 @@ export default function OnboardingPage() {
       }
 
       const circle = await res.json();
-      setActiveCircleId(circle.id);
-
-      // Persist chosen circle to user attributes
+      
+      // Add the user to the circle in AppKit
       await fetch('/api/circles/join', {
         method: 'POST',
         headers: {
@@ -56,6 +54,9 @@ export default function OnboardingPage() {
         body: JSON.stringify({ circleId: circle.id, userId: user?.sub }),
       }).catch(() => {});
 
+      // Set as active and persist to attributes
+      await setActiveCircle(circle.id);
+      
       await refreshUser();
       router.replace('/');
     } catch (err: any) {
@@ -86,7 +87,9 @@ export default function OnboardingPage() {
         throw new Error(data.error || 'Failed to join world. Check the code and try again.');
       }
 
-      setActiveCircleId(code);
+      // Set as active and persist to attributes
+      await setActiveCircle(code);
+      
       await refreshUser();
       router.replace('/');
     } catch (err: any) {
@@ -95,6 +98,7 @@ export default function OnboardingPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 via-rose-50 to-emerald-50 px-4">

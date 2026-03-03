@@ -1,46 +1,14 @@
 import { NextResponse } from 'next/server';
-
-const APPKIT_DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
-
-/**
- * Get a service-level token using client_credentials grant.
- * Used for admin operations (creating circles, adding members).
- */
-async function getServiceToken(): Promise<string | null> {
-  const clientId = process.env.APPKIT_CLIENT_ID || process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
-  const clientSecret = process.env.APPKIT_CLIENT_SECRET || '';
-
-  if (!clientId || !clientSecret) return null;
-
-  try {
-    const params = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'manage:groups',
-    });
-
-    const res = await fetch(`${APPKIT_DOMAIN}/oauth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.access_token || null;
-  } catch {
-    return null;
-  }
-}
+import { getServiceToken, getAppKitDomain, getAppKitClientId } from '@/lib/appkit-server';
 
 // GET /api/circles — proxy to list user's circles (uses Bearer token from frontend)
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const domain = getAppKitDomain();
   try {
-    const res = await fetch(`${APPKIT_DOMAIN}/api/v1/circles`, {
+    const res = await fetch(`${domain}/api/v1/circles`, {
       headers: { Authorization: authHeader },
     });
     const data = await res.json();
@@ -58,49 +26,68 @@ export async function POST(request: Request) {
 
   if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
-  // Try with service token first; fall back to user's token
+  const domain = getAppKitDomain();
+  const clientId = getAppKitClientId();
   const serviceToken = await getServiceToken();
   const bearerToken = serviceToken ? `Bearer ${serviceToken}` : authHeader;
 
   try {
-    // Create the circle
-    const createRes = await fetch(`${APPKIT_DOMAIN}/api/v1/circles`, {
+    // Attempt Admin API first (recommended for backend-to-backend creation)
+    let createRes = await fetch(`${domain}/api/v1/admin/applications/${clientId}/circles`, {
       method: 'POST',
       headers: {
         Authorization: bearerToken,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ name, description, circleType: 'world' }),
     });
+
+    // Fallback to standard User API if Admin API is not the right fit or 404
+    if (!createRes.ok && (createRes.status === 404 || createRes.status === 405)) {
+      createRes = await fetch(`${domain}/api/v1/circles`, {
+        method: 'POST',
+        headers: {
+          Authorization: bearerToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, description }),
+      });
+    }
 
     if (!createRes.ok) {
       const err = await createRes.json().catch(() => ({}));
-      // If circle creation isn't available via API, generate a local UUID-based world
-      if (createRes.status === 404 || createRes.status === 405) {
-        const localId = `world_${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
-        return NextResponse.json({ id: localId, name, description, role: 'owner', isLocal: true });
+      console.error('AppKit circle creation failed:', err);
+      
+      // If circle creation is truly unavailable, return a local fallback ONLY if strictly necessary
+      // but log it clearly so we know it's not a real AppKit circle.
+      if (createRes.status === 404 || createRes.status === 405 || createRes.status === 403) {
+         const localId = `world_${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
+         console.warn(`Falling back to local world ID: ${localId}`);
+         return NextResponse.json({ id: localId, name, description, role: 'owner', isLocal: true });
       }
+      
       return NextResponse.json({ error: err.message || 'Failed to create circle' }, { status: createRes.status });
     }
 
     const circle = await createRes.json();
 
-    // Add the creator as owner/admin if userId provided
+    // Add the creator as owner if userId provided and not already done by the API
     if (userId && circle.id) {
-      await fetch(`${APPKIT_DOMAIN}/api/v1/circles/${circle.id}/members`, {
+      await fetch(`${domain}/api/v1/circles/${circle.id}/members`, {
         method: 'POST',
         headers: {
           Authorization: bearerToken,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ userId, role: 'owner' }),
-      }).catch(() => {});
+      }).catch(e => console.error('Failed to add owner to new circle:', e));
     }
 
     return NextResponse.json(circle);
   } catch (err) {
-    // Fallback: generate a local world ID if AppKit circle creation fails
+    console.error('Circle creation exception:', err);
     const localId = `world_${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
     return NextResponse.json({ id: localId, name, description, role: 'owner', isLocal: true });
   }
 }
+

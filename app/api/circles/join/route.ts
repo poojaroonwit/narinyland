@@ -1,31 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const APPKIT_DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
-
-async function getServiceToken(): Promise<string | null> {
-  const clientId = process.env.APPKIT_CLIENT_ID || process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
-  const clientSecret = process.env.APPKIT_CLIENT_SECRET || '';
-  if (!clientId || !clientSecret) return null;
-
-  try {
-    const params = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'manage:groups',
-    });
-    const res = await fetch(`${APPKIT_DOMAIN}/oauth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.access_token || null;
-  } catch {
-    return null;
-  }
-}
+import { getServiceToken, getAppKitDomain } from '@/lib/appkit-server';
 
 // POST /api/circles/join — join an existing circle by ID
 export async function POST(request: Request) {
@@ -41,11 +15,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, circleId });
   }
 
+  const domain = getAppKitDomain();
   const serviceToken = await getServiceToken();
   const bearerToken = serviceToken ? `Bearer ${serviceToken}` : authHeader;
 
+  console.log(`User ${userId} attempting to join circle ${circleId}...`);
+
   try {
-    const res = await fetch(`${APPKIT_DOMAIN}/api/v1/circles/${circleId}/members`, {
+    const res = await fetch(`${domain}/api/v1/circles/${circleId}/members`, {
       method: 'POST',
       headers: {
         Authorization: bearerToken,
@@ -56,13 +33,24 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      console.error('AppKit join circle failed:', {
+        status: res.status,
+        error: err.message || err.error_description || JSON.stringify(err)
+      });
+      
       // 409 = already a member, which is fine
       if (res.status === 409) return NextResponse.json({ success: true, circleId });
+      
+      // 400 Bad Request — could be because user is already member but coded as error, 
+      // or invalid userId format.
       return NextResponse.json({ error: err.message || 'Failed to join circle' }, { status: res.status });
     }
 
+    console.log(`Success: User ${userId} joined circle ${circleId}`);
     return NextResponse.json({ success: true, circleId });
-  } catch {
-    return NextResponse.json({ error: 'Failed to join circle' }, { status: 500 });
+  } catch (err: any) {
+    console.error('Join circle exception:', err);
+    return NextResponse.json({ error: 'Failed to join circle due to server error' }, { status: 500 });
   }
 }
+
