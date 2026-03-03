@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:appkits.up.railway.app)"
+    ]
+  }
+}

@@ -202,6 +202,21 @@ export async function logout(): Promise<void> {
   });
 }
 /**
+ * Get all circles/worlds the current user belongs to
+ */
+export async function getUserCircles(): Promise<Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }>> {
+  try {
+    await initAppKit();
+    const client = getAppKit();
+    if (!client.isAuthenticated()) return [];
+    return await client.groups.getUserCircles();
+  } catch (err) {
+    console.error('AppKit getUserCircles error:', err);
+    return [];
+  }
+}
+
+/**
  * Update the current user's profile
  */
 export async function updateProfile(data: { name?: string; avatar?: string; attributes?: Record<string, any> }): Promise<boolean> {

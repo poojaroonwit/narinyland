@@ -4,6 +4,7 @@
  */
 
 import { getAccessToken } from '@/lib/auth';
+import { getActiveCircleId } from '@/lib/circle-store';
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
 // This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
@@ -16,6 +17,11 @@ function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function getCircleHeader(): Record<string, string> {
+  const circleId = getActiveCircleId();
+  return circleId ? { 'X-Circle-Id': circleId } : {};
+}
+
 async function fetchAPI<T>(
   path: string,
   options: RequestInit = {}
@@ -25,6 +31,7 @@ async function fetchAPI<T>(
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeaders(),
+      ...getCircleHeader(),
       ...options.headers,
     },
     ...options,
@@ -44,6 +51,7 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
     method: 'POST',
     headers: {
       ...getAuthHeaders(),
+      ...getCircleHeader(),
     },
     body: formData,
   });

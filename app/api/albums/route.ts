@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getConfigId } from '@/lib/get-config-id';
 
 // GET all albums
 export async function GET(request: Request) {
+  const configId = getConfigId(request);
   try {
     const albums = await prisma.album.findMany({
+      where: { configId },
       orderBy: { createdAt: 'desc' }
     });
     return NextResponse.json(albums);
@@ -15,6 +18,7 @@ export async function GET(request: Request) {
 
 // POST create album
 export async function POST(request: Request) {
+  const configId = getConfigId(request);
   try {
     const { name } = await request.json();
     if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -22,7 +26,7 @@ export async function POST(request: Request) {
     const album = await prisma.album.create({
       data: {
         name,
-        configId: 'default' // Using the default app config for this project
+        configId
       }
     });
     

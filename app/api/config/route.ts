@@ -3,16 +3,19 @@ import prisma from '@/lib/prisma';
 import { deleteFile } from '@/lib/s3';
 
 import { redis } from '@/lib/redis';
+import { getConfigId } from '@/lib/get-config-id';
 
 // GET /api/config
-export async function GET() {
+export async function GET(request: Request) {
+  const configId = getConfigId(request);
+  const cacheKey = `app_config:${configId}`;
   try {
     // Check cache
-    const cached = await redis.get('app_config');
+    const cached = await redis.get(cacheKey);
     if (cached) return NextResponse.json(JSON.parse(cached));
 
     let config = await prisma.appConfig.findUnique({
-      where: { id: 'default' },
+      where: { id: configId },
       include: {
         partners: true,
         coupons: { orderBy: { createdAt: 'asc' } },
@@ -22,10 +25,10 @@ export async function GET() {
     });
 
     if (!config) {
-      // Auto-create default config
+      // Auto-create config for this circle/world
       config = await prisma.appConfig.create({
         data: {
-          id: 'default',
+          id: configId,
           partners: {
             create: [
               { partnerId: 'partner1', name: 'Her', avatar: '👩' },
@@ -96,7 +99,7 @@ export async function GET() {
     };
 
     // Cache config for 60s
-    await redis.setex('app_config', 60, JSON.stringify(response));
+    await redis.setex(cacheKey, 60, JSON.stringify(response));
 
     return NextResponse.json(response);
   } catch (error) {
@@ -107,6 +110,8 @@ export async function GET() {
 
 // PUT /api/config
 export async function PUT(request: Request) {
+  const configId = getConfigId(request);
+  const cacheKey = `app_config:${configId}`;
   try {
     const body = await request.json();
     const {
@@ -177,10 +182,10 @@ export async function PUT(request: Request) {
     if (proposalProgress !== undefined) updateData.proposalProgress = proposalProgress;
 
     const config = await prisma.appConfig.upsert({
-      where: { id: 'default' },
+      where: { id: configId },
       update: updateData,
       create: {
-        id: 'default',
+        id: configId,
         ...updateData,
       },
     });
@@ -190,14 +195,14 @@ export async function PUT(request: Request) {
       for (const [partnerId, data] of Object.entries(partners) as [string, any][]) {
         await prisma.partner.upsert({
           where: {
-            configId_partnerId: { configId: 'default', partnerId },
+            configId_partnerId: { configId, partnerId },
           },
           update: { name: data.name, avatar: data.avatar },
           create: {
             partnerId,
             name: data.name,
             avatar: data.avatar,
-            configId: 'default',
+            configId,
           },
         });
       }
@@ -205,7 +210,7 @@ export async function PUT(request: Request) {
 
     // Sync Coupons if provided
     if (body.coupons && Array.isArray(body.coupons)) {
-      const existingCoupons = await prisma.coupon.findMany({ where: { configId: 'default' } });
+      const existingCoupons = await prisma.coupon.findMany({ where: { configId } });
       const incomingIds = new Set(body.coupons.map((c: any) => c.id));
       
       // Delete removed coupons
@@ -244,7 +249,7 @@ export async function PUT(request: Request) {
               points: c.points || 0,
               isRedeemed: c.isRedeemed ?? false,
               redeemedAt: c.isRedeemed ? (c.redeemedAt || new Date()) : null,
-              configId: 'default',
+              configId,
             }
           });
         }
@@ -297,7 +302,7 @@ export async function PUT(request: Request) {
 
     // Sync Timeline if provided
     if (body.timeline && Array.isArray(body.timeline)) {
-      const existingEvents = await prisma.timelineEvent.findMany({ where: { configId: 'default' } });
+      const existingEvents = await prisma.timelineEvent.findMany({ where: { configId } });
       const incomingIds = new Set(body.timeline.map((t: any) => t.id).filter((id: string) => !id.startsWith('temp-')));
       
       // Delete removed events (only those that are in DB)
@@ -337,7 +342,7 @@ export async function PUT(request: Request) {
                mediaType: t.media?.type,
                mediaUrls: t.mediaItems?.map((m: any) => m.url) || [],
                mediaTypes: t.mediaItems?.map((m: any) => m.type) || [],
-               configId: 'default'
+               configId
             }
           });
         }
@@ -345,7 +350,7 @@ export async function PUT(request: Request) {
     }
 
     // Invalidate cache
-    await redis.del('app_config');
+    await redis.del(cacheKey);
 
     return NextResponse.json({ success: true, config });
   } catch (error) {

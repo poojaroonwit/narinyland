@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getConfigId } from '@/lib/get-config-id';
 
 // PUT /api/coupons/[id]/redeem
 export async function PUT(
@@ -20,9 +21,10 @@ export async function PUT(
 
     // Add points to the partner who owns this coupon
     if (coupon.points > 0) {
+      const configId = getConfigId(request);
       await prisma.partner.updateMany({
-        where: { configId: 'default', partnerId: coupon.forPartner },
-        data: { 
+        where: { configId, partnerId: coupon.forPartner },
+        data: {
           points: { increment: coupon.points },
           lifetimePoints: { increment: coupon.points }
         }

@@ -1,21 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { getConfigId } from '@/lib/get-config-id';
 
 // PUT /api/lands/[id]
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const configId = getConfigId(request);
   try {
     const body = await request.json();
     const { name, isActive } = body;
     const { id } = await params;
 
-    // If making this active, deactivate others
+    // If making this active, deactivate others in this circle's config
     if (isActive) {
       await prisma.land.updateMany({
-        where: { configId: 'default' },
+        where: { configId },
         data: { isActive: false }
       });
     }

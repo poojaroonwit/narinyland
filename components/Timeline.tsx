@@ -374,16 +374,19 @@ const Timeline: React.FC<TimelineProps> = ({
     interactions
       .filter(i => !interactionId || i.id === interactionId)
       .forEach(interaction => {
-        if (interaction.media) {
-          // Handle single media or media array
-          const mediaItems = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
-          mediaItems.forEach((media: any) => {
+        const title = (interaction as any).message || interaction.text || 'Untitled';
+        // Prefer mediaItems array (multi-media format) over legacy single media
+        if (interaction.mediaItems && interaction.mediaItems.length > 0) {
+          interaction.mediaItems.forEach((media: any) => {
             if (media.type === 'image') {
-              allImages.push({
-                url: media.url,
-                interactionId: interaction.id,
-                interactionTitle: (interaction as any).message || 'Untitled'
-              });
+              allImages.push({ url: media.url, interactionId: interaction.id, interactionTitle: title });
+            }
+          });
+        } else if (interaction.media) {
+          const items = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
+          items.forEach((media: any) => {
+            if (media.type === 'image') {
+              allImages.push({ url: media.url, interactionId: interaction.id, interactionTitle: title });
             }
           });
         }

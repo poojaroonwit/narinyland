@@ -28,7 +28,7 @@ const INITIAL_TIMELINE: Interaction[] = [];
 const INITIAL_COUPONS: any[] = [];
 
 const Home: React.FC = () => {
-  const { user, logout, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading, circles, activeCircleId, setActiveCircle } = useAuth();
   const [hasAcceptedProposal, setHasAcceptedProposal] = useState(false);
   const [isLetterOpen, setIsLetterOpen] = useState(false); 
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -160,7 +160,9 @@ const Home: React.FC = () => {
            text: t.text,
            type: t.type,
            timestamp: new Date(t.timestamp),
-           location: t.location, // Added location
+           location: t.location,
+           latitude: t.latitude,
+           longitude: t.longitude,
            media: t.media,
            mediaItems: t.mediaItems
         }));
@@ -186,9 +188,11 @@ const Home: React.FC = () => {
           musicPlaylist: serverConfig.musicPlaylist || prev.musicPlaylist,
           proposal: serverConfig.proposal || prev.proposal,
           partners: serverConfig.partners || prev.partners,
-          gallery: memories.length ? memories.map((m: any) => ({ url: m.url, privacy: m.privacy, caption: m.caption })) : prev.gallery,
-          timeline: mappedTimeline, // Always use mappedTimeline from API
+          gallery: memories.length ? memories.map((m: any) => ({ id: m.id, url: m.url, privacy: m.privacy, caption: m.caption, albumId: m.albumId })) : prev.gallery,
+          timeline: mappedTimeline,
           coupons: serverConfig.coupons?.length ? serverConfig.coupons : prev.coupons,
+          albums: serverConfig.albums || prev.albums,
+          lands: serverConfig.lands || prev.lands,
         }));
 
         // Transform Letters
@@ -220,7 +224,8 @@ const Home: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCircleId]);
 
   // ─── Save config to database when setAppConfig is called ────────────
   const handleSetAppConfig: typeof setAppConfig = (updater) => {
@@ -765,6 +770,32 @@ const Home: React.FC = () => {
               </div>
             </button>
 
+            {/* World (Circle) Switcher — shown when user has multiple circles */}
+            {circles.length > 1 && (
+              <div className="bg-white/90 backdrop-blur-md border border-pink-100 shadow-xl rounded-2xl p-3 min-w-[160px]">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Switch World</p>
+                <div className="flex flex-col gap-1">
+                  {circles.map(circle => (
+                    <button
+                      key={circle.id}
+                      onClick={async () => {
+                        if (circle.id === activeCircleId) return;
+                        await setActiveCircle(circle.id);
+                        showToast(`Switched to ${circle.name}! 🌍`);
+                      }}
+                      className={`text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        circle.id === activeCircleId
+                          ? 'bg-pink-500 text-white'
+                          : 'text-gray-600 hover:bg-pink-50'
+                      }`}
+                    >
+                      🌍 {circle.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Land Selector (Only in Tree Mode) */}
             <AnimatePresence>
               {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 1 && (
@@ -779,12 +810,21 @@ const Home: React.FC = () => {
                     {appConfig.lands.map(land => (
                       <button
                         key={land.id}
-                        onClick={() => {
+                        onClick={async () => {
                            setAppConfig(prev => ({
                               ...prev,
                               lands: prev.lands?.map(l => ({ ...l, isActive: l.id === land.id }))
                            }));
                            showToast(`Switched to ${land.name}! ✨`);
+                           try {
+                             await fetch(`/api/lands/${land.id}`, {
+                               method: 'PUT',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ isActive: true })
+                             });
+                           } catch (e) {
+                             console.error('Failed to persist active land:', e);
+                           }
                         }}
                         className={`flex items-center gap-3 p-3 rounded-2xl transition-all ${
                           land.isActive 

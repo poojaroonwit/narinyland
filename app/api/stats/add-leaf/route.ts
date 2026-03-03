@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { getConfigId } from '@/lib/get-config-id';
 
 function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: number; xpForNextLevel: number } {
   const level = Math.min(50, Math.floor(totalXP / 100) + 1);
@@ -9,25 +10,25 @@ function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: num
   return { level, xpInCurrentLevel, xpForNextLevel };
 }
 
-async function getTotalLifetimePoints(): Promise<number> {
+async function getTotalLifetimePoints(configId: string): Promise<number> {
   const partners = await prisma.partner.findMany({
-    where: { configId: 'default' },
+    where: { configId },
     select: { lifetimePoints: true }
   });
   return partners.reduce((sum, p) => sum + (p.lifetimePoints || 0), 0);
 }
 
-async function getTotalSpendablePoints(): Promise<number> {
+async function getTotalSpendablePoints(configId: string): Promise<number> {
   const partners = await prisma.partner.findMany({
-    where: { configId: 'default' },
+    where: { configId },
     select: { points: true }
   });
   return partners.reduce((sum, p) => sum + (p.points || 0), 0);
 }
 
-async function getPartnerPoints(): Promise<{ partner1: number; partner2: number }> {
+async function getPartnerPoints(configId: string): Promise<{ partner1: number; partner2: number }> {
     const partners = await prisma.partner.findMany({
-        where: { configId: 'default' },
+        where: { configId },
         select: { partnerId: true, points: true }
     });
     return {
@@ -37,22 +38,24 @@ async function getPartnerPoints(): Promise<{ partner1: number; partner2: number 
 }
 
 // POST /api/stats/add-leaf
-export async function POST() {
+export async function POST(request: Request) {
+  const configId = getConfigId(request);
+  const cacheKey = `app_stats:${configId}`;
   try {
     const COST_PER_LEAF = 100;
 
-    const stats = await prisma.loveStats.findUnique({ where: { id: 'default' } });
+    const stats = await prisma.loveStats.findUnique({ where: { id: configId } });
     if (!stats) return NextResponse.json({ error: 'Stats not found' }, { status: 404 });
 
     // Check SPENDABLE points for cost
-    const totalSpendablePoints = await getTotalSpendablePoints();
+    const totalSpendablePoints = await getTotalSpendablePoints(configId);
     if (totalSpendablePoints < COST_PER_LEAF) {
       return NextResponse.json({ error: 'Not enough points (combined)' }, { status: 400 });
     }
 
     // Deduct from spendable points only (Richest pays first)
     const partners = await prisma.partner.findMany({
-        where: { configId: 'default' },
+        where: { configId },
         orderBy: { points: 'desc' }
     });
 
@@ -75,13 +78,13 @@ export async function POST() {
     const prevLevel = stats.level;
 
     // Recalculate level (based on LIFETIME points, which haven't changed)
-    const totalLifetimePoints = await getTotalLifetimePoints();
-    const newTotalSpendable = await getTotalSpendablePoints();
-    
+    const totalLifetimePoints = await getTotalLifetimePoints(configId);
+    const newTotalSpendable = await getTotalSpendablePoints(configId);
+
     const { level: currentLevel, xpInCurrentLevel } = calculateLevel(totalLifetimePoints);
 
     const updated = await prisma.loveStats.update({
-      where: { id: 'default' },
+      where: { id: configId },
       data: {
         leaves: { increment: 1 },
         xp: xpInCurrentLevel,
@@ -89,10 +92,10 @@ export async function POST() {
       }
     });
 
-    const partnerPoints = await getPartnerPoints();
+    const partnerPoints = await getPartnerPoints(configId);
 
     // Invalidate stats cache
-    await redis.del('app_stats');
+    await redis.del(cacheKey);
 
     return NextResponse.json({
       success: true,

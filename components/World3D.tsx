@@ -35,7 +35,7 @@ function CameraWatcher({ onZoomIn }: { onZoomIn: () => void }) {
 }
 
 const Globe: React.FC<{ timeline: Interaction[], onFlagClick: (item: Interaction) => void }> = ({ timeline, onFlagClick }) => {
-  const globeRef = useRef<THREE.Mesh>(null);
+  const rotatingGroupRef = useRef<THREE.Group>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
   const R = 5; // Radius of globe
 
@@ -47,13 +47,13 @@ const Globe: React.FC<{ timeline: Interaction[], onFlagClick: (item: Interaction
     'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'
   ]);
 
-  // Auto-rotate globe slightly
-  useFrame((state) => {
-    if (globeRef.current) {
-      globeRef.current.rotation.y += 0.001;
+  // Auto-rotate globe AND markers together so pins stay fixed to surface
+  useFrame(() => {
+    if (rotatingGroupRef.current) {
+      rotatingGroupRef.current.rotation.y += 0.001;
     }
     if (atmosphereRef.current) {
-        atmosphereRef.current.rotation.y += 0.0012;
+      atmosphereRef.current.rotation.y += 0.0012;
     }
   });
 
@@ -61,71 +61,63 @@ const Globe: React.FC<{ timeline: Interaction[], onFlagClick: (item: Interaction
     <group>
       {/* Light for the sun effect */}
       <pointLight position={[10, 10, 10]} intensity={2} color="#fffcf0" />
-      
-      {/* The Earth */}
-      <mesh ref={globeRef} receiveShadow castShadow>
-        <sphereGeometry args={[R, 128, 128]} />
-        <meshStandardMaterial 
-          map={colorMap} 
-          normalMap={bumpMap}
-          roughnessMap={specularMap}
-          roughness={0.8}
-          metalness={0.1}
+
+      {/* Rotating group: globe mesh + markers rotate together */}
+      <group ref={rotatingGroupRef}>
+        {/* The Earth */}
+        <mesh receiveShadow castShadow>
+          <sphereGeometry args={[R, 128, 128]} />
+          <meshStandardMaterial
+            map={colorMap}
+            normalMap={bumpMap}
+            roughnessMap={specularMap}
+            roughness={0.8}
+            metalness={0.1}
+          />
+        </mesh>
+
+        {/* Markers — inside rotating group so they stay locked to the globe surface */}
+        {timeline.filter(t => t.latitude !== undefined && t.longitude !== undefined).map((item) => {
+          const pos = latLngToVector3(item.latitude!, item.longitude!, R);
+          return (
+            <group
+              key={item.id}
+              position={pos}
+              onClick={(e) => { e.stopPropagation(); onFlagClick(item); }}
+              onPointerOver={() => document.body.style.cursor = 'pointer'}
+              onPointerOut={() => document.body.style.cursor = 'auto'}
+            >
+              <mesh>
+                <sphereGeometry args={[0.15, 16, 16]} />
+                <meshStandardMaterial color="#ec4899" emissive="#ec4899" emissiveIntensity={0.5} />
+              </mesh>
+              <Html center distanceFactor={15} position={[0, 0.3, 0]}>
+                <div className="bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full whitespace-nowrap pointer-events-none truncate max-w-[150px] border border-pink-500/30">
+                  {item.location || item.text}
+                </div>
+              </Html>
+            </group>
+          );
+        })}
+      </group>
+
+      {/* Atmosphere / Glow — separate slow rotation */}
+      <mesh ref={atmosphereRef}>
+        <sphereGeometry args={[R * 1.02, 64, 64]} />
+        <meshStandardMaterial
+          color="#4ba3ff"
+          transparent
+          opacity={0.15}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
         />
       </mesh>
-      
-      {/* Atmosphere / Glow */}
-      <mesh ref={atmosphereRef}>
-         <sphereGeometry args={[R * 1.02, 64, 64]} />
-         <meshStandardMaterial 
-            color="#4ba3ff" 
-            transparent 
-            opacity={0.15} 
-            side={THREE.BackSide}
-            blending={THREE.AdditiveBlending}
-         />
-      </mesh>
 
-      {/* CloudsLayer (Subtle) */}
+      {/* Clouds Layer (Subtle) */}
       <mesh rotation={[0, 0, 0.2]}>
-         <sphereGeometry args={[R * 1.01, 64, 64]} />
-         <meshStandardMaterial 
-            color="#ffffff" 
-            transparent 
-            opacity={0.1} 
-            side={THREE.DoubleSide}
-         />
+        <sphereGeometry args={[R * 1.01, 64, 64]} />
+        <meshStandardMaterial color="#ffffff" transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
-
-      {/* Markers */}
-      {timeline.filter(t => t.latitude !== undefined && t.longitude !== undefined).map((item) => {
-        const pos = latLngToVector3(item.latitude!, item.longitude!, R);
-        
-        return (
-          <group 
-            key={item.id} 
-            position={pos} 
-            onClick={(e) => {
-               e.stopPropagation();
-               onFlagClick(item);
-            }}
-            onPointerOver={() => document.body.style.cursor = 'pointer'}
-            onPointerOut={() => document.body.style.cursor = 'auto'}
-          >
-             <mesh position={[0, 0, 0]}>
-                 <sphereGeometry args={[0.15, 16, 16]} />
-                 <meshStandardMaterial color="#ec4899" emissive="#ec4899" emissiveIntensity={0.5} />
-             </mesh>
-             
-             {/* Simple HTML label floating above marker */}
-             <Html center distanceFactor={15} position={[0, 0.3, 0]}>
-                <div className="bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full whitespace-nowrap pointer-events-none truncate max-w-[150px] border border-pink-500/30">
-                   {item.location || item.text}
-                </div>
-             </Html>
-          </group>
-        );
-      })}
     </group>
   );
 };

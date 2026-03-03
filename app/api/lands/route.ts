@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { getConfigId } from '@/lib/get-config-id';
 
 // GET /api/lands
-export async function GET() {
+export async function GET(request: Request) {
+  const configId = getConfigId(request);
   try {
     const lands = await prisma.land.findMany({
-      where: { configId: 'default' },
+      where: { configId },
       orderBy: { createdAt: 'desc' },
       include: { items: true }
     });
@@ -19,10 +21,11 @@ export async function GET() {
 
 // POST /api/lands
 export async function POST(request: Request) {
+  const configId = getConfigId(request);
   try {
     const body = await request.json();
     const { name, isActive } = body;
-    
+
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
     // If making this active, deactivate others
     if (isActive) {
       await prisma.land.updateMany({
-        where: { configId: 'default' },
+        where: { configId },
         data: { isActive: false }
       });
     }
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
       data: {
         name,
         isActive: isActive || false,
-        configId: 'default'
+        configId
       },
       include: { items: true }
     });

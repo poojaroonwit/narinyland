@@ -56,5 +56,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  // Exclude upload routes so large file bodies are not truncated by the middleware layer
+  matcher: '/api/((?!upload|api/upload).*)',
 };

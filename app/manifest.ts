@@ -1,47 +1,50 @@
 import { MetadataRoute } from 'next'
 import prisma from '@/lib/prisma'
 
+// Environment-variable overrides (set in AppKit admin → app settings)
+const ENV_APP_NAME = process.env.PWA_NAME || process.env.NEXT_PUBLIC_APP_NAME || 'Narinyland';
+const ENV_APP_SHORT = process.env.PWA_SHORT_NAME || ENV_APP_NAME;
+const ENV_APP_DESC = process.env.PWA_DESCRIPTION || 'Our Love Story';
+const ENV_THEME_COLOR = process.env.PWA_THEME_COLOR || '#ec4899';
+const ENV_BG_COLOR = process.env.PWA_BG_COLOR || '#ffffff';
+const ENV_ICON_URL = process.env.PWA_ICON_URL || null;
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  // Fetch default config
-  let config;
+  // Fetch active (default) config from DB for customised PWA settings
+  let config: any = null;
   try {
-     config = await prisma.appConfig.findUnique({ where: { id: 'default' } });
+    config = await prisma.appConfig.findUnique({ where: { id: 'default' } });
   } catch (e) {
-     console.error("Manifest DB Error", e);
+    console.error("Manifest DB Error", e);
   }
 
-  const name = (config as any)?.pwaName || 'Narinyland';
-  const shortName = (config as any)?.pwaShortName || 'Narinyland';
-  const description = (config as any)?.pwaDescription || 'Our Love Story';
-  const themeColor = (config as any)?.pwaThemeColor || '#ec4899';
-  const bgColor = (config as any)?.pwaBackgroundColor || '#ffffff';
-  
-  const icons: any[] = [
+  // Priority: DB config → env vars → hardcoded defaults
+  const name = config?.pwaName || ENV_APP_NAME;
+  const shortName = config?.pwaShortName || ENV_APP_SHORT;
+  const description = config?.pwaDescription || ENV_APP_DESC;
+  const themeColor = config?.pwaThemeColor || ENV_THEME_COLOR;
+  const bgColor = config?.pwaBackgroundColor || ENV_BG_COLOR;
+  const iconUrl = config?.pwaIconUrl || ENV_ICON_URL;
+
+  const icons: MetadataRoute.Manifest['icons'] = [
     {
       src: '/favicon.ico',
       sizes: 'any',
       type: 'image/x-icon',
-    }
+    },
   ];
 
-  if ((config as any)?.pwaIconUrl) {
-    icons.push({
-        src: (config as any).pwaIconUrl,
-        sizes: '192x192',
-        type: 'image/png',
-    });
-    icons.push({
-        src: (config as any).pwaIconUrl,
-        sizes: '512x512',
-        type: 'image/png',
-    });
+  if (iconUrl) {
+    icons.push({ src: iconUrl, sizes: '192x192', type: 'image/png' });
+    icons.push({ src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' });
   } else {
-     // Fallback if no icon set
-     icons.push({
-        src: 'https://cdn-icons-png.flaticon.com/512/3209/3209995.png', // Default heart icon
-        sizes: '512x512',
-        type: 'image/png',
-     });
+    // Default Narinyland heart icon as fallback
+    icons.push({
+      src: 'https://cdn-icons-png.flaticon.com/512/3209/3209995.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'maskable',
+    });
   }
 
   return {
@@ -53,6 +56,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     background_color: bgColor,
     theme_color: themeColor,
     icons,
-    orientation: 'portrait'
-  }
+    orientation: 'portrait',
+    categories: ['lifestyle', 'social'],
+    lang: 'en',
+  };
 }

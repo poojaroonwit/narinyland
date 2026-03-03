@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { uploadTimelineMedia, deleteFile } from '@/lib/s3';
+import { getConfigId } from '@/lib/get-config-id';
 
 // GET /api/timeline/[id]
 export async function GET(
@@ -150,7 +151,7 @@ export async function POST(
       // Create the timeline event if it doesn't exist
       const createData = {
         id: String(id),
-        configId: 'default',
+        configId: getConfigId(request),
         ...updateData
       };
       

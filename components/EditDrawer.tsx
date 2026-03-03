@@ -7,6 +7,7 @@ import { uploadAPI } from '../services/api';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { SHOP_ITEMS, ShopItem } from './Shop';
+import { useAuth } from './AuthProvider';
 
 interface EditDrawerProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface EditDrawerProps {
 }
 
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig, onSave }) => {
+  const { circles, activeCircleId, setActiveCircle } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'objects'>('general');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [objectCategoryFilter, setObjectCategoryFilter] = useState<'all' | 'pet' | 'deco' | 'bldg' | 'custom'>('all');
@@ -1729,10 +1731,51 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'world' && (
            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+
+             {/* AppKit Circles / World Selector */}
+             {circles.length > 0 && (
+               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
+                 <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">
+                   <i className="fas fa-globe text-pink-500 mr-2"></i>Your Circles (Worlds)
+                 </h3>
+                 {circles.map(circle => (
+                   <div key={circle.id} className={`flex items-center justify-between p-3 rounded-xl border ${circle.id === activeCircleId ? 'border-pink-300 bg-pink-50' : 'border-gray-100 bg-white'}`}>
+                     <div>
+                       <p className="text-xs font-bold text-gray-700">{circle.name}</p>
+                       <p className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[160px]">{circle.id}</p>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <button
+                         onClick={() => { navigator.clipboard.writeText(circle.id); }}
+                         title="Copy world code"
+                         className="text-gray-300 hover:text-pink-400 transition-colors"
+                       >
+                         <i className="fas fa-copy text-xs"></i>
+                       </button>
+                       {circle.id !== activeCircleId && (
+                         <button
+                           onClick={() => setActiveCircle(circle.id)}
+                           className="text-xs bg-pink-500 text-white px-2 py-1 rounded-lg font-bold hover:bg-pink-600 transition-colors"
+                         >
+                           Switch
+                         </button>
+                       )}
+                       {circle.id === activeCircleId && (
+                         <span className="text-xs bg-pink-100 text-pink-500 px-2 py-1 rounded-lg font-bold">Active</span>
+                       )}
+                     </div>
+                   </div>
+                 ))}
+                 <p className="text-[10px] text-gray-400 mt-1">
+                   Share your World Code with your partner so they can join the same world.
+                 </p>
+               </div>
+             )}
+
              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
                 <div className="flex justify-between items-center px-1 mb-2">
-                   <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest"><i className="fas fa-globe-asia text-emerald-500 mr-2"></i>My Worlds</h3>
-                   <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{localConfig.lands?.length || 0} Worlds</div>
+                   <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest"><i className="fas fa-globe-asia text-emerald-500 mr-2"></i>My Lands</h3>
+                   <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{localConfig.lands?.length || 0} Lands</div>
                 </div>
 
                 <div className="flex gap-2">

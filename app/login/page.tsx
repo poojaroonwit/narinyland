@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { login, isAuthenticated } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import LandingBackground from '@/components/LandingBackground';
+import Logo from '@/components/Logo';
 
 // Translation Dictionary
 const dict = {
@@ -342,21 +343,9 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3"
+          className="flex items-center"
         >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-pink-400 to-rose-500 text-xl shadow-lg shadow-pink-500/30">
-            🌳
-          </div>
-          <span
-            className={`text-2xl font-bold tracking-tight ${lang === 'th' ? 'mt-1' : ''}`}
-            style={{
-              fontFamily: customTitleFont,
-              background: 'linear-gradient(135deg, #be185d, #ec4899)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-          </span>
+          <Logo size={120} title="Narinyland" />
         </motion.div>
 
         {/* Center Desktop Navigation */}

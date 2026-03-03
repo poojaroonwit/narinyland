@@ -1,8 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit } from '@/lib/auth';
+import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit, getUserCircles } from '@/lib/auth';
+import { setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
+
+type Circle = { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string };
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -11,6 +14,9 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<void>;
   loading: boolean;
+  circles: Circle[];
+  activeCircleId: string | null;
+  setActiveCircle: (id: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,18 +26,23 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   refreshUser: async () => {},
   loading: true,
+  circles: [],
+  activeCircleId: null,
+  setActiveCircle: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 // Routes that don't require auth
-const PUBLIC_ROUTES = ['/login', '/auth/callback'];
+const PUBLIC_ROUTES = ['/login', '/auth/callback', '/onboarding'];
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<AuthContextType['user']>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [circles, setCircles] = useState<Circle[]>([]);
+  const [activeCircleId, setActiveCircleIdState] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -41,17 +52,39 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     } catch (err) {
       console.error('Failed to initialize AppKit:', err);
     }
-    
+
     const authenticated = isAuthenticated();
     setIsLoggedIn(authenticated);
-    
+
     if (authenticated) {
       const userInfo = await getUser();
       setUser(userInfo);
+
+      // Fetch circles and determine active circle
+      const userCircles = await getUserCircles();
+      setCircles(userCircles);
+
+      // Use the explicitly stored circle ID (from user attributes or localStorage).
+      // If none is stored, default to null so backend falls back to 'default' config —
+      // preserving existing data for users who haven't set up a circle yet.
+      const savedCircleId = userInfo?.attributes?.circleId as string | undefined;
+      const storedCircleId = typeof window !== 'undefined' ? localStorage.getItem('narinyland_circle_id') : null;
+      const resolvedCircleId = savedCircleId || storedCircleId || null;
+      setActiveCircleIdState(resolvedCircleId);
+      setActiveCircleId(resolvedCircleId);
+
+      // Redirect to onboarding if user has no circles
+      if (userCircles.length === 0 && !pathname.startsWith('/onboarding')) {
+        router.replace('/onboarding');
+        setLoading(false);
+        return;
+      }
     } else {
       setUser(null);
+      setCircles([]);
+      setActiveCircleIdState(null);
     }
-    
+
     setToken(getAccessToken());
     setLoading(false);
 
@@ -59,6 +92,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
     if (!authenticated && !isPublicRoute) {
       router.replace('/login');
+    }
+  };
+
+  const setActiveCircle = async (id: string) => {
+    setActiveCircleIdState(id);
+    setActiveCircleId(id);
+    try {
+      const { getAppKit } = await import('@/lib/auth');
+      await getAppKit().updateAttributes({ circleId: id });
+    } catch (err) {
+      console.error('Failed to persist active circle:', err);
     }
   };
 
@@ -97,7 +141,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, token, logout: handleLogout, refreshUser: checkAuth, loading }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, token, logout: handleLogout, refreshUser: checkAuth, loading, circles, activeCircleId, setActiveCircle }}>
       {children}
     </AuthContext.Provider>
   );

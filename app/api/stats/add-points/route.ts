@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getConfigId } from '@/lib/get-config-id';
 
-async function getTotalSpendablePoints(): Promise<number> {
+async function getTotalSpendablePoints(configId: string): Promise<number> {
   const partners = await prisma.partner.findMany({
-    where: { configId: 'default' },
+    where: { configId },
     select: { points: true }
   });
   return partners.reduce((sum, p) => sum + (p.points || 0), 0);
@@ -13,6 +14,8 @@ import { redis } from '@/lib/redis';
 
 // POST /api/stats/add-points
 export async function POST(request: Request) {
+    const configId = getConfigId(request);
+    const cacheKey = `app_stats:${configId}`;
     try {
         const body = await request.json();
         const { amount } = body;
@@ -20,17 +23,17 @@ export async function POST(request: Request) {
 
         // Add to partner1 by default
         await prisma.partner.updateMany({
-            where: { configId: 'default', partnerId: 'partner1' },
-            data: { 
+            where: { configId, partnerId: 'partner1' },
+            data: {
               points: { increment: amount },
-              lifetimePoints: { increment: amount } // Increment total earned too
+              lifetimePoints: { increment: amount }
             }
         });
 
         // Invalidate stats cache
-        await redis.del('app_stats');
+        await redis.del(cacheKey);
 
-        const total = await getTotalSpendablePoints();
+        const total = await getTotalSpendablePoints(configId);
         return NextResponse.json({ points: total });
     } catch (e) {
         console.error(e);

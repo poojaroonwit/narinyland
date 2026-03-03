@@ -29,7 +29,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, loading }
     };
   }, [dropdownRef]);
 
-  const displayUser = user || { name: 'User', email: 'guest@narinyland.com', picture: '' };
+  const displayUser = user || { name: 'My Account', email: '', picture: '' };
 
   return (
     <div className="relative" ref={dropdownRef}>

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getConfigId } from '@/lib/get-config-id';
 
 // GET /api/coupons
-export async function GET() {
+export async function GET(request: Request) {
+  const configId = getConfigId(request);
   try {
     const coupons = await prisma.coupon.findMany({
-      where: { configId: 'default' },
+      where: { configId },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -30,6 +32,7 @@ export async function GET() {
 
 // POST /api/coupons
 export async function POST(request: Request) {
+  const configId = getConfigId(request);
   try {
     const body = await request.json();
     const { title, emoji, desc, color, forPartner, points } = body;
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
         color,
         points: points || 0,
         forPartner: forPartner || 'partner1',
-        configId: 'default',
+        configId,
       },
     });
 

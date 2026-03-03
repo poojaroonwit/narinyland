@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { uploadLetterMedia } from '@/lib/s3';
 
 import { redis } from '@/lib/redis';
+import { getConfigId } from '@/lib/get-config-id';
 
 // GET /api/letters
 export async function GET() {
@@ -68,8 +69,9 @@ export async function POST(request: Request) {
     }
 
     // Find the partner record
+    const configId = getConfigId(request);
     const partner = await prisma.partner.findFirst({
-      where: { partnerId: fromId, configId: 'default' },
+      where: { partnerId: fromId, configId },
     });
 
     if (!partner) {

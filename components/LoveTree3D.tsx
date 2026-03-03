@@ -478,12 +478,41 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             <Terrain theme={theme} quality={graphicsQuality} />
         </group>
 
-        <group onClick={() => {
-            setShakeTree(true);
-            setTimeout(() => setShakeTree(false), 500);
-         }}>
-             <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
-         </group>
+        {/* Main tree — draggable in edit mode, position stored as main_tree PurchasedItem */}
+        {(() => {
+          const mainTreeItem = purchasedItems?.find(i => i.type === 'main_tree');
+          const treeInitialPos: [number, number, number] = [mainTreeItem?.x ?? 0, 0, mainTreeItem?.z ?? 0];
+          if (isEditMode) {
+            const fakeItem: PurchasedItem = mainTreeItem ?? { id: 'main_tree', type: 'main_tree', x: 0, y: 0, z: 0, rotation: 0, landId: activeLandId ?? '' };
+            return (
+              <DraggableItem
+                item={{ ...fakeItem, x: treeInitialPos[0], y: 0, z: treeInitialPos[2] }}
+                onUpdate={async (id, x, y, z) => {
+                  if (onUpdateItemPosition) onUpdateItemPosition(id, x, y, z);
+                  // If this is the placeholder fake item, create a real DB record first
+                  if (!mainTreeItem && activeLandId) {
+                    try {
+                      await fetch('/api/purchased-items', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'main_tree', landId: activeLandId, x, y: 0, z })
+                      });
+                    } catch (e) { console.error('Failed to create main_tree item', e); }
+                  }
+                }}
+              >
+                <group onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
+                  <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
+                </group>
+              </DraggableItem>
+            );
+          }
+          return (
+            <group position={treeInitialPos} onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
+              <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
+            </group>
+          );
+        })()}
          
           {showExplosion && <LeafExplosion count={graphicsQuality === 'low' ? 15 : 30} color={theme.particle} />}
 
