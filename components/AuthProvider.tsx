@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit, getUserCircles } from '@/lib/auth';
 import { setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
@@ -43,10 +43,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [token, setToken] = useState<string | null>(null);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [activeCircleId, setActiveCircleIdState] = useState<string | null>(null);
+  const checkingRef = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
 
   const checkAuth = async () => {
+    // Prevent concurrent runs (e.g. rapid route changes)
+    if (checkingRef.current) return;
+    checkingRef.current = true;
+
     try {
       await initAppKit();
     } catch (err) {
@@ -55,6 +60,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     const authenticated = isAuthenticated();
     setIsLoggedIn(authenticated);
+
+    // While the callback page is processing the OAuth exchange, skip all
+    // redirect logic — let the callback page finish and navigate.
+    if (pathname.startsWith('/auth/callback')) {
+      setLoading(false);
+      checkingRef.current = false;
+      return;
+    }
 
     if (authenticated) {
       const userInfo = await getUser();
@@ -69,6 +82,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setActiveCircleId(null);
         setToken(null);
         setLoading(false);
+        checkingRef.current = false;
         const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
         if (!isPublicRoute) router.replace('/login');
         return;
@@ -93,6 +107,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (userCircles.length === 0 && !pathname.startsWith('/onboarding')) {
         router.replace('/onboarding');
         setLoading(false);
+        checkingRef.current = false;
         return;
       }
     } else {
@@ -103,6 +118,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     setToken(getAccessToken());
     setLoading(false);
+    checkingRef.current = false;
 
     // Redirect to login if not authenticated and not on a public route
     const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
@@ -122,11 +138,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  // Run once on mount. Route-guard redirects happen inside checkAuth itself.
+  // Re-run auth check when pathname changes (e.g. after callback navigates to /).
+  // This ensures the auth state is always up-to-date on client-side route changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [pathname]);
 
   const handleLogout = () => {
     authLogout();

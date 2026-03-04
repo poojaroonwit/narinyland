@@ -25,7 +25,10 @@ export default function AuthCallbackPage() {
           throw new Error('Missing authorization code or state parameter.');
         }
 
-        await handleCallback(code, state);
+        await handleCallback();
+        // Navigate to home — AuthProvider will re-check auth on the route
+        // change and decide whether to stay on / or redirect to /onboarding
+        // based on the user's circle membership.
         router.replace('/');
       } catch (err: any) {
         console.error('Auth callback error:', err);

@@ -33,14 +33,6 @@ model AppConfig {
   timelineZoomLevel   Int      @default(0)
   timelineThumbnailHeight Int @default(150)
   
-  // PWA Settings
-  pwaName             String   @default("Narinyland")
-  pwaShortName        String   @default("Narinyland")
-  pwaDescription      String   @default("Our Love Story")
-  pwaThemeColor       String   @default("#ec4899") // pink-500
-  pwaBackgroundColor  String   @default("#ffffff")
-  pwaIconUrl          String?
-  
   musicPlaylist   String[] @default(["https://www.youtube.com/watch?v=5qap5aO4i9A"])
   mailFolders     String[] @default(["Inbox", "Archive", "Trash"])
   proposalQuestions String[] @default(["Will you be my Valentine?", "Jaroonwit is so handsome, right?"])

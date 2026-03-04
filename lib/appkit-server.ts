@@ -55,3 +55,81 @@ export function getAppKitDomain() {
 export function getAppKitClientId() {
   return APPKIT_CLIENT_ID;
 }
+
+// ─── Branding (used by PWA manifest) ────────────────────────────────
+
+export interface AppBranding {
+  appName?: string;
+  logoUrl?: string;
+  splash?: {
+    backgroundColor?: string;
+    spinnerColor?: string;
+    spinnerType?: string;
+  };
+  social?: Record<string, string>;
+}
+
+/**
+ * Fetch the branding configuration from AppKit admin API.
+ * Falls back to null when credentials are missing or the call fails.
+ */
+export async function getAppBranding(): Promise<AppBranding | null> {
+  const token = await getServiceToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(
+      `${APPKIT_DOMAIN}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/branding`,
+      { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 300 } }
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as AppBranding;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Circles (server-side management) ───────────────────────────────
+
+/**
+ * Create a circle (world) via the AppKit admin API.
+ */
+export async function createCircleViaServer(name: string, description?: string) {
+  const token = await getServiceToken();
+  if (!token) throw new Error('Missing service token');
+
+  const res = await fetch(
+    `${APPKIT_DOMAIN}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, circleType: 'team', description: description || name }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to create circle: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Add a member to a circle via the AppKit API.
+ */
+export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member') {
+  const token = await getServiceToken();
+  if (!token) throw new Error('Missing service token');
+
+  const res = await fetch(`${APPKIT_DOMAIN}/api/v1/circles/${circleId}/members`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, role }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to add member: ${res.status}`);
+  }
+  return res.json();
+}

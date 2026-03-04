@@ -1,58 +1,58 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
 
-// GET /api/lands
-export async function GET(request: Request) {
-  const configId = getConfigId(request);
+/**
+ * GET /api/lands
+ * List all lands for the active circle (read from X-Circle-Id header).
+ */
+export async function GET(req: NextRequest) {
   try {
+    const circleId = req.headers.get('x-circle-id') || 'default';
+
     const lands = await prisma.land.findMany({
-      where: { configId },
-      orderBy: { createdAt: 'desc' },
-      include: { items: true }
+      where: { configId: circleId },
+      include: { items: true },
+      orderBy: { createdAt: 'asc' },
     });
+
     return NextResponse.json(lands);
-  } catch (error) {
-    console.error('Error fetching lands:', error);
-    return NextResponse.json({ error: 'Failed to fetch lands' }, { status: 500 });
+  } catch (err: any) {
+    console.error('GET /api/lands error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// POST /api/lands
-export async function POST(request: Request) {
-  const configId = getConfigId(request);
+/**
+ * POST /api/lands
+ * Create a new land under the active circle.
+ */
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, isActive } = body;
+    const circleId = req.headers.get('x-circle-id') || 'default';
+    const { name } = await req.json();
 
-    if (!name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    if (!name?.trim()) {
+      return NextResponse.json({ error: 'name is required' }, { status: 400 });
     }
 
-    // If making this active, deactivate others
-    if (isActive) {
-      await prisma.land.updateMany({
-        where: { configId },
-        data: { isActive: false }
-      });
-    }
+    // Ensure the AppConfig exists
+    await prisma.appConfig.upsert({
+      where: { id: circleId },
+      create: { id: circleId },
+      update: {},
+    });
 
     const land = await prisma.land.create({
       data: {
-        name,
-        isActive: isActive || false,
-        configId
+        name: name.trim(),
+        isActive: false,
+        configId: circleId,
       },
-      include: { items: true }
     });
 
-    // Invalidate cache
-    await redis.del('app_config');
-
-    return NextResponse.json(land, { status: 201 });
-  } catch (error) {
-    console.error('Error creating land:', error);
-    return NextResponse.json({ error: 'Failed to create land' }, { status: 500 });
+    return NextResponse.json(land);
+  } catch (err: any) {
+    console.error('POST /api/lands error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

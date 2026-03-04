@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { login, isAuthenticated } from '@/lib/auth';
+import { login } from '@/lib/auth';
+import { useAuth } from '@/components/AuthProvider';
 import { motion } from 'framer-motion';
 import LandingBackground from '@/components/LandingBackground';
 import Logo from '@/components/Logo';
@@ -104,7 +105,7 @@ const dict = {
     f3Title: "时光情书",
     f3Desc: "写信给彼此，并设定未来的解锁日期。一个数字时间胶囊。",
     f4Title: "定制优惠券",
-    f4Desc: "创建和兑换可爱的关系优惠券（比如“免费背部按摩”或“赢家决定晚餐”）。",
+    f4Desc: '创建和兑换可爱的关系优惠券（比如“免费背部按摩”或“赢家决定晚餐”）。',
     f5Title: "虚拟宠物",
     f5Desc: "认识 Nari，你的虚拟宠物，它会对你们的里程碑做出反应，并与你们的树一起成长。",
     f6Title: "隐私与安全",
@@ -281,11 +282,13 @@ type Lang = 'en' | 'th' | 'zh' | 'ja' | 'ko' | 'es' | 'fr';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isLoggedIn, loading: authLoading } = useAuth();
   const [lang, setLang] = useState<Lang>('en');
 
   useEffect(() => {
     // If already authenticated, redirect to home
-    if (isAuthenticated()) {
+    // AuthProvider will then decide: / or /onboarding based on circles
+    if (!authLoading && isLoggedIn) {
       router.replace('/');
     }
 
@@ -300,7 +303,7 @@ export default function LoginPage() {
       else if (lowerLang.startsWith('es')) setLang('es');
       else if (lowerLang.startsWith('fr')) setLang('fr');
     }
-  }, [router]);
+  }, [router, isLoggedIn, authLoading]);
 
   const handleAuth = async (isSignUp = false) => {
     // Currently, login() handles both via the AppKit modal. 

@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
-import prisma from '@/lib/prisma'
+import { getAppBranding } from '@/lib/appkit-server'
 
-// Environment-variable overrides (set in AppKit admin → app settings)
+// Environment-variable fallbacks
 const ENV_APP_NAME = process.env.PWA_NAME || process.env.NEXT_PUBLIC_APP_NAME || 'Narinyland';
 const ENV_APP_SHORT = process.env.PWA_SHORT_NAME || ENV_APP_NAME;
 const ENV_APP_DESC = process.env.PWA_DESCRIPTION || 'Our Love Story';
@@ -10,21 +10,16 @@ const ENV_BG_COLOR = process.env.PWA_BG_COLOR || '#ffffff';
 const ENV_ICON_URL = process.env.PWA_ICON_URL || null;
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  // Fetch active (default) config from DB for customised PWA settings
-  let config: any = null;
-  try {
-    config = await prisma.appConfig.findUnique({ where: { id: 'default' } });
-  } catch (e) {
-    console.error("Manifest DB Error", e);
-  }
+  // Fetch branding from AppKit (cached for 5 min via next.revalidate)
+  const branding = await getAppBranding();
 
-  // Priority: DB config → env vars → hardcoded defaults
-  const name = config?.pwaName || ENV_APP_NAME;
-  const shortName = config?.pwaShortName || ENV_APP_SHORT;
-  const description = config?.pwaDescription || ENV_APP_DESC;
-  const themeColor = config?.pwaThemeColor || ENV_THEME_COLOR;
-  const bgColor = config?.pwaBackgroundColor || ENV_BG_COLOR;
-  const iconUrl = config?.pwaIconUrl || ENV_ICON_URL;
+  // Priority: AppKit branding → env vars → hardcoded defaults
+  const name = branding?.appName || ENV_APP_NAME;
+  const shortName = ENV_APP_SHORT;
+  const description = ENV_APP_DESC;
+  const themeColor = branding?.splash?.spinnerColor || ENV_THEME_COLOR;
+  const bgColor = branding?.splash?.backgroundColor || ENV_BG_COLOR;
+  const iconUrl = branding?.logoUrl || ENV_ICON_URL;
 
   const icons: MetadataRoute.Manifest['icons'] = [
     {

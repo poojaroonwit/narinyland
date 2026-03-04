@@ -1,63 +1,60 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
 
-// PUT /api/lands/[id]
+/**
+ * PUT /api/lands/:id
+ * Update a land (name, isActive).
+ * When setting isActive = true, deactivate all other lands in the same circle.
+ */
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const configId = getConfigId(request);
-  try {
-    const body = await request.json();
-    const { name, isActive } = body;
-    const { id } = await params;
-
-    // If making this active, deactivate others in this circle's config
-    if (isActive) {
-      await prisma.land.updateMany({
-        where: { configId },
-        data: { isActive: false }
-      });
-    }
-
-    const land = await prisma.land.update({
-      where: { id },
-      data: {
-        ...(name && { name }),
-        ...(isActive !== undefined && { isActive }),
-      },
-      include: { items: true }
-    });
-
-    // Invalidate cache
-    await redis.del('app_config');
-
-    return NextResponse.json(land);
-  } catch (error) {
-    console.error('Error updating land:', error);
-    return NextResponse.json({ error: 'Failed to update land' }, { status: 500 });
-  }
-}
-
-// DELETE /api/lands/[id]
-export async function DELETE(
-  request: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    await prisma.land.delete({
+    const { id } = params;
+    const data = await req.json();
+    const circleId = req.headers.get('x-circle-id') || 'default';
+
+    // If activating this land, deactivate all others in the same circle first
+    if (data.isActive === true) {
+      await prisma.land.updateMany({
+        where: { configId: circleId, id: { not: id } },
+        data: { isActive: false },
+      });
+    }
+
+    const updated = await prisma.land.update({
       where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+      },
+      include: { items: true },
     });
 
-    // Invalidate cache
-    await redis.del('app_config');
+    return NextResponse.json(updated);
+  } catch (err: any) {
+    console.error('PUT /api/lands/:id error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/lands/:id
+ * Delete a land and all its purchased items (cascaded by Prisma).
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+
+    await prisma.land.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting land:', error);
-    return NextResponse.json({ error: 'Failed to delete land' }, { status: 500 });
+  } catch (err: any) {
+    console.error('DELETE /api/lands/:id error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

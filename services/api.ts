@@ -272,6 +272,33 @@ export const uploadAPI = {
     fetchAPI<string[]>(`/upload/list?folder=${encodeURIComponent(folder)}`),
 };
 
+// ─── Lands API ───────────────────────────────────────────────────────
+
+export const landsAPI = {
+  list: () => fetchAPI<any[]>('/lands'),
+
+  create: (name: string) =>
+    fetchAPI<any>('/lands', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  update: (id: string, data: { name?: string; isActive?: boolean }) =>
+    fetchAPI<any>(`/lands/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<any>(`/lands/${id}`, { method: 'DELETE' }),
+
+  setActive: (id: string) =>
+    fetchAPI<any>(`/lands/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive: true }),
+    }),
+};
+
 // ─── Health Check ────────────────────────────────────────────────────
 
 export const healthAPI = {
