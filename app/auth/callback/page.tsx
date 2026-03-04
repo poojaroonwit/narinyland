@@ -29,18 +29,14 @@ export default function AuthCallbackPage() {
         await handleCallback();
         console.log('[AuthCallback] Token exchange completed.');
         
-        // Verify that the exchange actually produced valid tokens
-        const { getAppKit } = await import('@/lib/auth');
-        const client = getAppKit();
-        const tokens = client.getTokens();
-        const hasTokens = !!(tokens?.accessToken);
-        console.log('[AuthCallback] Token status:', { 
-          hasAccessToken: hasTokens,
-          tokenLength: tokens?.accessToken?.length || 0,
-        });
+        // Verify that the exchange actually produced a valid session (cookie-based)
+        const { isAuthenticated } = await import('@/lib/auth');
+        const authenticated = isAuthenticated();
+        
+        console.log('[AuthCallback] Session status:', { authenticated });
 
-        if (!hasTokens) {
-          throw new Error('Token exchange completed but no access token was stored. Check APPKIT_CLIENT_SECRET on the server.');
+        if (!authenticated) {
+          throw new Error('Token exchange completed but no session was established. Check server logs.');
         }
 
         // Navigate to home — AuthProvider will re-check auth on the route
