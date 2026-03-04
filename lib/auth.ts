@@ -49,49 +49,7 @@ export async function initAppKit(): Promise<void> {
       domain: domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       scopes: ['openid', 'profile', 'email'],
-      storage: 'localStorage',
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        const urlStr = input.toString();
-        // Proxy token exchange and revocation through our backend APIs
-        if (urlStr.includes('/oauth/token')) {
-          // Parse x-www-form-urlencoded body to json to send to our proxy
-          const rawParams = new URLSearchParams(init?.body as string);
-          const bodyData = Object.fromEntries(rawParams);
-          
-          return globalThis.fetch('/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData),
-          });
-        }
-        
-        if (urlStr.endsWith('/oauth/revoke')) {
-          const rawParams = new URLSearchParams(init?.body as string);
-          const bodyData = Object.fromEntries(rawParams);
-          
-          return globalThis.fetch('/api/auth/revoke', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData),
-          });
-        }
-
-        // Proxy "me" profile request through our backend to gain visibility into 401s
-        if (urlStr.includes('/users/me')) {
-          const headers = (init?.headers as any) || {};
-          const auth = headers['Authorization'] || (typeof headers.get === 'function' ? headers.get('Authorization') : '');
-          
-          return globalThis.fetch('/api/auth/me', {
-            headers: { 
-              'Authorization': auth || '',
-              'Accept': 'application/json'
-            }
-          });
-        }
-        
-        // Let everything else pass through normally
-        return globalThis.fetch(input, init);
-      }
+      storage: 'localStorage'
     });
     
     isInitializing = false;
@@ -118,34 +76,7 @@ export function getAppKit(): AppKit {
       clientId, 
       domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      storage: 'localStorage',
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        const urlStr = input.toString();
-        if (urlStr.includes('/oauth/token')) {
-          const rawParams = new URLSearchParams(init?.body as string);
-          return globalThis.fetch('/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.fromEntries(rawParams)),
-          });
-        }
-        if (urlStr.includes('/oauth/revoke')) {
-          const rawParams = new URLSearchParams(init?.body as string);
-          return globalThis.fetch('/api/auth/revoke', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.fromEntries(rawParams)),
-          });
-        }
-        if (urlStr.includes('/users/me')) {
-          const headers = (init?.headers as any) || {};
-          const auth = headers['Authorization'] || (typeof headers.get === 'function' ? headers.get('Authorization') : '');
-          return globalThis.fetch('/api/auth/me', {
-            headers: { 'Authorization': auth || '', 'Accept': 'application/json' }
-          });
-        }
-        return globalThis.fetch(input, init);
-      }
+      storage: 'localStorage'
     });
   }
   return appKitInstance;
