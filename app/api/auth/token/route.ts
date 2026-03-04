@@ -12,7 +12,7 @@ export async function POST(req: Request) {
        return NextResponse.json({ error: 'forbidden', error_description: 'CSRF validation failed' }, { status: 403 });
     }
 
-    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    let domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     if (domain.endsWith('/')) domain = domain.slice(0, -1);
     const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
 

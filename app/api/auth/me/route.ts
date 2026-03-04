@@ -9,7 +9,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
-    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    let domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     if (domain.endsWith('/')) domain = domain.slice(0, -1);
     
     // Helper to call AppKit /users/me
