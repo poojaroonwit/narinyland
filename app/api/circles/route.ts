@@ -5,12 +5,18 @@ import { createCircleViaServer } from '@/lib/appkit-server';
 
 export async function GET(req: NextRequest) {
   try {
-    const { token, error, status } = await getAuthSession(req);
+    let { token, error, status } = await getAuthSession(req);
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     const circleId = req.headers.get('x-circle-id');
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+
+    // Helper to check if token is valid (this GET route primarily uses Prisma, 
+    // but we can use the token to verify the user exists if needed, 
+    // or just let Prisma handle the data since the session is valid).
+    // Actually, for consistency, let's just use the token we have.
 
     // If a specific circle is requested, return its config
     if (circleId) {
