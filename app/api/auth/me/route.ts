@@ -1,48 +1,78 @@
 import { NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-server';
+import redis from '@/lib/redis';
+
+function extractSub(token: string): string | null {
+  try {
+    const padded = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   try {
-    let { token, error, status } = await getAuthSession(req);
-    
+    const { token, error, status } = await getAuthSession(req);
+
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
-    let domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
-    if (domain.endsWith('/')) domain = domain.slice(0, -1);
-    
-    // Helper to call AppKit /users/me
-    const fetchMe = (t: string) => fetch(`${domain}/api/v1/users/me`, {
-      headers: { 'Authorization': `Bearer ${t}`, 'Accept': 'application/json' },
+    const sub = extractSub(token);
+
+    // --- REDIS CACHE: serve user info without calling AppKit ---
+    if (sub) {
+      const cached = await redis.get(`user_session:${sub}`);
+      if (cached) {
+        return NextResponse.json(JSON.parse(cached));
+      }
+    }
+
+    // Cache miss — call AppKit (happens on first request after Redis TTL expires)
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim().replace(/\/$/, '');
+    const response = await fetch(`${domain}/api/v1/users/me`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
     });
 
-    let response = await fetchMe(token);
+    if (response.ok) {
+      const userInfo = await response.json();
+      // Re-populate cache for next requests
+      if (sub) {
+        await redis.setex(`user_session:${sub}`, 3600, JSON.stringify(userInfo)).catch(() => {});
+      }
+      return NextResponse.json(userInfo);
+    }
 
-    // --- PROACTIVE SELF-HEALING: RETRY ON 401 ---
+    // AppKit rejected the token — try a refresh then re-cache
     if (response.status === 401) {
-      console.log('BFF /me: Access token rejected by AppKit (401). Attempting proactive refresh...');
+      console.log('BFF /me: Cache miss and AppKit returned 401, attempting refresh...');
       const { refreshSession } = await import('@/lib/auth-server');
       const refreshed = await refreshSession();
-      
       if (refreshed) {
         const { cookies } = await import('next/headers');
-        token = (await cookies()).get('appkit_access_token')?.value || '';
-        if (token) {
-          console.log('BFF /me: Refresh succeeded, retrying original request...');
-          response = await fetchMe(token);
+        const newToken = (await cookies()).get('appkit_access_token')?.value;
+        if (newToken) {
+          const retryRes = await fetch(`${domain}/api/v1/users/me`, {
+            headers: { 'Authorization': `Bearer ${newToken}`, 'Accept': 'application/json' },
+          });
+          if (retryRes.ok) {
+            const userInfo = await retryRes.json();
+            const newSub = extractSub(newToken) || sub;
+            if (newSub) {
+              await redis.setex(`user_session:${newSub}`, 3600, JSON.stringify(userInfo)).catch(() => {});
+            }
+            return NextResponse.json(userInfo);
+          }
         }
       }
     }
 
-    const data = await response.json();
+    const errData = await response.json().catch(() => ({}));
+    console.error('BFF /me: AppKit rejected the session token:', { status: response.status, errData });
+    return NextResponse.json(errData, { status: response.status });
 
-    if (!response.ok) {
-      console.error('BFF /me: AppKit rejected the session token:', { status: response.status, data });
-      return NextResponse.json(data, { status: response.status });
-    }
-
-    return NextResponse.json(data);
   } catch (error) {
     console.error('BFF /me: Unexpected proxy failure:', error);
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
