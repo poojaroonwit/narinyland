@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     }
 
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    if (domain.endsWith('/')) domain = domain.slice(0, -1);
     
     // Helper to call AppKit /users/me
     const fetchMe = (t: string) => fetch(`${domain}/api/v1/users/me`, {

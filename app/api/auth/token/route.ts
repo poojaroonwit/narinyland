@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     }
 
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    if (domain.endsWith('/')) domain = domain.slice(0, -1);
     const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
 
     if (!clientSecret) {
