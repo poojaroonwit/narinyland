@@ -3,22 +3,36 @@ import { getAuthSession } from '@/lib/auth-server';
 
 export async function GET(req: Request) {
   try {
-    const { token, error, status } = await getAuthSession(req);
+    let { token, error, status } = await getAuthSession(req);
     
     if (error || !token) {
-      console.warn('BFF /me: No session found:', { error, status });
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     
-    console.log('BFF /me: Fetching user info from AppKit...');
-    const response = await fetch(`${domain}/api/v1/users/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+    // Helper to call AppKit /users/me
+    const fetchMe = (t: string) => fetch(`${domain}/api/v1/users/me`, {
+      headers: { 'Authorization': `Bearer ${t}`, 'Accept': 'application/json' },
     });
+
+    let response = await fetchMe(token);
+
+    // --- PROACTIVE SELF-HEALING: RETRY ON 401 ---
+    if (response.status === 401) {
+      console.log('BFF /me: Access token rejected by AppKit (401). Attempting proactive refresh...');
+      const { refreshSession } = await import('@/lib/auth-server');
+      const refreshed = await refreshSession();
+      
+      if (refreshed) {
+        const { cookies } = await import('next/headers');
+        token = (await cookies()).get('appkit_access_token')?.value || '';
+        if (token) {
+          console.log('BFF /me: Refresh succeeded, retrying original request...');
+          response = await fetchMe(token);
+        }
+      }
+    }
 
     const data = await response.json();
 
@@ -30,9 +44,6 @@ export async function GET(req: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('BFF /me: Unexpected proxy failure:', error);
-    return NextResponse.json(
-      { error: 'server_error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

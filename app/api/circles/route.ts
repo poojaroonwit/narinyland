@@ -47,14 +47,28 @@ export async function POST(req: NextRequest) {
 
     // 1. Create circle in AppKit
     let circleId: string;
-    const { token, error, status } = await getAuthSession(req);
+    let { token, error, status } = await getAuthSession(req);
 
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     try {
-      const circle = await createCircleViaServer(name, description, token);
+      let circle = await createCircleViaServer(name, description, token);
+      
+      // Proactive retry on 401 for creation too
+      if (!circle.id && !circle._id) {
+         console.log('BFF Circles: Creation might have failed due to token issues. Attempting refresh...');
+         const { refreshSession } = await import('@/lib/auth-server');
+         if (await refreshSession()) {
+           const { cookies } = await import('next/headers');
+           token = (await cookies()).get('appkit_access_token')?.value || '';
+           if (token) {
+              circle = await createCircleViaServer(name, description, token);
+           }
+         }
+      }
+
       circleId = circle.id || circle._id;
     } catch (appkitErr: any) {
       console.warn('AppKit circle creation failed, generating local ID:', appkitErr.message);
