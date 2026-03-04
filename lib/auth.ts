@@ -48,7 +48,7 @@ export async function initAppKit(): Promise<void> {
       clientId: clientId || '',
       domain: domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      scopes: ['openid', 'profile', 'email'],
+      scopes: ['openid', 'profile', 'email', 'offline_access'],
       storage: 'sessionStorage',
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         const urlStr = input.toString();
@@ -111,7 +111,26 @@ export function getAppKit(): AppKit {
       clientId, 
       domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      storage: 'sessionStorage'
+      scopes: ['openid', 'profile', 'email', 'offline_access'],
+      storage: 'sessionStorage',
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const urlStr = input.toString();
+        // Ensure even the fallback uses our BFF proxies
+        if (urlStr.includes('/oauth/token')) {
+          const rawParams = new URLSearchParams(init?.body as string);
+          const bodyData = Object.fromEntries(rawParams);
+          return globalThis.fetch('/api/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData),
+            credentials: 'include'
+          });
+        }
+        if (urlStr.includes('/users/me')) {
+          return globalThis.fetch('/api/auth/me', { credentials: 'include' });
+        }
+        return globalThis.fetch(input, init);
+      }
     });
   }
   return appKitInstance;

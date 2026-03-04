@@ -96,8 +96,18 @@ export async function POST(req: Request) {
     console.log('BFF: Cookies successfully set for session:', {
       hasAccess: !!data.access_token,
       hasRefresh: !!data.refresh_token,
-      expiresIn: data.expires_in
+      expiresIn: data.expires_in,
+      scopes: data.scope || 'none'
     });
+
+    if (data.access_token && data.access_token.includes('.')) {
+       try {
+         const payload = JSON.parse(Buffer.from(data.access_token.split('.')[1], 'base64').toString());
+         console.log('BFF: Access Token Payload:', { sub: payload.sub, aud: payload.aud, exp: payload.exp });
+       } catch (e) {
+         console.warn('BFF: Could not decode token payload as JWT');
+       }
+    }
 
     // --- BEST PRACTICE: TOKEN STRIPPING ---
     // Never return the raw tokens in the JSON body. 
