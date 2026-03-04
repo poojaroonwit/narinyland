@@ -73,8 +73,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const userInfo = await getUser();
 
       // Token expired/invalid — getUser() returns null even though isAuthenticated() = true.
-      // Treat as logged out to prevent an infinite redirect loop to /onboarding or /.
+      // Treat as logged out to prevent an infinite redirect loop.
       if (!userInfo) {
+        console.warn('AuthProvider: getUser() returned null despite isAuthenticated()=true. Clearing stale tokens.');
         setIsLoggedIn(false);
         setUser(null);
         setCircles([]);
@@ -83,14 +84,22 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setToken(null);
         
         // --- CRITICAL FIX ---
-        // Force fully log out of AppKit.
-        // A 401 here often means the local token is stale OR the AppKit backend session
-        // is corrupted (e.g. database reset). Calling authLogout clears the token locally
-        // AND clears the cookie on the AppKit server, breaking the infinite redirect loop.
-        try {
-          authLogout();
-        } catch (e) {
-          console.error("Failed to automatically logout:", e);
+        // Clear tokens directly from localStorage instead of calling authLogout().
+        // authLogout() triggers a full OAuth logout redirect to the AppKit server,
+        // which then redirects the browser back to /login via post_logout_redirect_uri.
+        // This causes the user to see "redirect back to /login after signin".
+        // By only clearing the local state, we avoid the redirect chain.
+        if (typeof window !== 'undefined') {
+          try {
+            // Clear all AppKit-related tokens from localStorage
+            const keysToRemove = Object.keys(localStorage).filter(k => 
+              k.startsWith('appkit') || k.includes('appkit') || k.includes('token')
+            );
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            console.warn('AuthProvider: Cleared stale tokens from localStorage:', keysToRemove);
+          } catch (e) {
+            console.error('Failed to clear localStorage tokens:', e);
+          }
         }
         
         setLoading(false);

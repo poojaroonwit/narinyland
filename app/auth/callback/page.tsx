@@ -25,7 +25,24 @@ export default function AuthCallbackPage() {
           throw new Error('Missing authorization code or state parameter.');
         }
 
+        console.log('[AuthCallback] Starting token exchange...');
         await handleCallback();
+        console.log('[AuthCallback] Token exchange completed.');
+        
+        // Verify that the exchange actually produced valid tokens
+        const { getAppKit } = await import('@/lib/auth');
+        const client = getAppKit();
+        const tokens = client.getTokens();
+        const hasTokens = !!(tokens?.accessToken);
+        console.log('[AuthCallback] Token status:', { 
+          hasAccessToken: hasTokens,
+          tokenLength: tokens?.accessToken?.length || 0,
+        });
+
+        if (!hasTokens) {
+          throw new Error('Token exchange completed but no access token was stored. Check APPKIT_CLIENT_SECRET on the server.');
+        }
+
         // Navigate to home — AuthProvider will re-check auth on the route
         // change and decide whether to stay on / or redirect to /onboarding
         // based on the user's circle membership.
