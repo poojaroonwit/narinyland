@@ -53,7 +53,7 @@ export async function initAppKit(): Promise<void> {
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         const urlStr = input.toString();
         // Proxy token exchange and revocation through our backend APIs
-        if (urlStr.endsWith('/oauth/token')) {
+        if (urlStr.includes('/oauth/token')) {
           // Parse x-www-form-urlencoded body to json to send to our proxy
           const rawParams = new URLSearchParams(init?.body as string);
           const bodyData = Object.fromEntries(rawParams);
@@ -77,7 +77,7 @@ export async function initAppKit(): Promise<void> {
         }
 
         // Proxy "me" profile request through our backend to gain visibility into 401s
-        if (urlStr.endsWith('/users/me')) {
+        if (urlStr.includes('/users/me')) {
           const headers = (init?.headers as any) || {};
           const auth = headers['Authorization'] || (typeof headers.get === 'function' ? headers.get('Authorization') : '');
           
@@ -121,7 +121,7 @@ export function getAppKit(): AppKit {
       storage: 'localStorage',
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         const urlStr = input.toString();
-        if (urlStr.endsWith('/oauth/token')) {
+        if (urlStr.includes('/oauth/token')) {
           const rawParams = new URLSearchParams(init?.body as string);
           return globalThis.fetch('/api/auth/token', {
             method: 'POST',
@@ -129,7 +129,7 @@ export function getAppKit(): AppKit {
             body: JSON.stringify(Object.fromEntries(rawParams)),
           });
         }
-        if (urlStr.endsWith('/oauth/revoke')) {
+        if (urlStr.includes('/oauth/revoke')) {
           const rawParams = new URLSearchParams(init?.body as string);
           return globalThis.fetch('/api/auth/revoke', {
             method: 'POST',
@@ -137,7 +137,7 @@ export function getAppKit(): AppKit {
             body: JSON.stringify(Object.fromEntries(rawParams)),
           });
         }
-        if (urlStr.endsWith('/users/me')) {
+        if (urlStr.includes('/users/me')) {
           const headers = (init?.headers as any) || {};
           const auth = headers['Authorization'] || (typeof headers.get === 'function' ? headers.get('Authorization') : '');
           return globalThis.fetch('/api/auth/me', {
