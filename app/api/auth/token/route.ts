@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
@@ -51,6 +52,41 @@ export async function POST(req: Request) {
         return NextResponse.json(data, { status: response.status });
     }
 
+    // --- BFF IMPLEMENTATION ---
+    // Set the access token as an HttpOnly, Secure, SameSite cookie
+    const cookieStore = await cookies();
+    
+    if (data.access_token) {
+      cookieStore.set('appkit_access_token', data.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: data.expires_in || 3600, // Default to 1 hour
+        path: '/',
+      });
+    }
+
+    if (data.refresh_token) {
+      cookieStore.set('appkit_refresh_token', data.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 3600, // 30 days
+        path: '/',
+      });
+    }
+
+    // Set a non-HttpOnly metadata cookie for frontend UI logic
+    cookieStore.set('narinyland_is_auth', 'true', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: data.expires_in || 3600,
+      path: '/',
+    });
+
+    // We still return data to the frontend so the SDK can complete its internal flow,
+    // but the sensitive parts are now also securely in cookies.
     return NextResponse.json(data);
 
   } catch (error) {

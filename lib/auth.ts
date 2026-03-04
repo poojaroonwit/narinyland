@@ -49,7 +49,40 @@ export async function initAppKit(): Promise<void> {
       domain: domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       scopes: ['openid', 'profile', 'email'],
-      storage: 'localStorage'
+      storage: 'localStorage',
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const urlStr = input.toString();
+        // Proxy token exchange and revocation through our backend as usual, 
+        // but now our backend will also set the HttpOnly cookies.
+        if (urlStr.includes('/oauth/token')) {
+          const rawParams = new URLSearchParams(init?.body as string);
+          const bodyData = Object.fromEntries(rawParams);
+          
+          return globalThis.fetch('/api/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData),
+          });
+        }
+        
+        if (urlStr.includes('/oauth/revoke')) {
+          const rawParams = new URLSearchParams(init?.body as string);
+          const bodyData = Object.fromEntries(rawParams);
+          
+          return globalThis.fetch('/api/auth/revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData),
+          });
+        }
+
+        // Proxy "me" profile request
+        if (urlStr.includes('/users/me')) {
+          return globalThis.fetch('/api/auth/me');
+        }
+        
+        return globalThis.fetch(input, init);
+      }
     });
     
     isInitializing = false;
@@ -111,10 +144,9 @@ export async function handleCallback(): Promise<boolean> {
  * Get the stored access token
  */
 export function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const client = getAppKit();
-  const tokens = client.getTokens();
-  return tokens?.accessToken || null;
+  // In BFF mode, we don't return the raw access token to the frontend.
+  // This helps enforce that all API calls must go through our backend.
+  return null;
 }
 
 /**
@@ -122,7 +154,8 @@ export function getAccessToken(): string | null {
  */
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
-  return getAppKit().isAuthenticated();
+  // In BFF mode, we check for our non-HttpOnly metadata cookie
+  return document.cookie.includes('narinyland_is_auth=true');
 }
 
 /**
@@ -132,15 +165,18 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
   if (typeof window === 'undefined') return null;
   
   try {
-    await initAppKit();
-    const client = getAppKit();
-    if (!client.isAuthenticated()) return null;
-    const user = await client.getUser();
+    if (!isAuthenticated()) return null;
+    
+    // Call our proxied "me" endpoint which uses the HttpOnly cookie
+    const res = await fetch('/api/auth/me');
+    if (!res.ok) return null;
+    
+    const user = await res.json();
     return {
-      sub: user.id,
+      sub: user.id || user.sub,
       name: user.name || '',
       email: user.email || '',
-      picture: user.avatar || '',
+      picture: user.avatar || user.picture || '',
       attributes: user.attributes || {}
     };
   } catch (err) {
@@ -153,11 +189,22 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
  * Logout
  */
 export async function logout(): Promise<void> {
-  await initAppKit();
-  const client = getAppKit();
-  await client.logout({
-    post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
-  });
+  try {
+    // Clear cookies on the server
+    await fetch('/api/auth/logout', { method: 'POST' });
+    
+    // Also clear AppKit local storage state just in case
+    await initAppKit();
+    const client = getAppKit();
+    await client.logout({
+      post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
+    });
+  } catch (err) {
+    console.error('Logout error:', err);
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
 }
 /**
  * Get all circles/worlds the current user belongs to.
@@ -171,13 +218,8 @@ export async function getUserCircles(): Promise<Array<{ id: string; name: string
     const client = getAppKit();
     if (!client.isAuthenticated()) return [];
 
-    const tokens = client.getTokens();
-    if (!tokens?.accessToken) return [];
-
-    // Use our server-side proxy to avoid CORS (AppKit may not whitelist the app's origin)
-    const res = await fetch('/api/circles', {
-      headers: { Authorization: `Bearer ${tokens.accessToken}` }
-    });
+    // Use our server-side proxy. The cookie will be attached automatically by the browser.
+    const res = await fetch('/api/circles');
     if (!res.ok) return [];
     const data = await res.json();
     // API may return array directly or wrapped in { circles: [] }

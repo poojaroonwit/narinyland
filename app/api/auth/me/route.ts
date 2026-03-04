@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function GET(req: Request) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'unauthorized', error_description: 'Missing Authorization header' }, { status: 401 });
+    const cookieStore = await cookies();
+    const token = cookieStore.get('appkit_access_token')?.value;
+    
+    if (!token) {
+      return NextResponse.json({ error: 'unauthorized', error_description: 'No session cookie found' }, { status: 401 });
     }
 
-    const domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     
     // Call the AppKit server-side to get user info.
-    // This bypasses any client-side CORS or preflight issues and allows us to log errors.
     const response = await fetch(`${domain}/api/v1/users/me`, {
       headers: {
-        'Authorization': authHeader,
+        'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
       },
     });
@@ -24,7 +26,6 @@ export async function GET(req: Request) {
       console.error('AppKit /users/me proxy error:', {
         status: response.status,
         data,
-        authHeader: authHeader.substring(0, 20) + '...',
       });
       return NextResponse.json(data, { status: response.status });
     }

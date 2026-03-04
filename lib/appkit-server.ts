@@ -92,14 +92,15 @@ export async function getAppBranding(): Promise<AppBranding | null> {
 // ─── Circles (server-side management) ───────────────────────────────
 
 /**
- * Create a circle (world) via the AppKit admin API.
+ * Create a circle (world) via the AppKit API.
+ * If userToken is provided, it uses the user's context. Otherwise uses service-level admin token.
  */
-export async function createCircleViaServer(name: string, description?: string) {
-  const token = await getServiceToken();
-  if (!token) throw new Error('Missing service token');
+export async function createCircleViaServer(name: string, description?: string, userToken?: string) {
+  const token = userToken || await getServiceToken();
+  if (!token) throw new Error('Missing authentication token');
 
   const res = await fetch(
-    `${APPKIT_DOMAIN}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles`,
+    `${APPKIT_DOMAIN}/api/v1/${userToken ? '' : 'admin/applications/' + APPKIT_CLIENT_ID + '/'}circles`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -117,9 +118,9 @@ export async function createCircleViaServer(name: string, description?: string) 
 /**
  * Add a member to a circle via the AppKit API.
  */
-export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member') {
-  const token = await getServiceToken();
-  if (!token) throw new Error('Missing service token');
+export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member', userToken?: string) {
+  const token = userToken || await getServiceToken();
+  if (!token) throw new Error('Missing authentication token');
 
   const res = await fetch(`${APPKIT_DOMAIN}/api/v1/circles/${circleId}/members`, {
     method: 'POST',

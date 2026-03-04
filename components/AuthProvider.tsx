@@ -139,7 +139,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setActiveCircleIdState(null);
     }
 
-    setToken(getAccessToken());
+    setToken(null);
     setLoading(false);
     checkingRef.current = false;
 

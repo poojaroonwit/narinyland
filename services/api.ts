@@ -3,7 +3,6 @@
  * Connects the frontend to the Express + Prisma backend
  */
 
-import { getAccessToken } from '@/lib/auth';
 import { getActiveCircleId } from '@/lib/circle-store';
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
@@ -11,11 +10,6 @@ import { getActiveCircleId } from '@/lib/circle-store';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // ─── Helper ──────────────────────────────────────────────────────────
-
-function getAuthHeaders(): Record<string, string> {
-  const token = getAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function getCircleHeader(): Record<string, string> {
   const circleId = getActiveCircleId();
@@ -30,7 +24,6 @@ async function fetchAPI<T>(
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
       ...getCircleHeader(),
       ...options.headers,
     },
@@ -50,7 +43,6 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      ...getAuthHeaders(),
       ...getCircleHeader(),
     },
     body: formData,

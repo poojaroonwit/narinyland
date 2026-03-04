@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { createCircleViaServer } from '@/lib/appkit-server';
 
-/**
- * GET /api/circles
- * Returns circles the authenticated user belongs to.
- * The actual circle list comes from AppKit SDK on the client side
- * (via getUserCircles()). This endpoint returns the local AppConfig
- * rows that match the user's circles, enriching them with local settings.
- */
 export async function GET(req: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('appkit_access_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+
     const circleId = req.headers.get('x-circle-id');
 
     // If a specific circle is requested, return its config
@@ -48,8 +49,15 @@ export async function POST(req: NextRequest) {
 
     // 1. Create circle in AppKit
     let circleId: string;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('appkit_access_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+
     try {
-      const circle = await createCircleViaServer(name, description);
+      const circle = await createCircleViaServer(name, description, token);
       circleId = circle.id || circle._id;
     } catch (appkitErr: any) {
       console.warn('AppKit circle creation failed, generating local ID:', appkitErr.message);
