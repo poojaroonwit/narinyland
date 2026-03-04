@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { handleCallback } from '@/lib/auth';
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -28,11 +29,11 @@ export default function AuthCallbackPage() {
         console.log('[AuthCallback] Starting token exchange...');
         await handleCallback();
         console.log('[AuthCallback] Token exchange completed.');
-        
+
         // Verify that the exchange actually produced a valid session (cookie-based)
         const { isAuthenticated } = await import('@/lib/auth');
         const authenticated = isAuthenticated();
-        
+
         console.log('[AuthCallback] Session status:', { authenticated });
 
         if (!authenticated) {
@@ -45,12 +46,22 @@ export default function AuthCallbackPage() {
         router.replace('/');
       } catch (err: any) {
         console.error('Auth callback error:', err);
-        setError(err.message || 'Authentication failed. Please try again.');
+        const message: string = err?.message || 'Authentication failed. Please try again.';
+        // Auto-retry once for transient server errors
+        if (message.includes('temporarily unavailable') && !retrying) {
+          setRetrying(true);
+          setTimeout(() => router.replace('/login'), 3000);
+          setError('Authentication server is starting up, redirecting you back to login…');
+          setProcessing(false);
+          return;
+        }
+        setError(message);
         setProcessing(false);
       }
     };
 
     processCallback();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router]);
 
   return (

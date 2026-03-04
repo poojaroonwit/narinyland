@@ -157,13 +157,18 @@ export async function handleCallback(): Promise<boolean> {
     const client = getAppKit();
     await client.handleCallback();
     return true;
-  } catch (err) {
+  } catch (err: any) {
     // If handleCallback fails because of stripped tokens, check our metadata cookie
     if (isAuthenticated()) {
       console.log('AppKit SDK reported callback error (likely due to stripped tokens), but session cookie is present. Considering success.');
       return true;
     }
     console.error('AppKit handleCallback error:', err);
+    // Surface transient server errors with a clear, retryable message
+    const msg: string = err?.message || String(err);
+    if (msg.includes('503') || msg.includes('502') || msg.includes('504')) {
+      throw new Error('Authentication server is temporarily unavailable. Please try again in a moment.');
+    }
     throw err;
   }
 }

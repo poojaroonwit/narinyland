@@ -36,10 +36,9 @@ export async function getAuthSession(req?: Request) {
   }
 
   if (!token) {
-    if (cookieStore.has('narinyland_is_auth')) {
-      console.warn('BFF: Session found but invalid/expired. Clearing metadata cookie to break loop.');
-      cookieStore.delete('narinyland_is_auth');
-    }
+    // Do NOT clear narinyland_is_auth here.
+    // /api/auth/me owns that cookie and handles the soft-session fallback independently.
+    // Other routes simply return 401 when the access token is absent.
     return { error: 'unauthorized', status: 401 };
   }
 

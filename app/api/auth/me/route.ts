@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthSession } from '@/lib/auth-server';
+import { cookies } from 'next/headers';
 import redis from '@/lib/redis';
 
 function extractSub(token: string): string | null {
@@ -14,67 +14,48 @@ function extractSub(token: string): string | null {
 
 export async function GET(req: Request) {
   try {
-    const { token, error, status } = await getAuthSession(req);
-
-    if (error || !token) {
-      return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
+    // CSRF check
+    const origin = req.headers.get('origin');
+    const host = req.headers.get('host');
+    if (origin && !origin.includes(host || '')) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
-    const sub = extractSub(token);
+    const cookieStore = await cookies();
 
-    // --- REDIS CACHE: serve user info without calling AppKit ---
-    if (sub) {
-      const cached = await redis.get(`user_session:${sub}`);
+    // --- FAST PATH: access token present (within first hour of login) ---
+    const accessToken = cookieStore.get('appkit_access_token')?.value;
+    if (accessToken) {
+      const sub = extractSub(accessToken);
+      if (sub) {
+        const cached = await redis.get(`user_session:${sub}`);
+        if (cached) {
+          return NextResponse.json(JSON.parse(cached));
+        }
+      }
+      // Cache miss with valid token — shouldn't happen after our token route caches at login,
+      // but handle it gracefully by falling through to the soft-session path.
+    }
+
+    // --- SOFT SESSION PATH: access token expired but sub cookie + Redis still valid ---
+    // This keeps the user "logged in" for up to 7 days without a refresh token.
+    const storedSub = cookieStore.get('narinyland_sub')?.value;
+    if (storedSub) {
+      const cached = await redis.get(`user_session:${storedSub}`);
       if (cached) {
+        // Slide the Redis TTL so active users don't get logged out mid-use
+        await redis.expire(`user_session:${storedSub}`, 7 * 24 * 3600).catch(() => {});
         return NextResponse.json(JSON.parse(cached));
       }
     }
 
-    // Cache miss — call AppKit (happens on first request after Redis TTL expires)
-    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim().replace(/\/$/, '');
-    const response = await fetch(`${domain}/api/v1/users/me`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-    });
-
-    if (response.ok) {
-      const userInfo = await response.json();
-      // Re-populate cache for next requests
-      if (sub) {
-        await redis.setex(`user_session:${sub}`, 3600, JSON.stringify(userInfo)).catch(() => {});
-      }
-      return NextResponse.json(userInfo);
-    }
-
-    // AppKit rejected the token — try a refresh then re-cache
-    if (response.status === 401) {
-      console.log('BFF /me: Cache miss and AppKit returned 401, attempting refresh...');
-      const { refreshSession } = await import('@/lib/auth-server');
-      const refreshed = await refreshSession();
-      if (refreshed) {
-        const { cookies } = await import('next/headers');
-        const newToken = (await cookies()).get('appkit_access_token')?.value;
-        if (newToken) {
-          const retryRes = await fetch(`${domain}/api/v1/users/me`, {
-            headers: { 'Authorization': `Bearer ${newToken}`, 'Accept': 'application/json' },
-          });
-          if (retryRes.ok) {
-            const userInfo = await retryRes.json();
-            const newSub = extractSub(newToken) || sub;
-            if (newSub) {
-              await redis.setex(`user_session:${newSub}`, 3600, JSON.stringify(userInfo)).catch(() => {});
-            }
-            return NextResponse.json(userInfo);
-          }
-        }
-      }
-    }
-
-    const errData = await response.json().catch(() => ({}));
-    console.error('BFF /me: AppKit rejected the session token:', { status: response.status, errData });
-    return NextResponse.json(errData, { status: response.status });
+    // No valid session at all — clear metadata cookies to let AuthProvider redirect to login
+    cookieStore.delete('narinyland_is_auth');
+    cookieStore.delete('narinyland_sub');
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   } catch (error) {
-    console.error('BFF /me: Unexpected proxy failure:', error);
+    console.error('BFF /me: Unexpected failure:', error);
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

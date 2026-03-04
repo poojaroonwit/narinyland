@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   cookieStore.delete('appkit_access_token');
   cookieStore.delete('appkit_refresh_token');
   cookieStore.delete('narinyland_is_auth');
+  cookieStore.delete('narinyland_sub');
 
   return NextResponse.json({ success: true });
 }

@@ -2,15 +2,6 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import redis from '@/lib/redis';
 
-function extractSub(token: string): string | null {
-  try {
-    const padded = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -52,7 +43,7 @@ export async function POST(req: Request) {
       domain,
     });
 
-    const response = await fetch(`${domain}/oauth/token`, {
+    const tokenRequest = () => fetch(`${domain}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -60,6 +51,15 @@ export async function POST(req: Request) {
       },
       body: params.toString(),
     });
+
+    let response = await tokenRequest();
+
+    // Retry once on transient gateway errors (AppKit on Railway cold-starts / restarts)
+    if (response.status === 502 || response.status === 503 || response.status === 504) {
+      console.warn(`BFF: AppKit returned ${response.status}, retrying after 800ms...`);
+      await new Promise(r => setTimeout(r, 800));
+      response = await tokenRequest();
+    }
 
     const data = await response.json();
 
@@ -108,27 +108,43 @@ export async function POST(req: Request) {
       responseKeys: Object.keys(data),
     });
 
-    // --- REDIS SESSION CACHE ---
-    // Fetch user info right now while the token is guaranteed fresh,
-    // then cache it so /api/auth/me never needs to call AppKit again.
-    if (data.access_token) {
-      const sub = extractSub(data.access_token);
-      if (sub) {
-        try {
-          const meRes = await fetch(`${domain}/api/v1/users/me`, {
-            headers: { 'Authorization': `Bearer ${data.access_token}`, 'Accept': 'application/json' },
+    // --- REDIS SESSION CACHE (from ID Token) ---
+    // The id_token is a signed OIDC JWT containing user claims (sub, name, email, picture).
+    // Decode it directly — no extra network call needed, no dependency on /users/me.
+    if (data.id_token) {
+      try {
+        const padded = data.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const idClaims = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+        console.log('BFF: ID Token claims:', idClaims);
+
+        const sub = idClaims.sub;
+        if (sub) {
+          const userInfo = {
+            id: sub,
+            sub,
+            name: idClaims.name || `${idClaims.given_name || ''} ${idClaims.family_name || ''}`.trim(),
+            email: idClaims.email || '',
+            avatar: idClaims.picture || idClaims.avatar || '',
+            attributes: idClaims.attributes || {},
+          };
+          // 7-day TTL: user info outlives the 1-hour access token so the soft
+          // session in /api/auth/me can serve user data without a valid token.
+          const SESSION_TTL = 7 * 24 * 3600;
+          await redis.setex(`user_session:${sub}`, SESSION_TTL, JSON.stringify(userInfo));
+          console.log('BFF: User session cached from ID token for sub:', sub, '(TTL: 7d)');
+
+          // Non-HttpOnly so the server can read it independently of the access token.
+          // This lets /api/auth/me serve from Redis even after the access token expires.
+          cookieStore.set('narinyland_sub', sub, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: SESSION_TTL,
+            path: '/',
           });
-          if (meRes.ok) {
-            const userInfo = await meRes.json();
-            const ttl = data.expires_in || 3600;
-            await redis.setex(`user_session:${sub}`, ttl, JSON.stringify(userInfo));
-            console.log('BFF: User info cached in Redis for sub:', sub, '(TTL:', ttl, 's)');
-          } else {
-            console.warn('BFF: Could not fetch user info for Redis cache — AppKit returned', meRes.status);
-          }
-        } catch (e) {
-          console.warn('BFF: Redis cache write failed (non-fatal):', e);
         }
+      } catch (e) {
+        console.warn('BFF: Failed to cache user info from ID token:', e);
       }
     }
 
