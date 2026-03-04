@@ -73,7 +73,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const userInfo = await getUser();
 
       // Token expired/invalid — getUser() returns null even though isAuthenticated() = true.
-      // Treat as logged out to prevent an infinite redirect loop to /onboarding.
+      // Treat as logged out to prevent an infinite redirect loop to /onboarding or /.
       if (!userInfo) {
         setIsLoggedIn(false);
         setUser(null);
@@ -81,12 +81,26 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setActiveCircleIdState(null);
         setActiveCircleId(null);
         setToken(null);
+        
+        // --- CRITICAL FIX ---
+        // Force fully log out of AppKit.
+        // A 401 here often means the local token is stale OR the AppKit backend session
+        // is corrupted (e.g. database reset). Calling authLogout clears the token locally
+        // AND clears the cookie on the AppKit server, breaking the infinite redirect loop.
+        try {
+          authLogout();
+        } catch (e) {
+          console.error("Failed to automatically logout:", e);
+        }
+        
         setLoading(false);
         checkingRef.current = false;
+        
         const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
         if (!isPublicRoute) router.replace('/login');
         return;
       }
+
 
       setUser(userInfo);
 
