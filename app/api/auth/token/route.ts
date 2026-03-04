@@ -93,6 +93,12 @@ export async function POST(req: Request) {
       path: '/',
     });
 
+    console.log('BFF: Cookies successfully set for session:', {
+      hasAccess: !!data.access_token,
+      hasRefresh: !!data.refresh_token,
+      expiresIn: data.expires_in
+    });
+
     // --- BEST PRACTICE: TOKEN STRIPPING ---
     // Never return the raw tokens in the JSON body. 
     // This ensures that even if a script is running on the page, 

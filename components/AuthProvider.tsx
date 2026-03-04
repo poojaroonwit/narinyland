@@ -97,6 +97,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             );
             keysToRemove.forEach(k => localStorage.removeItem(k));
             console.warn('AuthProvider: Cleared stale tokens from localStorage:', keysToRemove);
+            
+            // --- LOOP BREAKER ---
+            // Explicitly clear the metadata cookie to stop the loop
+            document.cookie = 'narinyland_is_auth=; Max-Age=0; path=/;';
           } catch (e) {
             console.error('Failed to clear localStorage tokens:', e);
           }

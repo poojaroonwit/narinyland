@@ -20,6 +20,12 @@ export async function getAuthSession(req?: Request) {
   let token = cookieStore.get('appkit_access_token')?.value;
   const refreshToken = cookieStore.get('appkit_refresh_token')?.value;
 
+  console.log('BFF Session Check:', { 
+    hasAccessToken: !!token, 
+    hasRefreshToken: !!refreshToken,
+    isAuthMetaSet: cookieStore.has('narinyland_is_auth')
+  });
+
   // 2. Self-Healing: Auto-refresh if access token is missing but refresh token exists
   if (!token && refreshToken) {
     console.log('BFF: Access token cookie expired, attempting silent refresh...');
@@ -30,6 +36,10 @@ export async function getAuthSession(req?: Request) {
   }
 
   if (!token) {
+    if (cookieStore.has('narinyland_is_auth')) {
+      console.warn('BFF: Session found but invalid/expired. Clearing metadata cookie to break loop.');
+      cookieStore.delete('narinyland_is_auth');
+    }
     return { error: 'unauthorized', status: 401 };
   }
 

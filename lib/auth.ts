@@ -62,6 +62,7 @@ export async function initAppKit(): Promise<void> {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyData),
+            credentials: 'include'
           });
         }
         
@@ -73,12 +74,13 @@ export async function initAppKit(): Promise<void> {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyData),
+            credentials: 'include'
           });
         }
 
         // Proxy "me" profile request
         if (urlStr.includes('/users/me')) {
-          return globalThis.fetch('/api/auth/me');
+          return globalThis.fetch('/api/auth/me', { credentials: 'include' });
         }
         
         return globalThis.fetch(input, init);
@@ -173,7 +175,7 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
     if (!isAuthenticated()) return null;
     
     // Call our proxied "me" endpoint which uses the HttpOnly cookie
-    const res = await fetch('/api/auth/me');
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
     if (!res.ok) return null;
     
     const user = await res.json();
