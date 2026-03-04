@@ -35,7 +35,7 @@ export async function PUT(
 // DELETE /api/purchased-items/[id]
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

@@ -28,9 +28,17 @@ export async function POST(request: Request) {
       contentType: file.type,
     }, { status: 201 });
 
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Upload error:', {
+      message: error?.message,
+      name: error?.name,
+      code: error?.Code || error?.code,
+      s3Status: error?.$metadata?.httpStatusCode,
+    });
+    return NextResponse.json({
+      error: 'Failed to upload file',
+      detail: error?.message || String(error),
+    }, { status: 500 });
   }
 }
 
@@ -39,15 +47,15 @@ export async function DELETE(request: Request) {
   try {
     const body = await request.json();
     const { key } = body;
-    
+
     if (!key) {
       return NextResponse.json({ error: 'S3 key is required' }, { status: 400 });
     }
 
     await deleteFile(key);
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting file:', error);
+  } catch (error: any) {
+    console.error('Delete error:', error?.message || error);
     return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
   }
 }

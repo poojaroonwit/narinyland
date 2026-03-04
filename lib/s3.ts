@@ -12,16 +12,17 @@ import path from 'path';
 // ─── S3 Client Configuration (t3.storageapi.dev Compatible) ────────
 
 const s3Client = new S3Client({
-  region: process.env.S3_REGION || 'ap-northeast-1',
-  endpoint: process.env.S3_ENDPOINT || '',
+  region: process.env.S3_REGION || process.env.AWS_REGION || 'ap-northeast-1',
+  // Only set endpoint for custom S3-compatible providers (e.g. t3.storageapi.dev).
+  // Omitting it (undefined) is correct for standard AWS S3.
+  ...(process.env.S3_ENDPOINT ? { endpoint: process.env.S3_ENDPOINT, forcePathStyle: true } : {}),
   credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || '',
   },
-  forcePathStyle: true, // Required for t3.storageapi.dev
 });
 
-const BUCKET = process.env.S3_BUCKET || 'narinyland';
+const BUCKET = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET_NAME || 'narinyland';
 
 // ─── Helper Functions ────────────────────────────────────────────────
 

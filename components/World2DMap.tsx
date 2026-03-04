@@ -50,7 +50,7 @@ export default function World2DMap({ timeline, onFlagClick, onZoomOut }: World2D
         />
         <ZoomHandler onZoomOut={onZoomOut} />
         
-        {timeline.filter(t => t.latitude !== undefined && t.longitude !== undefined).map((item) => (
+        {timeline.filter(t => t.latitude != null && t.longitude != null && isFinite(t.latitude) && isFinite(t.longitude)).map((item) => (
           <Marker 
             key={item.id} 
             position={[item.latitude!, item.longitude!]}
