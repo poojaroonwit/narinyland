@@ -11,6 +11,7 @@ export async function getAuthSession(req?: Request) {
     const origin = req.headers.get('origin');
     const host = req.headers.get('host');
     if (origin && !origin.includes(host || '')) {
+      console.error('BFF: CSRF rejection:', { origin, host });
       return { error: 'forbidden', status: 403 };
     }
   }
@@ -32,6 +33,8 @@ export async function getAuthSession(req?: Request) {
         client_id: clientId,
         client_secret: clientSecret
       });
+
+      console.log('BFF: Attempting silent refresh...', { clientId: clientId ? 'set' : 'MISSING', hasSecret: !!clientSecret });
 
       const refreshRes = await fetch(`${domain}/oauth/token`, {
         method: 'POST',
@@ -55,12 +58,24 @@ export async function getAuthSession(req?: Request) {
               maxAge: 30 * 24 * 3600, path: '/',
             });
           }
+          
+          // IMPORTANT: Also update our metadata cookie to stay "sticky"
+          cookieStore.set('narinyland_is_auth', 'true', {
+            httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax',
+            maxAge: 30 * 24 * 3600, path: '/',
+          });
+
           token = newToken;
-          console.log('BFF: Token refreshed successfully via side-channel.');
+          console.log('BFF: Token refreshed successfully.');
+        } else {
+          console.warn('BFF: Refresh ok but no access_token in response');
         }
+      } else {
+        const errBody = await refreshRes.json().catch(() => ({}));
+        console.error('BFF: Refresh token exchange failed:', { status: refreshRes.status, errBody });
       }
     } catch (err) {
-      console.error('BFF: Auto-refresh failure:', err);
+      console.error('BFF: Auto-refresh runtime error:', err);
     }
   }
 

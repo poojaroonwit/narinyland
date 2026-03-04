@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: data.expires_in || 3600,
+      maxAge: 30 * 24 * 3600, // Stay "sticky" as long as refresh is possible
       path: '/',
     });
 
