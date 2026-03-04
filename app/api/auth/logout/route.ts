@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-export async function POST() {
+export async function POST(req: Request) {
+  const origin = req.headers.get('origin');
+  const host = req.headers.get('host');
+  
+  if (origin && !origin.includes(host || '')) {
+     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   const cookieStore = await cookies();
   
   // Clear all auth-related cookies

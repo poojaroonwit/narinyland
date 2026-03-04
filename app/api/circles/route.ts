@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthSession } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { createCircleViaServer } from '@/lib/appkit-server';
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('appkit_access_token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    const { token, error, status } = await getAuthSession(req);
+    if (error || !token) {
+      return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     const circleId = req.headers.get('x-circle-id');
@@ -49,11 +47,10 @@ export async function POST(req: NextRequest) {
 
     // 1. Create circle in AppKit
     let circleId: string;
-    const cookieStore = await cookies();
-    const token = cookieStore.get('appkit_access_token')?.value;
+    const { token, error, status } = await getAuthSession(req);
 
-    if (!token) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    if (error || !token) {
+      return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     try {

@@ -49,7 +49,7 @@ export async function initAppKit(): Promise<void> {
       domain: domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       scopes: ['openid', 'profile', 'email'],
-      storage: 'localStorage',
+      storage: 'sessionStorage',
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         const urlStr = input.toString();
         // Proxy token exchange and revocation through our backend as usual, 
@@ -109,7 +109,7 @@ export function getAppKit(): AppKit {
       clientId, 
       domain,
       redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      storage: 'localStorage'
+      storage: 'sessionStorage'
     });
   }
   return appKitInstance;
@@ -135,6 +135,11 @@ export async function handleCallback(): Promise<boolean> {
     await client.handleCallback();
     return true;
   } catch (err) {
+    // If handleCallback fails because of stripped tokens, check our metadata cookie
+    if (isAuthenticated()) {
+      console.log('AppKit SDK reported callback error (likely due to stripped tokens), but session cookie is present. Considering success.');
+      return true;
+    }
     console.error('AppKit handleCallback error:', err);
     throw err;
   }

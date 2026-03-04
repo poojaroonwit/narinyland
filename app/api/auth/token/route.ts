@@ -4,6 +4,14 @@ import { cookies } from 'next/headers';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const origin = req.headers.get('origin');
+    const host = req.headers.get('host');
+    
+    // Basic CSRF Protection: Ensure request is from our own domain
+    if (origin && !origin.includes(host || '')) {
+       return NextResponse.json({ error: 'forbidden', error_description: 'CSRF validation failed' }, { status: 403 });
+    }
+
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
 
@@ -85,9 +93,15 @@ export async function POST(req: Request) {
       path: '/',
     });
 
-    // We still return data to the frontend so the SDK can complete its internal flow,
-    // but the sensitive parts are now also securely in cookies.
-    return NextResponse.json(data);
+    // --- BEST PRACTICE: TOKEN STRIPPING ---
+    // Never return the raw tokens in the JSON body. 
+    // This ensures that even if a script is running on the page, 
+    // it cannot capture the tokens from the fetch response.
+    const safeData = { ...data };
+    delete safeData.access_token;
+    delete safeData.refresh_token;
+
+    return NextResponse.json(safeData);
 
   } catch (error) {
     console.error('Token proxy error:', error);

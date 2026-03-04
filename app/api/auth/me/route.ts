@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthSession } from '@/lib/auth-server';
 
 export async function GET(req: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('appkit_access_token')?.value;
+    const { token, error, status } = await getAuthSession(req);
     
-    if (!token) {
-      return NextResponse.json({ error: 'unauthorized', error_description: 'No session cookie found' }, { status: 401 });
+    if (error || !token) {
+      return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     
-    // Call the AppKit server-side to get user info.
     const response = await fetch(`${domain}/api/v1/users/me`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -23,10 +21,7 @@ export async function GET(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('AppKit /users/me proxy error:', {
-        status: response.status,
-        data,
-      });
+      console.error('AppKit /users/me proxy error:', { status: response.status, data });
       return NextResponse.json(data, { status: response.status });
     }
 
@@ -34,7 +29,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('User info proxy catch error:', error);
     return NextResponse.json(
-      { error: 'server_error', error_description: 'Failed to proxy user info request' },
+      { error: 'server_error' },
       { status: 500 }
     );
   }
