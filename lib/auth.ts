@@ -43,6 +43,7 @@ export async function initAppKit(): Promise<void> {
     }
 
     if (!domain) domain = 'https://appkits.up.railway.app';
+    if (domain.endsWith('/')) domain = domain.slice(0, -1);
 
     appKitInstance = new AppKit({
       clientId: clientId || '',
@@ -143,7 +144,8 @@ export function getAppKit(): AppKit {
 export async function login(): Promise<void> {
   await initAppKit();
   const client = getAppKit();
-  await client.login();
+  // Force 'consent' prompt to ensure offline_access is granted and a refresh_token is issued
+  await client.login({ prompt: 'consent' });
 }
 
 /**
