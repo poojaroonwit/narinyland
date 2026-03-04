@@ -28,8 +28,8 @@ export async function initAppKit(): Promise<void> {
         const res = await fetch('/api/config/appkit');
         if (res.ok) {
           const config = await res.json();
-          clientId = config.clientId || clientId;
-          domain = config.domain || domain || 'https://appkits.up.railway.app';
+          clientId = (config.clientId || clientId || '').trim();
+          domain = (config.domain || domain || 'https://appkits.up.railway.app').trim();
           
           console.log('AppKit Config (Runtime Fetched):', { clientId: clientId ? `Available (${clientId.substring(0,8)}...)` : 'MISSING', domain });
         }
@@ -37,7 +37,9 @@ export async function initAppKit(): Promise<void> {
         console.error('Failed to fetch runtime AppKit config:', err);
       }
     } else if (typeof window !== 'undefined') {
-       console.log('AppKit Config (Build-time):', { clientId: clientId ? 'Available' : 'MISSING' });
+       clientId = (clientId || '').trim();
+       domain = (domain || 'https://appkits.up.railway.app').trim();
+       console.log('AppKit Config (Static):', { clientId: clientId ? 'Available' : 'MISSING', domain });
     }
 
     if (!domain) domain = 'https://appkits.up.railway.app';
@@ -73,6 +75,19 @@ export async function initAppKit(): Promise<void> {
             body: JSON.stringify(bodyData),
           });
         }
+
+        // Proxy "me" profile request through our backend to gain visibility into 401s
+        if (urlStr.endsWith('/users/me')) {
+          const headers = (init?.headers as any) || {};
+          const auth = headers['Authorization'] || (typeof headers.get === 'function' ? headers.get('Authorization') : '');
+          
+          return globalThis.fetch('/api/auth/me', {
+            headers: { 
+              'Authorization': auth || '',
+              'Accept': 'application/json'
+            }
+          });
+        }
         
         // Let everything else pass through normally
         return globalThis.fetch(input, init);
@@ -91,10 +106,14 @@ export async function initAppKit(): Promise<void> {
  */
 export function getAppKit(): AppKit {
   if (!appKitInstance) {
-    console.warn('getAppKit called before initAppKit completed. Falling back to build-time environment variables.');
+    if (isInitializing) {
+      console.warn('getAppKit called while initAppKit is in progress. This may result in using an uninitialized client.');
+    } else {
+      console.warn('getAppKit called before initAppKit started. Performing emergency synchronous fallback.');
+    }
     // Emergency synchronous fallback
-    const domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app';
-    const clientId = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    const clientId = (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '').trim();
     return new AppKit({
       clientId, 
       domain,
@@ -118,12 +137,20 @@ export function getAppKit(): AppKit {
             body: JSON.stringify(Object.fromEntries(rawParams)),
           });
         }
+        if (urlStr.endsWith('/users/me')) {
+          const headers = (init?.headers as any) || {};
+          const auth = headers['Authorization'] || (typeof headers.get === 'function' ? headers.get('Authorization') : '');
+          return globalThis.fetch('/api/auth/me', {
+            headers: { 'Authorization': auth || '', 'Accept': 'application/json' }
+          });
+        }
         return globalThis.fetch(input, init);
       }
     });
   }
   return appKitInstance;
 }
+
 
 /**
  * Start the login/signup flow
