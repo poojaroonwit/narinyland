@@ -598,13 +598,32 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center gap-4">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">World Name</label>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">World Name</label>
+                    <p className="text-[8px] text-gray-400 ml-1">The title of your magical space</p>
+                  </div>
                   <input 
                     type="text" 
                     value={localConfig.appName} 
                     onChange={(e) => handleInputChange('appName', e.target.value)}
                     className="w-1/2 bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
                   />
+                </div>
+
+                <div className="flex justify-between items-center gap-4 pt-2">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Proposal Feature</label>
+                    <p className="text-[8px] text-gray-400 ml-1">Show or hide the proposal screen</p>
+                  </div>
+                  <button
+                    onClick={() => handleInputChange('showProposal', !localConfig.showProposal)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${localConfig.showProposal ? 'bg-pink-500' : 'bg-gray-200'}`}
+                  >
+                    <motion.div 
+                      animate={{ x: localConfig.showProposal ? 24 : 4 }}
+                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                    />
+                  </button>
                 </div>
                 <div className="flex justify-between items-center gap-4 pt-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Anniversary</label>

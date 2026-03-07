@@ -112,6 +112,7 @@ export interface AppConfig {
   pwaThemeColor?: string;
   pwaBackgroundColor?: string;
   pwaIconUrl?: string;
+  showProposal?: boolean;
   proposal: {
     questions: string[];
     progress?: number;

@@ -6,7 +6,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 model AppConfig {
@@ -35,6 +35,7 @@ model AppConfig {
   
   musicPlaylist   String[] @default(["https://www.youtube.com/watch?v=5qap5aO4i9A"])
   mailFolders     String[] @default(["Inbox", "Archive", "Trash"])
+  showProposal    Boolean  @default(true)
   proposalQuestions String[] @default(["Will you be my Valentine?", "Jaroonwit is so handsome, right?"])
   isProposalAccepted Boolean  @default(false)
   proposalProgress   Int      @default(0)

@@ -94,12 +94,14 @@ const Home: React.FC = () => {
       partner2: { name: 'Partner 2', avatar: '💖' }
     },
     coupons: INITIAL_COUPONS,
+    showProposal: true,
   });
 
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
   const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
+  const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
   const [landSearch, setLandSearch] = useState('');
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -195,6 +197,7 @@ const Home: React.FC = () => {
           coupons: serverConfig.coupons?.length ? serverConfig.coupons : prev.coupons,
           albums: serverConfig.albums || prev.albums,
           lands: serverConfig.lands || prev.lands,
+          showProposal: serverConfig.showProposal ?? prev.showProposal,
         }));
 
         // Transform Letters
@@ -258,6 +261,7 @@ const Home: React.FC = () => {
         partners: next.partners,
         coupons: next.coupons,
         gallery: next.gallery,
+        showProposal: next.showProposal,
       }).then(() => {})
         .catch((err: any) => console.error('❌ Failed to save config:', err.message));
       return next;
@@ -265,10 +269,10 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    const isCompleted = !!appConfig.proposal?.isAccepted || 
+    const isCompleted = !appConfig.showProposal || !!appConfig.proposal?.isAccepted || 
                         ((appConfig.proposal?.progress || 0) >= (appConfig.proposal?.questions?.length || 0) && (appConfig.proposal?.questions?.length || 0) > 0);
     setHasAcceptedProposal(isCompleted);
-  }, [appConfig.proposal?.isAccepted, appConfig.proposal?.progress, appConfig.proposal?.questions?.length]);
+  }, [appConfig.proposal?.isAccepted, appConfig.proposal?.progress, appConfig.proposal?.questions?.length, appConfig.showProposal]);
 
   useEffect(() => {
     if (!hasAcceptedProposal) {
@@ -786,27 +790,61 @@ const Home: React.FC = () => {
 
             {/* Circle (World) Switcher — only when user has multiple circles */}
             {circles.length > 1 && (
-              <div className="bg-white/90 backdrop-blur-md border border-pink-100 shadow-xl rounded-2xl p-3 min-w-[160px]">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Switch World</p>
-                <div className="flex flex-col gap-1">
-                  {circles.map(circle => (
-                    <button
-                      key={circle.id}
-                      onClick={async () => {
-                        if (circle.id === activeCircleId) return;
-                        await setActiveCircle(circle.id);
-                        showToast(`Switched to ${circle.name}! 🌍`);
-                      }}
-                      className={`text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                        circle.id === activeCircleId
-                          ? 'bg-pink-500 text-white'
-                          : 'text-gray-600 hover:bg-pink-50'
-                      }`}
-                    >
-                      🌍 {circle.name}
-                    </button>
-                  ))}
-                </div>
+              <div className="relative">
+                {/* Dropdown trigger */}
+                <button
+                  onClick={() => setIsCircleDropdownOpen(prev => !prev)}
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
+                >
+                  <span className="text-base leading-none">🌍</span>
+                  <div className="text-left">
+                    <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mb-0.5">World</p>
+                    <p className="text-xs text-pink-600 font-black leading-none truncate max-w-[80px]">
+                      {circles.find(c => c.id === activeCircleId)?.name || 'Select World'}
+                    </p>
+                  </div>
+                  <i className={`fas fa-chevron-${isCircleDropdownOpen ? 'up' : 'down'} text-[9px] text-gray-400`}></i>
+                </button>
+
+                {/* Dropdown Menu */}
+                <AnimatePresence>
+                  {isCircleDropdownOpen && (
+                    <>
+                      {/* Click-outside backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsCircleDropdownOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full left-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-2 min-w-[180px] z-50 flex flex-col gap-1"
+                      >
+                        {circles.map(circle => (
+                          <button
+                            key={circle.id}
+                            onClick={async () => {
+                              if (circle.id === activeCircleId) return;
+                              setIsCircleDropdownOpen(false);
+                              await setActiveCircle(circle.id);
+                              showToast(`Switched to ${circle.name}! 🌍`);
+                            }}
+                            className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                              circle.id === activeCircleId
+                                ? 'bg-pink-500 text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
+                            }`}
+                          >
+                            <span className="flex-1 truncate">{circle.name}</span>
+                            {circle.id === activeCircleId && <i className="fas fa-check-circle text-[10px] opacity-70 flex-shrink-0"></i>}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -1180,19 +1218,12 @@ const Home: React.FC = () => {
          >
            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
          </button>
-         <button
-           onClick={() => setIsEditDrawerOpen(true)}
-           className="flex items-center gap-1.5 bg-white/40 backdrop-blur-md rounded-full shadow-lg px-3 py-2 text-gray-600 hover:bg-white transition-all transform hover:scale-105 border border-white/50"
-           title="Edit Mode"
-         >
-           <i className="fas fa-pencil-alt text-[11px]"></i>
-           <span className="text-[10px] font-black uppercase tracking-wide hidden sm:inline">Edit</span>
-         </button>
          <UserDropdown 
             user={user} 
             onLogout={logout} 
             onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
-            loading={authLoading}
+            onOpenSettings={() => setIsEditDrawerOpen(true)}
+             loading={authLoading}
           />
       </div>
 

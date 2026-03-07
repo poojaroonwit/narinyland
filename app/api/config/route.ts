@@ -73,6 +73,7 @@ export async function GET(request: Request) {
       pwaBackgroundColor: (config as any).pwaBackgroundColor || '#ffffff',
       pwaIconUrl: (config as any).pwaIconUrl || null,
       musicPlaylist: (config as any).musicPlaylist || [],
+      showProposal: (config as any).showProposal ?? true,
       proposal: {
         questions: config.proposalQuestions,
         isAccepted: config.isProposalAccepted,
@@ -138,6 +139,7 @@ export async function PUT(request: Request) {
       showQRCode,
       showCouponsOnTimeline,
       timelineCardScale,
+      showProposal,
     } = body;
 
     const updateData: any = {};
@@ -172,6 +174,8 @@ export async function PUT(request: Request) {
     if (showQRCode !== undefined) updateData.showQRCode = showQRCode;
     if (showCouponsOnTimeline !== undefined) updateData.showCouponsOnTimeline = showCouponsOnTimeline;
     if (timelineCardScale !== undefined) updateData.timelineCardScale = timelineCardScale;
+    
+    if (showProposal !== undefined) updateData.showProposal = showProposal;
     
     if (body.musicPlaylist !== undefined) updateData.musicPlaylist = body.musicPlaylist;
     if (proposal) {

@@ -9,10 +9,11 @@ interface UserDropdownProps {
   } | null;
   onLogout: () => void;
   onEditUserInfo?: () => void;
+  onOpenSettings?: () => void;
   loading?: boolean;
 }
 
-export default function UserDropdown({ user, onLogout, onEditUserInfo, loading }: UserDropdownProps) {
+export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSettings, loading }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +77,16 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, loading }
               >
                 <i className="fas fa-user-edit w-4 text-center"></i>
                 Edit Profile
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  if (onOpenSettings) onOpenSettings();
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-xl transition-colors flex items-center gap-2 mt-1"
+              >
+                <i className="fas fa-cog w-4 text-center"></i>
+                App Settings
               </button>
               <button
                 onClick={() => {
