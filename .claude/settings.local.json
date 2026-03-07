@@ -4,7 +4,8 @@
       "Bash(wc:*)",
       "Bash(ls:*)",
       "WebFetch(domain:appkits.up.railway.app)",
-      "Bash(xargs grep -l \"Love Tree\\\\|Timeline\\\\|Time-Locked\\\\|Virtual Companion\\\\|Private & Secure\")"
+      "Bash(xargs grep -l \"Love Tree\\\\|Timeline\\\\|Time-Locked\\\\|Virtual Companion\\\\|Private & Secure\")",
+      "Bash(npm run db:push)"
     ]
   }
 }

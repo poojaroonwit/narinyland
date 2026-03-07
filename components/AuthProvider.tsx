@@ -122,10 +122,24 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const userCircles = await getUserCircles();
       setCircles(userCircles);
 
-      // Use the explicitly stored circle ID
+      // Use the explicitly stored circle ID, falling back to first available circle
       const savedCircleId = userInfo.attributes?.circleId as string | undefined;
       const storedCircleId = typeof window !== 'undefined' ? localStorage.getItem('narinyland_circle_id') : null;
-      const resolvedCircleId = savedCircleId || storedCircleId || null;
+      let resolvedCircleId = savedCircleId || storedCircleId || null;
+
+      // If no circle stored yet but user already has circles, auto-pick the first one
+      if (!resolvedCircleId && userCircles.length > 0) {
+        resolvedCircleId = userCircles[0].id;
+        // Persist to localStorage and AppKit attributes so subsequent loads are instant
+        setActiveCircleId(resolvedCircleId);
+        try {
+          const { getAppKit } = await import('@/lib/auth');
+          await getAppKit().updateAttributes({ circleId: resolvedCircleId });
+        } catch (err) {
+          console.error('Failed to persist circle to attributes:', err);
+        }
+      }
+
       setActiveCircleIdState(resolvedCircleId);
       setActiveCircleId(resolvedCircleId);
 
@@ -134,7 +148,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const isRoot = pathname === '/';
 
       if (userCircles.length === 0) {
-        // No circles -> must onboard
+        // No circles -> must onboard to create or join a world
         if (!isOnboarding) {
           router.replace('/onboarding');
           setLoading(false);
@@ -142,8 +156,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           return;
         }
       } else {
-        // Has circles -> should be in garden
-        // If they are on root or onboarding, move them to garden
+        // Has circles (already has a world) -> go straight to garden, skip onboarding
         if (isRoot || isOnboarding) {
           router.replace('/garden');
           setLoading(false);
