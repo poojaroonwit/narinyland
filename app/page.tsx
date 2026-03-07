@@ -43,34 +43,75 @@ function HeartIcon({ className = "" }: { className?: string }) {
 
 const FEATURES = [
   {
+    id: "tree",
     emoji: "🌳",
     title: "Grow Your Love Tree",
     desc: "Interact with your personal 3D tree that grows as you log memories and spend time together.",
   },
   {
+    id: "timeline",
     emoji: "📸",
     title: "Interactive Timeline",
     desc: "Log photos, dates, and milestones on a beautiful, scrolling timeline that tells your unique story.",
   },
   {
+    id: "letters",
     emoji: "💌",
     title: "Time-Locked Letters",
     desc: "Write letters to each other and set a future date for them to unlock. A digital time capsule.",
   },
   {
+    id: "coupons",
     emoji: "🎟️",
     title: "Custom Coupons",
     desc: "Create and redeem cute relationship coupons (like 'Free Back Massage' or 'Winner picks dinner').",
   },
   {
+    id: "nari",
     emoji: "🐾",
     title: "Virtual Companion",
     desc: "Meet Nari, your virtual pet companion who reacts to your milestones and grows alongside your tree.",
   },
   {
+    id: "secure",
     emoji: "🔒",
     title: "Private & Secure",
     desc: "Your memories are stored securely and privately. Only you and your partner have access to your garden.",
+  },
+];
+
+const SHOWCASE_ITEMS = [
+  {
+    id: "tree-example",
+    title: "The Heart of Your Garden",
+    subtitle: "Grow Your Love Tree",
+    desc: "Your tree is a living reflection of your relationship. It reacts to your interactions, grows taller with every memory logged, and changes with the seasons of your love.",
+    image: "/images/showcase/tree.png",
+    accent: "bg-pink-100",
+  },
+  {
+    id: "timeline-example",
+    title: "A Tapestry of Moments",
+    subtitle: "Interactive Timeline",
+    desc: "Our timeline isn't just a list—it's a beautiful, interactive journey. Scroll back through years of photos, voice notes, and milestones, presented in a sleek, modern gallery.",
+    image: "/images/showcase/timeline.png",
+    accent: "bg-blue-100",
+  },
+  {
+    id: "nari-example",
+    title: "Your Loyal Companion",
+    subtitle: "Virtual Pet Nari",
+    desc: "Nari lives in your garden and keeps you company. Nari celebrates your milestones with you, sends you reminders of special dates, and grows alongside your relationship.",
+    image: "/images/showcase/nari.png",
+    accent: "bg-green-100",
+  },
+  {
+    id: "coupons-example",
+    title: "Playful Acts of Love",
+    subtitle: "Digital Love Coupons",
+    desc: "Give and redeem custom coupons for special favors or activities. A fun and affectionate way to keep the spark alive every day.",
+    image: "/images/showcase/coupons.png",
+    accent: "bg-purple-100",
   },
 ];
 
@@ -238,16 +279,95 @@ export default function MarketingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group bg-pink-50/50 rounded-[2.5rem] p-10 border border-pink-100/50 hover:bg-white hover:shadow-2xl hover:border-white transition-all duration-500"
+                className="group bg-pink-50/50 rounded-[2.5rem] p-10 border border-pink-100/50 hover:bg-white hover:shadow-2xl hover:border-white transition-all duration-500 flex flex-col items-start"
               >
                 <div className="text-5xl mb-8 group-hover:scale-125 transition-transform duration-500 origin-left">{f.emoji}</div>
                 <h3 className="text-2xl font-heading italic text-black mb-4">
                   {f.title}
                 </h3>
-                <p className="text-sm text-gray-500 font-body font-medium leading-relaxed uppercase tracking-widest opacity-80">
+                <p className="text-sm text-gray-500 font-body font-medium leading-relaxed uppercase tracking-widest opacity-80 mb-8">
                   {f.desc}
                 </p>
+                
+                {["tree", "timeline", "coupons", "nari"].includes(f.id) && (
+                  <button 
+                    onClick={() => scrollTo(`${f.id}-example`)}
+                    className="mt-auto text-[10px] font-black uppercase tracking-[0.2em] text-pink-500 hover:text-pink-600 flex items-center gap-2 group/btn"
+                  >
+                    See Example
+                    <motion.span 
+                      animate={{ x: [0, 5, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      ↓
+                    </motion.span>
+                  </button>
+                )}
               </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Showcase Section ── */}
+      <section id="showcase" className="py-32 bg-white overflow-hidden">
+        <div className="max-w-6xl mx-auto px-6 lg:px-16">
+          <div className="text-center mb-32">
+            <p className="text-[10px] font-black font-body text-pink-500 uppercase tracking-[0.4em] mb-4">
+              The Experience
+            </p>
+            <h2 className="text-5xl md:text-7xl font-heading italic text-black mb-6 tracking-tight">
+              See how your garden grows.
+            </h2>
+          </div>
+
+          <div className="space-y-40">
+            {SHOWCASE_ITEMS.map((item, i) => (
+              <div 
+                key={item.id} 
+                id={item.id}
+                className={`flex flex-col ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-16 lg:gap-24`}
+              >
+                <motion.div 
+                  initial={{ opacity: 0, x: i % 2 === 0 ? -50 : 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  className="w-full md:w-1/2"
+                >
+                  <div className={`relative rounded-[3rem] overflow-hidden shadow-2xl ${item.accent} aspect-square p-2 group`}>
+                    <img 
+                      src={item.image} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                   initial={{ opacity: 0, x: i % 2 === 0 ? 50 : -50 }}
+                   whileInView={{ opacity: 1, x: 0 }}
+                   viewport={{ once: true, margin: "-100px" }}
+                   className="w-full md:w-1/2 text-left"
+                >
+                  <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-600 rounded-full px-4 py-1.5 text-[9px] font-black uppercase tracking-widest mb-6">
+                    {item.subtitle}
+                  </div>
+                  <h3 className="text-4xl md:text-5xl font-heading italic text-black mb-8 leading-tight">
+                    {item.title}
+                  </h3>
+                  <p className="text-base text-gray-500 font-body font-medium leading-relaxed uppercase tracking-widest opacity-80 mb-10">
+                    {item.desc}
+                  </p>
+                  <button 
+                    onClick={() => router.push("/login")}
+                    className="flex items-center gap-3 bg-black text-white rounded-full px-8 py-4 text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-all hover:scale-105 active:scale-95"
+                  >
+                    Start Your Story
+                    <ArrowUpRightIcon className="w-4 h-4" />
+                  </button>
+                </motion.div>
+              </div>
             ))}
           </div>
         </div>
