@@ -36,6 +36,15 @@ export async function getAuthSession(req?: Request) {
   }
 
   if (!token) {
+    // 3. Fallback: Check for name-based "soft session" (narinyland_sub)
+    const sub = cookieStore.get('narinyland_sub')?.value;
+    if (sub) {
+      console.log('BFF: No AppKit token, but name-based sub found:', sub);
+      // Return the sub as a pseudo-token. This works for routes that only check 
+      // for session existence or use the sub for local Prisma queries.
+      return { token: `name_session_${sub}`, userId: sub, status: 200 };
+    }
+
     // Do NOT clear narinyland_is_auth here.
     // /api/auth/me owns that cookie and handles the soft-session fallback independently.
     // Other routes simply return 401 when the access token is absent.
