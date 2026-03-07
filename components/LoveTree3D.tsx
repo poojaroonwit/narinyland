@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, SoftShadows, DragControls, Grid } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
@@ -78,7 +78,6 @@ const SpawnIn = ({ children, delay = 0, position = [0, 0, 0] as [number, number,
   const sphereRef = useRef<THREE.Mesh>(null);
   const startTime = useRef<number | null>(null);
   const DURATION = 0.65;
-
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
 
@@ -91,6 +90,7 @@ const SpawnIn = ({ children, delay = 0, position = [0, 0, 0] as [number, number,
       startTime.current = t;
     }
 
+    if (startTime.current === null) return;
     const elapsed = t - startTime.current;
     const p = Math.min(elapsed / DURATION, 1);
 

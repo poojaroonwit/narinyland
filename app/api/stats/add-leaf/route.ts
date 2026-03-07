@@ -67,8 +67,8 @@ export async function POST(request: Request) {
             await prisma.partner.update({
                 where: { id: p.id },
                 data: { 
-                  points: { decrement: deduct }
-                  // NO decrement to lifetimePoints!
+                  points: { decrement: deduct },
+                  lifetimePoints: { increment: deduct } // Buying a leaf adds to XP!
                 }
             });
             remainingCost -= deduct;

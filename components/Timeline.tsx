@@ -27,7 +27,6 @@ interface TimelineProps {
   layoutMode?: 'vertical' | 'wave' | 'gallery';
   zoomLevel?: number; // 0-7 index
   thumbnailHeight?: number;
-  onOpenSettings?: () => void;
   onUpdateConfig?: (config: { layoutMode?: 'vertical' | 'wave' | 'gallery', zoomLevel?: number }) => void;
   
   // Image modal props
@@ -51,7 +50,6 @@ const Timeline: React.FC<TimelineProps> = ({
   layoutMode: initialLayoutMode = 'vertical',
   zoomLevel: initialZoomLevel = 0,
   thumbnailHeight = 150,
-  onOpenSettings,
   onUpdateConfig,
   showImageModal: externalShowImageModal,
   onSetShowImageModal: externalSetShowImageModal,
@@ -598,15 +596,6 @@ const Timeline: React.FC<TimelineProps> = ({
               >
                   <i className="fas fa-table"></i>
               </button>
-              {onOpenSettings && (
-                <button 
-                    onClick={() => onOpenSettings()}
-                    className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-all border border-gray-100"
-                    title="Timeline Settings"
-                >
-                    <i className="fas fa-cog"></i>
-                </button>
-              )}
           </div>
          
           <button 

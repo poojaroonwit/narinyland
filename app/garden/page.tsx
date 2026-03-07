@@ -694,7 +694,7 @@ const Home: React.FC = () => {
                daysPerFlower={appConfig.daysPerFlower}
                flowerType={appConfig.flowerType}
                mixedFlowers={appConfig.mixedFlowers}
-               leaves={loveStats.xp}
+               leaves={loveStats.leaves}
                points={loveStats.points}
                skyMode={appConfig.skyMode}
                showQRCode={appConfig.showQRCode}
@@ -1011,7 +1011,7 @@ const Home: React.FC = () => {
 
       
       <AnimatePresence>
-        {configLoaded && !hasAcceptedProposal && (
+        {configLoaded && appConfig.showProposal && !hasAcceptedProposal && (
           <ProposalScreen 
             onAccept={handleProposalAccepted} 
             onStepChange={handleProposalStepChange}
@@ -1074,7 +1074,6 @@ const Home: React.FC = () => {
                     layoutMode={appConfig.timelineLayoutMode}
                     zoomLevel={appConfig.timelineZoomLevel}
                     thumbnailHeight={appConfig.timelineThumbnailHeight}
-                    onOpenSettings={() => setIsEditDrawerOpen(true)}
                     onUpdateConfig={handleTimelineConfigUpdate}
                  />
                 </motion.div>
