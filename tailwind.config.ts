@@ -17,6 +17,8 @@ const config: Config = {
         kanit: ['Kanit', 'sans-serif'],
         pacifico: ['Pacifico', 'cursive'],
         inter: ['Inter', 'sans-serif'],
+        heading: ["'Instrument Serif'", 'serif'],
+        body: ["'Barlow'", 'sans-serif'],
       },
     },
   },
