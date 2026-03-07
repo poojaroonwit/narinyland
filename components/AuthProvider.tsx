@@ -34,7 +34,7 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 // Routes that don't require auth
-const PUBLIC_ROUTES = ['/', '/login', '/auth/callback'];
+const PUBLIC_ROUTES = ['/', '/auth/callback'];
 const AUTH_ONLY_ROUTES = ['/garden', '/onboarding'];
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -111,7 +111,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         checkingRef.current = false;
         
         const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-        if (!isPublicRoute) router.replace('/login');
+        if (!isPublicRoute) router.replace('/');
         return;
       }
 
@@ -131,8 +131,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
       // --- REDIRECTION LOGIC ---
       const isOnboarding = pathname.startsWith('/onboarding');
-      const isGarden = pathname.startsWith('/garden');
-      const isLogin = pathname.startsWith('/login');
       const isRoot = pathname === '/';
 
       if (userCircles.length === 0) {
@@ -145,8 +143,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
       } else {
         // Has circles -> should be in garden
-        // If they are on login, root, or onboarding, move them to garden
-        if (isLogin || isRoot || isOnboarding) {
+        // If they are on root or onboarding, move them to garden
+        if (isRoot || isOnboarding) {
           router.replace('/garden');
           setLoading(false);
           checkingRef.current = false;
@@ -163,10 +161,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     setLoading(false);
     checkingRef.current = false;
 
-    // Redirect to login if not authenticated and not on a public route
+    // Redirect to marketing root if not authenticated and not on a public route
     const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
     if (!authenticated && !isPublicRoute) {
-      router.replace('/login');
+      router.replace('/');
     }
   };
 
