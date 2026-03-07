@@ -34,7 +34,8 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 // Routes that don't require auth
-const PUBLIC_ROUTES = ['/login', '/auth/callback', '/onboarding'];
+const PUBLIC_ROUTES = ['/', '/login', '/auth/callback'];
+const AUTH_ONLY_ROUTES = ['/garden', '/onboarding'];
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -121,23 +122,37 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const userCircles = await getUserCircles();
       setCircles(userCircles);
 
-      // Use the explicitly stored circle ID (from user attributes or localStorage).
-      // If none is stored, default to null so backend falls back to 'default' config —
-      // preserving existing data for users who haven't set up a circle yet.
+      // Use the explicitly stored circle ID
       const savedCircleId = userInfo.attributes?.circleId as string | undefined;
       const storedCircleId = typeof window !== 'undefined' ? localStorage.getItem('narinyland_circle_id') : null;
       const resolvedCircleId = savedCircleId || storedCircleId || null;
       setActiveCircleIdState(resolvedCircleId);
       setActiveCircleId(resolvedCircleId);
 
-      /* Redirect to onboarding if user has no circles 
-      if (userCircles.length === 0 && !pathname.startsWith('/onboarding')) {
-        router.replace('/onboarding');
-        setLoading(false);
-        checkingRef.current = false;
-        return;
+      // --- REDIRECTION LOGIC ---
+      const isOnboarding = pathname.startsWith('/onboarding');
+      const isGarden = pathname.startsWith('/garden');
+      const isLogin = pathname.startsWith('/login');
+      const isRoot = pathname === '/';
+
+      if (userCircles.length === 0) {
+        // No circles -> must onboard
+        if (!isOnboarding) {
+          router.replace('/onboarding');
+          setLoading(false);
+          checkingRef.current = false;
+          return;
+        }
+      } else {
+        // Has circles -> should be in garden
+        // If they are on login, root, or onboarding, move them to garden
+        if (isLogin || isRoot || isOnboarding) {
+          router.replace('/garden');
+          setLoading(false);
+          checkingRef.current = false;
+          return;
+        }
       }
-      */
     } else {
       setUser(null);
       setCircles([]);
