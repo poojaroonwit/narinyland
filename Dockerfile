@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ecaf0bd06f5d11a23#nodealpine to understand why libc6-compat might be needed.
@@ -8,6 +8,7 @@ WORKDIR /app
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma/
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 RUN npm ci
 
