@@ -130,13 +130,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setActiveCircleIdState(resolvedCircleId);
       setActiveCircleId(resolvedCircleId);
 
-      // Redirect to onboarding if user has no circles
+      /* Redirect to onboarding if user has no circles 
       if (userCircles.length === 0 && !pathname.startsWith('/onboarding')) {
         router.replace('/onboarding');
         setLoading(false);
         checkingRef.current = false;
         return;
       }
+      */
     } else {
       setUser(null);
       setCircles([]);
