@@ -72,6 +72,55 @@ const CustomGLTFModel = ({ url, scale = 1 }: { url: string, scale?: number }) =>
   return <primitive object={clone} scale={scale} />;
 };
 
+// Spawn-in animation: objects start from a glowing sphere and scale in with spring bounce
+const SpawnIn = ({ children, delay = 0, position = [0, 0, 0] as [number, number, number] }: { children: React.ReactNode, delay?: number, position?: [number, number, number] }) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const sphereRef = useRef<THREE.Mesh>(null);
+  const startTime = useRef<number | null>(null);
+  const DURATION = 0.65;
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+
+    if (startTime.current === null) {
+      if (t < delay) {
+        if (groupRef.current) groupRef.current.scale.setScalar(0);
+        if (sphereRef.current) sphereRef.current.scale.setScalar(0);
+        return;
+      }
+      startTime.current = t;
+    }
+
+    const elapsed = t - startTime.current;
+    const p = Math.min(elapsed / DURATION, 1);
+
+    // Elastic spring overshoot easing
+    const spring = p === 1
+      ? 1
+      : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10 - 0.75) * (2 * Math.PI) / 3);
+
+    if (groupRef.current) groupRef.current.scale.setScalar(Math.max(0, spring));
+
+    // Glowing sphere: pulse in then shrink away as object appears
+    if (sphereRef.current) {
+      const sScale = p < 0.25 ? (p / 0.25) : Math.max(0, 1 - (p - 0.25) / 0.35);
+      sphereRef.current.scale.setScalar(sScale * 0.6);
+    }
+  });
+
+  return (
+    <group position={position}>
+      <mesh ref={sphereRef} scale={0}>
+        <sphereGeometry args={[0.5, 8, 8]} />
+        <meshBasicMaterial color="#ec4899" transparent opacity={0.55} />
+      </mesh>
+      <group ref={groupRef} scale={[0, 0, 0]}>
+        {children}
+      </group>
+    </group>
+  );
+};
+
 const LoveTree3D: React.FC<LoveTree3DProps> = ({ 
     anniversaryDate, treeStyle = 'oak', petEmotion, petMessage, level,
      leaves, points = 0, onAddLeaf, daysPerFlower = 7, flowerType = 'sunflower',
@@ -474,9 +523,9 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             minDistance={4} 
         />
 
-        <group position={[0, -0.1, 0]}>
+        <SpawnIn delay={0.2} position={[0, -0.1, 0]}>
             <Terrain theme={theme} quality={graphicsQuality} />
-        </group>
+        </SpawnIn>
 
         {/* Main tree — draggable in edit mode, position stored as main_tree PurchasedItem */}
         {(() => {
@@ -485,32 +534,36 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
           if (isEditMode) {
             const fakeItem: PurchasedItem = mainTreeItem ?? { id: 'main_tree', type: 'main_tree', x: 0, y: 0, z: 0, rotation: 0, landId: activeLandId ?? '' };
             return (
-              <DraggableItem
-                item={{ ...fakeItem, x: treeInitialPos[0], y: 0, z: treeInitialPos[2] }}
-                onUpdate={async (id, x, y, z) => {
-                  if (onUpdateItemPosition) onUpdateItemPosition(id, x, y, z);
-                  // If this is the placeholder fake item, create a real DB record first
-                  if (!mainTreeItem && activeLandId) {
-                    try {
-                      await fetch('/api/purchased-items', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: 'main_tree', landId: activeLandId, x, y: 0, z })
-                      });
-                    } catch (e) { console.error('Failed to create main_tree item', e); }
-                  }
-                }}
-              >
-                <group onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
-                  <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
-                </group>
-              </DraggableItem>
+              <SpawnIn key="tree-edit" delay={0.6} position={treeInitialPos}>
+                <DraggableItem
+                  item={{ ...fakeItem, x: 0, y: 0, z: 0 }}
+                  onUpdate={async (id, x, y, z) => {
+                    if (onUpdateItemPosition) onUpdateItemPosition(id, x, y, z);
+                    // If this is the placeholder fake item, create a real DB record first
+                    if (!mainTreeItem && activeLandId) {
+                      try {
+                        await fetch('/api/purchased-items', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'main_tree', landId: activeLandId, x, y: 0, z })
+                        });
+                      } catch (e) { console.error('Failed to create main_tree item', e); }
+                    }
+                  }}
+                >
+                  <group onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
+                    <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
+                  </group>
+                </DraggableItem>
+              </SpawnIn>
             );
           }
           return (
-            <group position={treeInitialPos} onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
-              <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
-            </group>
+            <SpawnIn key="tree" delay={0.6} position={treeInitialPos}>
+              <group onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
+                <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
+              </group>
+            </SpawnIn>
           );
         })()}
          
@@ -521,7 +574,9 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
           ))}
 
           {(!pets || pets.length === 0) ? (
-            <Pet3D emotion={petEmotion} theme={theme} petType={petType} startPos={[2, 0, 2]} quality={graphicsQuality} />
+            <SpawnIn key="default-pet" delay={1.6}>
+              <Pet3D emotion={petEmotion} theme={theme} petType={petType} startPos={[2, 0, 2]} quality={graphicsQuality} />
+            </SpawnIn>
          ) : (() => {
             const petRefs = pets.map(() => React.createRef<THREE.Group | null>());
             return pets.map((pet, i) => {
@@ -534,62 +589,75 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                  .filter((_, idx) => idx !== i);
 
               return (
-                <Pet3D 
-                  ref={petRefs[i]}
-                  key={pet.id} 
-                  emotion={petEmotion} 
-                  theme={theme} 
-                  petType={pet.type} 
-                  startPos={[x, 0, z]} 
-                  otherPets={companions}
-                  quality={graphicsQuality}
-                />
+                <SpawnIn key={pet.id} delay={1.6 + i * 0.15}>
+                  <Pet3D
+                    ref={petRefs[i]}
+                    emotion={petEmotion}
+                    theme={theme}
+                    petType={pet.type}
+                    startPos={[x, 0, z]}
+                    otherPets={companions}
+                    quality={graphicsQuality}
+                  />
+                </SpawnIn>
               );
             });
          })()}
 
-         {purchasedItems?.map((item) => {
+         {purchasedItems?.map((item, idx) => {
             if (item.type === 'dog' || item.type === 'cat') {
-               // Render purchased pets bouncing around (non-draggable)
-               return <Pet3D key={item.id} emotion={petEmotion} theme={theme} petType={item.type} startPos={[item.x || 0, 0, item.z || 0]} quality={graphicsQuality} />;
+               return (
+                 <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
+                   <Pet3D emotion={petEmotion} theme={theme} petType={item.type} startPos={[item.x || 0, 0, item.z || 0]} quality={graphicsQuality} />
+                 </SpawnIn>
+               );
             }
-            
-            // Render draggable purchased items
+
             return (
-               <DraggableItem key={item.id} item={item} onUpdate={onUpdateItemPosition}>
-                  {item.type === 'custom_3d' && item.modelUrl && <CustomGLTFModel url={item.modelUrl} scale={1} />}
-                  {item.type === 'flower1' && <Flower type="sunflower" position={[0, 0, 0]} scale={1.5} windFactor={windFactor} />}
-                  {item.type === 'rock1' && <GardenProp type="rock" position={[0, 0, 0]} />}
-                  {item.type === 'tree1' && <Tree theme={theme} scale={0.5} leafCount={20} branchCount={4} quality={graphicsQuality} />}
-                  {item.type === 'house1' && (
+               <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
+                 <DraggableItem item={item} onUpdate={onUpdateItemPosition}>
+                   {item.type === 'custom_3d' && item.modelUrl && <CustomGLTFModel url={item.modelUrl} scale={1} />}
+                   {item.type === 'flower1' && <Flower type="sunflower" position={[0, 0, 0]} scale={1.5} windFactor={windFactor} />}
+                   {item.type === 'rock1' && <GardenProp type="rock" position={[0, 0, 0]} />}
+                   {item.type === 'tree1' && <Tree theme={theme} scale={0.5} leafCount={20} branchCount={4} quality={graphicsQuality} />}
+                   {item.type === 'house1' && (
                      <mesh position={[0, 1.5, 0]}>
-                        <boxGeometry args={[3, 3, 3]} />
-                        <meshStandardMaterial color="#fcd34d" />
-                        <mesh position={[0, 2, 0]}>
-                           <coneGeometry args={[2.5, 2, 4]} />
-                           <meshStandardMaterial color="#ef4444" />
-                        </mesh>
+                       <boxGeometry args={[3, 3, 3]} />
+                       <meshStandardMaterial color="#fcd34d" />
+                       <mesh position={[0, 2, 0]}>
+                         <coneGeometry args={[2.5, 2, 4]} />
+                         <meshStandardMaterial color="#ef4444" />
+                       </mesh>
                      </mesh>
-                  )}
-               </DraggableItem>
+                   )}
+                 </DraggableItem>
+               </SpawnIn>
             );
          })}
 
           <group>
-             {flowerPositions.map((pos, i) => (
-                <Flower 
-                    key={i} 
-                    position={[pos.x, 0, pos.z]} 
-                    type={pos.type} 
-                    scale={pos.scale} 
-                    windFactor={windFactor} 
-                    quality={graphicsQuality}
-                />
-             ))}
+             <SpawnIn delay={1.0}>
+               <group>
+                 {flowerPositions.map((pos, i) => (
+                   <Flower
+                     key={i}
+                     position={[pos.x, 0, pos.z]}
+                     type={pos.type}
+                     scale={pos.scale}
+                     windFactor={windFactor}
+                     quality={graphicsQuality}
+                   />
+                 ))}
+               </group>
+             </SpawnIn>
 
-             {grassPositions.map((pos, i) => (
-                <Grass key={i} theme={theme} position={pos} windFactor={windFactor} quality={graphicsQuality} />
-             ))}
+             <SpawnIn delay={1.2}>
+               <group>
+                 {grassPositions.map((pos, i) => (
+                   <Grass key={i} theme={theme} position={pos} windFactor={windFactor} quality={graphicsQuality} />
+                 ))}
+               </group>
+             </SpawnIn>
 
              {graphicsQuality !== 'low' && (
                <>
@@ -602,11 +670,11 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                  )}
                </>
              )}
-  
+
              {graphicsQuality !== 'low' && Array.from({ length: graphicsQuality === 'high' ? 10 : 5 }).map((_, i) => (
-                 <FallingLeaf key={i} theme={theme} quality={graphicsQuality} />
+               <FallingLeaf key={i} theme={theme} quality={graphicsQuality} />
              ))}
-  
+
              {graphicsQuality === 'high' && (
                <>
                  <Bird />
@@ -614,15 +682,25 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                </>
              )}
 
-             <GardenProp position={[-3, 0, 3]} type="rock" />
-             <GardenProp position={[-4, 0, -3]} type="fence" />
-             <GardenProp position={[-3.2, 0, -3]} type="fence" />
-              
-              <Pond />
-              <FallingPetals theme={theme} count={graphicsQuality === 'high' ? 60 : (graphicsQuality === 'medium' ? 30 : 0)} />
-              {graphicsQuality !== 'low' && <Fireflies count={graphicsQuality === 'high' ? 50 : 20} />}
-              <StonePath quality={graphicsQuality} />
-           </group>
+             <SpawnIn delay={1.35} position={[-3, 0, 3]}>
+               <GardenProp position={[0, 0, 0]} type="rock" />
+             </SpawnIn>
+             <SpawnIn delay={1.45} position={[-4, 0, -3]}>
+               <GardenProp position={[0, 0, 0]} type="fence" />
+             </SpawnIn>
+             <SpawnIn delay={1.5} position={[-3.2, 0, -3]}>
+               <GardenProp position={[0, 0, 0]} type="fence" />
+             </SpawnIn>
+
+             <SpawnIn delay={1.55}>
+               <Pond />
+             </SpawnIn>
+             <FallingPetals theme={theme} count={graphicsQuality === 'high' ? 60 : (graphicsQuality === 'medium' ? 30 : 0)} />
+             {graphicsQuality !== 'low' && <Fireflies count={graphicsQuality === 'high' ? 50 : 20} />}
+             <SpawnIn delay={1.3}>
+               <StonePath quality={graphicsQuality} />
+             </SpawnIn>
+          </group>
 
          {graphicsQuality === 'high' && <ContactShadows scale={30} blur={2.5} far={4} opacity={0.4} resolution={512} frames={1} />}
 
