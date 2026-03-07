@@ -99,6 +99,8 @@ const Home: React.FC = () => {
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
   const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
+  const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
+  const [landSearch, setLandSearch] = useState('');
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   // ─── Load config & data from database on mount ─────────────────────────────
@@ -754,23 +756,35 @@ const Home: React.FC = () => {
            )}
         </div>
 
-        {/* 3D World Toggle Button */}
+        {/* ── World Controls (Home tab only) ── */}
         {activeTab === 'home' && (
           <div className="fixed top-24 right-4 z-50 flex flex-col items-end gap-2">
-            <button 
-              onClick={() => setWorldMode(prev => prev === 'tree' ? 'globe' : 'tree')}
-              className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-5 py-3 font-black text-[10px] tracking-widest uppercase hover:bg-pink-50 transition-all flex items-center gap-3 group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <i className={`fas ${worldMode === 'tree' ? 'fa-globe-americas' : 'fa-tree'}`}></i>
-              </div>
-              <div className="text-left">
-                <p className="opacity-60 leading-none mb-0.5">Switch View</p>
-                <p className="text-sm leading-none">{worldMode === 'tree' ? 'Reality World' : 'Fantasy World'}</p>
-              </div>
-            </button>
 
-            {/* World (Circle) Switcher — shown when user has multiple circles */}
+            {/* 3D / Reality World pill toggle */}
+            <div className="flex items-center bg-white/85 backdrop-blur-md rounded-full border border-pink-100 shadow-lg p-1">
+              <button
+                onClick={() => setWorldMode('tree')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black tracking-wide transition-all flex items-center gap-1 ${
+                  worldMode === 'tree'
+                    ? 'bg-pink-500 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-pink-500'
+                }`}
+              >
+                <i className="fas fa-tree text-[9px]"></i> 3D
+              </button>
+              <button
+                onClick={() => setWorldMode('globe')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black tracking-wide transition-all flex items-center gap-1 ${
+                  worldMode === 'globe'
+                    ? 'bg-pink-500 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-pink-500'
+                }`}
+              >
+                <i className="fas fa-globe-americas text-[9px]"></i> World
+              </button>
+            </div>
+
+            {/* Circle (World) Switcher — only when user has multiple circles */}
             {circles.length > 1 && (
               <div className="bg-white/90 backdrop-blur-md border border-pink-100 shadow-xl rounded-2xl p-3 min-w-[160px]">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Switch World</p>
@@ -796,53 +810,107 @@ const Home: React.FC = () => {
               </div>
             )}
 
-            {/* Land Selector (Only in Tree Mode) */}
-            <AnimatePresence>
-              {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 1 && (
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="bg-white/90 backdrop-blur-md border-2 border-pink-50 shadow-2xl rounded-[2rem] p-4 flex flex-col gap-2 min-w-[200px]"
+            {/* Land Float Button + Dropdown with Search */}
+            {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 1 && (
+              <div className="relative">
+                {/* FAB trigger */}
+                <button
+                  onClick={() => { setIsLandDropdownOpen(prev => !prev); setLandSearch(''); }}
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
                 >
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Select Land</p>
-                  <div className="flex flex-col gap-1">
-                    {appConfig.lands.map(land => (
-                      <button
-                        key={land.id}
-                        onClick={async () => {
-                           setAppConfig(prev => ({
-                              ...prev,
-                              lands: prev.lands?.map(l => ({ ...l, isActive: l.id === land.id }))
-                           }));
-                           showToast(`Switched to ${land.name}! ✨`);
-                           try {
-                             await fetch(`/api/lands/${land.id}`, {
-                               method: 'PUT',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify({ isActive: true })
-                             });
-                           } catch (e) {
-                             console.error('Failed to persist active land:', e);
-                           }
-                        }}
-                        className={`flex items-center gap-3 p-3 rounded-2xl transition-all ${
-                          land.isActive 
-                            ? 'bg-pink-500 text-white shadow-lg' 
-                            : 'hover:bg-pink-50 text-gray-600 hover:text-pink-500'
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
-                          {land.icon || '🏞️'}
-                        </div>
-                        <span className="font-bold text-sm">{land.name}</span>
-                        {land.isActive && <i className="fas fa-check-circle ml-auto text-xs opacity-70"></i>}
-                      </button>
-                    ))}
+                  <span className="text-base leading-none">
+                    {appConfig.lands.find(l => l.isActive)?.icon || '🏞️'}
+                  </span>
+                  <div className="text-left">
+                    <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mb-0.5">Land</p>
+                    <p className="text-xs text-pink-600 font-black leading-none truncate max-w-[80px]">
+                      {appConfig.lands.find(l => l.isActive)?.name || 'Select Land'}
+                    </p>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <i className={`fas fa-chevron-${isLandDropdownOpen ? 'up' : 'down'} text-[9px] text-gray-400`}></i>
+                </button>
+
+                {/* Dropdown */}
+                <AnimatePresence>
+                  {isLandDropdownOpen && (
+                    <>
+                      {/* Click-outside backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsLandDropdownOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-3 min-w-[210px] z-50"
+                      >
+                        {/* Search */}
+                        <div className="flex items-center gap-2 bg-pink-50 rounded-xl px-3 py-2 mb-2">
+                          <i className="fas fa-search text-[10px] text-pink-400"></i>
+                          <input
+                            type="text"
+                            placeholder="Search lands..."
+                            value={landSearch}
+                            onChange={e => setLandSearch(e.target.value)}
+                            className="bg-transparent text-xs text-gray-700 outline-none flex-1 placeholder-gray-400"
+                            autoFocus
+                          />
+                          {landSearch && (
+                            <button onClick={() => setLandSearch('')} className="text-gray-300 hover:text-gray-500">
+                              <i className="fas fa-times text-[9px]"></i>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Land list */}
+                        <div className="flex flex-col gap-1 max-h-52 overflow-y-auto">
+                          {appConfig.lands
+                            .filter(l => l.name.toLowerCase().includes(landSearch.toLowerCase()))
+                            .map(land => (
+                              <button
+                                key={land.id}
+                                onClick={async () => {
+                                  setAppConfig(prev => ({
+                                    ...prev,
+                                    lands: prev.lands?.map(l => ({ ...l, isActive: l.id === land.id }))
+                                  }));
+                                  setIsLandDropdownOpen(false);
+                                  showToast(`Switched to ${land.name}! ✨`);
+                                  try {
+                                    await fetch(`/api/lands/${land.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ isActive: true })
+                                    });
+                                  } catch (e) {
+                                    console.error('Failed to persist active land:', e);
+                                  }
+                                }}
+                                className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                                  land.isActive
+                                    ? 'bg-pink-500 text-white shadow-sm'
+                                    : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
+                                }`}
+                              >
+                                <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
+                                  {land.icon || '🏞️'}
+                                </span>
+                                <span className="flex-1 truncate">{land.name}</span>
+                                {land.isActive && <i className="fas fa-check-circle text-[10px] opacity-70 flex-shrink-0"></i>}
+                              </button>
+                            ))}
+                          {appConfig.lands.filter(l => l.name.toLowerCase().includes(landSearch.toLowerCase())).length === 0 && (
+                            <p className="text-xs text-gray-400 text-center py-4">No lands found</p>
+                          )}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         )}
 
@@ -1112,7 +1180,14 @@ const Home: React.FC = () => {
          >
            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
          </button>
-         <button onClick={() => setIsEditDrawerOpen(true)} className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:bg-white transition-all transform hover:scale-110 border border-white/50"><i className="fas fa-cog text-sm"></i></button>
+         <button
+           onClick={() => setIsEditDrawerOpen(true)}
+           className="flex items-center gap-1.5 bg-white/40 backdrop-blur-md rounded-full shadow-lg px-3 py-2 text-gray-600 hover:bg-white transition-all transform hover:scale-105 border border-white/50"
+           title="Edit Mode"
+         >
+           <i className="fas fa-pencil-alt text-[11px]"></i>
+           <span className="text-[10px] font-black uppercase tracking-wide hidden sm:inline">Edit</span>
+         </button>
          <UserDropdown 
             user={user} 
             onLogout={logout} 
