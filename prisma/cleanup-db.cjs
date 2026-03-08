@@ -20,14 +20,16 @@ async function cleanup() {
       }
     }
 
-    // 1. Drop conflicting columns from TimelineEvent
+    // 2. Drop conflicting columns from TimelineEvent and Memory
     console.log('Dropping latitude/longitude from TimelineEvent if they exist...');
     await client.query('ALTER TABLE "TimelineEvent" DROP COLUMN IF EXISTS "latitude";');
     await client.query('ALTER TABLE "TimelineEvent" DROP COLUMN IF EXISTS "longitude";');
 
-    // 2. Drop conflicting column from Memory
     console.log('Dropping albumId from Memory if it exists...');
     await client.query('ALTER TABLE "Memory" DROP COLUMN IF EXISTS "albumId";');
+
+    console.log('Dropping showProposal from AppConfig if it exists...');
+    await client.query('ALTER TABLE "AppConfig" DROP COLUMN IF EXISTS "showProposal";');
 
     // 3. Drop conflicting tables in reverse order of foreign keys
     console.log('Dropping PurchasedItem, Land, Album if they exist...');
@@ -43,14 +45,6 @@ async function cleanup() {
     // 5. Check migrations state
     const migrations = await client.query('SELECT migration_name, finished_at FROM "_prisma_migrations";');
     console.log('Current migrations in database:', migrations.rows);
-
-    // 6. Manual safety: ensure showProposal exists (Prisma will skip if already there or fail gracefully)
-    console.log('Ensuring showProposal exists in AppConfig (manual backup)...');
-    try {
-      await client.query('ALTER TABLE "AppConfig" ADD COLUMN IF NOT EXISTS "showProposal" BOOLEAN NOT NULL DEFAULT true;');
-    } catch (e) {
-      console.log('Manual column addition failed (likely exists):', e.message);
-    }
 
     console.log('Cleanup and state reset completed successfully.');
   } catch (err) {
