@@ -26,12 +26,24 @@ async function cleanup() {
 
     // 4. Reset migration state for the specific failed/drifted migration
     console.log('Resetting migration state for 20260307151302_init in _prisma_migrations...');
-    await client.query('DELETE FROM "_prisma_migrations" WHERE "migration_name" = \'20260307151302_init\';');
+    const deleteRes = await client.query('DELETE FROM "_prisma_migrations" WHERE "migration_name" = \'20260307151302_init\';');
+    console.log(`Deleted ${deleteRes.rowCount} rows from _prisma_migrations.`);
+
+    // 5. Check migrations state
+    const migrations = await client.query('SELECT migration_name, finished_at FROM "_prisma_migrations";');
+    console.log('Current migrations in database:', migrations.rows);
+
+    // 6. Manual safety: ensure showProposal exists (Prisma will skip if already there or fail gracefully)
+    console.log('Ensuring showProposal exists in AppConfig (manual backup)...');
+    try {
+      await client.query('ALTER TABLE "AppConfig" ADD COLUMN IF NOT EXISTS "showProposal" BOOLEAN NOT NULL DEFAULT true;');
+    } catch (e) {
+      console.log('Manual column addition failed (likely exists):', e.message);
+    }
 
     console.log('Cleanup and state reset completed successfully.');
   } catch (err) {
     console.error('Error during cleanup:', err.message);
-    // Don't fail the build if cleanup fails (might be permission issues or something else)
   } finally {
     await client.end();
   }
