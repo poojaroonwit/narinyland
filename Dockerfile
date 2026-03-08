@@ -45,7 +45,8 @@ ENV NODE_ENV=production
 # ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN groupadd --system --gid 1001 nodejs
-RUN useradd --system --uid 1001 -g nodejs nextjs
+RUN useradd --system --uid 1001 --create-home --home-dir /home/nextjs -g nodejs nextjs
+ENV HOME=/home/nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
