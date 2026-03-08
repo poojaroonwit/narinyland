@@ -9,6 +9,17 @@ async function cleanup() {
     await client.connect();
     console.log('Connected to database for cleanup...');
 
+    // 0. Ensure columns to be dropped exist (so migration doesn't fail on DROP)
+    console.log('Ensuring legacy pwa columns exist in AppConfig (so they can be dropped)...');
+    const legacyCols = ["pwaBackgroundColor", "pwaDescription", "pwaIconUrl", "pwaName", "pwaShortName", "pwaThemeColor"];
+    for (const col of legacyCols) {
+      try {
+        await client.query(`ALTER TABLE "AppConfig" ADD COLUMN IF NOT EXISTS "${col}" TEXT;`);
+      } catch (e) {
+        // ignore
+      }
+    }
+
     // 1. Drop conflicting columns from TimelineEvent
     console.log('Dropping latitude/longitude from TimelineEvent if they exist...');
     await client.query('ALTER TABLE "TimelineEvent" DROP COLUMN IF EXISTS "latitude";');
