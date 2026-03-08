@@ -24,7 +24,11 @@ async function cleanup() {
     await client.query('DROP TABLE IF EXISTS "Land" CASCADE;');
     await client.query('DROP TABLE IF EXISTS "Album" CASCADE;');
 
-    console.log('Cleanup completed successfully.');
+    // 4. Reset migration state for the specific failed/drifted migration
+    console.log('Resetting migration state for 20260307151302_init in _prisma_migrations...');
+    await client.query('DELETE FROM "_prisma_migrations" WHERE "migration_name" = \'20260307151302_init\';');
+
+    console.log('Cleanup and state reset completed successfully.');
   } catch (err) {
     console.error('Error during cleanup:', err.message);
     // Don't fail the build if cleanup fails (might be permission issues or something else)
