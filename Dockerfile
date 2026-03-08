@@ -36,6 +36,13 @@ ENV DIRECT_URL=${DIRECT_URL}
 
 RUN npm run build
 
+# Install production dependencies
+FROM base AS prod-deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma/
+RUN npm ci --omit=dev
+
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
@@ -50,8 +57,7 @@ ENV HOME=/home/nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
