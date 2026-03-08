@@ -13,7 +13,9 @@ ALTER TABLE "TimelineEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "LoveLetter" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Coupon" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "LoveStats" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "QuestLog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Album" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Land" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "PurchasedItem" ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- DENY all access to anon and authenticated roles
@@ -33,4 +35,6 @@ REVOKE ALL ON "TimelineEvent" FROM anon, authenticated;
 REVOKE ALL ON "LoveLetter" FROM anon, authenticated;
 REVOKE ALL ON "Coupon" FROM anon, authenticated;
 REVOKE ALL ON "LoveStats" FROM anon, authenticated;
-REVOKE ALL ON "QuestLog" FROM anon, authenticated;
+REVOKE ALL ON "Album" FROM anon, authenticated;
+REVOKE ALL ON "Land" FROM anon, authenticated;
+REVOKE ALL ON "PurchasedItem" FROM anon, authenticated;

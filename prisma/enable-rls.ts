@@ -14,7 +14,9 @@ async function enableRLS() {
     'LoveLetter',
     'Coupon',
     'LoveStats',
-    'QuestLog',
+    'Album',
+    'Land',
+    'PurchasedItem',
   ];
 
   for (const table of tables) {
