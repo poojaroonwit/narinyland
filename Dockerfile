@@ -74,4 +74,4 @@ ENV HOSTNAME="0.0.0.0"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["sh", "-c", "npx prisma migrate resolve --applied 20260307151302_init || true && npx prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "npx prisma migrate resolve --rolled-back 20260307151302_init || true && node prisma/cleanup-db.js && npx prisma migrate deploy && node server.js"]
