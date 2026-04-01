@@ -5,9 +5,105 @@ import { AppKit } from 'alphayard-appkit';
  */
 
 let appKitInstance: AppKit | null = null;
+let appKitConfigCache: {
+  clientId: string;
+  domain: string;
+  redirectUri?: string;
+} | null = null;
 
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
+
+const DEFAULT_APPKIT_DOMAIN = 'https://appkits.up.railway.app';
+const DEFAULT_APPKIT_SCOPES = ['openid', 'profile', 'email', 'offline_access'];
+const PUBLIC_AUTH_RETURN_PATH = '/';
+
+function normalizeDomain(domain?: string | null): string {
+  const trimmed = (domain || DEFAULT_APPKIT_DOMAIN).trim();
+  return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+}
+
+function getRedirectUri(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}/auth/callback`;
+}
+
+function getStaticConfig() {
+  return {
+    clientId: (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '').trim(),
+    domain: normalizeDomain(process.env.NEXT_PUBLIC_APPKIT_DOMAIN),
+    redirectUri: getRedirectUri(),
+  };
+}
+
+async function resolveAppKitConfig() {
+  const config = getStaticConfig();
+
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/config/appkit', { cache: 'no-store' });
+      if (res.ok) {
+        const runtimeConfig = await res.json();
+        config.clientId = (runtimeConfig.clientId || config.clientId || '').trim();
+        config.domain = normalizeDomain(runtimeConfig.domain || config.domain);
+      }
+    } catch (err) {
+      console.error('Failed to fetch runtime AppKit config:', err);
+    }
+  }
+
+  if (!config.clientId) {
+    throw new Error('Sign in is temporarily unavailable because AppKit is not configured.');
+  }
+
+  return config;
+}
+
+function createAppKitClient(config: { clientId: string; domain: string; redirectUri?: string }) {
+  return new AppKit({
+    clientId: config.clientId,
+    domain: config.domain,
+    redirectUri: config.redirectUri,
+    scopes: DEFAULT_APPKIT_SCOPES,
+    storage: 'sessionStorage',
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const urlStr = input.toString();
+
+      // Proxy token exchange and revocation through our backend as usual,
+      // but now our backend will also set the HttpOnly cookies.
+      if (urlStr.includes('/oauth/token')) {
+        const rawParams = new URLSearchParams(init?.body as string);
+        const bodyData = Object.fromEntries(rawParams);
+
+        return globalThis.fetch('/api/auth/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData),
+          credentials: 'include',
+        });
+      }
+
+      if (urlStr.includes('/oauth/revoke')) {
+        const rawParams = new URLSearchParams(init?.body as string);
+        const bodyData = Object.fromEntries(rawParams);
+
+        return globalThis.fetch('/api/auth/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData),
+          credentials: 'include',
+        });
+      }
+
+      // Proxy "me" profile request
+      if (urlStr.includes('/users/me')) {
+        return globalThis.fetch('/api/auth/me', { credentials: 'include' });
+      }
+
+      return globalThis.fetch(input, init);
+    },
+  });
+}
 
 /**
  * Asynchronously initialize the AppKit client
@@ -16,86 +112,26 @@ let initPromise: Promise<void> | null = null;
 export async function initAppKit(): Promise<void> {
   if (appKitInstance) return;
   if (isInitializing && initPromise) return initPromise;
-  
+
   isInitializing = true;
   initPromise = (async () => {
-    let domain = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || '';
-    let clientId = process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
-
-    // If variables failed to inject during the build step, fetch them at runtime from our API
-    if (typeof window !== 'undefined' && (!clientId || !domain)) {
-      try {
-        const res = await fetch('/api/config/appkit');
-        if (res.ok) {
-          const config = await res.json();
-          clientId = (config.clientId || clientId || '').trim();
-          domain = (config.domain || domain || 'https://appkits.up.railway.app').trim();
-          
-          console.log('AppKit Config (Runtime Fetched):', { clientId: clientId ? `Available (${clientId.substring(0,8)}...)` : 'MISSING', domain });
-        }
-      } catch (err) {
-        console.error('Failed to fetch runtime AppKit config:', err);
-      }
-    } else if (typeof window !== 'undefined') {
-       clientId = (clientId || '').trim();
-       domain = (domain || 'https://appkits.up.railway.app').trim();
-       console.log('AppKit Config (Static):', { clientId: clientId ? 'Available' : 'MISSING', domain });
-    }
-
-    if (!domain) domain = 'https://appkits.up.railway.app';
-    if (domain.endsWith('/')) domain = domain.slice(0, -1);
-
-    appKitInstance = new AppKit({
-      clientId: clientId || '',
-      domain: domain,
-      redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      scopes: ['openid', 'profile', 'email', 'offline_access'],
-      storage: 'sessionStorage',
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        const urlStr = input.toString();
-        // Proxy token exchange and revocation through our backend as usual, 
-        // but now our backend will also set the HttpOnly cookies.
-        if (urlStr.includes('/oauth/token')) {
-          const rawParams = new URLSearchParams(init?.body as string);
-          const bodyData = Object.fromEntries(rawParams);
-          
-          return globalThis.fetch('/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData),
-            credentials: 'include'
-          });
-        }
-        
-        if (urlStr.includes('/oauth/revoke')) {
-          const rawParams = new URLSearchParams(init?.body as string);
-          const bodyData = Object.fromEntries(rawParams);
-          
-          return globalThis.fetch('/api/auth/revoke', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData),
-            credentials: 'include'
-          });
-        }
-
-        // Proxy "me" profile request
-        if (urlStr.includes('/users/me')) {
-          return globalThis.fetch('/api/auth/me', { credentials: 'include' });
-        }
-        
-        return globalThis.fetch(input, init);
-      }
-    });
-    
-    isInitializing = false;
+    const config = await resolveAppKitConfig();
+    appKitConfigCache = config;
+    appKitInstance = createAppKitClient(config);
   })();
 
-  return initPromise;
+  try {
+    await initPromise;
+  } finally {
+    isInitializing = false;
+    if (!appKitInstance) {
+      initPromise = null;
+    }
+  }
 }
 
 /**
- * Synchronous getter for AppKit client. 
+ * Synchronous getter for AppKit client.
  * Must call `await initAppKit()` at least once before using this.
  */
 export function getAppKit(): AppKit {
@@ -105,38 +141,17 @@ export function getAppKit(): AppKit {
     } else {
       console.warn('getAppKit called before initAppKit started. Performing emergency synchronous fallback.');
     }
-    // Emergency synchronous fallback
-    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
-    const clientId = (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '').trim();
-    return new AppKit({
-      clientId, 
-      domain,
-      redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-      scopes: ['openid', 'profile', 'email', 'offline_access'],
-      storage: 'sessionStorage',
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        const urlStr = input.toString();
-        // Ensure even the fallback uses our BFF proxies
-        if (urlStr.includes('/oauth/token')) {
-          const rawParams = new URLSearchParams(init?.body as string);
-          const bodyData = Object.fromEntries(rawParams);
-          return globalThis.fetch('/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData),
-            credentials: 'include'
-          });
-        }
-        if (urlStr.includes('/users/me')) {
-          return globalThis.fetch('/api/auth/me', { credentials: 'include' });
-        }
-        return globalThis.fetch(input, init);
-      }
-    });
+
+    const fallbackConfig = appKitConfigCache || getStaticConfig();
+    if (!fallbackConfig.clientId) {
+      throw new Error('AppKit has not been initialized yet.');
+    }
+
+    return createAppKitClient(fallbackConfig);
   }
+
   return appKitInstance;
 }
-
 
 /**
  * Start the login/signup flow
@@ -144,8 +159,14 @@ export function getAppKit(): AppKit {
 export async function login(): Promise<void> {
   await initAppKit();
   const client = getAppKit();
-  // Force 'consent' prompt to ensure offline_access is granted and a refresh_token is issued
-  await client.login({ prompt: 'consent' });
+  const url = await client.buildAuthUrl({
+    redirect_uri: getRedirectUri(),
+    extraParams: { prompt: 'consent' },
+  });
+
+  if (typeof window !== 'undefined') {
+    window.location.assign(url);
+  }
 }
 
 /**
@@ -196,21 +217,21 @@ export function isAuthenticated(): boolean {
  */
 export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string; attributes: Record<string, any> } | null> {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     if (!isAuthenticated()) return null;
-    
+
     // Call our proxied "me" endpoint which uses the HttpOnly cookie
     const res = await fetch('/api/auth/me', { credentials: 'include' });
     if (!res.ok) return null;
-    
+
     const user = await res.json();
     return {
       sub: user.id || user.sub,
       name: user.name || '',
       email: user.email || '',
       picture: user.avatar || user.picture || '',
-      attributes: user.attributes || {}
+      attributes: user.attributes || {},
     };
   } catch (err) {
     console.error('AppKit getUser error:', err);
@@ -225,20 +246,23 @@ export async function logout(): Promise<void> {
   try {
     // Clear cookies on the server
     await fetch('/api/auth/logout', { method: 'POST' });
-    
+
     // Also clear AppKit local storage state just in case
     await initAppKit();
     const client = getAppKit();
     await client.logout({
-      post_logout_redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
+      post_logout_redirect_uri: typeof window !== 'undefined'
+        ? `${window.location.origin}${PUBLIC_AUTH_RETURN_PATH}`
+        : undefined,
     });
   } catch (err) {
     console.error('Logout error:', err);
     if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      window.location.href = PUBLIC_AUTH_RETURN_PATH;
     }
   }
 }
+
 /**
  * Get all circles/worlds the current user belongs to.
  * Proxied through our own backend to avoid CORS restrictions when calling
@@ -270,7 +294,7 @@ export async function updateProfile(data: { name?: string; avatar?: string; attr
   try {
     await initAppKit();
     const client = getAppKit();
-    
+
     const nameParts = data.name?.trim().split(/\s+/) || [];
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -278,13 +302,13 @@ export async function updateProfile(data: { name?: string; avatar?: string; attr
     await client.updateProfile({
       firstName: firstName || undefined,
       lastName: lastName || undefined,
-      avatar: data.avatar || undefined
+      avatar: data.avatar || undefined,
     });
 
     if (data.attributes) {
       await client.updateAttributes(data.attributes);
     }
-    
+
     return true;
   } catch (err) {
     console.error('AppKit updateProfile error:', err);

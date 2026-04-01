@@ -40,21 +40,23 @@ export default function AuthCallbackPage() {
           throw new Error('Token exchange completed but no session was established. Check server logs.');
         }
 
-        // Navigate to home — AuthProvider will re-check auth on the route
+        // Navigate to home; AuthProvider will re-check auth on the route
         // change and decide whether to stay on / or redirect to /onboarding
         // based on the user's circle membership.
         router.replace('/');
       } catch (err: any) {
         console.error('Auth callback error:', err);
         const message: string = err?.message || 'Authentication failed. Please try again.';
+
         // Auto-retry once for transient server errors
         if (message.includes('temporarily unavailable') && !retrying) {
           setRetrying(true);
-          setTimeout(() => router.replace('/login'), 3000);
-          setError('Authentication server is starting up, redirecting you back to login…');
+          setTimeout(() => router.replace('/'), 3000);
+          setError('Authentication server is starting up, redirecting you back to the home page...');
           setProcessing(false);
           return;
         }
+
         setError(message);
         setProcessing(false);
       }
@@ -85,7 +87,7 @@ export default function AuthCallbackPage() {
             {/* Animated heart loader */}
             <div className="relative">
               <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center text-2xl">💖</div>
+              <div className="absolute inset-0 flex items-center justify-center text-2xl">Love</div>
             </div>
             <h2 className="text-xl font-bold text-gray-800" style={{ fontFamily: "'Outfit', sans-serif" }}>
               Signing you in...
@@ -94,7 +96,7 @@ export default function AuthCallbackPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-5">
-            <div className="text-5xl">😢</div>
+            <div className="text-5xl">!</div>
             <h2 className="text-xl font-bold text-gray-800" style={{ fontFamily: "'Outfit', sans-serif" }}>
               Oops! Something went wrong
             </h2>
@@ -102,7 +104,7 @@ export default function AuthCallbackPage() {
               {error}
             </p>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push('/')}
               className="w-full py-3 px-6 rounded-2xl font-semibold text-white transition-all duration-300 hover:scale-105 active:scale-95"
               style={{
                 background: 'linear-gradient(135deg, #ec4899, #db2777)',

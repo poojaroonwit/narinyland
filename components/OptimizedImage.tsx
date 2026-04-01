@@ -39,7 +39,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const imgRef = useRef<HTMLImageElement>(null);
   const [isIntersecting, setIsIntersecting] = useState(priority);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const [retryKey, setRetryKey] = useState(0); // Force re-render for retry
 
   // Generate optimized display URL
   const displayUrl = useMemo(() => {
@@ -58,8 +57,16 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     return src;
   }, [src, fallback]);
 
+  useEffect(() => {
+    setImageState('loading');
+    setCurrentSrc(placeholder || fallback);
+    setIsIntersecting(priority);
+  }, [displayUrl, placeholder, fallback, priority]);
+
   // Intersection Observer for lazy loading
   useEffect(() => {
+    observerRef.current?.disconnect();
+
     if (!priority && imgRef.current) {
       observerRef.current = new IntersectionObserver(
         (entries) => {
@@ -81,26 +88,38 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     return () => {
       observerRef.current?.disconnect();
     };
-  }, [priority]);
+  }, [priority, displayUrl]);
 
   // Load image when it becomes visible (ultra simple)
   useEffect(() => {
-    if (isIntersecting && imageState === 'loading') {
-      const img = new Image();
-      
-      img.onload = () => {
-        setImageState('loaded');
-        setCurrentSrc(displayUrl);
-      };
-      
-      img.onerror = () => {
-        setImageState('error');
-        setCurrentSrc(fallback);
-      };
-      
-      img.src = displayUrl;
-    }
-  }, [isIntersecting, displayUrl, imageState, fallback]);
+    if (!isIntersecting || imageState !== 'loading') return;
+
+    let isCancelled = false;
+    const img = new Image();
+
+    img.decoding = 'async';
+    img.loading = loading;
+
+    img.onload = () => {
+      if (isCancelled) return;
+      setImageState('loaded');
+      setCurrentSrc(displayUrl);
+    };
+
+    img.onerror = () => {
+      if (isCancelled) return;
+      setImageState('error');
+      setCurrentSrc(fallback);
+    };
+
+    img.src = displayUrl;
+
+    return () => {
+      isCancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [isIntersecting, displayUrl, imageState, fallback, loading]);
 
   // Note: Manual retry removed for simple load-and-cache behavior
 
@@ -144,6 +163,9 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           setImageState('error');
           setCurrentSrc(fallback);
           onError?.(e);
+        }}
+        onLoad={(e) => {
+          onLoad?.(e);
         }}
         initial={{ opacity: 0 }}
         animate={{ opacity: imageState === 'loaded' ? 1 : 0 }}

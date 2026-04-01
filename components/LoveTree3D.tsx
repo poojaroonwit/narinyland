@@ -528,7 +528,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
         </SpawnIn>
 
         {/* Main tree — draggable in edit mode, position stored as main_tree PurchasedItem */}
-        {(() => {
+        {false && (() => {
           const mainTreeItem = purchasedItems?.find(i => i.type === 'main_tree');
           const treeInitialPos: [number, number, number] = [mainTreeItem?.x ?? 0, 0, mainTreeItem?.z ?? 0];
           if (isEditMode) {
@@ -539,7 +539,6 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                   item={{ ...fakeItem, x: 0, y: 0, z: 0 }}
                   onUpdate={async (id, x, y, z) => {
                     if (onUpdateItemPosition) onUpdateItemPosition(id, x, y, z);
-                    // If this is the placeholder fake item, create a real DB record first
                     if (!mainTreeItem && activeLandId) {
                       try {
                         await fetch('/api/purchased-items', {
@@ -567,13 +566,13 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
           );
         })()}
          
-          {showExplosion && <LeafExplosion count={graphicsQuality === 'low' ? 15 : 30} color={theme.particle} />}
+          {false && showExplosion && <LeafExplosion count={graphicsQuality === 'low' ? 15 : 30} color={theme.particle} />}
 
-          {floatingTexts.map(ft => (
+          {false && floatingTexts.map(ft => (
              <FloatingText key={ft.id} text={ft.text} position={ft.position} color={ft.color} />
           ))}
 
-          {(!pets || pets.length === 0) ? (
+          {false && ((!pets || pets.length === 0) ? (
             <SpawnIn key="default-pet" delay={1.6}>
               <Pet3D emotion={petEmotion} theme={theme} petType={petType} startPos={[2, 0, 2]} quality={graphicsQuality} />
             </SpawnIn>
@@ -602,7 +601,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 </SpawnIn>
               );
             });
-         })()}
+         })())}
 
          {purchasedItems?.map((item, idx) => {
             if (item.type === 'dog' || item.type === 'cat') {
@@ -635,6 +634,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             );
          })}
 
+          {false && (
           <group>
              <SpawnIn delay={1.0}>
                <group>
@@ -701,6 +701,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                <StonePath quality={graphicsQuality} />
              </SpawnIn>
           </group>
+          )}
 
          {graphicsQuality === 'high' && <ContactShadows scale={30} blur={2.5} far={4} opacity={0.4} resolution={512} frames={1} />}
 
