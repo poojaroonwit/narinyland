@@ -856,13 +856,13 @@ const Home: React.FC = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.96 }}
                     transition={{ duration: 0.18 }}
-                    className="relative z-50 w-[min(92vw,24rem)] overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.22),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(56,189,248,0.18),_transparent_30%),linear-gradient(160deg,rgba(15,23,42,0.96),rgba(49,46,129,0.92))] p-4 text-white shadow-[0_32px_90px_rgba(15,23,42,0.55)] backdrop-blur-2xl"
+                    className="relative z-50 w-[min(88vw,19.5rem)] overflow-hidden rounded-[26px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.22),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(56,189,248,0.18),_transparent_30%),linear-gradient(160deg,rgba(15,23,42,0.96),rgba(49,46,129,0.92))] p-3 text-white shadow-[0_28px_72px_rgba(15,23,42,0.5)] backdrop-blur-2xl"
                   >
-                    <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="mb-3 flex items-start justify-between gap-2">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.32em] text-white/50">World Config</p>
-                        <h3 className="mt-2 text-xl font-black text-white">Choose your world setup</h3>
-                        <p className="mt-1 text-sm text-white/65">
+                        <h3 className="mt-1.5 text-lg font-black text-white">Choose your world setup</h3>
+                        <p className="mt-1 text-xs text-white/65">
                           Switch the active world and choose how you want to explore it.
                         </p>
                       </div>
@@ -871,58 +871,58 @@ const Home: React.FC = () => {
                           setIsWorldConfigOpen(false);
                           setLandSearch('');
                         }}
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
                       >
-                        <i className="fas fa-times text-sm"></i>
+                        <i className="fas fa-times text-xs"></i>
                       </button>
                     </div>
 
-                    <div className="space-y-4">
-                      <section className="rounded-[26px] border border-white/10 bg-white/5 p-3">
-                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.28em] text-white/45">View Type</p>
-                        <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-3">
+                      <section className="rounded-[22px] border border-white/10 bg-white/5 p-2.5">
+                        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.24em] text-white/45">View Type</p>
+                        <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => setWorldMode('tree')}
-                            className={`rounded-[22px] border p-3 text-left transition-all ${
+                            className={`rounded-[18px] border p-2.5 text-left transition-all ${
                               worldMode === 'tree'
                                 ? 'border-rose-300/60 bg-rose-400/20 shadow-[0_16px_40px_rgba(251,113,133,0.24)]'
                                 : 'border-white/10 bg-black/10 hover:bg-white/10'
                             }`}
                           >
-                            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-300/20 text-rose-100">
-                              <i className="fas fa-tree text-sm"></i>
+                            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-rose-300/20 text-rose-100">
+                              <i className="fas fa-tree text-xs"></i>
                             </div>
-                            <p className="text-sm font-bold text-white">3D Garden</p>
-                            <p className="mt-1 text-xs text-white/60">Walk through your tree world and decorations.</p>
+                            <p className="text-xs font-bold text-white">3D Garden</p>
+                            <p className="mt-1 text-[11px] leading-4 text-white/60">Walk through your tree world and decorations.</p>
                           </button>
                           <button
                             onClick={() => setWorldMode('globe')}
-                            className={`rounded-[22px] border p-3 text-left transition-all ${
+                            className={`rounded-[18px] border p-2.5 text-left transition-all ${
                               worldMode === 'globe'
                                 ? 'border-sky-300/60 bg-sky-400/20 shadow-[0_16px_40px_rgba(56,189,248,0.22)]'
                                 : 'border-white/10 bg-black/10 hover:bg-white/10'
                             }`}
                           >
-                            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-300/20 text-sky-100">
-                              <i className="fas fa-globe-americas text-sm"></i>
+                            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-sky-300/20 text-sky-100">
+                              <i className="fas fa-globe-americas text-xs"></i>
                             </div>
-                            <p className="text-sm font-bold text-white">Memory Globe</p>
-                            <p className="mt-1 text-xs text-white/60">View your story across the world map and flags.</p>
+                            <p className="text-xs font-bold text-white">Memory Globe</p>
+                            <p className="mt-1 text-[11px] leading-4 text-white/60">View your story across the world map and flags.</p>
                           </button>
                         </div>
                       </section>
 
-                      <section className="rounded-[26px] border border-white/10 bg-white/5 p-3">
-                        <div className="mb-3 flex items-center justify-between gap-3">
+                      <section className="rounded-[22px] border border-white/10 bg-white/5 p-2.5">
+                        <div className="mb-2 flex items-center justify-between gap-2">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">World List</p>
-                            <p className="mt-1 text-xs text-white/55">Pick the world you want to open right now.</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-white/45">World List</p>
+                            <p className="mt-1 text-[11px] text-white/55">Pick the world you want to open right now.</p>
                           </div>
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">
                             {circles.length} total
                           </span>
                         </div>
-                        <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                        <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
                           {circles.map(circle => (
                             <button
                               key={circle.id}
@@ -934,25 +934,25 @@ const Home: React.FC = () => {
                                   showToast(`Switched to ${circle.name}!`);
                                 }
                               }}
-                              className={`flex w-full items-center gap-3 rounded-[22px] border px-3 py-3 text-left transition-all ${
+                              className={`flex w-full items-center gap-2.5 rounded-[18px] border px-2.5 py-2.5 text-left transition-all ${
                                 circle.id === activeCircleId
                                   ? 'border-pink-300/55 bg-gradient-to-r from-pink-500/30 to-rose-400/15 text-white shadow-[0_16px_40px_rgba(244,114,182,0.22)]'
                                   : 'border-white/10 bg-black/10 text-white/82 hover:bg-white/10'
                               }`}
                             >
-                              <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${
                                 circle.id === activeCircleId ? 'bg-white/18' : 'bg-white/10'
                               }`}>
-                                <i className="fas fa-globe-asia text-sm"></i>
+                                <i className="fas fa-globe-asia text-xs"></i>
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-bold">{circle.name}</p>
-                                <p className="truncate text-[11px] text-white/55">
+                                <p className="truncate text-xs font-bold">{circle.name}</p>
+                                <p className="truncate text-[10px] text-white/55">
                                   {circle.role || 'member'} access
                                 </p>
                               </div>
                               {circle.id === activeCircleId && (
-                                <i className="fas fa-check-circle text-sm text-pink-100"></i>
+                                <i className="fas fa-check-circle text-xs text-pink-100"></i>
                               )}
                             </button>
                           ))}
@@ -960,21 +960,21 @@ const Home: React.FC = () => {
                       </section>
 
                       {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 0 && (
-                        <section className="rounded-[26px] border border-white/10 bg-white/5 p-3">
-                          <div className="mb-3">
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">3D Land</p>
-                            <p className="mt-1 text-xs text-white/55">Choose which land inside this world should be active.</p>
+                        <section className="rounded-[22px] border border-white/10 bg-white/5 p-2.5">
+                          <div className="mb-2">
+                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-white/45">3D Land</p>
+                            <p className="mt-1 text-[11px] text-white/55">Choose which land inside this world should be active.</p>
                           </div>
 
                           {appConfig.lands.length > 1 && (
-                            <div className="mb-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/10 px-3 py-2.5">
+                            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-2.5 py-2">
                               <i className="fas fa-search text-[11px] text-white/35"></i>
                               <input
                                 type="text"
                                 placeholder="Search lands..."
                                 value={landSearch}
                                 onChange={e => setLandSearch(e.target.value)}
-                                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                                className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/30"
                               />
                               {landSearch && (
                                 <button
@@ -987,36 +987,36 @@ const Home: React.FC = () => {
                             </div>
                           )}
 
-                          <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
+                          <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
                             {filteredLands.map(land => (
                               <button
                                 key={land.id}
                                 onClick={() => handleSelectLand(land.id, land.name)}
-                                className={`flex w-full items-center gap-3 rounded-[22px] border px-3 py-3 text-left transition-all ${
+                                className={`flex w-full items-center gap-2.5 rounded-[18px] border px-2.5 py-2.5 text-left transition-all ${
                                   land.isActive
                                     ? 'border-amber-300/55 bg-gradient-to-r from-amber-400/20 to-orange-400/10 text-white shadow-[0_16px_40px_rgba(251,191,36,0.18)]'
                                     : 'border-white/10 bg-black/10 text-white/82 hover:bg-white/10'
                                 }`}
                               >
-                                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-base ${
+                                <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm ${
                                   land.isActive ? 'bg-white/18' : 'bg-white/10'
                                 }`}>
                                   {land.icon || 'L'}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-bold">{land.name}</p>
-                                  <p className="truncate text-[11px] text-white/55">
+                                  <p className="truncate text-xs font-bold">{land.name}</p>
+                                  <p className="truncate text-[10px] text-white/55">
                                     {land.isActive ? 'Currently active' : 'Tap to enter this land'}
                                   </p>
                                 </div>
                                 {land.isActive && (
-                                  <i className="fas fa-check-circle text-sm text-amber-100"></i>
+                                  <i className="fas fa-check-circle text-xs text-amber-100"></i>
                                 )}
                               </button>
                             ))}
 
                             {filteredLands.length === 0 && (
-                              <div className="rounded-[22px] border border-dashed border-white/10 bg-black/10 px-4 py-6 text-center text-xs text-white/45">
+                              <div className="rounded-[18px] border border-dashed border-white/10 bg-black/10 px-3 py-5 text-center text-[11px] text-white/45">
                                 No lands matched your search.
                               </div>
                             )}
@@ -1025,7 +1025,7 @@ const Home: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="mt-4 rounded-[22px] border border-white/10 bg-black/10 px-4 py-3 text-xs text-white/55">
+                    <div className="mt-3 rounded-[18px] border border-white/10 bg-black/10 px-3 py-2.5 text-[11px] text-white/55">
                       Active world:
                       <span className="ml-2 font-bold text-white">{activeCircle?.name || 'No world selected'}</span>
                       {activeLand && worldMode === 'tree' && (
