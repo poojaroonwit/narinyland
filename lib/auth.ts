@@ -271,12 +271,14 @@ export async function logout(): Promise<void> {
 export async function getUserCircles(): Promise<Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }>> {
   try {
     if (typeof window === 'undefined') return [];
-    await initAppKit();
-    const client = getAppKit();
-    if (!client.isAuthenticated()) return [];
+    if (!isAuthenticated()) return [];
 
-    // Use our server-side proxy. The cookie will be attached automatically by the browser.
-    const res = await fetch('/api/circles');
+    // Use our server-side proxy. In BFF mode, auth lives in cookies rather than
+    // the SDK's browser storage state, so rely on the cookie-backed session.
+    const res = await fetch('/api/circles', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
     if (!res.ok) return [];
     const data = await res.json();
     // API may return array directly or wrapped in { circles: [] }
