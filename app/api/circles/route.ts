@@ -27,11 +27,64 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(config || null);
     }
 
-    // Otherwise return all configs (for listing purposes)
+    // Otherwise return the authenticated user's real AppKit circles.
+    // Local AppConfig is only used to enrich matching circles with local names.
+    const localConfigs = await prisma.appConfig.findMany({
+      select: { id: true, appName: true },
+    });
+    const localConfigMap = new Map(localConfigs.map((config) => [config.id, config]));
+
+    if (!token.startsWith('name_session_')) {
+      try {
+        const res = await fetch(`${domain}/api/v1/circles`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const circles = Array.isArray(data) ? data : (data.circles || data.data || []);
+
+          const mergedCircles = circles.map((circle: any) => {
+            const localConfig = localConfigMap.get(circle.id || circle._id);
+            return {
+              ...circle,
+              id: circle.id || circle._id,
+              name: localConfig?.appName || circle.name || 'Untitled World',
+            };
+          });
+
+          return NextResponse.json(mergedCircles);
+        }
+
+        const appkitError = await res.json().catch(() => ({}));
+        console.warn('GET /api/circles AppKit fallback to local configs:', {
+          status: res.status,
+          appkitError,
+        });
+      } catch (appkitErr: any) {
+        console.warn('GET /api/circles failed to fetch AppKit circles, falling back locally:', appkitErr?.message || appkitErr);
+      }
+    }
+
     const configs = await prisma.appConfig.findMany({
       include: { lands: { orderBy: { createdAt: 'asc' } } },
+      orderBy: { createdAt: 'asc' },
     });
-    return NextResponse.json(configs);
+
+    return NextResponse.json(
+      configs.map((config) => ({
+        id: config.id,
+        name: config.appName,
+        description: config.appName,
+        role: 'member',
+        memberCount: undefined,
+        createdAt: config.createdAt,
+      }))
+    );
   } catch (err: any) {
     console.error('GET /api/circles error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
