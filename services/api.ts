@@ -204,6 +204,20 @@ export const lettersAPI = {
     fetchAPI<any>(`/letters/${id}`, { method: 'DELETE' }),
 };
 
+// ─── Partners API ────────────────────────────────────────────────────
+
+export const partnersAPI = {
+  /**
+   * Register the current logged-in user as a partner in their active circle.
+   * The server reads the user's identity from the session cookie.
+   */
+  sync: (data?: { name?: string; avatar?: string }) =>
+    fetchAPI<any>('/partners/sync', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    }),
+};
+
 // ─── Coupons API ─────────────────────────────────────────────────────
 
 export const couponsAPI = {

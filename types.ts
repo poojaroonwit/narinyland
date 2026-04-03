@@ -69,7 +69,7 @@ export interface PetState {
 
 export interface LoveLetterMessage {
   id: string;
-  fromId: 'partner1' | 'partner2';
+  fromId: string;
   content: string;
   folder?: string;
   timestamp: Date;
@@ -122,10 +122,7 @@ export interface AppConfig {
   timeline: Interaction[];
   albums?: Album[];
   lands?: Land[];
-  partners: {
-    partner1: { name: string; avatar: string };
-    partner2: { name: string; avatar: string };
-  };
+  partners: Record<string, { name: string; avatar: string }>;
   coupons: {
     id: string;
     title: string;

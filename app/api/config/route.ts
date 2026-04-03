@@ -45,9 +45,16 @@ export async function GET(request: Request) {
       });
     }
 
-    // Transform to frontend-expected format
-    const partner1 = config.partners.find((p: any) => p.partnerId === 'partner1');
-    const partner2 = config.partners.find((p: any) => p.partnerId === 'partner2');
+    // Transform to frontend-expected format — return ALL partners dynamically
+    const partnersRecord: Record<string, { name: string; avatar: string }> = {};
+    for (const p of config.partners as any[]) {
+      partnersRecord[p.partnerId] = { name: p.name, avatar: p.avatar };
+    }
+    // Ensure at least two default slots exist if none are stored
+    if (Object.keys(partnersRecord).length === 0) {
+      partnersRecord['partner1'] = { name: 'Her', avatar: '👩' };
+      partnersRecord['partner2'] = { name: 'Him', avatar: '👨' };
+    }
 
     const response = {
       appName: config.appName,
@@ -79,10 +86,7 @@ export async function GET(request: Request) {
         isAccepted: config.isProposalAccepted,
         progress: config.proposalProgress,
       },
-      partners: {
-        partner1: { name: partner1?.name || 'Her', avatar: partner1?.avatar || '👩' },
-        partner2: { name: partner2?.name || 'Him', avatar: partner2?.avatar || '👨' },
-      },
+      partners: partnersRecord,
       coupons: config.coupons.map((c: any) => ({
         id: c.id,
         title: c.title,

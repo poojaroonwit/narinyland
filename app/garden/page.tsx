@@ -15,7 +15,7 @@ import SimplePlayer from '../../components/SimplePlayer';
 import Toast from '../../components/Toast';
 import TimelineSpreadsheet from '../../components/TimelineSpreadsheet';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../../types';
-import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../../services/api';
+import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI, partnersAPI } from '../../services/api';
 import { useAuth } from '../../components/AuthProvider';
 import UserDropdown from '../../components/UserDropdown';
 import UserProfileModal from '../../components/UserProfileModal';
@@ -146,6 +146,11 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Sync the logged-in user as a circle partner (fire-and-forget before config fetch)
+        if (user?.sub) {
+          await partnersAPI.sync({ name: user.name }).catch(() => {});
+        }
+
         const [
           serverConfig,
           letters,
@@ -493,7 +498,7 @@ const Home: React.FC = () => {
        await addXP(20, msg.fromId);
 
        // 6. Add to Timeline
-       const senderName = msg.fromId === 'partner1' ? appConfig.partners.partner1.name : appConfig.partners.partner2.name;
+       const senderName = appConfig.partners[msg.fromId]?.name || msg.fromId;
        
        // Persist timeline event
        const timelineRes = await timelineAPI.create({
@@ -811,315 +816,9 @@ const Home: React.FC = () => {
            )}
         </div>
 
-        {/* ── World Controls (Home tab only) ── */}
-        {activeTab === 'home' && (
-          <div className="fixed top-24 right-4 z-50 flex flex-col items-end gap-2">
-
-            <button
-              onClick={() => {
-                setIsWorldConfigOpen(prev => !prev);
-                if (isWorldConfigOpen) {
-                  setLandSearch('');
-                }
-              }}
-              className="group flex items-center gap-3 rounded-[24px] border border-white/15 bg-slate-950/80 px-4 py-3 text-left text-white shadow-[0_24px_70px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:bg-slate-900/90"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 via-pink-500 to-orange-300 text-sm shadow-lg">
-                <i className="fas fa-sliders-h"></i>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/55">World Config</p>
-                <p className="truncate text-sm font-semibold text-white">
-                  {activeCircle?.name || 'Choose your world'}
-                </p>
-                <p className="text-[11px] text-white/65">
-                  {worldMode === 'tree' ? '3D Garden view' : 'Memory Globe view'}
-                </p>
-              </div>
-              <i className={`fas fa-chevron-${isWorldConfigOpen ? 'up' : 'down'} text-xs text-white/60 transition-transform`}></i>
-            </button>
-
-            <AnimatePresence>
-              {isWorldConfigOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close world config"
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={() => {
-                      setIsWorldConfigOpen(false);
-                      setLandSearch('');
-                    }}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: -12, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.96 }}
-                    transition={{ duration: 0.18 }}
-                    className="relative z-50 w-[min(88vw,19.5rem)] overflow-hidden rounded-[26px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.22),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(56,189,248,0.18),_transparent_30%),linear-gradient(160deg,rgba(15,23,42,0.96),rgba(49,46,129,0.92))] p-3 text-white shadow-[0_28px_72px_rgba(15,23,42,0.5)] backdrop-blur-2xl"
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-white/50">World Config</p>
-                        <h3 className="mt-1.5 text-lg font-black text-white">Choose your world setup</h3>
-                        <p className="mt-1 text-xs text-white/65">
-                          Switch the active world and choose how you want to explore it.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setIsWorldConfigOpen(false);
-                          setLandSearch('');
-                        }}
-                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                      >
-                        <i className="fas fa-times text-xs"></i>
-                      </button>
-                    </div>
-
-                    <div className="space-y-3">
-                      <section className="rounded-[22px] border border-white/10 bg-white/5 p-2.5">
-                        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.24em] text-white/45">View Type</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setWorldMode('tree')}
-                            className={`rounded-[18px] border p-2.5 text-left transition-all ${
-                              worldMode === 'tree'
-                                ? 'border-rose-300/60 bg-rose-400/20 shadow-[0_16px_40px_rgba(251,113,133,0.24)]'
-                                : 'border-white/10 bg-black/10 hover:bg-white/10'
-                            }`}
-                          >
-                            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-rose-300/20 text-rose-100">
-                              <i className="fas fa-tree text-xs"></i>
-                            </div>
-                            <p className="text-xs font-bold text-white">3D Garden</p>
-                            <p className="mt-1 text-[11px] leading-4 text-white/60">Walk through your tree world and decorations.</p>
-                          </button>
-                          <button
-                            onClick={() => setWorldMode('globe')}
-                            className={`rounded-[18px] border p-2.5 text-left transition-all ${
-                              worldMode === 'globe'
-                                ? 'border-sky-300/60 bg-sky-400/20 shadow-[0_16px_40px_rgba(56,189,248,0.22)]'
-                                : 'border-white/10 bg-black/10 hover:bg-white/10'
-                            }`}
-                          >
-                            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-sky-300/20 text-sky-100">
-                              <i className="fas fa-globe-americas text-xs"></i>
-                            </div>
-                            <p className="text-xs font-bold text-white">Memory Globe</p>
-                            <p className="mt-1 text-[11px] leading-4 text-white/60">View your story across the world map and flags.</p>
-                          </button>
-                        </div>
-                      </section>
-
-                      <section className="rounded-[22px] border border-white/10 bg-white/5 p-2.5">
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-white/45">World List</p>
-                            <p className="mt-1 text-[11px] text-white/55">Pick the world you want to open right now.</p>
-                          </div>
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">
-                            {circles.length} total
-                          </span>
-                        </div>
-                        <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
-                          {circles.map(circle => (
-                            <button
-                              key={circle.id}
-                              onClick={async () => {
-                                if (circle.id !== activeCircleId) {
-                                  await setActiveCircle(circle.id);
-                                  setIsWorldConfigOpen(false);
-                                  setLandSearch('');
-                                  showToast(`Switched to ${circle.name}!`);
-                                }
-                              }}
-                              className={`flex w-full items-center gap-2.5 rounded-[18px] border px-2.5 py-2.5 text-left transition-all ${
-                                circle.id === activeCircleId
-                                  ? 'border-pink-300/55 bg-gradient-to-r from-pink-500/30 to-rose-400/15 text-white shadow-[0_16px_40px_rgba(244,114,182,0.22)]'
-                                  : 'border-white/10 bg-black/10 text-white/82 hover:bg-white/10'
-                              }`}
-                            >
-                              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                                circle.id === activeCircleId ? 'bg-white/18' : 'bg-white/10'
-                              }`}>
-                                <i className="fas fa-globe-asia text-xs"></i>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-bold">{circle.name}</p>
-                                <p className="truncate text-[10px] text-white/55">
-                                  {circle.role || 'member'} access
-                                </p>
-                              </div>
-                              {circle.id === activeCircleId && (
-                                <i className="fas fa-check-circle text-xs text-pink-100"></i>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </section>
-
-                      {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 0 && (
-                        <section className="rounded-[22px] border border-white/10 bg-white/5 p-2.5">
-                          <div className="mb-2">
-                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-white/45">3D Land</p>
-                            <p className="mt-1 text-[11px] text-white/55">Choose which land inside this world should be active.</p>
-                          </div>
-
-                          {appConfig.lands.length > 1 && (
-                            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-2.5 py-2">
-                              <i className="fas fa-search text-[11px] text-white/35"></i>
-                              <input
-                                type="text"
-                                placeholder="Search lands..."
-                                value={landSearch}
-                                onChange={e => setLandSearch(e.target.value)}
-                                className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/30"
-                              />
-                              {landSearch && (
-                                <button
-                                  onClick={() => setLandSearch('')}
-                                  className="text-white/35 transition hover:text-white/70"
-                                >
-                                  <i className="fas fa-times text-[11px]"></i>
-                                </button>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                            {filteredLands.map(land => (
-                              <button
-                                key={land.id}
-                                onClick={() => handleSelectLand(land.id, land.name)}
-                                className={`flex w-full items-center gap-2.5 rounded-[18px] border px-2.5 py-2.5 text-left transition-all ${
-                                  land.isActive
-                                    ? 'border-amber-300/55 bg-gradient-to-r from-amber-400/20 to-orange-400/10 text-white shadow-[0_16px_40px_rgba(251,191,36,0.18)]'
-                                    : 'border-white/10 bg-black/10 text-white/82 hover:bg-white/10'
-                                }`}
-                              >
-                                <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm ${
-                                  land.isActive ? 'bg-white/18' : 'bg-white/10'
-                                }`}>
-                                  {land.icon || 'L'}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-xs font-bold">{land.name}</p>
-                                  <p className="truncate text-[10px] text-white/55">
-                                    {land.isActive ? 'Currently active' : 'Tap to enter this land'}
-                                  </p>
-                                </div>
-                                {land.isActive && (
-                                  <i className="fas fa-check-circle text-xs text-amber-100"></i>
-                                )}
-                              </button>
-                            ))}
-
-                            {filteredLands.length === 0 && (
-                              <div className="rounded-[18px] border border-dashed border-white/10 bg-black/10 px-3 py-5 text-center text-[11px] text-white/45">
-                                No lands matched your search.
-                              </div>
-                            )}
-                          </div>
-                        </section>
-                      )}
-                    </div>
-
-                    <div className="mt-3 rounded-[18px] border border-white/10 bg-black/10 px-3 py-2.5 text-[11px] text-white/55">
-                      Active world:
-                      <span className="ml-2 font-bold text-white">{activeCircle?.name || 'No world selected'}</span>
-                      {activeLand && worldMode === 'tree' && (
-                        <>
-                          <span className="mx-2 text-white/25">•</span>
-                          <span>{activeLand.name}</span>
-                        </>
-                      )}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-
-            {/* Circle (World) Switcher — only when user has multiple circles */}
-            {false && circles.length > 1 && (
-              <div className="relative">
-                {/* Dropdown trigger */}
-                <button
-                  onClick={() => setIsCircleDropdownOpen(prev => !prev)}
-                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
-                >
-                  <span className="text-base leading-none">🌍</span>
-                  <div className="text-left">
-                    <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mb-0.5">World</p>
-                    <p className="text-xs text-pink-600 font-black leading-none truncate max-w-[80px]">
-                      {circles.find(c => c.id === activeCircleId)?.name || 'Select World'}
-                    </p>
-                  </div>
-                  <i className={`fas fa-chevron-${isCircleDropdownOpen ? 'up' : 'down'} text-[9px] text-gray-400`}></i>
-                </button>
-
-                {/* Dropdown Menu */}
-                <AnimatePresence>
-                  {isCircleDropdownOpen && (
-                    <>
-                      {/* Click-outside backdrop */}
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsCircleDropdownOpen(false)}
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute top-full left-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-2 min-w-[180px] z-50 flex flex-col gap-1"
-                      >
-                        {circles.map(circle => (
-                          <button
-                            key={circle.id}
-                            onClick={async () => {
-                              if (circle.id === activeCircleId) return;
-                              setIsCircleDropdownOpen(false);
-                              await setActiveCircle(circle.id);
-                              showToast(`Switched to ${circle.name}! 🌍`);
-                            }}
-                            className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
-                              circle.id === activeCircleId
-                                ? 'bg-pink-500 text-white shadow-sm'
-                                : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
-                            }`}
-                          >
-                            <span className="flex-1 truncate">{circle.name}</span>
-                            {circle.id === activeCircleId && <i className="fas fa-check-circle text-[10px] opacity-70 flex-shrink-0"></i>}
-                          </button>
-                        ))}
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* Land Float Button + Dropdown with Search */}
-            {false && worldMode === 'tree' && (appConfig.lands?.length || 0) > 1 && (
-              <div className="relative">
-                {/* FAB trigger */}
-                <button
-                  onClick={() => { setIsLandDropdownOpen(prev => !prev); setLandSearch(''); }}
-                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
-                >
-                  <span className="text-base leading-none">
-                    {appConfig.lands?.find(l => l.isActive)?.icon || '🏞️'}
-                  </span>
-                  <div className="text-left">
-                    <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mb-0.5">Land</p>
-                    <p className="text-xs text-pink-600 font-black leading-none truncate max-w-[80px]">
-                      {appConfig.lands?.find(l => l.isActive)?.name || 'Select Land'}
-                    </p>
-                  </div>
-                  <i className={`fas fa-chevron-${isLandDropdownOpen ? 'up' : 'down'} text-[9px] text-gray-400`}></i>
-                </button>
-
+        {/* Land Float Button + Dropdown with Search — legacy, kept for future use */}
+        {false && worldMode === 'tree' && (appConfig.lands?.length || 0) > 1 && (
+          <div className="relative">
                 {/* Dropdown */}
                 <AnimatePresence>
                   {isLandDropdownOpen && (
@@ -1201,8 +900,6 @@ const Home: React.FC = () => {
                 </AnimatePresence>
               </div>
             )}
-          </div>
-        )}
 
         {/* Selected Flag Modal */}
         <AnimatePresence>
@@ -1478,20 +1175,130 @@ const Home: React.FC = () => {
       
       {/* Config & Top Menu - Persistently Visible */}
       <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
-         <button 
-           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)} 
+
+         {/* World Config button + popover */}
+         <div className="relative">
+           <button
+             onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
+             className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
+               isWorldConfigOpen ? 'bg-white/60 text-pink-500 border-white/70' : 'bg-white/40 text-white border-white/50'
+             }`}
+           >
+             <i className="fas fa-sliders-h text-xs"></i>
+           </button>
+
+           <AnimatePresence>
+             {isWorldConfigOpen && (
+               <>
+                 <button
+                   type="button"
+                   aria-label="Close world config"
+                   className="fixed inset-0 z-40 cursor-default"
+                   onClick={() => { setIsWorldConfigOpen(false); setLandSearch(''); }}
+                 />
+                 <motion.div
+                   initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                   transition={{ duration: 0.15 }}
+                   className="absolute top-full right-0 mt-2 z-50 w-56 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/10 shadow-2xl p-2.5 space-y-2 text-white overflow-hidden"
+                 >
+                   {/* View mode toggle */}
+                   <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+                     <button
+                       onClick={() => setWorldMode('tree')}
+                       className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                         worldMode === 'tree' ? 'bg-rose-500/80 text-white shadow' : 'text-white/45 hover:text-white/80'
+                       }`}
+                     >
+                       <i className="fas fa-tree text-[10px]"></i> Garden
+                     </button>
+                     <button
+                       onClick={() => setWorldMode('globe')}
+                       className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                         worldMode === 'globe' ? 'bg-sky-500/80 text-white shadow' : 'text-white/45 hover:text-white/80'
+                       }`}
+                     >
+                       <i className="fas fa-globe text-[10px]"></i> Globe
+                     </button>
+                   </div>
+
+                   {/* World list */}
+                   {circles.length > 0 && (
+                     <div>
+                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/35 px-1 mb-1">World</p>
+                       <div className="space-y-0.5 max-h-36 overflow-y-auto">
+                         {circles.map(circle => (
+                           <button
+                             key={circle.id}
+                             onClick={async () => {
+                               if (circle.id !== activeCircleId) {
+                                 await setActiveCircle(circle.id);
+                                 showToast(`Switched to ${circle.name}!`);
+                               }
+                               setIsWorldConfigOpen(false);
+                               setLandSearch('');
+                             }}
+                             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
+                               circle.id === activeCircleId
+                                 ? 'bg-pink-500/20 text-pink-200'
+                                 : 'text-white/60 hover:bg-white/8 hover:text-white/90'
+                             }`}
+                           >
+                             <i className="fas fa-heart text-[9px] opacity-60 flex-shrink-0"></i>
+                             <span className="flex-1 truncate">{circle.name}</span>
+                             {circle.id === activeCircleId && <i className="fas fa-check text-[9px] text-pink-300 flex-shrink-0"></i>}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Land list */}
+                   {worldMode === 'tree' && (appConfig.lands?.length || 0) > 0 && (
+                     <div>
+                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/35 px-1 mb-1">Land</p>
+                       <div className="space-y-0.5 max-h-28 overflow-y-auto">
+                         {filteredLands.map(land => (
+                           <button
+                             key={land.id}
+                             onClick={() => handleSelectLand(land.id, land.name)}
+                             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
+                               land.isActive
+                                 ? 'bg-amber-500/20 text-amber-200'
+                                 : 'text-white/60 hover:bg-white/8 hover:text-white/90'
+                             }`}
+                           >
+                             <span className="text-sm leading-none flex-shrink-0">{land.icon || '🏞'}</span>
+                             <span className="flex-1 truncate">{land.name}</span>
+                             {land.isActive && <i className="fas fa-check text-[9px] text-amber-300 flex-shrink-0"></i>}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                 </motion.div>
+               </>
+             )}
+           </AnimatePresence>
+         </div>
+
+         {/* Music button */}
+         <button
+           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
              isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
            }`}
          >
            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
          </button>
-         <UserDropdown 
-            user={user} 
-            onLogout={logout} 
-            onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
+
+         <UserDropdown
+            user={user}
+            onLogout={logout}
+            onEditUserInfo={() => setIsUserProfileModalOpen(true)}
             onOpenSettings={() => setIsEditDrawerOpen(true)}
-             loading={authLoading}
+            loading={authLoading}
           />
       </div>
 

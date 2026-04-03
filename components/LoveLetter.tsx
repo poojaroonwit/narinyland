@@ -8,10 +8,7 @@ import DatePicker from 'react-datepicker';
 import OptimizedImage from './OptimizedImage';
 import "react-datepicker/dist/react-datepicker.css";
 
-interface Partners {
-  partner1: { name: string; avatar: string };
-  partner2: { name: string; avatar: string };
-}
+type Partners = Record<string, { name: string; avatar: string }>;
 
 interface LoveLetterProps {
   isOpen: boolean;
@@ -39,7 +36,10 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
   const [selectedMessage, setSelectedMessage] = useState<LoveLetterMessage | null>(null);
   
   // Compose State
-  const [composeFrom, setComposeFrom] = useState<'partner1' | 'partner2'>('partner2');
+  const partnerEntries = Object.entries(partners || {});
+  const firstPartnerId = partnerEntries[0]?.[0] || 'partner1';
+  const secondPartnerId = partnerEntries[1]?.[0] || 'partner2';
+  const [composeFrom, setComposeFrom] = useState<string>(secondPartnerId);
   const [composeContent, setComposeContent] = useState('');
   const [composeDate, setComposeDate] = useState(new Date().toISOString().slice(0, 16));
   const [composeMedia, setComposeMedia] = useState<MediaContent | undefined>(undefined);
@@ -129,8 +129,8 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
     setComposeDate(new Date().toISOString().slice(0, 16));
   };
 
-  const getPartnerName = (id: string) => id === 'partner1' ? partners.partner1.name : partners.partner2.name;
-  const getPartnerAvatar = (id: string) => id === 'partner1' ? partners.partner1.avatar : partners.partner2.avatar;
+  const getPartnerName = (id: string) => partners[id]?.name || id;
+  const getPartnerAvatar = (id: string) => partners[id]?.avatar || '👤';
 
   if (!isOpen && !isInline) return null;
 
@@ -281,19 +281,20 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                  
                  <div>
                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Sender</label>
-                   <div className="flex bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-                      <button 
-                        onClick={() => setComposeFrom('partner1')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${composeFrom === 'partner1' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-500'}`}
-                      >
-                         {partners.partner1.avatar} {partners.partner1.name}
-                      </button>
-                      <button 
-                        onClick={() => setComposeFrom('partner2')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${composeFrom === 'partner2' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500'}`}
-                      >
-                         {partners.partner2.avatar} {partners.partner2.name}
-                      </button>
+                   <div className="flex bg-white rounded-xl p-1.5 shadow-sm border border-gray-200 overflow-x-auto">
+                      {partnerEntries.map(([id, p], idx) => (
+                        <button
+                          key={id}
+                          onClick={() => setComposeFrom(id)}
+                          className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+                            composeFrom === id
+                              ? idx === 0 ? 'bg-pink-500 text-white shadow-md' : 'bg-blue-500 text-white shadow-md'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {p.avatar} {p.name}
+                        </button>
+                      ))}
                    </div>
                  </div>
 

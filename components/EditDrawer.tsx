@@ -164,7 +164,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
     });
   };
 
-  const handlePartnerChange = (partnerId: 'partner1' | 'partner2', field: 'name' | 'avatar', value: string) => {
+  const handlePartnerChange = (partnerId: string, field: 'name' | 'avatar', value: string) => {
     updateLocal(prev => ({
       ...prev,
       partners: {
@@ -1030,40 +1030,27 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 <i className="fas fa-user-friends text-blue-400"></i> The Couple
               </h3>
               <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
-                   <h4 className="text-[10px] font-black text-pink-500 uppercase border-b pb-1">Her</h4>
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner1.name} 
-                     onChange={(e) => handlePartnerChange('partner1', 'name', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-sm"
-                     placeholder="Name"
-                   />
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner1.avatar} 
-                     onChange={(e) => handlePartnerChange('partner1', 'avatar', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-2xl text-center"
-                     placeholder="👩"
-                   />
-                </div>
-                <div className="space-y-3">
-                   <h4 className="text-[10px] font-black text-blue-500 uppercase border-b pb-1">Him</h4>
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner2.name} 
-                     onChange={(e) => handlePartnerChange('partner2', 'name', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-sm"
-                     placeholder="Name"
-                   />
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner2.avatar} 
-                     onChange={(e) => handlePartnerChange('partner2', 'avatar', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-2xl text-center"
-                     placeholder="👨"
-                   />
-                </div>
+                {Object.entries(localConfig.partners || {}).map(([key, data], idx) => (
+                  <div key={key} className="space-y-3">
+                    <h4 className={`text-[10px] font-black uppercase border-b pb-1 ${idx === 0 ? 'text-pink-500' : 'text-blue-500'}`}>
+                      Partner {idx + 1}
+                    </h4>
+                    <input
+                      type="text"
+                      value={data.name}
+                      onChange={(e) => handlePartnerChange(key, 'name', e.target.value)}
+                      className="w-full border rounded-xl p-3 text-sm"
+                      placeholder="Name"
+                    />
+                    <input
+                      type="text"
+                      value={data.avatar}
+                      onChange={(e) => handlePartnerChange(key, 'avatar', e.target.value)}
+                      className="w-full border rounded-xl p-3 text-2xl text-center"
+                      placeholder="👤"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </motion.div>
@@ -1633,7 +1620,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                            <div className="flex items-center gap-2 text-xs text-gray-400 font-bold">
                               <span className="bg-yellow-100 text-yellow-600 px-1.5 py-0.5 rounded text-[10px] uppercase">{coupon.points || 0} PTS</span>
                               <span>•</span>
-                              <span>{coupon.for === 'partner1' ? localConfig.partners.partner1.name : localConfig.partners.partner2.name}</span>
+                              <span>{localConfig.partners[coupon.for || '']?.name || coupon.for || 'Partner'}</span>
                               {coupon.isRedeemed && <span className="text-red-400">• Redeemed</span>}
                            </div>
                         </div>
@@ -1708,8 +1695,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                           onChange={(e) => handleCouponChange(coupon.id, 'for', e.target.value)}
                                           className="w-full text-xs font-black border rounded-xl p-3 bg-gray-50 uppercase"
                                        >
-                                          <option value="partner1">{localConfig.partners.partner1.name}</option>
-                                          <option value="partner2">{localConfig.partners.partner2.name}</option>
+                                          {Object.entries(localConfig.partners || {}).map(([key, data]) => (
+                                            <option key={key} value={key}>{data.name}</option>
+                                          ))}
                                        </select>
                                     </div>
                                  </div>

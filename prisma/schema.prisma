@@ -86,9 +86,10 @@ model PurchasedItem {
 
 model Partner {
   id        String    @id @default(uuid())
-  partnerId String    
+  partnerId String
   name      String
   avatar    String
+  userId    String?   // AppKit user sub who owns this partner slot
   config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
   configId  String
   points    Int       @default(0)

@@ -15,10 +15,7 @@ interface Coupon {
   points?: number;
 }
 
-interface Partners {
-  partner1: { name: string; avatar: string };
-  partner2: { name: string; avatar: string };
-}
+type Partners = Record<string, { name: string; avatar: string }>;
 
 interface LoveCouponsProps {
   coupons: Coupon[];
@@ -223,7 +220,9 @@ const AddButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 };
 
 const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, onDelete, onAdd }) => {
-  const [activeTab, setActiveTab] = useState<'partner1' | 'partner2'>('partner1');
+  const partnerEntries = Object.entries(partners || {});
+  const firstPartnerId = partnerEntries[0]?.[0] || 'partner1';
+  const [activeTab, setActiveTab] = useState<string>(firstPartnerId);
   const [statusTab, setStatusTab] = useState<'available' | 'redeemed'>('available');
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -235,7 +234,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
     emoji: '🎁',
     desc: '',
     points: 0,
-    forPartner: 'partner1' as 'partner1' | 'partner2',
+    forPartner: firstPartnerId,
     color: 'from-pink-400 to-rose-400'
   });
 
@@ -277,8 +276,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
     return statusTab === 'redeemed' ? isRedeemed : !isRedeemed;
   });
 
-  const p1Name = partners?.partner1.name || 'Her';
-  const p2Name = partners?.partner2.name || 'Him';
+  const activeName = partners?.[activeTab]?.name || activeTab;
 
   return (
     <div className="w-full max-w-4xl mx-auto pt-2 pb-6 md:py-12 px-4">
@@ -287,23 +285,20 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
         <p className="text-[10px] md:text-base text-gray-500 font-quicksand">Select a recipient and view their rewards! ❤️</p>
       </div>
 
-      <div className="flex justify-center mb-6 bg-white/50 p-1 rounded-full max-w-xs mx-auto backdrop-blur-sm">
-        <button
-          onClick={() => setActiveTab('partner1')}
-          className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${
-            activeTab === 'partner1' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-500 hover:text-pink-400'
-          }`}
-        >
-          {partners?.partner1.avatar} {p1Name}
-        </button>
-        <button
-          onClick={() => setActiveTab('partner2')}
-          className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${
-            activeTab === 'partner2' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500 hover:text-blue-400'
-          }`}
-        >
-           {partners?.partner2.avatar} {p2Name}
-        </button>
+      <div className="flex justify-center mb-6 bg-white/50 p-1 rounded-full max-w-xs mx-auto backdrop-blur-sm overflow-x-auto">
+        {partnerEntries.map(([id, p], idx) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === id
+                ? idx === 0 ? 'bg-pink-500 text-white shadow-md' : 'bg-blue-500 text-white shadow-md'
+                : 'text-gray-500 hover:text-pink-400'
+            }`}
+          >
+            {p.avatar} {p.name}
+          </button>
+        ))}
       </div>
 
       <div className="flex justify-center mb-10 gap-3">
@@ -352,7 +347,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
            <div className="text-center text-gray-400 py-16 px-4">
              <div className="text-5xl mb-4 opacity-50">{statusTab === 'available' ? '🎫' : '📁'}</div>
              <p className="font-bold">
-                No {statusTab} coupons for {activeTab === 'partner1' ? p1Name : p2Name} yet!
+                No {statusTab} coupons for {activeName} yet!
              </p>
              {statusTab === 'available' && (
                <p className="text-xs mt-2 italic text-gray-400">Click the card above to create your first surprise! ✨</p>
@@ -394,7 +389,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                    <h3 className="text-2xl font-black text-gray-800 mb-2">{selectedCoupon.title}</h3>
                    <div className="flex justify-center gap-2">
                      <span className="bg-pink-100 text-pink-500 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                       For {selectedCoupon.for === 'partner2' ? partners?.partner2.name : partners?.partner1.name}
+                       For {partners?.[selectedCoupon.for || '']?.name || selectedCoupon.for || 'Partner'}
                      </span>
                      {selectedCoupon.points && selectedCoupon.points > 0 && (
                         <span className="bg-yellow-100 text-yellow-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
@@ -534,13 +529,14 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                      </div>
                      <div className="flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">For</label>
-                        <select 
-                           value={newCoupon.forPartner} 
-                           onChange={e => setNewCoupon(prev => ({ ...prev, forPartner: e.target.value as any }))}
+                        <select
+                           value={newCoupon.forPartner}
+                           onChange={e => setNewCoupon(prev => ({ ...prev, forPartner: e.target.value }))}
                            className="w-full border-2 border-pink-50 rounded-2xl p-4 text-sm font-black uppercase tracking-widest focus:border-pink-200 outline-none bg-white transition-all"
                         >
-                           <option value="partner1">{p1Name}</option>
-                           <option value="partner2">{p2Name}</option>
+                           {partnerEntries.map(([id, p]) => (
+                             <option key={id} value={id}>{p.name}</option>
+                           ))}
                         </select>
                      </div>
                   </div>
