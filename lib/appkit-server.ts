@@ -120,6 +120,41 @@ export async function createCircleViaServer(name: string, description?: string, 
 }
 
 /**
+ * Fetch all members of a circle via the AppKit Admin API.
+ * Returns an array of member objects with at least { userId, name, avatar, role }.
+ */
+export async function getCircleMembersViaServer(circleId: string): Promise<Array<{
+  userId: string;
+  name: string;
+  avatar?: string;
+  role: string;
+}>> {
+  const token = await getServiceToken();
+  if (!token) return [];
+
+  try {
+    const res = await fetch(
+      `${APPKIT_DOMAIN}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}/members`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        next: { revalidate: 30 },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const members = Array.isArray(data) ? data : (data.members || data.data || []);
+    return members.map((m: any) => ({
+      userId: m.userId || m.user?.id || m.id,
+      name: m.user?.name || m.name || m.user?.email || 'Member',
+      avatar: m.user?.avatar || m.user?.picture || m.avatar || '',
+      role: m.role || 'member',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Add a member to a circle via the AppKit API.
  */
 export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member', userToken?: string) {

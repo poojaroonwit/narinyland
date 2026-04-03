@@ -17,9 +17,19 @@ interface EditDrawerProps {
   onSave?: () => void;
 }
 
+interface CircleMember {
+  userId: string | null;
+  name: string;
+  avatar: string;
+  role: string;
+  partnerId: string | null;
+}
+
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig, onSave }) => {
   const { circles, activeCircleId, setActiveCircle } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'objects'>('general');
+  const [circleMembers, setCircleMembers] = useState<CircleMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [objectCategoryFilter, setObjectCategoryFilter] = useState<'all' | 'pet' | 'deco' | 'bldg' | 'custom'>('all');
   
@@ -137,6 +147,17 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
       setHasChanges(false);
     }
   }, [isOpen, config]);
+
+  // Fetch circle members whenever the drawer opens or the active circle changes
+  useEffect(() => {
+    if (!isOpen || !activeCircleId) return;
+    setMembersLoading(true);
+    fetch(`/api/circles/${activeCircleId}/members`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCircleMembers(Array.isArray(data) ? data : []))
+      .catch(() => setCircleMembers([]))
+      .finally(() => setMembersLoading(false));
+  }, [isOpen, activeCircleId]);
 
   if (!isOpen) return null;
 
@@ -1026,32 +1047,74 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
             </div>
 
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-user-friends text-blue-400"></i> The Couple
-              </h3>
-              <div className="grid grid-cols-2 gap-6">
-                {Object.entries(localConfig.partners || {}).map(([key, data], idx) => (
-                  <div key={key} className="space-y-3">
-                    <h4 className={`text-[10px] font-black uppercase border-b pb-1 ${idx === 0 ? 'text-pink-500' : 'text-blue-500'}`}>
-                      Partner {idx + 1}
-                    </h4>
-                    <input
-                      type="text"
-                      value={data.name}
-                      onChange={(e) => handlePartnerChange(key, 'name', e.target.value)}
-                      className="w-full border rounded-xl p-3 text-sm"
-                      placeholder="Name"
-                    />
-                    <input
-                      type="text"
-                      value={data.avatar}
-                      onChange={(e) => handlePartnerChange(key, 'avatar', e.target.value)}
-                      className="w-full border rounded-xl p-3 text-2xl text-center"
-                      placeholder="👤"
-                    />
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <i className="fas fa-user-friends text-blue-400"></i> The Couple
+                </h3>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                  Circle members
+                </span>
               </div>
+
+              {membersLoading ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
+                  <div className="w-4 h-4 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin" />
+                  <span className="text-xs font-bold">Loading members…</span>
+                </div>
+              ) : circleMembers.length > 0 ? (
+                <div className="space-y-2">
+                  {circleMembers.map((member, idx) => {
+                    const partnerData = member.partnerId ? localConfig.partners[member.partnerId] : null;
+                    const displayName = partnerData?.name || member.name;
+                    const displayAvatar = partnerData?.avatar || member.avatar || '👤';
+                    return (
+                      <div key={member.userId ?? idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-100 to-blue-100 flex items-center justify-center text-xl flex-shrink-0 border border-white shadow-sm">
+                          {displayAvatar.startsWith('http') ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={displayAvatar} alt={displayName} className="w-full h-full rounded-full object-cover" />
+                          ) : (
+                            displayAvatar
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-800 truncate">{displayName}</p>
+                          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
+                            {member.role}
+                            {member.partnerId && (
+                              <span className="ml-2 text-pink-400">· {member.partnerId}</span>
+                            )}
+                          </p>
+                        </div>
+                        {member.partnerId && (
+                          <div className="flex flex-col gap-1 w-28 flex-shrink-0">
+                            <input
+                              type="text"
+                              value={displayName}
+                              onChange={(e) => handlePartnerChange(member.partnerId!, 'name', e.target.value)}
+                              className="w-full border rounded-lg px-2 py-1 text-xs font-bold text-gray-700 focus:outline-none focus:border-pink-300"
+                              placeholder="Display name"
+                            />
+                            <input
+                              type="text"
+                              value={partnerData?.avatar || ''}
+                              onChange={(e) => handlePartnerChange(member.partnerId!, 'avatar', e.target.value)}
+                              className="w-full border rounded-lg px-2 py-1 text-lg text-center focus:outline-none focus:border-pink-300"
+                              placeholder="👤"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-2 opacity-30">👥</div>
+                  <p className="text-xs text-gray-400 font-bold">No members found for this circle.</p>
+                  <p className="text-[10px] text-gray-300 mt-1">Members appear here once they join the world.</p>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
