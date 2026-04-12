@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { login } from "@/lib/auth";
 import BlurText from "@/components/BlurText";
 import Logo from "@/components/Logo";
@@ -261,20 +261,22 @@ export default function MarketingPage() {
             </motion.p>
           )}
         </div>
-
+        
         {/* Floating elements */}
         <div className="absolute inset-0 pointer-events-none z-[5]">
           <motion.div 
-            className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl"
+            className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl text-4xl flex items-center justify-center"
             animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
             transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          />
+          >
+             🌸
+          </motion.div>
           <motion.div 
             className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl text-4xl flex items-center justify-center"
             animate={{ x: [0, -100, 0], y: [0, -50, 0] }}
             transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
           >
-             🌸
+             ✨
           </motion.div>
         </div>
       </section>

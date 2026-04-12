@@ -2,15 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --radius: 9999px;
-    --background: 213 45% 67%;
-    --foreground: 0 0% 100%;
-  }
+:root {
+  /* Kriss.ai inspired palette */
+  --background-start: #D0C8C8;
+  --background-end: #E8E0E0;
+  --foreground: #000000;
+  --primary: #000000;
+  --secondary: rgba(255, 255, 255, 0.4);
+  --accent: #222222;
+  --glass-bg: rgba(255, 255, 255, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --blur-amount: 20px;
+
+  /* Z-index management */
+  --z-index-base: 1;
+  --z-index-dropdown: 10;
+  --z-index-sticky: 20;
+  --z-index-fixed: 30;
+  --z-index-overlay: 40;
+  --z-index-modal: 9999;
+  --z-index-toast: 10000;
+  --z-index-tooltip: 10001;
 }
 
 @layer components {
+  /* Liquid glass utilities from remote */
   .liquid-glass {
     background: rgba(255, 255, 255, 0.01);
     background-blend-mode: luminosity;
@@ -75,32 +91,56 @@
     mask-composite: exclude;
     pointer-events: none;
   }
-}
 
-/* Z-index management using CSS custom properties */
-:root {
-  --z-index-base: 1;
-  --z-index-dropdown: 10;
-  --z-index-sticky: 20;
-  --z-index-fixed: 30;
-  --z-index-overlay: 40;
-  --z-index-modal: 9999;
-  --z-index-toast: 10000;
-  --z-index-tooltip: 10001;
+  /* Glassmorphism utility */
+  .glass-morphism {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--blur-amount));
+      -webkit-backdrop-filter: blur(var(--blur-amount));
+      border: 1px solid var(--glass-border);
+  }
+
+  /* Claymorphism utility (Soft 3D) */
+  .clay-morphism {
+      background: #fdf2f8; /* Soft base */
+      border-radius: 40px;
+      box-shadow: 
+          10px 10px 20px rgba(0, 0, 0, 0.05),
+          -10px -10px 20px rgba(255, 255, 255, 0.8),
+          inset 4px 4px 8px rgba(255, 255, 255, 0.5),
+          inset -4px -4px 8px rgba(0, 0, 0, 0.02);
+  }
+
+  .pill-button {
+      @apply rounded-full px-8 py-4 font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  .pill-button-primary {
+      @apply bg-black text-white hover:bg-gray-800 shadow-lg;
+  }
+
+  .pill-button-glass {
+      @apply glass-morphism text-black hover:bg-white/50;
+  }
 }
 
 body {
-    font-family: 'Outfit', 'Kanit', sans-serif;
-    background-color: #fdf2f8; /* pink-50 */
+    font-family: 'Inter', 'Geist', sans-serif;
+    background: linear-gradient(135deg, var(--background-start), var(--background-end));
+    color: var(--foreground);
+    min-height: 100vh;
     overflow-x: hidden;
+    line-height: 1.6;
 }
 
-.font-pacifico {
-    font-family: 'Pacifico', cursive;
+/* Animations */
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.font-outfit {
-    font-family: 'Outfit', sans-serif;
+.animate-entrance {
+    animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes holographic-sweep {
@@ -131,11 +171,4 @@ body {
   transform: skewX(-15deg);
   animation: holographic-sweep 3s infinite linear;
   pointer-events: none;
-}
-
-.glass-morphism {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
 }

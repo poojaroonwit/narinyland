@@ -33,45 +33,32 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const triggerUpload = () => {
-    fileInputRef.current?.click();
-  };
+  const triggerUpload = () => fileInputRef.current?.click();
 
   const handleCustomUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Minimal validation
     if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
-      alert("Please upload a .glb or .gltf file.");
+      alert("PROMPT: SYSTEM REQUIRES .GLB OR .GLTF");
       return;
     }
-
     const customItem = SHOP_ITEMS.find(i => i.id === 'custom-3d');
     if (!customItem) return;
-
     if (points < customItem.price) {
-      alert("Not enough points!");
+      alert("INSUFFICIENT CREDITS");
       return;
     }
-    
     if (!activeLandId) {
-       alert("You need an active World to place this item! Create one in Settings.");
+       alert("WORLD CONTEXT REQUIRED");
        return;
     }
 
     setPurchasingId('custom-3d');
     try {
-      // 1. Upload file to S3
       const uploadResult = await uploadAPI.upload(file, 'models');
-      const modelUrl = uploadResult.url;
-
-      // 2. Trigger purchase with new modelUrl
-      await onPurchase({ ...customItem, modelUrl });
-      
+      await onPurchase({ ...customItem, modelUrl: uploadResult.url });
     } catch (err) {
-      console.error("Failed to upload model or purchase:", err);
-      alert("Upload failed. Please try again.");
+      alert("UPLOAD FAILURE");
     } finally {
       setPurchasingId(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -81,18 +68,16 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   const handleBuy = async (item: ShopItem) => {
     if (item.id === 'custom-3d') {
       triggerUpload();
-      return; // Handled by handleCustomUpload via file input change
+      return;
     }
-
     if (points < item.price) {
-      alert("Not enough points!");
+      alert("INSUFFICIENT CREDITS");
       return;
     }
     if (!activeLandId) {
-      alert("You need an active World to place this item! Create one in Settings.");
+      alert("WORLD CONTEXT REQUIRED");
       return;
     }
-
     setPurchasingId(item.id);
     try {
       await onPurchase(item);
@@ -101,119 +86,96 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
     }
   };
 
-  // Compact mode for floating edit popover
   if (compact) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3 font-geist">
         {SHOP_ITEMS.map(item => (
           <motion.div
             key={item.id}
-            whileHover={{ scale: 1.01 }}
-            className="bg-gradient-to-r from-white to-amber-50/50 rounded-xl p-3 border border-amber-100/80 flex items-center gap-3 group cursor-pointer"
+            whileHover={{ scale: 1.02 }}
+            className="bg-white/60 backdrop-blur-md rounded-clay p-4 border border-white/20 flex items-center gap-4 group transition-all duration-500"
           >
-            <div className="text-2xl w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">{item.icon}</div>
+            <div className="text-xl w-12 h-12 bg-black/5 rounded-xl flex items-center justify-center shrink-0 grayscale group-hover:grayscale-0 transition-all">{item.icon}</div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-black text-gray-800 text-sm truncate">{item.name}</h4>
-              <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
-                <i className="fas fa-coins text-[10px]"></i>
-                <span>{item.price}</span>
+              <h4 className="font-black text-black text-[11px] truncate uppercase tracking-tight">{item.name}</h4>
+              <div className="text-black/30 text-[9px] font-black uppercase tracking-widest mt-1">
+                {item.price} CREDITS
               </div>
             </div>
             <button
               onClick={() => handleBuy(item)}
               disabled={points < item.price || purchasingId === item.id}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
+              className={`px-4 py-2 rounded-pill text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${
                 purchasingId === item.id
-                  ? 'bg-gray-300 text-white cursor-wait'
+                  ? 'bg-black/10 text-black/20'
                   : points >= item.price
-                    ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    ? 'bg-black text-white hover:shadow-xl'
+                    : 'bg-black/5 text-black/10'
               }`}
             >
-              {purchasingId === item.id ? '...' : item.id === 'custom-3d' ? '📦' : 'Buy'}
+              {purchasingId === item.id ? '...' : 'GET'}
             </button>
           </motion.div>
         ))}
-        {/* Hidden file input for custom 3D model uploads */}
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleCustomUpload} 
-          accept=".glb,.gltf" 
-          className="hidden" 
-        />
+        <input type="file" ref={fileInputRef} onChange={handleCustomUpload} accept=".glb,.gltf" className="hidden" />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
-      <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-xl w-full p-6 md:p-8 flex flex-col">
-        <div className="flex justify-between items-center border-b border-amber-100 pb-4 mb-6">
+    <div className="w-full max-w-5xl mx-auto flex flex-col items-center font-geist">
+      <div className="w-full p-8 flex flex-col">
+        <div className="flex justify-between items-end mb-16">
           <div>
-            <h2 className="text-2xl font-black text-amber-700 flex items-center gap-2">
-              <i className="fas fa-store"></i> The World Shop
-            </h2>
-            <p className="text-xs font-bold text-amber-500/80 uppercase tracking-widest mt-1">
-              Buy items for your active world
-            </p>
+            <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em] mb-4">EXCHANGE</p>
+            <h2 className="text-4xl font-black text-black uppercase tracking-tight">MARKETPLACE</h2>
           </div>
-          <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-sm border border-amber-200">
-            <i className="fas fa-coins text-amber-500"></i>
-            <span className="font-black">{points}</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">PTS</span>
+          <div className="bg-black text-white px-8 py-4 rounded-pill flex items-center gap-4 shadow-2xl border border-white/10">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">AVAILABLE CREDITS</span>
+            <span className="font-black text-lg">{points}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           {SHOP_ITEMS.map(item => (
             <motion.div 
               key={item.id}
-              whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-5 border inline-block border-amber-100 shadow-sm flex flex-col justify-between"
+              whileHover={{ scale: 1.02, y: -4 }}
+              className="bg-white/60 backdrop-blur-md rounded-clay p-8 border border-white/20 shadow-sm flex flex-col justify-between hover:shadow-2xl transition-all duration-700 group"
             >
               <div>
-                <div className="text-4xl text-center mb-4">{item.icon}</div>
-                <h3 className="font-black text-gray-800 text-lg">{item.name}</h3>
-                <p className="text-xs text-gray-500 mt-1 h-8">{item.description}</p>
+                <div className="text-5xl text-center mb-8 grayscale group-hover:grayscale-0 transition-all duration-700">{item.icon}</div>
+                <h3 className="font-black text-black text-xs uppercase tracking-widest mb-4">{item.name}</h3>
+                <p className="text-[10px] text-black/40 font-bold leading-relaxed uppercase tracking-[0.05em] h-12 overflow-hidden">{item.description}</p>
               </div>
               
-              <div className="mt-4 pt-4 border-t border-amber-100 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-amber-600 font-black">
-                  <i className="fas fa-coins text-sm"></i>
-                  <span>{item.price}</span>
+              <div className="mt-8 pt-8 border-t border-black/5 flex items-center justify-between">
+                <div className="text-black/60 font-black text-xs">
+                  {item.price} <span className="text-[8px] opacity-30">PTS</span>
                 </div>
                 
                 <button
                   onClick={() => handleBuy(item)}
                   disabled={points < item.price || purchasingId === item.id}
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  className={`px-6 py-2.5 rounded-pill text-[9px] font-black uppercase tracking-widest transition-all ${
                     purchasingId === item.id
-                      ? 'bg-gray-300 text-white cursor-wait'
+                      ? 'bg-black/10 text-black/20'
                       : points >= item.price
-                        ? 'bg-amber-500 text-white hover:bg-amber-600 hover:shadow-md'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        ? 'bg-black text-white hover:shadow-2xl'
+                        : 'bg-black/5 text-black/10'
                   }`}
                 >
-                  {purchasingId === item.id ? 'Buying...' : item.id === 'custom-3d' ? (points >= item.price ? 'Upload' : 'Not Enough') : points >= item.price ? 'Buy Item' : 'Not Enough'}
+                  {purchasingId === item.id ? 'PROCESSING' : 'ACQUIRE'}
                 </button>
               </div>
             </motion.div>
           ))}
         </div>
         
-        {/* Hidden file input for custom 3D model uploads */}
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleCustomUpload} 
-          accept=".glb,.gltf" 
-          className="hidden" 
-        />
+        <input type="file" ref={fileInputRef} onChange={handleCustomUpload} accept=".glb,.gltf" className="hidden" />
       </div>
     </div>
   );
 };
 
 export default Shop;
-

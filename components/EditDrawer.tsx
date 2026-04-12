@@ -543,102 +543,115 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
           className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
           onClick={onClose}
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="bg-white w-full max-w-4xl h-[85vh] rounded-[2rem] shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex overflow-hidden"
+            <motion.div
+            initial={{ scale: 0.98, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.98, opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 200 }}
+            className="glass-morphism w-full max-w-5xl h-[90vh] rounded-clay shadow-[0_40px_100px_rgba(0,0,0,0.4)] flex overflow-hidden border border-white/20"
             onClick={(e) => e.stopPropagation()}
           >
+
             {/* Vertical Tabs Sidebar */}
-            <div className="w-56 bg-gray-50 border-r border-gray-100 flex flex-col shrink-0">
+            <div className="w-64 bg-black/5 border-r border-white/10 flex flex-col shrink-0">
               {/* Header */}
-              <div className="p-5 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  ⚙️ Settings
-                  {hasChanges && <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />}
+              <div className="p-8">
+                <h2 className="text-2xl font-black text-black tracking-tighter flex items-center gap-2">
+                  SETTINGS
+                  {hasChanges && <span className="w-2 h-2 bg-black rounded-full animate-pulse" />}
                 </h2>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Customize Narinyland</p>
+                <p className="text-[9px] font-black text-black/30 uppercase tracking-[0.2em] mt-2">Narinyland OS</p>
               </div>
 
+
               {/* Tab Buttons */}
-              <div className="flex-1 overflow-y-auto py-2">
+              <div className="flex-1 overflow-y-auto pt-4">
                 {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'objects'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab as any)}
-                    className={`w-full text-left px-5 py-3 flex items-center gap-3 text-sm font-bold capitalize transition-all ${
+                    className={`w-full text-left px-8 py-5 flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${
                       activeTab === tab 
-                        ? 'bg-pink-50 text-pink-600 border-l-4 border-pink-500' 
-                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-l-4 border-transparent'
+                        ? 'text-black' 
+                        : 'text-black/30 hover:text-black/60'
                     }`}
                   >
-                    <i className={`fas ${TAB_ICONS[tab] || 'fa-circle'} text-xs w-4`}></i>
+                    {activeTab === tab && (
+                      <motion.div layoutId="tab-active" className="absolute left-0 w-1.5 h-6 bg-black rounded-r-full" />
+                    )}
+                    <i className={`fas ${TAB_ICONS[tab] || 'fa-circle'} text-[10px]`}></i>
                     {tab}
                   </button>
                 ))}
               </div>
 
+
               {/* Save Button in Sidebar */}
-              <div className="p-4 border-t border-gray-100">
+              <div className="p-6 border-t border-black/5 bg-black/5">
                 <button
                   onClick={handleSave}
                   disabled={!hasChanges}
-                  className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                  className={`pill-button w-full text-[10px] tracking-[0.2em] ${
                     hasChanges
-                      ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      ? 'pill-button-primary'
+                      : 'bg-black/10 text-black/20 cursor-not-allowed'
                   }`}
                 >
-                  {hasChanges ? 'Save Changes' : 'No Changes'}
+                  {hasChanges ? 'SAVE CONFIG' : 'CONFIG SAVED'}
                 </button>
               </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 bg-white/40">
               {/* Top Bar with Close */}
-              <div className="p-5 border-b border-gray-100 flex justify-between items-center shrink-0 bg-white">
-                <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
-                  <i className={`fas ${TAB_ICONS[activeTab] || 'fa-circle'} text-pink-400`}></i>
+              <div className="p-8 border-b border-black/5 flex justify-between items-center shrink-0">
+                <h3 className="text-2xl font-black text-black tracking-tighter uppercase flex items-center gap-3">
+                  <i className={`fas ${TAB_ICONS[activeTab] || 'fa-circle'} opacity-30`}></i>
                   {activeTab}
                 </h3>
-                <button onClick={onClose} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition-colors">
-                  <i className="fas fa-times text-gray-500"></i>
+                <button onClick={onClose} className="w-12 h-12 bg-black/5 hover:bg-black/10 rounded-full flex items-center justify-center transition-all group">
+                  <i className="fas fa-times text-black/40 group-hover:text-black"></i>
                 </button>
               </div>
+
 
               {/* Scrollable Content Area */}
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-8 pb-32">
         {activeTab === 'general' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-info-circle text-pink-400"></i> Core Setup
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+              <h3 className="text-sm font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
+                <i className="fas fa-info-circle opacity-30"></i> CORE SETUP
               </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center gap-4">
+              <div className="space-y-6">
+                <div className="flex justify-between items-center gap-6">
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">World Name</label>
-                    <p className="text-[8px] text-gray-400 ml-1">The title of your magical space</p>
+                    <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">World Name</label>
+                    <p className="text-[8px] text-black/20 ml-1">The title of your magical space</p>
                   </div>
                   <input 
                     type="text" 
                     value={localConfig.appName} 
                     onChange={(e) => handleInputChange('appName', e.target.value)}
-                    className="w-1/2 bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
+                    className="w-1/2 bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right uppercase tracking-[0.1em]"
                   />
                 </div>
-
-                <div className="flex justify-between items-center gap-4 pt-2">
+                  <input 
+                    type="text" 
+                    value={localConfig.appName} 
+                    onChange={(e) => handleInputChange('appName', e.target.value)}
+                    className="w-1/2 bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right"
+                  />
+                </div>
+                <div className="flex justify-between items-center gap-6 pt-2">
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Proposal Feature</label>
-                    <p className="text-[8px] text-gray-400 ml-1">Show or hide the proposal screen</p>
+                    <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">Proposal Feature</label>
+                    <p className="text-[8px] text-black/20 ml-1">Show or hide the proposal screen</p>
                   </div>
                   <button
                     onClick={() => handleInputChange('showProposal', !localConfig.showProposal)}
-                    className={`w-12 h-6 rounded-full transition-all relative ${localConfig.showProposal ? 'bg-pink-500' : 'bg-gray-200'}`}
+                    className={`w-12 h-6 rounded-full transition-all relative ${localConfig.showProposal ? 'bg-black' : 'bg-black/10'}`}
                   >
                     <motion.div 
                       animate={{ x: localConfig.showProposal ? 24 : 4 }}
@@ -646,259 +659,265 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     />
                   </button>
                 </div>
-                <div className="flex justify-between items-center gap-4 pt-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Anniversary</label>
+
+                <div className="flex justify-between items-center gap-6 pt-2">
+                  <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">Anniversary</label>
                   <div className="w-1/2 text-right">
                     <DatePicker
                       selected={new Date(localConfig.anniversaryDate || Date.now())}
                       onChange={(date: Date | null) => date && handleInputChange('anniversaryDate', date.toISOString())}
-                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
+                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right"
                     />
                   </div>
                 </div>
+
                 
                 {/* PWA / App Identity */}
-                <div className="bg-pink-50/30 p-4 rounded-2xl border border-pink-100 space-y-4">
-                  <h4 className="text-xs font-black text-pink-400 uppercase tracking-widest flex items-center gap-2">
-                    <i className="fas fa-mobile-alt"></i> App Identity & PWA
+                <div className="bg-black/5 p-8 rounded-clay border border-black/5 space-y-6">
+                  <h4 className="text-[10px] font-black text-black opacity-40 uppercase tracking-[0.2em] flex items-center gap-3">
+                    <i className="fas fa-mobile-alt"></i> APP IDENTITY & PWA
                   </h4>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                      <div>
-                       <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">App Name (Long)</label>
+                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">App Name (Long)</label>
                        <input 
                          type="text" 
                          value={localConfig.pwaName || localConfig.appName || ''} 
                          onChange={(e) => handleInputChange('pwaName', e.target.value)}
-                         className="w-full border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none focus:border-pink-300"
+                         className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
                          placeholder="Narinyland"
                        />
                      </div>
                      <div>
-                       <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Short Name</label>
+                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Short Name</label>
                        <input 
                          type="text" 
                          value={localConfig.pwaShortName || ''} 
                          onChange={(e) => handleInputChange('pwaShortName', e.target.value)}
-                         className="w-full border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none focus:border-pink-300"
+                         className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
                          placeholder="Nariny"
                        />
                      </div>
                   </div>
+
                   <div>
-                     <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Description</label>
+                     <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Description</label>
                      <input 
                        type="text" 
                        value={localConfig.pwaDescription || ''} 
                        onChange={(e) => handleInputChange('pwaDescription', e.target.value)}
-                       className="w-full border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none focus:border-pink-300"
+                       className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
                        placeholder="Our magical world..."
                      />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                      <div>
-                       <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Theme Color</label>
-                       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1.5 pl-3">
+                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Theme Color</label>
+                       <div className="flex items-center gap-3 bg-white/50 border border-black/5 rounded-xl p-2 pl-4">
                           <input 
                             type="color" 
-                            value={localConfig.pwaThemeColor || '#ec4899'} 
+                            value={localConfig.pwaThemeColor || '#000000'} 
                             onChange={(e) => handleInputChange('pwaThemeColor', e.target.value)}
-                            className="w-6 h-6 rounded-full border-none cursor-pointer"
+                            className="w-8 h-8 rounded-full border-none cursor-pointer"
                           />
-                          <span className="text-[10px] font-mono text-gray-500">{localConfig.pwaThemeColor || '#ec4899'}</span>
+                          <span className="text-[10px] font-mono text-black/40">{localConfig.pwaThemeColor || '#000000'}</span>
                        </div>
                      </div>
+
                      <div>
-                       <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Background Color</label>
-                       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1.5 pl-3">
+                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Background Color</label>
+                       <div className="flex items-center gap-3 bg-white/50 border border-black/5 rounded-xl p-2 pl-4">
                           <input 
                             type="color" 
                             value={localConfig.pwaBackgroundColor || '#ffffff'} 
                             onChange={(e) => handleInputChange('pwaBackgroundColor', e.target.value)}
-                            className="w-6 h-6 rounded-full border-none cursor-pointer"
+                            className="w-8 h-8 rounded-full border-none cursor-pointer"
                           />
-                          <span className="text-[10px] font-mono text-gray-500">{localConfig.pwaBackgroundColor || '#ffffff'}</span>
+                          <span className="text-[10px] font-mono text-black/40">{localConfig.pwaBackgroundColor || '#ffffff'}</span>
                        </div>
                      </div>
                   </div>
+
                   <div>
-                    <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">App Icon (512x512)</label>
-                    <div className="flex items-center gap-4">
-                       <div className="w-16 h-16 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                    <label className="block text-[8px] font-black text-black/30 uppercase mb-3 tracking-[0.1em]">App Icon (512x512)</label>
+                    <div className="flex items-center gap-6">
+                       <div className="w-20 h-20 rounded-clay bg-black/5 border border-black/5 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
                           {localConfig.pwaIconUrl ? (
                             <img src={localConfig.pwaIconUrl} alt="App Icon" className="w-full h-full object-cover" />
                           ) : (
-                            <i className="fas fa-mobile text-2xl text-gray-300"></i>
+                            <i className="fas fa-mobile text-3xl opacity-10"></i>
                           )}
                        </div>
-                       <label className="cursor-pointer bg-white border border-pink-200 text-pink-500 hover:bg-pink-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm">
-                          {isUploading === 999 ? 'Uploading...' : 'Upload Icon'}
+                       <label className="cursor-pointer bg-black text-white hover:bg-black/80 px-5 py-3 rounded-pill text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg active:scale-95">
+                          {isUploading === 999 ? 'UPLOADING...' : 'UPLOAD ICON'}
                           <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && handlePwaIconUpload(e.target.files[0])} />
                        </label>
                        {localConfig.pwaIconUrl && (
-                          <button onClick={() => handleInputChange('pwaIconUrl', null)} className="text-red-400 hover:text-red-500 text-xs px-2">
+                          <button onClick={() => handleInputChange('pwaIconUrl', null)} className="text-black/30 hover:text-black text-xs px-2 transition-colors">
                              <i className="fas fa-trash"></i>
                           </button>
                        )}
                     </div>
                   </div>
                 </div>
+
                 <div className="col-span-2">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Music Playlist (One URL per line) 🎵</label>
+                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Music Playlist</label>
                     <textarea 
                       value={(localConfig.musicPlaylist || []).join('\n')} 
                       onChange={(e) => handleInputChange('musicPlaylist', e.target.value.split('\n'))}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 text-xs font-bold text-gray-600 focus:border-pink-200 outline-none transition-colors h-24 resize-none"
-                      placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..." 
+                      className="w-full bg-black/5 border-2 border-transparent rounded-clay p-6 text-xs font-bold text-black focus:border-black outline-none transition-all h-32 resize-none"
+                      placeholder="https://youtube.com/watch?v=..." 
                     />
                   </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Anniversary</label>
+                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Anniversary</label>
                     <DatePicker
                       selected={localConfig.anniversaryDate ? new Date(localConfig.anniversaryDate) : null}
                       onChange={(date: Date | null) => handleInputChange('anniversaryDate', date ? date.toISOString() : '')}
                       dateFormat="MMMM d, yyyy"
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white"
+                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Forest Style</label>
+                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Forest Style</label>
                     <select 
                       value={localConfig.treeStyle} 
                       onChange={(e) => handleInputChange('treeStyle', e.target.value)}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white"
+                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
                     >
-                      <option value="oak">Classic Oak 🌳</option>
-                      <option value="sakura">Sakura 🌸</option>
-                      <option value="neon">Neon 🔮</option>
-                      <option value="midnight">Midnight Magic ✨</option>
-                      <option value="frozen">Frozen ❄️</option>
-                      <option value="golden">Golden ☀️</option>
+                      <option value="oak">CLASSIC OAK 🌳</option>
+                      <option value="sakura">SAKURA 🌸</option>
+                      <option value="neon">NEON 🔮</option>
+                      <option value="midnight">MIDNIGHT MAGIC ✨</option>
+                      <option value="frozen">FROZEN ❄️</option>
+                      <option value="golden">GOLDEN ☀️</option>
                     </select>
                   </div>
-                  <div className="col-span-2 border-t pt-4 mt-2">
-                    <div className="flex justify-between items-center mb-3">
-                      <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest ml-1">Dynamic Pets Management</label>
+
+                  <div className="col-span-2 border-t border-black/5 pt-8 mt-4">
+                    <div className="flex justify-between items-center mb-6">
+                      <label className="text-[10px] font-black text-black opacity-30 uppercase tracking-[0.2em] ml-1">Dynamic Pets Management</label>
                       <button 
                         onClick={addPet}
-                        className="bg-pink-100 text-pink-600 text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest hover:bg-pink-200 transition-all"
+                        className="bg-black text-white text-[9px] font-black px-4 py-2 rounded-pill uppercase tracking-[0.2em] hover:bg-black/80 transition-all shadow-lg active:scale-95"
                       >
-                        + Add Pet
+                        + ADD PET
                       </button>
                     </div>
+
                     
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {/* Show old single pet if pets array is empty */}
                       {(!localConfig.pets || localConfig.pets.length === 0) && (
-                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-4">
+                        <div className="p-6 bg-black/5 rounded-clay border border-black/5 flex items-center gap-6">
                            <div className="flex-1">
-                              <label className="block text-[8px] font-black text-gray-400 uppercase mb-1">Primary Pet Type</label>
+                              <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Primary Pet Type</label>
                               <select 
                                 value={localConfig.petType || 'cat'} 
                                 onChange={(e) => handleInputChange('petType', e.target.value)}
-                                className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none"
+                                className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
                               >
-                                <option value="cat">Fluffy Cat 🐱</option>
-                                <option value="dog">Loyal Dog 🐶</option>
-                                <option value="rabbit">Soft Rabbit 🐰</option>
-                                <option value="panda">Chubby Panda 🐼</option>
-                                <option value="fox">Red Fox 🦊</option>
+                                <option value="cat">FLUFFY CAT 🐱</option>
+                                <option value="dog">LOYAL DOG 🐶</option>
+                                <option value="rabbit">SOFT RABBIT 🐰</option>
+                                <option value="panda">CHUBBY PANDA 🐼</option>
+                                <option value="fox">RED FOX 🦊</option>
                               </select>
                            </div>
-                           <p className="text-[9px] text-gray-400 italic max-w-[120px]">This is your legacy pet. Add more to go dynamic! ✨</p>
-                        </div>
-                      )}
-
+                           <p className="text-[9px] text-black/20 italic max-w-[140px] leading-relaxed">This is your legacy pet. Add more to go dynamic! ✨</p>
                       {/* Render Multiple Pets */}
                       {(localConfig.pets || []).map((pet, idx) => (
                         <motion.div 
                           key={pet.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className="p-4 bg-pink-50/30 rounded-2xl border border-pink-100 flex items-center gap-3"
+                          className="p-6 bg-black/5 rounded-clay border border-black/5 flex items-center gap-4"
                         >
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-pink-50">
+                          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow-sm border border-black/5">
                             {pet.type === 'cat' && '🐱'}
                             {pet.type === 'dog' && '🐶'}
                             {pet.type === 'rabbit' && '🐰'}
                             {pet.type === 'panda' && '🐼'}
                             {pet.type === 'fox' && '🦊'}
                           </div>
-                          <div className="flex-1 grid grid-cols-2 gap-2">
+                          <div className="flex-1 grid grid-cols-2 gap-4">
                              <div>
-                                <label className="block text-[7px] font-black text-pink-400 uppercase mb-0.5">Pet Name</label>
+                                <label className="block text-[7px] font-black text-black/30 uppercase mb-1.5 tracking-[0.1em]">Pet Name</label>
                                 <input 
                                   type="text"
                                   value={pet.name || ''}
                                   onChange={(e) => handlePetChange(pet.id, 'name', e.target.value)}
-                                  className="w-full bg-white border border-pink-50 rounded-lg p-1.5 text-[10px] font-bold outline-none"
+                                  className="w-full bg-white/50 border border-black/5 rounded-xl p-2.5 text-[10px] font-bold outline-none focus:border-black transition-all"
                                   placeholder="Name..."
                                 />
                              </div>
                              <div>
-                                <label className="block text-[7px] font-black text-pink-400 uppercase mb-0.5">Animal Type</label>
+                                <label className="block text-[7px] font-black text-black/30 uppercase mb-1.5 tracking-[0.1em]">Animal Type</label>
                                 <select 
-                                  value={pet.type} 
+                                  value={pet.type}
                                   onChange={(e) => handlePetChange(pet.id, 'type', e.target.value)}
-                                  className="w-full bg-white border border-pink-50 rounded-lg p-1.5 text-[10px] font-bold outline-none"
+                                  className="w-full bg-white/50 border border-black/5 rounded-xl p-2.5 text-[10px] font-bold outline-none appearance-none"
                                 >
-                                  <option value="cat">Cat 🐱</option>
-                                  <option value="dog">Dog 🐶</option>
-                                  <option value="rabbit">Rabbit 🐰</option>
-                                  <option value="panda">Panda 🐼</option>
-                                  <option value="fox">Fox 🦊</option>
+                                  <option value="cat">CAT</option>
+                                  <option value="dog">DOG</option>
+                                  <option value="rabbit">RABBIT</option>
+                                  <option value="panda">PANDA</option>
+                                  <option value="fox">FOX</option>
                                 </select>
                              </div>
                           </div>
-                          <button 
-                            onClick={() => removePet(pet.id)}
-                            className="w-8 h-8 flex items-center justify-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                          >
-                            <i className="fas fa-trash-alt text-xs"></i>
+                          <button onClick={() => removePet(pet.id)} className="w-10 h-10 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-colors group">
+                            <i className="fas fa-trash text-black/20 group-hover:text-black"></i>
                           </button>
                         </motion.div>
                       ))}
                     </div>
                   </div>
+
                   <div className="col-span-2">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Sky Time</label>
+                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Sky Time</label>
                     <select 
                       value={localConfig.skyMode || 'follow_timezone'} 
                       onChange={(e) => handleInputChange('skyMode', e.target.value)}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white"
+                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
                     >
-                      <option value="follow_timezone">Device Timezone 🕒</option>
-                      <option value="noon">Always Noon ☀️</option>
-                      <option value="night">Always Night 🌙</option>
+                      <option value="follow_timezone">DEVICE TIMEZONE 🕒</option>
+                      <option value="noon">ALWAYS NOON ☀️</option>
+                      <option value="night">ALWAYS NIGHT 🌙</option>
                     </select>
                   </div>
-                  <div className="col-span-2 bg-pink-50/30 p-4 rounded-2xl flex items-center justify-between border border-pink-50">
+
+                  <div className="col-span-2 bg-black/5 p-6 rounded-clay flex items-center justify-between border border-black/5">
                      <div>
-                        <p className="text-xs font-bold text-gray-800 flex items-center gap-2 italic">
-                           <i className="fas fa-qrcode text-pink-500"></i> Show Mobile Upload QR
+                        <p className="text-[10px] font-black text-black flex items-center gap-3 uppercase tracking-[0.2em]">
+                           <i className="fas fa-qrcode opacity-30"></i> MOBILE QR UPLOADER
                         </p>
-                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 ml-6">Floating QR code at bottom-left</p>
+                        <p className="text-[9px] text-black/30 font-bold uppercase tracking-[0.1em] mt-1 ml-7">Floating QR code at bottom-left</p>
                      </div>
                      <button 
                        onClick={() => handleInputChange('showQRCode', !localConfig.showQRCode)}
-                       className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showQRCode ? 'bg-pink-500 justify-end' : 'bg-gray-200 justify-start'}`}
+                       className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showQRCode ? 'bg-black justify-end' : 'bg-black/10 justify-start'}`}
                      >
                         <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
                      </button>
                   </div>
 
-                  <div className="col-span-2 mt-2">
-                     <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest ml-1">Graphics Quality</label>
+
+                  <div className="col-span-2 mt-4">
+                     <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Graphics Quality</label>
                      <select 
                        value={localConfig.graphicsQuality || 'medium'} 
                        onChange={(e) => handleInputChange('graphicsQuality', e.target.value)}
-                       className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white font-bold text-sm"
+                       className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-black transition-all appearance-none"
                      >
-                       <option value="low">Low (Fastest) ⚡</option>
-                       <option value="medium">Medium (Balanced) ⚖️</option>
-                       <option value="high">High (Best Visuals) ✨</option>
+                       <option value="low">LOW (FASTEST) ⚡</option>
+                       <option value="medium">MEDIUM (BALANCED) ⚖️</option>
+                       <option value="high">HIGH (BEST VISUALS) ✨</option>
                      </select>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -1013,47 +1032,48 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-stream text-purple-400"></i> Timeline Display
+            <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+              <h3 className="text-sm font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
+                <i className="fas fa-stream opacity-30"></i> TIMELINE DISPLAY
               </h3>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Default Rows Shown</label>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="range" 
-                    min="1" max="20" 
-                    value={localConfig.timelineDefaultRows || 5} 
-                    onChange={(e) => handleInputChange('timelineDefaultRows', parseInt(e.target.value))}
-                    className="flex-1 accent-pink-500"
-                  />
-                  <span className="text-lg font-black text-pink-500 w-8 text-center">{localConfig.timelineDefaultRows || 5}</span>
+              <div className="space-y-8">
+                <div>
+                  <label className="block text-[10px] font-black text-black/30 uppercase mb-4 tracking-[0.2em] ml-1">Default Rows Shown</label>
+                  <div className="flex items-center gap-6">
+                    <input 
+                      type="range" 
+                      min="1" max="20" 
+                      value={localConfig.timelineDefaultRows || 5} 
+                      onChange={(e) => handleInputChange('timelineDefaultRows', parseInt(e.target.value))}
+                      className="flex-1 accent-black"
+                    />
+                    <span className="text-2xl font-black text-black w-12 text-center">{localConfig.timelineDefaultRows || 5}</span>
+                  </div>
                 </div>
-                <p className="text-[9px] text-gray-400 mt-1 ml-1">Number of year rows visible before "Explore Further" button</p>
-              </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                 <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Show Coupons in Story</p>
-                    <p className="text-[8px] text-gray-300 font-bold tracking-tight ml-1">Events for redeemed coupons</p>
-                 </div>
-                 <button 
-                    onClick={() => handleInputChange('showCouponsOnTimeline', !localConfig.showCouponsOnTimeline)}
-                    className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-pink-500 justify-end' : 'bg-gray-200 justify-start'}`}
-                 >
-                    <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                 </button>
+                <div className="pt-6 border-t border-black/5 flex items-center justify-between">
+                   <div>
+                      <p className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em]">Show Coupons in Story</p>
+                   </div>
+                   <button 
+                      onClick={() => handleInputChange('showCouponsOnTimeline', !localConfig.showCouponsOnTimeline)}
+                      className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-black justify-end' : 'bg-black/10 justify-start'}`}
+                   >
+                      <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                   </button>
+                </div>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <i className="fas fa-user-friends text-blue-400"></i> The Couple
+            <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-sm font-black text-black flex items-center gap-3 uppercase tracking-[0.2em]">
+                  <i className="fas fa-user-friends opacity-30"></i> THE COUPLE
                 </h3>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                  Circle members
+                  <span className="text-[10px] text-black/30 font-black uppercase tracking-[0.2em]">
+                  CIRCLE MEMBERS
                 </span>
+              </div>
               </div>
 
               {membersLoading ? (
@@ -1119,39 +1139,41 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
           </motion.div>
         )}
 
+
         {activeTab === 'proposal' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <i className="fas fa-heart text-red-400"></i> Proposal Flow
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-sm font-black text-black flex items-center gap-3 uppercase tracking-[0.2em]">
+                  <i className="fas fa-heart opacity-30"></i> PROPOSAL FLOW
                 </h3>
                 <button 
                   onClick={addProposalQuestion}
-                  className="bg-red-50 text-red-500 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
+                  className="bg-black text-white text-[9px] font-black px-4 py-2 rounded-pill uppercase tracking-[0.2em] hover:bg-black/80 transition-all shadow-lg"
                 >
-                  + Add Step
+                  + ADD STEP
                 </button>
               </div>
+
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {localConfig.proposal.questions.map((q, idx) => (
-                  <div key={idx} className="relative group">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">
-                      Step {idx + 1}
+                  <div key={idx} className="relative group p-6 bg-black/5 rounded-clay border border-black/5">
+                    <label className="block text-[8px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">
+                      STEP {idx + 1}
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-4">
                       <textarea 
                         value={q} 
                         onChange={(e) => updateProposalQuestion(idx, e.target.value)}
-                        className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all resize-none bg-gray-50/30"
+                        className="w-full bg-white/50 border border-black/5 rounded-xl p-4 text-[11px] font-bold outline-none focus:border-black transition-all resize-none"
                         rows={2}
-                        placeholder={`Question ${idx + 1}`}
+                        placeholder={`QUESTION ${idx + 1}`}
                       />
                       {localConfig.proposal.questions.length > 1 && (
                         <button 
                           onClick={() => removeProposalQuestion(idx)}
-                          className="self-center p-2 text-gray-300 hover:text-red-500 transition-colors"
+                          className="w-12 h-12 flex items-center justify-center text-black/20 hover:text-black hover:bg-black/5 rounded-full transition-all"
                         >
                           <i className="fas fa-trash-alt"></i>
                         </button>
@@ -1160,47 +1182,48 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   </div>
                 ))}
               </div>
+
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-check-circle text-green-400"></i> Proposal Status
+            <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+              <h3 className="text-sm font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
+                <i className="fas fa-check-circle opacity-30"></i> PROPOSAL STATUS
               </h3>
               
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl">
+              <div className="space-y-8">
+                <div className="flex flex-col gap-6 p-6 bg-black/5 rounded-clay border border-black/5">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-bold text-gray-700">Completion</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
-                        {localConfig.proposal.progress || 0} / {localConfig.proposal.questions.length} Questions Read
+                      <p className="text-xs font-black text-black uppercase tracking-[0.1em]">COMPLETION</p>
+                      <p className="text-[10px] text-black/30 font-black uppercase tracking-[0.2em] mt-1">
+                        {localConfig.proposal.progress || 0} / {localConfig.proposal.questions.length} QUESTIONS READ
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                        <button 
                          onClick={() => setProposalProgress(0)}
-                         className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-gray-300"
+                         className="px-4 py-2 bg-black/5 text-black/40 rounded-pill text-[9px] font-black uppercase tracking-[0.2em] hover:bg-black/10 transition-all font-geist"
                        >
-                         Reset All
+                         RESET
                        </button>
                        <button 
                          onClick={() => setProposalProgress(localConfig.proposal.questions.length)}
-                         className="px-3 py-1.5 bg-green-500 text-white rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-green-600"
+                         className="px-4 py-2 bg-black text-white rounded-pill text-[9px] font-black uppercase tracking-[0.2em] hover:bg-black/80 transition-all font-geist shadow-lg"
                        >
-                         Mark All Read
+                         FINISH ALL
                        </button>
                     </div>
                   </div>
                   
                   {/* Step Indicators */}
-                  <div className="flex gap-1.5 mt-2">
+                  <div className="flex gap-2">
                     {localConfig.proposal.questions.map((_, i) => {
                       const isRead = (localConfig.proposal.progress || 0) > i;
                       return (
                         <button 
                           key={i}
                           onClick={() => setProposalProgress(isRead ? i : i + 1)}
-                          className={`flex-1 h-2 rounded-full transition-all ${isRead ? 'bg-green-500' : 'bg-gray-200'}`}
+                          className={`flex-1 h-3 rounded-full transition-all ${isRead ? 'bg-black shadow-[0_0_10px_rgba(0,0,0,0.1)]' : 'bg-black/5'}`}
                           title={`Question ${i+1}: ${isRead ? 'Read' : 'Unread'}`}
                         />
                       );
@@ -1208,11 +1231,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center justify-between p-6 bg-black text-white rounded-clay shadow-xl">
                   <div>
-                    <p className="text-sm font-bold text-gray-700">Proposal Fully Accepted</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
-                      {localConfig.proposal.isAccepted ? '✨ Final YES Received' : '❌ Outcome Pending'}
+                    <p className="text-xs font-black uppercase tracking-[0.1em]">OUTCOME</p>
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-[0.2em] mt-1">
+                      {localConfig.proposal.isAccepted ? '✨ FINAL YES RECEIVED' : '❌ OUTCOME PENDING'}
                     </p>
                   </div>
                   <button 
@@ -1222,49 +1245,52 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         proposal: { ...prev.proposal, isAccepted: !prev.proposal.isAccepted }
                       }));
                     }}
-                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                    className={`px-6 py-3 rounded-pill text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
                       localConfig.proposal.isAccepted 
-                        ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                        : 'bg-green-100 text-green-600 hover:bg-green-200'
+                        ? 'bg-white/10 text-white hover:bg-white/20' 
+                        : 'bg-white text-black hover:bg-white/90 shadow-lg scale-105 active:scale-95'
                     }`}
                   >
-                    {localConfig.proposal.isAccepted ? 'Reset Acceptance' : 'Mark as Accepted'}
+                    {localConfig.proposal.isAccepted ? 'RESET ACCEPTANCE' : 'MARK AS ACCEPTED'}
                   </button>
                 </div>
               </div>
 
-              <p className="text-[9px] text-gray-400 mt-3 ml-1 italic">
+              <p className="text-[9px] text-black/20 mt-6 ml-1 italic font-geist">
                 * The proposal screen skips "Read" questions. If progress is reset to 0, it starts from Question 1.
               </p>
             </div>
+
             
-            <div className="p-4 bg-red-50 rounded-2xl border-2 border-dashed border-red-100">
-              <p className="text-[11px] text-red-600 font-bold leading-relaxed flex items-center gap-2">
-                <i className="fas fa-magic"></i>
-                The user can only accept your proposal. Each "Yes" leads to the next question until the final acceptance!
+            <div className="p-6 bg-black text-white rounded-clay border-2 border-dashed border-white/20 shadow-lg">
+              <p className="text-xs font-black leading-relaxed flex items-center gap-3 uppercase tracking-[0.1em]">
+                <i className="fas fa-magic opacity-50"></i>
+                The user can only accept your proposal. Each "YES" leads to the next question until the final acceptance!
               </p>
             </div>
+
           </motion.div>
         )}
 
         {activeTab === 'gallery' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Gallery Interaction</label>
-                <div className="flex bg-gray-100 rounded-2xl p-1.5 mb-4">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+             <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+                <label className="block text-[10px] font-black text-black/30 uppercase mb-4 tracking-[0.2em] ml-1">GALLERY INTERACTION</label>
+                <div className="flex bg-black/5 rounded-clay p-2 mb-6">
                    <button 
                      onClick={() => handleInputChange('gallerySource', 'manual')}
-                     className={`flex-1 py-3 text-xs font-black rounded-xl transition-all uppercase tracking-widest ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-md text-pink-500' : 'text-gray-500'}`}
+                     className={`flex-1 py-4 text-[10px] font-black rounded-xl transition-all uppercase tracking-[0.2em] ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-xl text-black scale-105' : 'text-black/30'}`}
                    >
-                     Manual Uploads
+                     MANUAL UPLOADS
                    </button>
                    <button 
                      onClick={() => handleInputChange('gallerySource', 'instagram')}
-                     className={`flex-1 py-3 text-xs font-black rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-2 ${localConfig.gallerySource === 'instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-md text-white' : 'text-gray-500'}`}
+                     className={`flex-1 py-4 text-[10px] font-black rounded-xl transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-3 ${localConfig.gallerySource === 'instagram' ? 'bg-black text-white shadow-xl scale-105' : 'text-black/30'}`}
                    >
-                     <i className="fab fa-instagram"></i> Instagram Mode
+                     <i className="fab fa-instagram"></i> INSTAGRAM MODE
                    </button>
                 </div>
+
 
                 <AnimatePresence mode="wait">
                   {localConfig.gallerySource === 'instagram' && (
@@ -1333,15 +1359,15 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 </AnimatePresence>
              </div>
 
-             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo Albums</label>
+             <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20 flex flex-col gap-6">
+                <label className="block text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">PHOTO ALBUMS</label>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                    <input 
                      type="text" 
                      id="newAlbumInput"
-                     placeholder="New Album Name..."
-                     className="flex-1 border-2 border-gray-50 rounded-2xl p-3 text-xs font-bold outline-none focus:border-pink-200"
+                     placeholder="NEW ALBUM NAME..."
+                     className="flex-1 bg-black/5 border border-transparent rounded-xl p-4 text-[11px] font-bold outline-none focus:border-black transition-all"
                    />
                    <button 
                      onClick={() => {
@@ -1351,29 +1377,32 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                          input.value = '';
                        }
                      }}
-                     className="bg-pink-500 text-white px-4 rounded-2xl font-black text-xs shadow-md hover:bg-pink-600 transition-colors"
+                     className="bg-black text-white px-6 rounded-pill font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:bg-black/80 transition-all font-geist"
                    >
-                     Create
+                     CREATE
                    </button>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2">
                    {(localConfig.albums || []).map(album => (
-                      <div key={album.id} className="bg-pink-50 border border-pink-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                         <span className="text-xs font-bold text-pink-600 truncate max-w-[120px]">{album.name}</span>
-                         <button onClick={() => deleteAlbum(album.id)} className="text-pink-300 hover:text-red-500 transition-colors bg-white rounded-full w-4 h-4 flex items-center justify-center">
+                      <div key={album.id} className="bg-black/5 border border-black/5 rounded-pill px-4 py-2 flex items-center gap-3">
+                         <span className="text-[10px] font-black text-black uppercase tracking-[0.1em] truncate max-w-[140px]">{album.name}</span>
+                         <button onClick={() => deleteAlbum(album.id)} className="text-black/20 hover:text-black transition-colors bg-white rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
                             <i className="fas fa-times text-[8px]"></i>
                          </button>
                       </div>
                    ))}
                    {(!localConfig.albums || localConfig.albums.length === 0) && (
-                      <p className="text-xs text-gray-400 italic">No albums created yet.</p>
+                      <p className="text-[9px] text-black/20 font-black uppercase tracking-[0.1em] italic">No albums created yet.</p>
                    )}
                 </div>
              </div>
 
-             <div className="flex justify-between items-center px-1 mb-2 mt-4">
-               <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Memories & Links</h3>
+
+             <div className="flex justify-between items-center px-1 mb-4 mt-8">
+               <h3 className="text-sm font-black text-black uppercase tracking-[0.2em] flex items-center gap-3">
+                 <i className="fas fa-camera opacity-30"></i> MEMORIES & LINKS
+               </h3>
              </div>
 
              {/* Drag & Drop Zone */}
@@ -1393,23 +1422,24 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                    input.click();
                 }}
                 className={`
-                  relative group cursor-pointer transition-all duration-300
-                  border-2 border-dashed rounded-2xl py-8 flex flex-col items-center justify-center gap-3 mb-6
-                  ${isDraggingOver ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-pink-300 hover:bg-gray-50'}
+                  relative group cursor-pointer transition-all duration-500
+                  border-2 border-dashed rounded-clay py-12 flex flex-col items-center justify-center gap-4 mb-8
+                  ${isDraggingOver ? 'border-black bg-black/5' : 'border-black/5 hover:border-black/20 hover:bg-black/5'}
                 `}
              >
-                <div className={`p-4 rounded-full transition-colors ${isDraggingOver ? 'bg-pink-100' : 'bg-gray-100 group-hover:bg-pink-50'}`}>
-                   <i className={`fas fa-cloud-upload-alt text-2xl ${isDraggingOver ? 'text-pink-600' : 'text-gray-400 group-hover:text-pink-400'}`}></i>
+                <div className={`p-6 rounded-full transition-all duration-500 ${isDraggingOver ? 'bg-black text-white scale-110 shadow-xl' : 'bg-black/5 text-black/20 group-hover:bg-black/10 group-hover:text-black'}`}>
+                   <i className="fas fa-cloud-upload-alt text-3xl"></i>
                 </div>
                 <div className="text-center">
-                   <p className="text-xs font-bold text-gray-600">
-                      {isDraggingOver ? 'Drop files now!' : 'Click or Drag files here'}
+                   <p className="text-[10px] font-black text-black uppercase tracking-[0.2em]">
+                      {isDraggingOver ? 'DROP FILES NOW' : 'SELECT OR DRAG FILES'}
                    </p>
-                   <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-                      Supports JPG, PNG, MP4, MP3
+                   <p className="text-[8px] text-black/30 font-black uppercase tracking-[0.1em] mt-2 font-geist">
+                      JPG, PNG, MP4, MP3 SUPPORTED
                    </p>
                 </div>
              </div>
+
              
              {/* Gallery Grid */}
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1493,31 +1523,39 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {/* Other tabs follow the same pattern, simplified for brevity here */}
         {activeTab === 'timeline' && (
-           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              <div className="flex justify-between items-center px-1">
-                 <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Our Story</h3>
-                 <button onClick={addTimelineEvent} className="bg-pink-500 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-md">+ New Event</button>
+           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              <div className="flex justify-between items-center px-2">
+                 <h3 className="text-sm font-black text-black uppercase tracking-[0.2em] flex items-center gap-3">
+                   <i className="fas fa-stream opacity-30"></i> OUR STORY
+                 </h3>
+                 <button 
+                   onClick={addTimelineEvent} 
+                   className="bg-black text-white text-[9px] font-black px-6 py-2 rounded-pill uppercase tracking-[0.2em] shadow-lg hover:bg-black/80 transition-all font-geist"
+                 >
+                   + NEW EVENT
+                 </button>
               </div>
 
+
                {/* View Settings (Moved from Timeline Toolbar) */}
-               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <i className="fas fa-eye text-blue-400"></i> View Settings
+               <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+                  <h3 className="text-[10px] font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
+                    <i className="fas fa-eye opacity-30"></i> VIEW SETTINGS
                   </h3>
                   
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest ml-1">Layout Mode</label>
-                  <div className="flex bg-gray-100 p-1 rounded-2xl mb-4">
+                  <label className="block text-[8px] font-black text-black/30 uppercase mb-4 tracking-[0.2em] ml-1">LAYOUT MODE</label>
+                  <div className="flex bg-black/5 p-2 rounded-clay mb-8">
                         {([
-                           { id: 'wave', label: 'Wave', icon: 'fa-water' },
-                           { id: 'vertical', label: 'Vertical', icon: 'fa-arrows-alt-v' }
+                           { id: 'wave', label: 'WAVE', icon: 'fa-water' },
+                           { id: 'vertical', label: 'VERTICAL', icon: 'fa-arrows-alt-v' }
                         ] as const).map((mode) => (
                            <button
                               key={mode.id}
                               onClick={() => handleInputChange('timelineLayoutMode', mode.id)}
-                              className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
+                              className={`flex-1 py-4 px-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${
                                     (localConfig.timelineLayoutMode || 'wave') === mode.id 
-                                    ? 'bg-white text-pink-500 shadow-md' 
-                                    : 'text-gray-400 hover:text-gray-600'
+                                    ? 'bg-white text-black shadow-xl scale-105' 
+                                    : 'text-black/20 hover:text-black/40'
                               }`}
                            >
                               <i className={`fas ${mode.icon}`}></i> {mode.label}
@@ -1525,7 +1563,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         ))}
                   </div>
 
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest ml-1">Zoom Level</label>
+                  <label className="block text-[8px] font-black text-black/30 uppercase mb-4 tracking-[0.2em] ml-1">ZOOM LEVEL</label>
                   <input 
                         type="range"
                         min="0"
@@ -1533,20 +1571,21 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         step="1"
                         value={localConfig.timelineZoomLevel || 0}
                         onChange={(e) => handleInputChange('timelineZoomLevel', parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        className="w-full h-2 bg-black/5 rounded-full appearance-none cursor-pointer accent-black"
                   />
-                  <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-widest">
-                        <span>Close</span>
-                        <span>Far</span>
+                  <div className="flex justify-between text-[8px] font-black text-black/20 mt-3 uppercase tracking-[0.2em]">
+                        <span>CLOSE</span>
+                        <span>FAR</span>
                   </div>
                </div>
 
+
               {/* Timeline Display Settings */}
-              <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-4">
-                 <div className="space-y-2">
+              <div className="bg-white/40 backdrop-blur-md p-8 rounded-clay border border-white/20 space-y-8">
+                 <div className="space-y-4">
                      <div className="flex justify-between items-center px-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Card Sizing (Desktop)</p>
-                        <span className="text-pink-500 font-bold text-[10px]">
+                        <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em]">CARD SCALING</p>
+                        <span className="text-black font-black text-[10px]">
                            {Math.round((localConfig.timelineCardScale || 1.0) * 100)}%
                         </span>
                      </div>
@@ -1557,15 +1596,15 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         step="0.05"
                         value={localConfig.timelineCardScale || 1.0}
                         onChange={(e) => handleInputChange('timelineCardScale', parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        className="w-full h-2 bg-black/5 rounded-full appearance-none cursor-pointer accent-black"
                      />
                  </div>
 
-                 <div className="space-y-2 border-t border-gray-200 pt-3">
+                 <div className="space-y-4 pt-4 border-t border-black/5">
                      <div className="flex justify-between items-center px-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Thumbnail Size (Square)</p>
-                        <span className="text-pink-500 font-bold text-[10px]">
-                           {localConfig.timelineThumbnailHeight || 150}px
+                        <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em]">MEDIA DENSITY</p>
+                        <span className="text-black font-black text-[10px]">
+                           {localConfig.timelineThumbnailHeight || 150}PX
                         </span>
                      </div>
                      <input 
@@ -1575,25 +1614,27 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         step="10"
                         value={localConfig.timelineThumbnailHeight || 150}
                         onChange={(e) => handleInputChange('timelineThumbnailHeight', parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        className="w-full h-2 bg-black/5 rounded-full appearance-none cursor-pointer accent-black"
                      />
                  </div>
               </div>
-              <div className="space-y-2">
+
+              {/* Event List */}
+              <div className="space-y-4">
                  {localConfig.timeline.map((item, idx) => (
                     <motion.div 
                        key={item.id} 
                        initial={{ opacity: 0, x: -10 }} 
                        animate={{ opacity: 1, x: 0, transition: { delay: idx * 0.05 } }}
-                       className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 hover:shadow-md transition-all group"
+                       className="bg-white p-4 rounded-clay shadow-sm border border-black/5 flex items-center gap-6 group hover:shadow-xl transition-all duration-500"
                     >
-                       <div className="w-10 h-10 shrink-0 bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center border border-gray-200 relative">
+                       <div className="w-14 h-14 shrink-0 bg-black/5 rounded-xl overflow-hidden flex items-center justify-center border border-black/5 relative grayscale group-hover:grayscale-0 transition-all duration-700">
                            {item.media?.type === 'image' && <img src={item.media.url} className="w-full h-full object-cover" />}
-                           {item.media?.type === 'video' && <i className="fas fa-video text-blue-400"></i>}
-                           {item.media?.type === 'audio' && <i className="fas fa-microphone text-orange-400"></i>}
-                           {!item.media && <i className="fas fa-sticky-note text-gray-300"></i>}
+                           {item.media?.type === 'video' && <i className="fas fa-video opacity-20"></i>}
+                           {item.media?.type === 'audio' && <i className="fas fa-microphone opacity-20"></i>}
+                           {!item.media && <i className="fas fa-sticky-note opacity-10"></i>}
                            
-                           <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity z-10">
+                           <label className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity z-10">
                               <i className="fas fa-camera text-white text-[10px]"></i>
                               <input 
                                  type="file" 
@@ -1607,34 +1648,34 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                            </label>
                        </div>
 
-                       <div className="flex-1 min-w-0 grid grid-cols-1 gap-1">
-                          <div className="flex gap-2">
+                       <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          <div className="flex items-center gap-4">
                              <DatePicker
                                 selected={item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp as any)}
                                 onChange={(date: Date | null) => date && handleTimelineChange(item.id, 'timestamp', date)}
                                 showTimeSelect
                                 dateFormat="MM/dd/yy"
-                                className="w-20 text-[10px] font-bold text-gray-500 bg-transparent outline-none p-0 cursor-pointer hover:text-pink-500"
+                                className="w-24 text-[10px] font-black text-black/20 bg-transparent outline-none p-0 cursor-pointer hover:text-black uppercase tracking-widest transition-colors"
                              />
                              <input 
                                type="text"
                                value={item.text}
                                onChange={(e) => handleTimelineChange(item.id, 'text', e.target.value)}
-                               className="flex-1 text-xs font-bold text-gray-800 bg-transparent outline-none truncate focus:text-pink-600 focus:bg-pink-50/50 rounded-md px-1"
+                               className="flex-1 text-[11px] font-black text-black bg-transparent outline-none truncate uppercase tracking-tight focus:bg-black/5 rounded-pill px-3 py-1"
                              />
                           </div>
                        </div>
 
                        <button 
                           onClick={() => {
-                             if(confirm('Delete event?')) updateLocal(prev => ({ 
+                             if(confirm('REMOVE RECORD?')) updateLocal(prev => ({ 
                                 ...prev, 
                                 timeline: prev.timeline.filter(t => t.id !== item.id) 
                              }));
                           }}
-                          className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0"
+                          className="w-10 h-10 flex items-center justify-center text-black/5 hover:text-black hover:bg-black/5 rounded-full transition-all shrink-0"
                        >
-                          <i className="fas fa-trash-alt text-xs"></i>
+                          <i className="fas fa-trash-alt text-[10px]"></i>
                        </button>
                     </motion.div>
                  ))}
@@ -1646,25 +1687,28 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
         )}
 
         {activeTab === 'coupons' && (
-           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              <div className="bg-pink-50/30 p-4 rounded-2xl flex items-center justify-between border border-pink-50 mb-4">
+           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              <div className="bg-black/5 p-6 rounded-clay flex items-center justify-between border border-black/5 mb-8">
                  <div>
-                    <p className="text-xs font-bold text-gray-800 flex items-center gap-2 italic">
-                       <i className="fas fa-history text-pink-500"></i> Show Redeemed on Timeline
-                    </p>
-                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 ml-6">Display used coupons in your story</p>
+                    <p className="text-[10px] font-black text-black opacity-30 uppercase tracking-[0.2em] mb-1">STORY INTEGRATION</p>
+                    <p className="text-[11px] font-black text-black uppercase tracking-tight">Show Redeemed on Timeline</p>
                  </div>
                  <button 
                    onClick={() => handleInputChange('showCouponsOnTimeline', !localConfig.showCouponsOnTimeline)}
-                   className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-pink-500 justify-end' : 'bg-gray-200 justify-start'}`}
+                   className={`w-14 h-7 rounded-pill p-1.5 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-black justify-end' : 'bg-black/10 justify-start'}`}
                  >
-                    <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                    <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-xl" />
                  </button>
               </div>
 
-              <div className="flex justify-between items-center px-1">
-                 <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Gifts & Vouchers</h3>
-                 <button onClick={addCoupon} className="bg-purple-600 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-md">+ Add Coupon</button>
+              <div className="flex justify-between items-center px-2">
+                 <h3 className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em]">VOUCHERS & PERKS</h3>
+                 <button 
+                   onClick={addCoupon} 
+                   className="bg-black text-white text-[9px] font-black px-6 py-2 rounded-pill uppercase tracking-[0.2em] shadow-lg hover:bg-black/80 transition-all"
+                 >
+                   + NEW VOUCHER
+                 </button>
               </div>
               {localConfig.coupons.map(coupon => {
                  const isExpanded = expandedCouponId === coupon.id;

@@ -20,7 +20,7 @@ type Partners = Record<string, { name: string; avatar: string }>;
 interface LoveCouponsProps {
   coupons: Coupon[];
   partners?: Partners;
-  onRedeem?: (id: string) => void; // Parent confirmation function
+  onRedeem?: (id: string) => void; 
   onDelete?: (id: string) => void;
   onAdd?: (data: any) => void;
 }
@@ -38,13 +38,10 @@ const CouponCard: React.FC<{
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  const rotateX = useSpring(useTransform(y, [-100, 100], [15, -15]), { stiffness: 300, damping: 30 });
-  const rotateY = useSpring(useTransform(x, [-100, 100], [-15, 15]), { stiffness: 300, damping: 30 });
-  const shineX = useTransform(x, [-100, 100], [-200, 200]);
-  const shineOpacity = useTransform(x, [-100, 100], [0.2, 0.5]);
-
-  const stampScale = useSpring(isAnimating ? 0.9 : 1, { stiffness: 400, damping: 15 });
-  const stampRotate = useSpring(isAnimating ? -5 : 0, { stiffness: 400, damping: 15 });
+  const rotateX = useSpring(useTransform(y, [-100, 100], [10, -10]), { stiffness: 400, damping: 40 });
+  const rotateY = useSpring(useTransform(x, [-100, 100], [-10, 10]), { stiffness: 400, damping: 40 });
+  const shineX = useTransform(x, [-100, 100], [-300, 300]);
+  const shineOpacity = useTransform(x, [-100, 100], [0, 0.4]);
 
   function handleMouse(event: React.MouseEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -65,139 +62,87 @@ const CouponCard: React.FC<{
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ 
         opacity: 1, 
+        y: 0,
         scale: isAnimating ? [1, 0.95, 1.05, 1] : 1,
-        rotate: isAnimating ? [0, -2, 2, 0] : 0
       }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
       exit={{ opacity: 0, scale: 0.9 }}
       onMouseMove={handleMouse}
       onMouseLeave={handleMouseLeave}
-      style={{ perspective: 1000 }}
       className={`relative group select-none ${isRedeemed ? 'cursor-default' : 'cursor-pointer'}`}
+      style={{ perspective: 1000 }}
     >
       <motion.div 
         style={{ 
           rotateX: isRedeemed ? 0 : rotateX, 
           rotateY: isRedeemed ? 0 : rotateY,
-          scale: stampScale,
-          rotateZ: stampRotate,
           transformStyle: "preserve-3d"
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onCardClick(coupon.id, isRedeemed);
-        }}
+        onClick={() => onCardClick(coupon.id, isRedeemed)}
         className={`
-          relative flex h-32 w-full overflow-hidden rounded-2xl shadow-2xl 
-          transition-all duration-500 glass-morphism border-2 border-white/40
-          ${isRedeemed ? 'opacity-50 grayscale-[0.6] border-gray-200 shadow-none' : 'hover:border-pink-200/50'}
+          relative flex h-32 w-full overflow-hidden rounded-clay shadow-sm 
+          transition-all duration-700 bg-white/60 border border-white/20 backdrop-blur-md
+          ${isRedeemed ? 'opacity-40 grayscale' : 'hover:shadow-2xl hover:border-black/5'}
         `}
       >
-        {/* Scalloped Edges (Left) */}
-        <div className="absolute -top-3 -bottom-3 -left-3 w-6 flex flex-col justify-between z-20 pointer-events-none">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="w-6 h-6 bg-[#fdf2f8] rounded-full border border-gray-100 shadow-inner" />
-          ))}
-        </div>
-        {/* Scalloped Edges (Right) */}
-        <div className="absolute -top-3 -bottom-3 -right-3 w-6 flex flex-col justify-between z-20 pointer-events-none">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="w-6 h-6 bg-[#fdf2f8] rounded-full border border-gray-100 shadow-inner" />
-          ))}
-        </div>
-
+        {/* Holographic Overlays */}
         {!isRedeemed && (
-          <div className="absolute inset-x-0 -bottom-1 h-2 bg-black/10 blur-[1px] rounded-full pointer-events-none" />
+          <motion.div 
+            style={{ translateX: shineX, opacity: shineOpacity }}
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent skew-x-[-30deg] pointer-events-none z-10"
+          />
         )}
 
         {/* Left Stub */}
         <div className={`
-          w-24 md:w-28 flex items-center justify-center text-4xl md:text-5xl bg-gradient-to-br border-r-2 border-dashed border-gray-200/50 relative overflow-hidden
-          ${coupon.color} 
+          w-24 md:w-28 flex items-center justify-center text-4xl bg-black transition-all duration-700 relative overflow-hidden
+          ${isRedeemed ? 'bg-black/20' : 'group-hover:scale-110'}
         `}>
           <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+          <span className="drop-shadow-2xl z-10">{coupon.emoji}</span>
           
-          <span 
-            style={{ transform: "translateZ(50px)" }}
-            className="drop-shadow-[0_12px_12px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform duration-500 z-10"
-          >
-            {coupon.emoji}
-          </span>
+          {/* Ticket Perforation Mock */}
+          <div className="absolute top-0 bottom-0 -right-[6px] w-3 flex flex-col justify-around z-20">
+             {[...Array(6)].map((_, i) => (
+                <div key={i} className="w-3 h-3 bg-white/10 rounded-full" />
+             ))}
+          </div>
         </div>
 
         {/* Right Content */}
-        <div 
-          style={{ transform: "translateZ(30px)" }}
-          className="flex-1 flex flex-col justify-center px-8 md:px-12 py-6 relative bg-white/40 transform-gpu"
-        >
-          <div className="flex justify-between items-start mb-1">
-            <h3 className="font-black text-gray-800 text-base md:text-xl tracking-tight leading-none drop-shadow-sm">{coupon.title}</h3>
+        <div className="flex-1 flex flex-col justify-center px-8 md:px-10 py-6 relative">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-sm font-black text-black uppercase tracking-[0.1em]">{coupon.title}</h3>
             {coupon.points && coupon.points > 0 && (
-               <div className="bg-yellow-400 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm">
-                 +{coupon.points?.toLocaleString()} PTS
+               <div className="text-[9px] font-black text-black/30 tracking-[0.2em]">
+                 +{coupon.points} PTS
                </div>
             )}
           </div>
-          <p className="text-[10px] md:text-xs text-gray-600 font-bold leading-tight line-clamp-2 mb-2">{coupon.desc}</p>
+          <p className="text-[10px] text-black/40 font-black uppercase tracking-[0.1em] leading-tight line-clamp-2 max-w-[80%]">{coupon.desc}</p>
           
-          <div className="flex items-center gap-2 mt-auto pb-4">
-             {coupon.expiry ? (
-               <span className="text-[8px] md:text-[9px] text-rose-500 font-black uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
-                 EXP: {coupon.expiry}
-               </span>
-             ) : (
-               <span className="text-[8px] md:text-[9px] text-emerald-500 font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                 PERMANENT
-               </span>
-             )}
-             <span className="text-[8px] md:text-[9px] text-gray-400 font-black uppercase tracking-widest ml-auto opacity-40">
-                NLY-STAMP-{(idx + 101).toString(16).toUpperCase()}
+          <div className="mt-auto flex items-center justify-between">
+             <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.3em]">
+               {coupon.expiry ? `EXP ${coupon.expiry}` : "PERMANENT"}
+             </span>
+             <span className="text-[8px] font-black text-black/10 uppercase tracking-[0.2em] font-mono">
+                #{idx + 101}
              </span>
           </div>
-          
-           {/* Redeemed Stamp */}
+
           {isRedeemed && (
             <motion.div 
                initial={{ scale: 2, opacity: 0, rotate: -20 }}
                animate={{ scale: 1, opacity: 1, rotate: -15 }}
-               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
+               className="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/20 backdrop-blur-[2px] z-30"
             >
-               <div className="border-4 border-red-500/60 w-32 h-32 rounded-full rotate-[-15deg] flex flex-col items-center justify-center bg-transparent mix-blend-multiply">
-                  <span className="text-red-500/60 font-black text-xl uppercase tracking-[0.2em] font-mono leading-none">REDEEMED</span>
+               <div className="border-2 border-black/10 px-4 py-1 rounded-pill rotate-[-15deg]">
+                  <span className="text-black/20 font-black text-xs uppercase tracking-[0.4em] font-geist">REDEEMED</span>
                </div>
             </motion.div>
-          )}
-
-          {/* Holographic Overlays */}
-          {!isRedeemed && (
-            <>
-              {/* Magic Shimmer */}
-              <motion.div 
-                style={{
-                  translateX: shineX,
-                  opacity: shineOpacity
-                }}
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-30deg] pointer-events-none z-10"
-              />
-              {/* Holographic Rainbow Foil */}
-              <motion.div
-                style={{
-                  opacity: useTransform(x, [-100, 100], [0.1, 0.3]),
-                  background: useTransform(
-                    x, 
-                    [-100, 100], 
-                    [
-                      "linear-gradient(135deg, rgba(255,0,0,0.1) 0%, rgba(0,255,255,0.1) 50%, rgba(255,0,255,0.1) 100%)",
-                      "linear-gradient(135deg, rgba(255,0,255,0.1) 0%, rgba(255,255,0,0.1) 50%, rgba(0,255,255,0.1) 100%)"
-                    ]
-                  )
-                }}
-                className="absolute inset-0 pointer-events-none mix-blend-color-dodge transition-none"
-              />
-            </>
           )}
         </div>
       </motion.div>
@@ -208,13 +153,13 @@ const CouponCard: React.FC<{
 const AddButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   return (
     <motion.button
-      whileHover={{ scale: 1.05 }}
+      whileHover={{ scale: 1.05, y: -2 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[90] px-8 py-3 rounded-full bg-white/50 backdrop-blur-md text-pink-500 shadow-lg flex items-center gap-2 font-black uppercase tracking-widest text-[10px] md:text-xs border-none"
+      className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[90] px-8 py-4 rounded-pill bg-black text-white shadow-2xl flex items-center gap-3 font-black uppercase tracking-[0.2em] text-[10px] border-none font-geist"
     >
       <i className="fas fa-plus"></i>
-      Add New Coupon
+      ADD NEW TICKET
     </motion.button>
   );
 };
@@ -222,6 +167,7 @@ const AddButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, onDelete, onAdd }) => {
   const partnerEntries = Object.entries(partners || {});
   const firstPartnerId = partnerEntries[0]?.[0] || 'partner1';
+  
   const [activeTab, setActiveTab] = useState<string>(firstPartnerId);
   const [statusTab, setStatusTab] = useState<'available' | 'redeemed'>('available');
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
@@ -235,7 +181,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
     desc: '',
     points: 0,
     forPartner: firstPartnerId,
-    color: 'from-pink-400 to-rose-400'
+    color: 'from-black to-charcoal'
   });
 
   const handleCardClick = (id: string, currentlyRedeemed: boolean) => {
@@ -249,83 +195,74 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       const targetId = selectedCoupon.id;
       setIsRedeeming(true);
       
-      // Wait for stamp animation to complete on modal
       await new Promise(resolve => setTimeout(resolve, 800));
       
       onRedeem(targetId);
       setAnimatingRedeemId(targetId);
       
-      // Close modal
       setSelectedCoupon(null);
       setIsRedeeming(false);
-      
-      // Move to history
       setStatusTab('redeemed');
       
-      // Clear secondary animation state after a delay
       setTimeout(() => setAnimatingRedeemId(null), 2000);
     }
   };
   
-  // 1. Filter by Partner
   const partnerCoupons = coupons.filter(c => !c.for || c.for === activeTab);
-
-  // 2. Filter by Status
   const filteredCoupons = partnerCoupons.filter(c => {
     const isRedeemed = !!c.isRedeemed;
     return statusTab === 'redeemed' ? isRedeemed : !isRedeemed;
   });
 
-  const activeName = partners?.[activeTab]?.name || activeTab;
-
   return (
-    <div className="w-full max-w-4xl mx-auto pt-2 pb-6 md:py-12 px-4">
-      <div className="text-center mb-2 md:mb-8">
-        <h2 className="font-pacifico text-xl md:text-3xl text-pink-500 mb-1 md:mb-2">Love Coupons</h2>
-        <p className="text-[10px] md:text-base text-gray-500 font-quicksand">Select a recipient and view their rewards! ❤️</p>
+    <div className="w-full max-w-6xl mx-auto pt-16 pb-32 px-6 font-geist">
+      <div className="text-center mb-16">
+        <h2 className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em] mb-4">GIFT REPOSITORY</h2>
+        <h1 className="text-4xl font-black text-black uppercase tracking-tight mb-6">LOVE TICKETS</h1>
+        <div className="w-12 h-1 bg-black mx-auto mb-12"></div>
       </div>
 
-      <div className="flex justify-center mb-6 bg-white/50 p-1 rounded-full max-w-xs mx-auto backdrop-blur-sm overflow-x-auto">
-        {partnerEntries.map(([id, p], idx) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === id
-                ? idx === 0 ? 'bg-pink-500 text-white shadow-md' : 'bg-blue-500 text-white shadow-md'
-                : 'text-gray-500 hover:text-pink-400'
-            }`}
-          >
-            {p.avatar} {p.name}
-          </button>
-        ))}
+      {/* Partner Toggle */}
+      <div className="flex justify-center mb-12">
+        <div className="flex bg-black/5 p-2 rounded-clay backdrop-blur-md border border-black/5 overflow-x-auto max-w-full">
+          {partnerEntries.map(([id, p]) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`px-8 py-4 rounded-xl text-[10px] font-black transition-all uppercase tracking-[0.2em] flex items-center gap-3 whitespace-nowrap ${
+                activeTab === id ? 'bg-white shadow-xl text-black scale-105' : 'text-black/20 hover:text-black/40'
+              }`}
+            >
+              {p.avatar} {p.name.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex justify-center mb-10 gap-3">
+      {/* Status Filter */}
+      <div className="flex justify-center mb-16 gap-12">
           <button 
             onClick={() => setStatusTab('available')}
-            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              statusTab === 'available' 
-                ? 'bg-white text-pink-500 shadow-sm border-2 border-pink-200' 
-                : 'bg-transparent text-gray-400 hover:text-pink-300'
+            className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all relative ${
+              statusTab === 'available' ? 'text-black' : 'text-black/10 hover:text-black/30'
             }`}
           >
-            Available ({partnerCoupons.filter(c => !c.isRedeemed).length})
+            AVAILABLE 
+            {statusTab === 'available' && <motion.div layoutId="statusUnderline" className="absolute -bottom-4 left-0 right-0 h-1 bg-black" />}
           </button>
           <button 
             onClick={() => setStatusTab('redeemed')}
-            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              statusTab === 'redeemed' 
-                ? 'bg-white text-gray-600 shadow-sm border-2 border-gray-200' 
-                : 'bg-transparent text-gray-400 hover:text-gray-500'
+            className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all relative ${
+              statusTab === 'redeemed' ? 'text-black' : 'text-black/10 hover:text-black/30'
             }`}
           >
-            History ({partnerCoupons.filter(c => c.isRedeemed).length})
+            HISTORY
+            {statusTab === 'redeemed' && <motion.div layoutId="statusUnderline" className="absolute -bottom-4 left-0 right-0 h-1 bg-black" />}
           </button>
       </div>
 
-      <div className="min-h-[300px] relative pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="min-h-[400px] relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {statusTab === 'available' && <AddButton onClick={() => setIsAdding(true)} />}
           
           <AnimatePresence mode="popLayout">
@@ -344,14 +281,10 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
         </div>
 
         {filteredCoupons.length === 0 && (
-           <div className="text-center text-gray-400 py-16 px-4">
-             <div className="text-5xl mb-4 opacity-50">{statusTab === 'available' ? '🎫' : '📁'}</div>
-             <p className="font-bold">
-                No {statusTab} coupons for {activeName} yet!
+           <div className="text-center py-32 opacity-20">
+             <p className="text-[10px] font-black uppercase tracking-[0.5em]">
+                NO {statusTab.toUpperCase()} TICKETS RECORDED
              </p>
-             {statusTab === 'available' && (
-               <p className="text-xs mt-2 italic text-gray-400">Click the card above to create your first surprise! ✨</p>
-             )}
            </div>
         )}
       </div>
@@ -359,70 +292,63 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       {/* Detailed Ticket Modal */}
       <AnimatePresence>
         {selectedCoupon && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedCoupon(null)}
-              className="absolute inset-0 bg-pink-900/40 backdrop-blur-md"
+              className="absolute inset-0 bg-white/80 backdrop-blur-2xl"
             />
             
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white"
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-sm bg-black rounded-clay shadow-[0_50px_100px_rgba(0,0,0,0.3)] overflow-hidden"
             >
-              {/* Top Section / Gradient Header */}
-              <div className={`h-32 bg-gradient-to-br ${selectedCoupon.color} relative flex items-center justify-center`}>
-                <div className="text-6xl drop-shadow-lg">{selectedCoupon.emoji}</div>
-                {/* Perforation Circles (Decorative) */}
-                <div className="absolute -bottom-4 -left-4 w-8 h-8 bg-white rounded-full"></div>
-                <div className="absolute -bottom-4 -right-4 w-8 h-8 bg-white rounded-full"></div>
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-full border-b-4 border-dashed border-white/30"></div>
+              {/* Header */}
+              <div className="h-48 bg-white/5 flex items-center justify-center relative">
+                <div className="text-7xl drop-shadow-2xl">{selectedCoupon.emoji}</div>
+                <div className="absolute top-6 left-6 text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">TICKET AUTHENTIC</div>
+                <div className="absolute bottom-6 left-6 text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">#{selectedCoupon.id.slice(0,8)}</div>
               </div>
 
               {/* Content Section */}
-              <div className="p-8 text-center space-y-4">
+              <div className="p-10 text-center space-y-8">
                 <div>
-                   <h3 className="text-2xl font-black text-gray-800 mb-2">{selectedCoupon.title}</h3>
-                   <div className="flex justify-center gap-2">
-                     <span className="bg-pink-100 text-pink-500 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                       For {partners?.[selectedCoupon.for || '']?.name || selectedCoupon.for || 'Partner'}
+                   <h3 className="text-xl font-black text-white uppercase tracking-[0.1em] mb-4">{selectedCoupon.title}</h3>
+                   <div className="flex justify-center gap-4">
+                     <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] border border-white/10 px-3 py-1 rounded-pill">
+                       FOR {partners?.[selectedCoupon.for || '']?.name.toUpperCase() || 'PARTNER'}
                      </span>
                      {selectedCoupon.points && selectedCoupon.points > 0 && (
-                        <span className="bg-yellow-100 text-yellow-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                          +{selectedCoupon.points?.toLocaleString()} Points
+                        <span className="text-[9px] font-black text-white px-3 py-1 rounded-pill bg-white/10 tracking-[0.2em]">
+                          +{selectedCoupon.points} PTS
                         </span>
                      )}
                    </div>
                 </div>
 
-                <p className="text-gray-500 text-sm font-medium leading-relaxed italic">
-                  "{selectedCoupon.desc}"
+                <p className="text-white/50 text-[11px] font-bold leading-loose uppercase tracking-[0.1em] border-t border-b border-white/5 py-8 italic font-geist">
+                   "{selectedCoupon.desc}"
                 </p>
 
-                {selectedCoupon.expiry && (
-                  <div className="text-[10px] font-black text-red-400 uppercase tracking-[0.2em] border-t pt-4">
-                     Expires: {selectedCoupon.expiry}
-                  </div>
-                )}
-
-                <div className="pt-4 space-y-3">
+                <div className="space-y-4">
                   <button
                     onClick={confirmRedeem}
                     disabled={isRedeeming}
-                    className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-pink-100 transition-all hover:scale-[1.02] active:scale-95 ${isRedeeming ? 'bg-gray-400 opacity-50' : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'}`}
+                    className={`w-full py-5 rounded-pill font-black text-[10px] uppercase tracking-[0.3em] transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 ${isRedeeming ? 'bg-white/10 text-white/30 shadow-none' : 'bg-white text-black shadow-[0_20px_40px_rgba(255,255,255,0.1)]'}`}
                   >
-                    {isRedeeming ? 'Redeeming...' : 'Redeem Now 🎟️'}
+                    {isRedeeming ? 'VALIDATING...' : 'EXECUTE REDEMPTION'}
                   </button>
-                  <div className="flex justify-center gap-6">
+                  
+                  <div className="flex flex-col gap-4 pt-4">
                     <button
                       onClick={() => setSelectedCoupon(null)}
-                      className="py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+                      className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] hover:text-white transition-colors"
                     >
-                      Maybe Later
+                      ABORT ACTION
                     </button>
                     <button
                       onClick={() => {
@@ -431,9 +357,9 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                           setSelectedCoupon(null);
                         }
                       }}
-                      className="py-2 text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors"
+                      className="text-[9px] font-black text-red-900 uppercase tracking-[0.3em] hover:text-red-500 transition-colors"
                     >
-                      Delete Coupon
+                      VOID TICKET
                     </button>
                   </div>
                 </div>
@@ -443,20 +369,16 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
               <AnimatePresence>
                 {isRedeeming && (
                   <motion.div 
-                    initial={{ scale: 5, opacity: 0, rotate: -30 }}
+                    initial={{ scale: 3, opacity: 0, rotate: -30 }}
                     animate={{ scale: 1, opacity: 1, rotate: -15 }}
-                    className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+                    className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-black/60 backdrop-blur-md"
                   >
-                    <div className="border-8 border-red-500 w-64 h-64 rounded-full shadow-[0_0_40px_rgba(239,68,68,0.3)] bg-transparent mix-blend-multiply flex items-center justify-center flex-col">
-                      <span className="text-red-500 font-black text-3xl md:text-4xl uppercase tracking-[0.2em] font-mono">REDEEMED</span>
+                    <div className="border border-white/20 w-48 h-48 rounded-full flex items-center justify-center flex-col rotate-[-15deg]">
+                      <span className="text-white font-black text-xl uppercase tracking-[0.5em] font-geist">REDEEMED</span>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              {/* Decorative Corner Stars */}
-              <div className="absolute top-2 left-2 text-white/40 text-xs"><i className="fas fa-sparkles"></i></div>
-              <div className="absolute top-2 right-2 text-white/40 text-xs"><i className="fas fa-sparkles"></i></div>
             </motion.div>
           </div>
         )}
@@ -465,99 +387,99 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       {/* Creation Modal */}
       <AnimatePresence>
         {isAdding && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
             <motion.div 
                initial={{ opacity: 0 }} 
                animate={{ opacity: 1 }} 
                exit={{ opacity: 0 }} 
                onClick={() => setIsAdding(false)}
-               className="absolute inset-0 bg-pink-900/40 backdrop-blur-md"
+               className="absolute inset-0 bg-white/90 backdrop-blur-2xl"
             />
             
             <motion.div
                initial={{ opacity: 0, y: 50 }}
                animate={{ opacity: 1, y: 0 }}
                exit={{ opacity: 0, y: 50 }}
-               className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 overflow-hidden"
+               className="relative w-full max-w-sm bg-white rounded-clay shadow-2xl p-10 border border-black/5"
             >
-               <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
-                 <i className="fas fa-magic text-pink-500"></i> Create Coupon
+               <h3 className="text-sm font-black text-black mb-10 flex items-center gap-4 uppercase tracking-[0.3em]">
+                 <i className="fas fa-plus opacity-30"></i> ISSUE NEW TICKET
                </h3>
 
-               <div className="space-y-4">
+               <div className="space-y-8">
                   <div className="flex gap-4">
-                     <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Emoji</label>
+                     <div className="w-20">
+                        <label className="text-[10px] uppercase font-black text-black/20 tracking-[0.2em] mb-3 block">EMOJI</label>
                         <input 
                            type="text" 
                            value={newCoupon.emoji} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, emoji: e.target.value }))}
-                           className="w-full text-center border-2 border-pink-50 rounded-2xl p-3 text-2xl focus:border-pink-200 outline-none"
+                           className="w-full text-center bg-black/5 rounded-xl p-4 text-2xl outline-none focus:bg-white focus:shadow-xl transition-all"
                         />
                      </div>
-                     <div className="flex-1 flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Title</label>
+                     <div className="flex-1">
+                        <label className="text-[10px] uppercase font-black text-black/20 tracking-[0.2em] mb-3 block">TITLE</label>
                         <input 
                            type="text" 
-                           placeholder="Unlimited Hugs"
+                           placeholder="UNLIMITED HUGS"
                            value={newCoupon.title} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, title: e.target.value }))}
-                           className="w-full border-2 border-pink-50 rounded-2xl p-4 text-base font-black focus:border-pink-200 outline-none placeholder:text-gray-300 transition-all"
+                           className="w-full bg-black/5 rounded-xl p-4 text-xs font-black uppercase tracking-[0.1em] outline-none focus:bg-white focus:shadow-xl transition-all"
                         />
                      </div>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                     <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Description</label>
+                  <div>
+                     <label className="text-[10px] uppercase font-black text-black/20 tracking-[0.2em] mb-3 block">DESCRIPTION</label>
                       <textarea 
-                        placeholder="Valid for one very long hug..."
+                        placeholder="SPECIFY TERMS..."
                         value={newCoupon.desc} 
                         onChange={e => setNewCoupon(prev => ({ ...prev, desc: e.target.value }))}
-                        className="w-full border-2 border-pink-50 rounded-2xl p-4 text-sm font-bold focus:border-pink-200 outline-none min-h-[100px] resize-none transition-all placeholder:text-gray-300"
+                        className="w-full bg-black/5 rounded-xl p-4 text-[10px] font-bold uppercase tracking-[0.1em] outline-none focus:bg-white focus:shadow-xl transition-all min-h-[120px] resize-none"
                      />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                     <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Points</label>
+                     <div>
+                        <label className="text-[10px] uppercase font-black text-black/20 tracking-[0.2em] mb-3 block">POINTS</label>
                         <input 
                            type="number" 
                            value={newCoupon.points} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, points: parseInt(e.target.value) || 0 }))}
-                           className="w-full border-2 border-pink-50 rounded-2xl p-4 text-base font-black focus:border-pink-200 outline-none transition-all"
+                           className="w-full bg-black/5 rounded-xl p-4 text-xs font-black outline-none focus:bg-white focus:shadow-xl transition-all"
                         />
                      </div>
-                     <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">For</label>
-                        <select
-                           value={newCoupon.forPartner}
+                     <div>
+                        <label className="text-[10px] uppercase font-black text-black/20 tracking-[0.2em] mb-3 block">TARGET</label>
+                        <select 
+                           value={newCoupon.forPartner} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, forPartner: e.target.value }))}
-                           className="w-full border-2 border-pink-50 rounded-2xl p-4 text-sm font-black uppercase tracking-widest focus:border-pink-200 outline-none bg-white transition-all"
+                           className="w-full bg-black/5 rounded-xl p-4 text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:bg-white focus:shadow-xl transition-all appearance-none"
                         >
                            {partnerEntries.map(([id, p]) => (
-                             <option key={id} value={id}>{p.name}</option>
+                             <option key={id} value={id}>{p.name.toUpperCase()}</option>
                            ))}
                         </select>
                      </div>
                   </div>
 
-                  <div className="pt-4 space-y-3">
+                  <div className="pt-6 space-y-4">
                      <button
                         onClick={() => {
-                           if (!newCoupon.title || !newCoupon.emoji) return alert("Please fill title and emoji");
+                           if (!newCoupon.title || !newCoupon.emoji) return alert("REQUIRED: TITLE + EMOJI");
                            if (onAdd) onAdd(newCoupon);
                            setIsAdding(false);
-                           setNewCoupon({ title: '', emoji: '🎁', desc: '', points: 0, forPartner: 'partner1', color: 'from-pink-400 to-rose-400' });
+                           setNewCoupon({ title: '', emoji: '🎁', desc: '', points: 0, forPartner: firstPartnerId, color: 'from-black to-charcoal' });
                         }}
-                        className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xl shadow-pink-100 hover:scale-[1.02] active:scale-95 transition-all"
+                        className="w-full py-5 rounded-pill font-black text-[10px] uppercase tracking-[0.3em] bg-black text-white shadow-2xl hover:bg-black/80 transition-all font-geist"
                      >
-                        Create Ticket 🎟️
+                        FINALIZE TICKET
                      </button>
                      <button
                         onClick={() => setIsAdding(false)}
-                        className="w-full py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+                        className="w-full py-2 text-[9px] font-black text-black/20 uppercase tracking-[0.3em] hover:text-black transition-colors"
                      >
-                        Cancel
+                        ABORT
                      </button>
                   </div>
                </div>

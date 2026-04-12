@@ -24,62 +24,37 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
   const [distance, setDistance] = useState(1000);
 
   const moveButton = useCallback(() => {
-    // Determine bounds for the random jump. 
     const vWidth = window.innerWidth;
     const vHeight = window.innerHeight;
-    
-    // Create a random offset. 
-    // Increased range to 0.85 to make it jump further across the screen
-    const offsetX = (Math.random() - 0.5) * (vWidth * 0.7);
-    const offsetY = (Math.random() - 0.5) * (vHeight * 0.7);
-    // Add random rotation for unpredictability
-    const rotation = (Math.random() - 0.5) * 45;
-    
+    const offsetX = (Math.random() - 0.5) * (vWidth * 0.6);
+    const offsetY = (Math.random() - 0.5) * (vHeight * 0.6);
+    const rotation = (Math.random() - 0.5) * 30;
     setNoButtonPos({ x: offsetX, y: offsetY, rotate: rotation });
   }, []);
 
-  // Keep track of the current button position for the event listener
   const noButtonPosRef = useRef(noButtonPos);
   useEffect(() => {
     noButtonPosRef.current = noButtonPos;
   }, [noButtonPos]);
 
-  // Proximity detection logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!noButtonRef.current) return;
-
       const rect = noButtonRef.current.getBoundingClientRect();
       const buttonCenterX = rect.left + rect.width / 2;
       const buttonCenterY = rect.top + rect.height / 2;
-
-      // Distance to the ACTUAL current button position
-      const d = Math.sqrt(
-        Math.pow(e.clientX - buttonCenterX, 2) + 
-        Math.pow(e.clientY - buttonCenterY, 2)
-      );
-
+      const d = Math.sqrt(Math.pow(e.clientX - buttonCenterX, 2) + Math.pow(e.clientY - buttonCenterY, 2));
       setDistance(d);
-
-      // Calculate distance to the STARTING position of the button
-      // We subtract the current offset to find where the button "should" be
+      
       const currentPos = noButtonPosRef.current;
       const startCenterX = buttonCenterX - currentPos.x;
       const startCenterY = buttonCenterY - currentPos.y;
+      const distToStart = Math.sqrt(Math.pow(e.clientX - startCenterX, 2) + Math.pow(e.clientY - startCenterY, 2));
 
-      const distToStart = Math.sqrt(
-        Math.pow(e.clientX - startCenterX, 2) + 
-        Math.pow(e.clientY - startCenterY, 2)
-      );
-
-      // Reset if far from start position (leash effect)
-      // 400px feels like a reasonable "far" distance
-      if ((currentPos.x !== 0 || currentPos.y !== 0) && distToStart > 400) {
+      if ((currentPos.x !== 0 || currentPos.y !== 0) && distToStart > 350) {
         setNoButtonPos({ x: 0, y: 0, rotate: 0 });
-        setDistance(1000); // Reset distance so it doesn't immediately jump again
-      } 
-      // Otherwise run away if too close to current position
-      else if (d < 220) {
+        setDistance(1000);
+      } else if (d < 180) {
         moveButton();
       }
     };
@@ -93,7 +68,7 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
       const nextStep = step + 1;
       setStep(nextStep);
       setNoButtonPos({ x: 0, y: 0, rotate: 0 });
-      setDistance(1000); // Reset distance
+      setDistance(1000);
       if (onStepChange) onStepChange(step); 
     } else {
       if (onStepChange) onStepChange(questions.questions.length);
@@ -104,78 +79,59 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm overflow-hidden"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-3xl overflow-hidden font-geist"
     >
-      {/* Background decoration */}
+      {/* Background decoration refactored to minimalist particles */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(25)].map((_, i) => (
+        {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            initial={{ scale: 0, opacity: 0 }}
+            initial={{ opacity: 0, scale: 0 }}
             animate={{ 
-              scale: [0, 1.2, 0.8, 1], 
-              opacity: [0, 0.6, 0.3, 0],
-              y: -600,
-              x: (Math.random() - 0.5) * 600
+              opacity: [0, 0.2, 0],
+              y: -800,
+              x: (Math.random() - 0.5) * 800
             }}
             transition={{ 
-              duration: 4 + Math.random() * 6, 
+              duration: 8 + Math.random() * 8, 
               repeat: Infinity, 
               delay: Math.random() * 5 
             }}
-            className="absolute text-pink-300/60 text-4xl filter drop-shadow-lg"
-            style={{ 
-              left: `${Math.random() * 100}%`, 
-              top: `${Math.random() * 100}%` 
-            }}
-          >❤️</motion.div>
+            className="absolute text-white/10 text-xl font-black"
+            style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+          >
+             {Math.random() > 0.5 ? '✦' : '✧'}
+          </motion.div>
         ))}
       </div>
 
       <AnimatePresence mode="wait">
         <motion.div 
           key={step}
-          initial={{ scale: 0.9, opacity: 0, y: 30 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: -30 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="text-center z-10 p-8 md:p-12 bg-white/70 backdrop-blur-xl rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/60 max-w-2xl w-[90%] flex flex-col items-center relative overflow-hidden"
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -60 }}
+          transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
+          className="text-center z-10 p-12 md:p-20 bg-white/5 backdrop-blur-md rounded-clay border border-white/10 max-w-2xl w-[90%] flex flex-col items-center relative"
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-          {/* Logo prominently displayed */}
-          <Logo size={240} className="mb-6" title={appName} />
-
-          <motion.div
-            animate={{ 
-              y: [0, -10, 0], 
-              rotate: [0, 5, -5, 0],
-              scale: [1, 1.05, 1] 
-            }}
-            transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-            className="text-6xl mb-6 select-none"
-          >
-            {step === 1 ? '🌹' : step === questions.questions.length ? '🤴' : '✨'}
-          </motion.div>
+          <div className="absolute top-10 left-10 text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">PROTOCOL LEVEL {step}</div>
           
-          <h1 className="text-3xl md:text-5xl font-outfit font-black text-red-600 mb-8 px-4 leading-tight drop-shadow-sm select-none tracking-tight">
+          <div className="mb-12">
+            <Logo size={200} className="grayscale opacity-40 hover:opacity-100 transition-opacity duration-1000" title={appName} />
+          </div>
+          
+          <h1 className="text-3xl md:text-5xl font-black text-white mb-16 px-4 leading-tight tracking-tight uppercase">
             {questions.questions[step - 1]}
           </h1>
           
-          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 relative min-h-[140px] w-full px-4">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-12 relative min-h-[160px] w-full px-4">
             <motion.button
-              whileHover={{ 
-                scale: 1.15, 
-                boxShadow: "0 20px 50px rgba(239, 68, 68, 0.6)",
-                rotate: 2 
-              }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05, backgroundColor: '#fff', color: '#000' }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleYes}
-              className="px-14 py-5 bg-gradient-to-r from-red-500 via-pink-500 to-red-500 bg-[length:200%_auto] text-white text-2xl font-black rounded-full shadow-2xl z-20 min-w-[180px] select-none"
-              style={{
-                animation: 'gradient-flow 3s linear infinite'
-              }}
+              className="px-16 py-6 bg-white/10 text-white text-xl font-black rounded-pill border border-white/20 shadow-2xl z-20 min-w-[200px] uppercase tracking-[0.2em] transition-all duration-500"
             >
-              YES! ❤️
+              AFFIRMATIVE
             </motion.button>
 
             <motion.button
@@ -183,40 +139,23 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
               animate={{ 
                 x: noButtonPos.x, 
                 y: noButtonPos.y,
-                rotate: noButtonPos.rotate + (distance < 220 ? (Math.random() - 0.5) * 10 : 0),
-                scale: distance < 220 ? 0.9 + (Math.random() * 0.1) : 1,
-                opacity: distance < 300 ? 0.4 + (distance / 300) * 0.6 : 1
+                rotate: noButtonPos.rotate,
+                opacity: distance < 200 ? 0.2 : 1
               }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 400, 
-                damping: 30,     
-                mass: 0.5        
-              }}
+              transition={{ type: "spring", stiffness: 450, damping: 35, mass: 0.4 }}
               onMouseEnter={moveButton}
               onClick={moveButton}
-              className="px-8 py-3 bg-white/40 backdrop-blur-md text-gray-500 text-lg font-bold rounded-full shadow-lg border border-white/50 z-30 whitespace-nowrap select-none hover:bg-white/60 transition-colors"
-              style={{
-                position: 'relative' 
-              }}
+              className="px-10 py-4 bg-transparent text-white/20 text-sm font-black rounded-pill border border-white/5 z-30 whitespace-nowrap uppercase tracking-[0.3em] hover:text-white/40 transition-all"
             >
-              No 🥺
+              Negative
             </motion.button>
           </div>
         </motion.div>
       </AnimatePresence>
 
-      <footer className="absolute bottom-10 text-red-500/50 font-bold tracking-[0.3em] text-sm md:text-base italic uppercase select-none">
-        {step === 1 ? `Welcome to ${appName}` : `Step ${step} of ${questions.questions.length}`}
+      <footer className="absolute bottom-16 text-white/5 font-black tracking-[0.8em] text-[10px] uppercase">
+        {step === questions.questions.length ? "FINAL AUTHENTICATION REQUIRED" : "SEQUENTIAL VALIDATION IN PROGRESS"}
       </footer>
-
-      <style>{`
-        @keyframes gradient-flow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
     </div>
   );
 };

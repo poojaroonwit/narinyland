@@ -19,7 +19,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
 
   const handleCreate = async () => {
-    if (!worldName.trim()) { setError('Please enter a world name'); return; }
+    if (!worldName.trim()) { setError('FIELD REQUIRED'); return; }
     setLoading(true);
     setError('');
     try {
@@ -32,19 +32,17 @@ export default function OnboardingPage() {
         },
         body: JSON.stringify({
           name: worldName.trim(),
-          description: `${worldName.trim()} — a Narinyland world`,
+          description: `${worldName.trim()} — NARINYLAND ARCHIVE`,
           userId: user?.sub,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to create world');
+        throw new Error(data.error || 'ALLOCATION FAILURE');
       }
 
       const circle = await res.json();
-      
-      // Add the user to the circle in AppKit
       await fetch('/api/circles/join', {
         method: 'POST',
         headers: {
@@ -54,13 +52,11 @@ export default function OnboardingPage() {
         body: JSON.stringify({ circleId: circle.id, userId: user?.sub }),
       }).catch(() => {});
 
-      // Set as active and persist to attributes
       await setActiveCircle(circle.id);
-      
       await refreshUser();
       router.replace('/');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      setError(err.message || 'SYSTEM ERROR');
     } finally {
       setLoading(false);
     }
@@ -68,7 +64,7 @@ export default function OnboardingPage() {
 
   const handleJoin = async () => {
     const code = worldCode.trim();
-    if (!code) { setError('Please enter a world code'); return; }
+    if (!code) { setError('ACCESS CODE REQUIRED'); return; }
     setLoading(true);
     setError('');
     try {
@@ -84,73 +80,74 @@ export default function OnboardingPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to join world. Check the code and try again.');
+        throw new Error(data.error || 'ACCESS DENIED: INVALID CODE');
       }
 
-      // Set as active and persist to attributes
       await setActiveCircle(code);
-      
       await refreshUser();
       router.replace('/');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      setError(err.message || 'SYSTEM ERROR');
     } finally {
       setLoading(false);
     }
   };
 
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 via-rose-50 to-emerald-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white font-geist px-4 relative overflow-hidden">
+      {/* Background minimalist patterns */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-black rounded-full blur-[200px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-black rounded-full blur-[200px]" />
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-lg z-10"
       >
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <Logo size={80} title="Narinyland" />
-          <h1 className="mt-4 text-2xl font-bold text-pink-700 font-outfit">Welcome to Narinyland</h1>
-          <p className="text-pink-500 text-sm mt-1 text-center">
-            Create a new world or join an existing one to get started.
-          </p>
+        <div className="flex flex-col items-center mb-16 space-y-8">
+          <div className="grayscale opacity-80 scale-125">
+             <Logo size={100} title="" />
+          </div>
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-black text-black uppercase tracking-tight">SYSTEM INITIALIZATION</h1>
+            <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.4em]">Establish Secure Archive Connection</p>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
           {mode === 'select' && (
             <motion.div
               key="select"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="grid grid-cols-2 gap-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-8"
             >
-              {/* Create World */}
               <button
                 onClick={() => setMode('create')}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-pink-300 transition-all duration-200"
+                className="group flex flex-col items-center gap-6 p-10 bg-white rounded-clay border border-black/5 hover:border-black/20 hover:shadow-2xl transition-all duration-700"
               >
-                <div className="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  🌸
+                <div className="w-20 h-20 bg-black/5 rounded-2xl flex items-center justify-center text-3xl grayscale group-hover:grayscale-0 group-hover:bg-black/10 transition-all">
+                  ✦
                 </div>
-                <div className="text-center">
-                  <p className="font-semibold text-gray-800 text-sm">Create World</p>
-                  <p className="text-gray-400 text-xs mt-1">Start a new story</p>
+                <div className="text-center space-y-1">
+                  <p className="text-[11px] font-black text-black uppercase tracking-[0.2em]">NEW ARCHIVE</p>
+                  <p className="text-[9px] font-black text-black/20 uppercase tracking-widest">Create World</p>
                 </div>
               </button>
 
-              {/* Join World */}
               <button
                 onClick={() => setMode('join')}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-emerald-300 transition-all duration-200"
+                className="group flex flex-col items-center gap-6 p-10 bg-white rounded-clay border border-black/5 hover:border-black/20 hover:shadow-2xl transition-all duration-700"
               >
-                <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  🔑
+                <div className="w-20 h-20 bg-black/5 rounded-2xl flex items-center justify-center text-3xl grayscale group-hover:grayscale-0 group-hover:bg-black/10 transition-all">
+                  ⚙
                 </div>
-                <div className="text-center">
-                  <p className="font-semibold text-gray-800 text-sm">Join World</p>
-                  <p className="text-gray-400 text-xs mt-1">Enter a world code</p>
+                <div className="text-center space-y-1">
+                  <p className="text-[11px] font-black text-black uppercase tracking-[0.2em]">SYNC ACCESS</p>
+                  <p className="text-[9px] font-black text-black/20 uppercase tracking-widest">Join World</p>
                 </div>
               </button>
             </motion.div>
@@ -159,43 +156,42 @@ export default function OnboardingPage() {
           {mode === 'create' && (
             <motion.div
               key="create"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl shadow-md p-6 flex flex-col gap-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-clay border border-black/5 p-10 space-y-10 shadow-2xl"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-6">
                 <button
                   onClick={() => { setMode('select'); setError(''); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-all"
                 >
-                  ←
+                  <i className="fas fa-arrow-left text-xs text-black/40"></i>
                 </button>
-                <h2 className="font-bold text-gray-800">Create Your World</h2>
+                <h2 className="text-xs font-black text-black uppercase tracking-tight">ALLOCATE NEW ARCHIVE</h2>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">World Name</label>
+              <div className="space-y-4">
+                <label className="text-[9px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">ARCHIVE DESIGNATION</label>
                 <input
                   type="text"
                   value={worldName}
                   onChange={(e) => setWorldName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                  placeholder="e.g. Our Love Story"
-                  maxLength={50}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-pink-400 text-gray-800 text-sm"
+                  placeholder="E.G. OUR SHARED HISTORY"
+                  className="w-full bg-black/5 border border-transparent rounded-xl p-5 font-black text-xs uppercase tracking-tight focus:bg-white focus:border-black outline-none transition-all shadow-inner"
                   autoFocus
                 />
               </div>
 
-              {error && <p className="text-red-500 text-xs">{error}</p>}
+              {error && <p className="text-[9px] font-black text-black text-center bg-black/5 p-4 rounded-xl tracking-widest">{error}</p>}
 
               <button
                 onClick={handleCreate}
                 disabled={loading || !worldName.trim()}
-                className="w-full py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors"
+                className="w-full py-6 bg-black text-white rounded-pill font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl hover:bg-black/80 transition-all disabled:opacity-20"
               >
-                {loading ? 'Creating…' : 'Create World 🌸'}
+                {loading ? 'PROCESSING…' : 'AUTHORIZE ALLOCATION'}
               </button>
             </motion.div>
           )}
@@ -203,43 +199,42 @@ export default function OnboardingPage() {
           {mode === 'join' && (
             <motion.div
               key="join"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl shadow-md p-6 flex flex-col gap-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-clay border border-black/5 p-10 space-y-10 shadow-2xl"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-6">
                 <button
                   onClick={() => { setMode('select'); setError(''); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-all"
                 >
-                  ←
+                  <i className="fas fa-arrow-left text-xs text-black/40"></i>
                 </button>
-                <h2 className="font-bold text-gray-800">Join a World</h2>
+                <h2 className="text-xs font-black text-black uppercase tracking-tight">SYNC WITH ARCHIVE</h2>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">World Code</label>
+              <div className="space-y-4">
+                <label className="text-[9px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">ACCESS CODE</label>
                 <input
                   type="text"
                   value={worldCode}
                   onChange={(e) => setWorldCode(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                  placeholder="Paste the world code here"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-400 text-gray-800 text-sm font-mono"
+                  placeholder="INPUT ACCESS SEQUENCE"
+                  className="w-full bg-black/5 border border-transparent rounded-xl p-5 font-black text-xs tracking-widest focus:bg-white focus:border-black outline-none transition-all shadow-inner"
                   autoFocus
                 />
-                <p className="text-xs text-gray-400 mt-1">Ask your partner for their world code</p>
               </div>
 
-              {error && <p className="text-red-500 text-xs">{error}</p>}
+              {error && <p className="text-[9px] font-black text-black text-center bg-black/5 p-4 rounded-xl tracking-widest">{error}</p>}
 
               <button
                 onClick={handleJoin}
                 disabled={loading || !worldCode.trim()}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors"
+                className="w-full py-6 bg-black text-white rounded-pill font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl hover:bg-black/80 transition-all disabled:opacity-20"
               >
-                {loading ? 'Joining…' : 'Join World 🔑'}
+                {loading ? 'SYNCHRONIZING…' : 'AUTHORIZE ACCESS'}
               </button>
             </motion.div>
           )}
