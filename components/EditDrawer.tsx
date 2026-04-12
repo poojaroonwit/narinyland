@@ -827,6 +827,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                               </select>
                            </div>
                            <p className="text-[9px] text-black/20 italic max-w-[140px] leading-relaxed">This is your legacy pet. Add more to go dynamic! ✨</p>
+                         </div>
+                       )}
                       {/* Render Multiple Pets */}
                       {(localConfig.pets || []).map((pet, idx) => (
                         <motion.div 
