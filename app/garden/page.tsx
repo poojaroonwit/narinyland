@@ -833,11 +833,10 @@ const Home: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-3 min-w-[210px] z-50"
+                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-black/10 shadow-2xl rounded-none p-3 min-w-[210px] z-50"
                       >
-                        {/* Search */}
-                        <div className="flex items-center gap-2 bg-pink-50 rounded-xl px-3 py-2 mb-2">
-                          <i className="fas fa-search text-[10px] text-pink-400"></i>
+                        <div className="flex items-center gap-2 bg-gray-100 rounded-none px-3 py-2 mb-2">
+                          <i className="fas fa-search text-[10px] text-black/60"></i>
                           <input
                             type="text"
                             placeholder="Search lands..."
@@ -879,8 +878,8 @@ const Home: React.FC = () => {
                                 }}
                                 className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
                                   land.isActive
-                                    ? 'bg-pink-500 text-white shadow-sm'
-                                    : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
+                                    ? 'bg-black text-white shadow-sm'
+                                    : 'text-gray-600 hover:bg-black/5 hover:text-black'
                                 }`}
                               >
                                 <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
@@ -920,7 +919,7 @@ const Home: React.FC = () => {
                 >
                    <div className="flex justify-between items-start mb-4">
                       <div>
-                         <h3 className="font-pacifico text-2xl text-pink-500">Memory</h3>
+                         <h3 className="font-geist font-bold tracking-tight text-2xl text-black">Memory</h3>
                          <p className="text-xs font-bold text-gray-400">{new Date(selectedFlagItem.timestamp).toLocaleDateString()}</p>
                       </div>
                       <button onClick={() => setSelectedFlagItem(null)} className="text-gray-400 hover:text-gray-600">
@@ -966,7 +965,7 @@ const Home: React.FC = () => {
                        setWorldMode('tree');
                        setActiveTab('timeline');
                      }} 
-                     className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+                     className="mt-6 w-full py-3 bg-black text-white font-bold rounded-none shadow-md hover:shadow-lg hover:bg-zinc-800 transition-all"
                    >
                       View on Timeline
                    </button>
@@ -1129,39 +1128,39 @@ const Home: React.FC = () => {
           </div>
 
           {/* Bottom Navigation Tab Bar */}
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl rounded-full px-6 py-3 flex items-center gap-8 z-[70]">
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 archive-glass border border-black/10 shadow-sm rounded-none px-6 py-3 flex items-center gap-8 z-[70]">
              <button 
                onClick={() => setActiveTab('home')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'text-pink-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
              >
                <i className="fas fa-home text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-wide">Home</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
              </button>
 
              <button 
                onClick={() => setActiveTab('timeline')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'text-blue-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
              >
                <i className="fas fa-calendar-alt text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-wide">Timeline</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest">Timeline</span>
              </button>
 
              <button 
                onClick={() => setActiveTab('coupons')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'text-purple-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
              >
                <i className="fas fa-ticket-alt text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-wide">Coupons</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest">Coupons</span>
              </button>
 
              <button 
                onClick={() => setActiveTab('letters')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-rose-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
              >
                <i className="fas fa-envelope text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-wide">Letters</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest">Letters</span>
                {loveLetters.filter(l => !l.isRead).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] w-4 h-4 flex items-center justify-center font-bold shadow-sm">
                     {loveLetters.filter(l => !l.isRead).length}
                   </span>
                )}
@@ -1180,8 +1179,8 @@ const Home: React.FC = () => {
          <div className="relative">
            <button
              onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
-             className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
-               isWorldConfigOpen ? 'bg-white/60 text-pink-500 border-white/70' : 'bg-white/40 text-white border-white/50'
+             className={`w-10 h-10 flex items-center justify-center transition-all transform hover:scale-105 border backdrop-blur-md rounded-none ${
+               isWorldConfigOpen ? 'bg-white text-black border-black/10' : 'bg-black text-white border-black/10'
              }`}
            >
              <i className="fas fa-sliders-h text-xs"></i>
@@ -1241,13 +1240,13 @@ const Home: React.FC = () => {
                              }}
                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
                                circle.id === activeCircleId
-                                 ? 'bg-pink-500/20 text-pink-200'
+                                 ? 'bg-[#EAE6E1] text-black/80'
                                  : 'text-white/60 hover:bg-white/8 hover:text-white/90'
                              }`}
                            >
                              <i className="fas fa-heart text-[9px] opacity-60 flex-shrink-0"></i>
                              <span className="flex-1 truncate">{circle.name}</span>
-                             {circle.id === activeCircleId && <i className="fas fa-check text-[9px] text-pink-300 flex-shrink-0"></i>}
+                             {circle.id === activeCircleId && <i className="fas fa-check text-[9px] text-black/40 flex-shrink-0"></i>}
                            </button>
                          ))}
                        </div>
@@ -1283,11 +1282,10 @@ const Home: React.FC = () => {
            </AnimatePresence>
          </div>
 
-         {/* Music button */}
          <button
            onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
-           className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
-             isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
+           className={`w-10 h-10 flex items-center justify-center transition-all transform hover:scale-105 border backdrop-blur-md rounded-sm ${
+             isMusicMuted ? 'bg-[#EAE6E1] text-black border-black/10 object-cover opacity-60' : 'bg-white text-black border-black/10'
            }`}
          >
            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
@@ -1316,8 +1314,8 @@ const Home: React.FC = () => {
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
           >
-             <label className="text-[8px] font-black text-pink-500 uppercase tracking-tighter w-full text-center mb-2">VOL</label>
-             <div className="h-32 w-1.5 bg-gray-100 rounded-full relative overflow-hidden group">
+             <label className="text-[8px] font-black text-black uppercase tracking-tighter w-full text-center mb-2">VOL</label>
+             <div className="h-32 w-1.5 bg-gray-100 rounded-none relative overflow-hidden group">
                 <input 
                    type="range"
                    min="0"
@@ -1362,7 +1360,7 @@ const Home: React.FC = () => {
               >
                   {/* Together Stat */}
                   <div className="flex flex-col items-center">
-                    <span className="text-[7px] md:text-[10px] font-black text-pink-500 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Together</span>
+                    <span className="text-[7px] md:text-[10px] font-black text-black/50 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Together</span>
                     <span className="text-sm md:text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-2">
                        <i className="fas fa-heart text-red-500 animate-pulse text-[10px] md:text-xl"></i> {daysTogether} <span className="text-[10px] md:text-sm font-bold opacity-80">Days</span>
                     </span>
@@ -1372,7 +1370,7 @@ const Home: React.FC = () => {
 
                   {/* Garden Stats */}
                   <div className="flex flex-col items-center">
-                    <span className="text-[7px] md:text-[10px] font-black text-pink-500 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Garden</span>
+                    <span className="text-[7px] md:text-[10px] font-black text-black/50 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Garden</span>
                     <div className="flex items-center gap-2 md:gap-8">
                        <div className="flex flex-col items-center">
                           <span className="text-xs md:text-2xl font-bold text-white drop-shadow-[0_2px_4_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-sm md:text-2xl">🌸</span> {flowerCount}</span>
@@ -1395,11 +1393,11 @@ const Home: React.FC = () => {
               </motion.div>
 
               {/* Minimal XP Bar Underneath */}
-              <div className="w-24 md:w-96 h-0.5 md:h-1 bg-white/10 rounded-full overflow-hidden mt-0.5 md:mt-1 border border-white/5 isolate relative">
+              <div className="w-24 md:w-96 h-0.5 md:h-1 bg-white/10 rounded-none overflow-hidden mt-0.5 md:mt-1 border border-white/5 isolate relative">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
-                    className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-yellow-400 shadow-[0_0_8px_rgba(244,114,182,0.5)]"
+                    className="h-full bg-black shadow-sm"
                   />
                   
 
@@ -1413,7 +1411,7 @@ const Home: React.FC = () => {
             <Logo 
               size={isMobile ? 80 : 120} 
               title={appConfig.appName} 
-              className="" 
+              className="grayscale" 
             />
           </div>
 
@@ -1427,13 +1425,13 @@ const Home: React.FC = () => {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 50, opacity: 0 }}
                     onClick={handleInstallApp}
-                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border-2 border-pink-100 group hover:border-pink-300 transition-all"
+                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-none shadow-2xl border border-black/10 group hover:border-black/30 transition-all"
                   >
-                    <div className="w-10 h-10 bg-pink-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
+                    <div className="w-10 h-10 bg-black rounded-none flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
                       <i className="fas fa-mobile-alt"></i>
                     </div>
                     <div className="text-left">
-                       <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-none mb-1">Install App</p>
+                       <p className="text-[10px] font-black text-black/60 uppercase tracking-widest leading-none mb-1">Install App</p>
                        <p className="text-sm font-bold text-gray-700 leading-none">Add to Home</p>
                     </div>
                   </motion.button>
@@ -1502,27 +1500,27 @@ const Home: React.FC = () => {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                        <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 rounded-3xl flex items-center justify-center text-3xl font-black text-white shadow-xl border-4 border-white rotate-3">
+                          <div className="w-16 h-16 md:w-20 md:h-20 bg-zinc-800 rounded-none flex items-center justify-center text-3xl font-black text-white border border-black/10">
                             {loveStats.level}
                           </div>
                           <div>
-                             <h3 className="font-pacifico text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-600">Garden Guide</h3>
+                             <h3 className="font-geist font-bold tracking-tight text-3xl md:text-4xl text-black">Garden Guide</h3>
                              <p className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em]">World Status & Progress</p>
                           </div>
                        </div>
-                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all">
+                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-12 h-12 bg-gray-100 rounded-none flex items-center justify-center text-black/60 hover:bg-black/10 hover:text-black transition-all">
                           <i className="fas fa-times text-xl"></i>
                        </button>
                     </div>
 
                     {/* XP Progress */}
-                    <div className="bg-pink-50/30 rounded-[2rem] p-6 md:p-8 border border-pink-100 mb-8 overflow-hidden relative group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 scale-150 rotate-12 transition-transform group-hover:scale-[1.7]">
-                           <i className="fas fa-chart-line text-pink-500 text-6xl"></i>
+                    <div className="bg-gray-50 rounded-none p-6 md:p-8 border border-black/10 mb-8 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                           <i className="fas fa-chart-line text-black text-6xl"></i>
                         </div>
                         <div className="flex justify-between items-end mb-4 relative z-10">
                            <div>
-                              <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest block mb-1">Experience Points</span>
+                              <span className="text-[10px] font-black text-black/50 uppercase tracking-widest block mb-1">Experience Points</span>
                               <div className="flex items-baseline gap-2">
                                  <span className="text-4xl font-black text-gray-800">{loveStats.xp}</span>
                                  <span className="text-sm font-bold text-gray-400">/ {loveStats.level * 100} XP</span>
@@ -1533,23 +1531,23 @@ const Home: React.FC = () => {
                               <span className="text-xl font-black text-amber-600">Level {loveStats.level}</span>
                            </div>
                         </div>
-                        <div className="w-full h-4 bg-white/50 rounded-full overflow-hidden border border-pink-100 relative shadow-inner p-1">
+                        <div className="w-full h-4 bg-white/50 rounded-none overflow-hidden border border-black/10 relative p-0.5">
                             <motion.div 
                               initial={{ width: 0 }}
                               animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
-                              className="h-full bg-gradient-to-r from-pink-400 via-rose-500 to-yellow-400 rounded-full relative"
+                              className="h-full bg-black rounded-none relative"
                             >
-                               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+                               <div className="absolute inset-0 opacity-20 bg-noise"></div>
                             </motion.div>
                         </div>
                     </div>
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-4 md:gap-6 mb-10">
-                       <div className="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-[2rem] border border-pink-100/50 flex flex-col items-center text-center gap-2 hover:shadow-lg transition-all group">
-                          <span className="text-4xl group-hover:scale-125 transition-transform">🌸</span>
-                          <span className="font-black text-gray-800 text-2xl drop-shadow-sm">{flowerCount}</span>
-                          <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Flowers Bloomed</span>
+                       <div className="bg-gray-50 p-6 rounded-none border border-black/5 flex flex-col items-center text-center gap-2 transition-all">
+                          <span className="text-4xl transition-transform">🌸</span>
+                          <span className="font-black text-gray-800 text-2xl">{flowerCount}</span>
+                          <span className="text-[10px] font-black text-black/50 uppercase tracking-widest">Flowers Bloomed</span>
                        </div>
                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-[2rem] border border-green-100/50 flex flex-col items-center text-center gap-2 hover:shadow-lg transition-all group">
                           <span className="text-4xl group-hover:scale-125 transition-transform">🍃</span>
@@ -1595,9 +1593,9 @@ const Home: React.FC = () => {
                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></div>
                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Relationship Length: {daysTogether} Days</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-pink-50/50 px-4 py-2 rounded-full border border-pink-100">
-                           <i className="fas fa-clock text-pink-400 text-[10px]"></i>
-                           <span className="text-[10px] font-black text-pink-600 uppercase tracking-widest">Next Flower: {appConfig.daysPerFlower - (daysTogether % appConfig.daysPerFlower)} Days</span>
+                        <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-none border border-black/10">
+                           <i className="fas fa-clock text-black/60 text-[10px]"></i>
+                           <span className="text-[10px] font-black text-black uppercase tracking-widest">Next Flower: {appConfig.daysPerFlower - (daysTogether % appConfig.daysPerFlower)} Days</span>
                         </div>
                     </div>
                   </div>

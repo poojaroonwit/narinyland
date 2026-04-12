@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  /* Kriss.ai inspired palette */
-  --background-start: #D0C8C8;
-  --background-end: #E8E0E0;
-  --foreground: #000000;
+  /* Kriss.ai inspired minimalist palette */
+  --background-start: #EAE6E1; /* Slight warm off-white */
+  --background-end: #F4F2F0;
+  --foreground: #111111;
   --primary: #000000;
-  --secondary: rgba(255, 255, 255, 0.4);
-  --accent: #222222;
+  --secondary: #2C2C2C;
+  --accent: #000000;
   --glass-bg: rgba(255, 255, 255, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-border: rgba(0, 0, 0, 0.05);
   --blur-amount: 20px;
 
   /* Z-index management */
@@ -26,70 +26,28 @@
 }
 
 @layer components {
-  /* Liquid glass utilities from remote */
-  .liquid-glass {
-    background: rgba(255, 255, 255, 0.01);
-    background-blend-mode: luminosity;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border: none;
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
-    position: relative;
-    overflow: hidden;
+  /* Archive Style Box Utilities */
+  .archive-panel {
+    @apply border border-black/10 bg-white shadow-sm;
   }
-  .liquid-glass::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1.4px;
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.45) 0%,
-      rgba(255, 255, 255, 0.15) 20%,
-      rgba(255, 255, 255, 0) 40%,
-      rgba(255, 255, 255, 0) 60%,
-      rgba(255, 255, 255, 0.15) 80%,
-      rgba(255, 255, 255, 0.45) 100%
-    );
-    -webkit-mask: linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  
+  .archive-glass {
+    @apply border border-black/5 bg-white/60 backdrop-blur-md shadow-sm;
   }
 
-  .liquid-glass-strong {
-    background: rgba(255, 255, 255, 0.01);
-    background-blend-mode: luminosity;
-    backdrop-filter: blur(50px);
-    -webkit-backdrop-filter: blur(50px);
-    border: none;
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.05),
-      inset 0 1px 1px rgba(255, 255, 255, 0.15);
-    position: relative;
-    overflow: hidden;
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.05);
   }
-  .liquid-glass-strong::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1.4px;
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.5) 0%,
-      rgba(255, 255, 255, 0.2) 20%,
-      rgba(255, 255, 255, 0) 40%,
-      rgba(255, 255, 255, 0) 60%,
-      rgba(255, 255, 255, 0.2) 80%,
-      rgba(255, 255, 255, 0.5) 100%
-    );
-    -webkit-mask: linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  
+  .liquid-glass-strong {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.03);
   }
 
   /* Glassmorphism utility */
@@ -100,33 +58,30 @@
       border: 1px solid var(--glass-border);
   }
 
-  /* Claymorphism utility (Soft 3D) */
+  /* Claymorphism removed in favor of minimalist flat UI */
   .clay-morphism {
-      background: #fdf2f8; /* Soft base */
-      border-radius: 40px;
-      box-shadow: 
-          10px 10px 20px rgba(0, 0, 0, 0.05),
-          -10px -10px 20px rgba(255, 255, 255, 0.8),
-          inset 4px 4px 8px rgba(255, 255, 255, 0.5),
-          inset -4px -4px 8px rgba(0, 0, 0, 0.02);
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   }
 
   .pill-button {
-      @apply rounded-full px-8 py-4 font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2;
+      @apply px-6 py-3 font-bold transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2 text-sm uppercase tracking-widest;
   }
 
   .pill-button-primary {
-      @apply bg-black text-white hover:bg-gray-800 shadow-lg;
+      @apply bg-black text-white hover:bg-gray-800 shadow-md;
   }
 
   .pill-button-glass {
-      @apply glass-morphism text-black hover:bg-white/50;
+      @apply archive-glass text-black hover:bg-black/5;
   }
 }
 
 body {
-    font-family: 'Inter', 'Geist', sans-serif;
-    background: linear-gradient(135deg, var(--background-start), var(--background-end));
+    font-family: 'Geist', 'Inter', sans-serif;
+    background: var(--background-start);
     color: var(--foreground);
     min-height: 100vh;
     overflow-x: hidden;

@@ -87,7 +87,7 @@ const SHOWCASE_ITEMS = [
     subtitle: "Grow Your Love Tree",
     desc: "Your tree is a living reflection of your relationship. It reacts to your interactions, grows taller with every memory logged, and changes with the seasons of your love.",
     image: "/images/showcase/tree.png",
-    accent: "bg-pink-100",
+    accent: "bg-black/5",
   },
   {
     id: "timeline-example",
@@ -143,7 +143,7 @@ export default function MarketingPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-pink-50">
+    <div className="w-full min-h-screen bg-transparent text-black font-geist">
       {/* ── Fixed Navbar ── */}
       <nav className="fixed top-4 left-0 right-0 z-[100] px-6 lg:px-16">
         <div className="flex items-center justify-between">
@@ -151,22 +151,22 @@ export default function MarketingPage() {
             <Logo size={80} title="Narinyland" />
           </div>
 
-          <div className="hidden md:flex items-center liquid-glass rounded-full px-2 py-1.5 gap-1">
+          <div className="hidden md:flex items-center archive-glass rounded-[8px] px-2 py-1.5 gap-1">
             {NAV_LINKS.map((link) => (
               <button
                 key={link.label}
                 onClick={() => scrollTo(link.href.replace("#", ""))}
-                className="px-4 py-2 text-xs font-bold text-white uppercase tracking-widest font-body hover:text-white/80 transition-colors rounded-full"
+                className="px-4 py-2 text-xs font-bold text-black uppercase tracking-widest hover:text-black/60 transition-colors"
               >
                 {link.label}
               </button>
             ))}
             <button
               onClick={() => scrollTo("pricing")}
-              className="flex items-center gap-1 px-4 py-2 text-xs font-bold text-white uppercase tracking-widest font-body hover:text-white/80 transition-colors rounded-full"
+              className="flex items-center gap-1 px-4 py-2 text-xs font-bold text-black uppercase tracking-widest hover:text-black/60 transition-colors"
             >
               Pricing
-              <span className="text-[9px] bg-white/20 text-white rounded-full px-1.5 py-0.5 leading-none font-black ml-1">
+              <span className="text-[9px] border border-black/20 text-black px-1.5 py-0.5 leading-none font-black ml-1 rounded">
                 SOON
               </span>
             </button>
@@ -175,13 +175,13 @@ export default function MarketingPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleAppKitLogin}
-              className="hidden sm:block text-xs font-bold text-white uppercase tracking-widest font-body hover:text-white/80 transition-colors px-4 py-2"
+              className="hidden sm:block text-xs font-bold text-black uppercase tracking-widest hover:text-black/60 transition-colors px-4 py-2"
             >
               Sign In
             </button>
             <button
               onClick={handleAppKitLogin}
-              className="flex items-center gap-2 bg-white text-black rounded-full px-5 py-2 text-xs font-bold uppercase tracking-widest font-body hover:bg-white/90 transition-all hover:scale-105 active:scale-95"
+              className="flex items-center gap-2 bg-black text-white px-5 py-2 text-xs font-bold uppercase tracking-widest hover:bg-black/80 transition-all active:scale-95 rounded"
             >
               Sign Up
               <ArrowUpRightIcon className="h-4 w-4" />
@@ -191,10 +191,10 @@ export default function MarketingPage() {
       </nav>
 
       {/* ── Hero Section ── */}
-      <section id="hero" className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
+      <section id="hero" className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-white">
         {/* Background Video */}
         <video
-          className="absolute inset-0 w-full h-full object-cover z-0 opacity-80"
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 grayscale contrast-125"
           autoPlay
           loop
           muted
@@ -203,32 +203,32 @@ export default function MarketingPage() {
           poster="/images/hero_bg.jpeg"
           src={VIDEO_URL}
         />
-        <div className="absolute inset-0 bg-black/20 z-[1]" />
+        <div className="absolute inset-0 bg-white/60 z-[1]" />
 
         <div className="relative z-10 flex flex-col items-center text-center px-4 pt-20">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center liquid-glass rounded-full px-1 py-1 mb-6"
+            className="flex items-center border border-black/10 bg-white/80 backdrop-blur rounded px-1 py-1 mb-6"
           >
-            <span className="bg-white text-black rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-black text-white px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-sm">
               NEW
             </span>
-            <span className="text-xs font-bold text-white pr-4 pl-3 uppercase tracking-widest font-body">
-              Your private digital love garden awaits
+            <span className="text-xs font-bold text-black pr-4 pl-3 uppercase tracking-widest">
+              Your private digital archive awaits
             </span>
           </motion.div>
 
           <BlurText
             text="Nurture Your Love Story"
-            className="text-6xl md:text-8xl lg:text-[7rem] font-heading italic text-white leading-none max-w-4xl justify-center tracking-[-0.04em]"
+            className="text-6xl md:text-8xl lg:text-[7rem] font-bold text-black leading-none max-w-4xl justify-center tracking-tighter"
             delay={100}
             animateBy="words"
             direction="bottom"
           />
 
           <motion.p
-            className="mt-6 text-sm md:text-base text-white/80 max-w-xl font-body font-medium leading-relaxed uppercase tracking-widest"
+            className="mt-6 text-sm md:text-base text-black/60 max-w-xl font-medium leading-relaxed uppercase tracking-widest"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
@@ -244,16 +244,16 @@ export default function MarketingPage() {
           >
             <button
               onClick={handleAppKitLogin}
-              className="liquid-glass-strong flex items-center gap-3 rounded-full px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white font-body hover:scale-105 active:scale-95 transition-all shadow-2xl"
+              className="bg-black flex items-center gap-3 px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white hover:bg-black/80 active:scale-95 transition-all rounded shadow-md"
             >
-              Enter Garden
+              Enter System
               <ArrowUpRightIcon className="h-5 w-5" />
             </button>
           </motion.div>
 
           {authError && (
             <motion.p
-              className="mt-4 max-w-lg rounded-full bg-red-500/20 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white"
+              className="mt-4 max-w-lg border border-red-500/20 bg-red-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-red-600 rounded"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
             >
@@ -261,39 +261,19 @@ export default function MarketingPage() {
             </motion.p>
           )}
         </div>
-        
-        {/* Floating elements */}
-        <div className="absolute inset-0 pointer-events-none z-[5]">
-          <motion.div 
-            className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl text-4xl flex items-center justify-center"
-            animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          >
-             🌸
-          </motion.div>
-          <motion.div 
-            className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl text-4xl flex items-center justify-center"
-            animate={{ x: [0, -100, 0], y: [0, -50, 0] }}
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          >
-             ✨
-          </motion.div>
-        </div>
       </section>
 
       {/* ── Features Section ── */}
-      <section id="features" className="py-32 px-6 lg:px-16 bg-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-pink-50 to-transparent opacity-50" />
-        
+      <section id="features" className="py-32 px-6 lg:px-16 bg-[var(--background-start)] relative overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
-            <p className="text-[10px] font-black font-body text-pink-500 uppercase tracking-[0.4em] mb-4">
-              Our Services
+            <p className="text-[10px] font-black text-black/40 uppercase tracking-[0.4em] mb-4">
+              Infrastructure
             </p>
-            <h2 className="text-5xl md:text-7xl font-heading italic text-black mb-6 tracking-tight">
+            <h2 className="text-5xl md:text-7xl font-semibold text-black mb-6 tracking-tighter">
               Everything you need, built for two.
             </h2>
-            <p className="text-base text-gray-400 font-body font-bold max-w-xl mx-auto uppercase tracking-widest">
+            <p className="text-base text-black/50 font-bold max-w-xl mx-auto uppercase tracking-widest">
               A private space away from social media noise, designed exclusively for your relationship.
             </p>
           </div>
@@ -306,27 +286,27 @@ export default function MarketingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group bg-pink-50/50 rounded-[2.5rem] p-10 border border-pink-100/50 hover:bg-white hover:shadow-2xl hover:border-white transition-all duration-500 flex flex-col items-start"
+                className="group archive-panel p-10 hover:border-black/30 transition-all duration-500 flex flex-col items-start rounded-none"
               >
-                <div className="text-5xl mb-8 group-hover:scale-125 transition-transform duration-500 origin-left">{f.emoji}</div>
-                <h3 className="text-2xl font-heading italic text-black mb-4">
+                <div className="text-5xl mb-8 grayscale group-hover:grayscale-0 transition-all duration-500 origin-left">{f.emoji}</div>
+                <h3 className="text-2xl font-bold text-black mb-4 tracking-tight">
                   {f.title}
                 </h3>
-                <p className="text-sm text-gray-500 font-body font-medium leading-relaxed uppercase tracking-widest opacity-80 mb-8">
+                <p className="text-sm text-black/60 font-medium leading-relaxed uppercase tracking-widest opacity-80 mb-8">
                   {f.desc}
                 </p>
                 
                 {["tree", "timeline", "coupons", "nari"].includes(f.id) && (
                   <button 
                     onClick={() => scrollTo(`${f.id}-example`)}
-                    className="mt-auto text-[10px] font-black uppercase tracking-[0.2em] text-pink-500 hover:text-pink-600 flex items-center gap-2 group/btn"
+                    className="mt-auto text-[10px] font-black uppercase tracking-[0.2em] text-black hover:text-black/60 flex items-center gap-2 group/btn"
                   >
-                    See Example
+                    Examine
                     <motion.span 
                       animate={{ x: [0, 5, 0] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     >
-                      ↓
+                      →
                     </motion.span>
                   </button>
                 )}
@@ -340,11 +320,11 @@ export default function MarketingPage() {
       <section id="showcase" className="py-32 bg-white overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 lg:px-16">
           <div className="text-center mb-32">
-            <p className="text-[10px] font-black font-body text-pink-500 uppercase tracking-[0.4em] mb-4">
-              The Experience
+            <p className="text-[10px] font-black text-black/40 uppercase tracking-[0.4em] mb-4">
+              The Interface
             </p>
-            <h2 className="text-5xl md:text-7xl font-heading italic text-black mb-6 tracking-tight">
-              See how your garden grows.
+            <h2 className="text-5xl md:text-7xl font-semibold text-black mb-6 tracking-tighter">
+              See the system in action.
             </h2>
           </div>
 
@@ -361,13 +341,12 @@ export default function MarketingPage() {
                   viewport={{ once: true, margin: "-100px" }}
                   className="w-full md:w-1/2"
                 >
-                  <div className={`relative rounded-[3rem] overflow-hidden shadow-2xl ${item.accent} aspect-square p-2 group`}>
+                  <div className={`relative border border-black/10 bg-black/5 aspect-square p-4 group`}>
                     <img 
                       src={item.image} 
                       alt={item.title} 
-                      className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale group-hover:grayscale-0 shadow-sm"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </motion.div>
 
@@ -377,20 +356,20 @@ export default function MarketingPage() {
                    viewport={{ once: true, margin: "-100px" }}
                    className="w-full md:w-1/2 text-left"
                 >
-                  <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-600 rounded-full px-4 py-1.5 text-[9px] font-black uppercase tracking-widest mb-6">
+                  <div className="inline-flex items-center gap-2 border border-black/20 bg-white text-black px-4 py-1.5 text-[9px] font-black uppercase tracking-widest mb-6 rounded-sm">
                     {item.subtitle}
                   </div>
-                  <h3 className="text-4xl md:text-5xl font-heading italic text-black mb-8 leading-tight">
+                  <h3 className="text-4xl md:text-5xl font-bold text-black mb-8 leading-tight tracking-tight">
                     {item.title}
                   </h3>
-                  <p className="text-base text-gray-500 font-body font-medium leading-relaxed uppercase tracking-widest opacity-80 mb-10">
+                  <p className="text-base text-black/60 font-medium leading-relaxed uppercase tracking-widest mb-10">
                     {item.desc}
                   </p>
                   <button 
                     onClick={handleAppKitLogin}
-                    className="flex items-center gap-3 bg-black text-white rounded-full px-8 py-4 text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-all hover:scale-105 active:scale-95"
+                    className="flex items-center gap-3 bg-black text-white px-8 py-4 text-xs font-black uppercase tracking-widest hover:bg-black/80 transition-all active:scale-95 rounded shadow-sm"
                   >
-                    Start Your Story
+                    Initialize Connection
                     <ArrowUpRightIcon className="w-4 h-4" />
                   </button>
                 </motion.div>
@@ -401,33 +380,33 @@ export default function MarketingPage() {
       </section>
 
       {/* ── Pricing Section ── */}
-      <section id="pricing" className="py-32 px-6 lg:px-16 bg-pink-50">
+      <section id="pricing" className="py-32 px-6 lg:px-16 bg-[var(--background-start)]">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[10px] font-black font-body text-pink-500 uppercase tracking-[0.4em] mb-4">
-            Pricing
+          <p className="text-[10px] font-black text-black/40 uppercase tracking-[0.4em] mb-4">
+            Licensing
           </p>
-          <h2 className="text-5xl md:text-7xl font-heading italic text-black mb-16 tracking-tight">
-            Simple, honest love.
+          <h2 className="text-5xl md:text-7xl font-semibold text-black mb-16 tracking-tighter">
+            Transparent operation.
           </h2>
 
-          <div className="bg-white rounded-[3rem] p-16 border border-pink-100 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:opacity-20 transition-opacity">
-               <HeartIcon className="w-40 h-40 text-pink-500" />
+          <div className="archive-panel p-16 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity grayscale">
+               <HeartIcon className="w-40 h-40 text-black" />
             </div>
             
-            <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-600 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest mb-10">
+            <div className="inline-flex items-center gap-2 border border-black/20 text-black px-4 py-2 text-[10px] font-black uppercase tracking-widest mb-10 rounded-sm">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full bg-black/40 opacity-75 rounded-sm" />
+                <span className="relative inline-flex h-2 w-2 bg-black rounded-sm" />
               </span>
-              Coming Soon
+              In Development
             </div>
             
-            <div className="text-8xl font-heading italic text-black mb-4">
+            <div className="text-8xl font-bold text-black mb-4 tracking-tighter">
               Free
             </div>
-            <p className="text-sm text-gray-400 font-black uppercase tracking-[0.2em] mb-12">
-              forever, for couples
+            <p className="text-sm text-black/40 font-black uppercase tracking-[0.2em] mb-12">
+              perpetual license for 2 users
             </p>
             
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-left max-w-2xl mx-auto mb-16">
@@ -439,8 +418,8 @@ export default function MarketingPage() {
                 "Virtual pet companion (Nari)",
                 "Private & encrypted vault",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-4 text-sm font-bold text-gray-600 uppercase tracking-widest">
-                  <span className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center text-pink-500 text-[10px]">✓</span>
+                <li key={item} className="flex items-center gap-4 text-sm font-bold text-black/70 uppercase tracking-widest">
+                  <span className="w-6 h-6 border border-black/20 flex items-center justify-center text-black text-[10px] rounded-sm">✓</span>
                   {item}
                 </li>
               ))}
@@ -448,44 +427,37 @@ export default function MarketingPage() {
             
             <button
               onClick={handleAppKitLogin}
-              className="bg-black text-white rounded-full px-10 py-5 text-sm font-black uppercase tracking-[0.2em] hover:bg-gray-800 transition-all hover:scale-105 active:scale-95 shadow-xl"
+              className="bg-black text-white px-10 py-5 text-sm font-black uppercase tracking-[0.2em] hover:bg-black/80 transition-all active:scale-95 shadow-md rounded"
             >
-              Join the Waitlist
+              Request Access
             </button>
           </div>
         </div>
       </section>
 
       {/* ── Footer ── */}
-
-      <footer className="bg-white border-t border-pink-100 px-6 lg:px-16 pt-24 pb-12">
+      <footer className="bg-white border-t border-black/10 px-6 lg:px-16 pt-24 pb-12">
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-12 text-center">
-          <Logo size={120} title="Narinyland" />
-          <p className="text-sm text-gray-400 font-bold uppercase tracking-[0.3em] max-w-md">
-            A private digital garden for couples to grow their love story together.
+          <Logo size={80} title="Narinyland" />
+          <p className="text-sm text-black/40 font-bold uppercase tracking-[0.3em] max-w-md">
+            A secured, private environment for dual-user interaction.
           </p>
           
           <div className="flex flex-wrap justify-center gap-x-12 gap-y-6">
             {['About Us', 'Features', 'Pricing', 'Privacy', 'Terms'].map(link => (
-                <button key={link} className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-pink-500 transition-colors">
+                <button key={link} className="text-[10px] font-black uppercase tracking-[0.2em] text-black/50 hover:text-black transition-colors">
                     {link}
                 </button>
             ))}
           </div>
           
-          <p className="text-[10px] text-gray-300 font-black uppercase tracking-widest mt-8">
-            © {new Date().getFullYear()} Narinyland · Crafted with Love
+          <p className="text-[10px] text-black/30 font-black uppercase tracking-widest mt-8">
+            © {new Date().getFullYear()} Narinyland · System Online
           </p>
         </div>
       </footer>
 
       <style jsx global>{`
-        .font-heading {
-          font-family: 'Pacifico', cursive;
-        }
-        .font-body {
-          font-family: 'Outfit', sans-serif;
-        }
         html {
           scroll-behavior: smooth;
         }

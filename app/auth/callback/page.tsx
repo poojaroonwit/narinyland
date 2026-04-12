@@ -67,52 +67,38 @@ export default function AuthCallbackPage() {
   }, [searchParams, router]);
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 30%, #fbcfe8 60%, #f9a8d4 100%)',
-      }}
-    >
-      <div
-        className="max-w-md w-full rounded-3xl p-8 text-center shadow-2xl"
-        style={{
-          background: 'rgba(255, 255, 255, 0.75)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-        }}
-      >
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#EAE6E1]">
+      <div className="archive-panel max-w-md w-full p-8 text-center bg-white border border-black/10">
         {processing && !error ? (
-          <div className="flex flex-col items-center gap-5">
-            {/* Animated heart loader */}
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center text-2xl">Love</div>
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-8 h-8 border-2 border-black/10 border-t-black rounded-none animate-spin" />
+            <div className="space-y-2">
+              <h2 className="text-xl font-geist font-bold tracking-tight text-black uppercase">
+                Authenticating
+              </h2>
+              <p className="text-black/50 text-xs font-mono uppercase tracking-widest">
+                Establishing secure session...
+              </p>
             </div>
-            <h2 className="text-xl font-bold text-gray-800" style={{ fontFamily: "'Outfit', sans-serif" }}>
-              Signing you in...
-            </h2>
-            <p className="text-gray-500 text-sm">Just a moment while we connect your account.</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-5">
-            <div className="text-5xl">!</div>
-            <h2 className="text-xl font-bold text-gray-800" style={{ fontFamily: "'Outfit', sans-serif" }}>
-              Oops! Something went wrong
-            </h2>
-            <p className="text-red-500 text-sm bg-red-50 rounded-xl p-3 w-full">
-              {error}
-            </p>
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-geist font-bold text-xl">
+              !
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-geist font-bold tracking-tight text-black uppercase">
+                Connection Failed
+              </h2>
+              <p className="text-black/60 text-xs bg-black/5 p-3 font-mono">
+                {error}
+              </p>
+            </div>
             <button
               onClick={() => router.push('/')}
-              className="w-full py-3 px-6 rounded-2xl font-semibold text-white transition-all duration-300 hover:scale-105 active:scale-95"
-              style={{
-                background: 'linear-gradient(135deg, #ec4899, #db2777)',
-                fontFamily: "'Outfit', sans-serif",
-                boxShadow: '0 4px 15px rgba(236, 72, 153, 0.4)',
-              }}
+              className="w-full py-3 px-6 bg-black text-white font-geist font-bold text-sm tracking-widest uppercase hover:bg-zinc-800 transition-colors"
             >
-              Try Again
+              Return Home
             </button>
           </div>
         )}

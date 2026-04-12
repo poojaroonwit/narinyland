@@ -23,6 +23,10 @@ function normalizeDomain(domain?: string | null): string {
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
 }
 
+function normalizeClientId(clientId?: string | null): string {
+  return (clientId || '').trim();
+}
+
 function getRedirectUri(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   return `${window.location.origin}/auth/callback`;
@@ -30,7 +34,7 @@ function getRedirectUri(): string | undefined {
 
 function getStaticConfig() {
   return {
-    clientId: (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '').trim(),
+    clientId: normalizeClientId(process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID),
     domain: normalizeDomain(process.env.NEXT_PUBLIC_APPKIT_DOMAIN),
     redirectUri: getRedirectUri(),
   };
@@ -41,11 +45,19 @@ async function resolveAppKitConfig() {
 
   if (typeof window !== 'undefined') {
     try {
-      const res = await fetch('/api/config/appkit', { cache: 'no-store' });
+      const res = await fetch(`/api/config/appkit?ts=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const runtimeConfig = await res.json();
-        config.clientId = (runtimeConfig.clientId || config.clientId || '').trim();
+        config.clientId = normalizeClientId(
+          runtimeConfig.clientId ||
+          runtimeConfig.appId ||
+          runtimeConfig.applicationId ||
+          config.clientId
+        );
         config.domain = normalizeDomain(runtimeConfig.domain || config.domain);
+      } else {
+        const details = await res.text().catch(() => '');
+        console.error('Failed to fetch runtime AppKit config:', res.status, details);
       }
     } catch (err) {
       console.error('Failed to fetch runtime AppKit config:', err);
@@ -53,7 +65,7 @@ async function resolveAppKitConfig() {
   }
 
   if (!config.clientId) {
-    throw new Error('Sign in is temporarily unavailable because AppKit is not configured.');
+    throw new Error('Sign in is temporarily unavailable because AppKit is not configured. If you just added the env vars, restart the Next.js server so they are loaded.');
   }
 
   return config;
