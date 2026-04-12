@@ -619,184 +619,153 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               {/* Scrollable Content Area */}
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-8 pb-32">
         {activeTab === 'general' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
-              <h3 className="text-sm font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
-                <i className="fas fa-info-circle opacity-30"></i> CORE SETUP
-              </h3>
-              <div className="space-y-6">
-                <div className="flex justify-between items-center gap-6">
-                  <div className="flex flex-col">
-                    <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">World Name</label>
-                    <p className="text-[8px] text-black/20 ml-1">The title of your magical space</p>
-                  </div>
-                  <input 
-                    type="text" 
-                    value={localConfig.appName} 
-                    onChange={(e) => handleInputChange('appName', e.target.value)}
-                    className="w-1/2 bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right uppercase tracking-[0.1em]"
-                  />
-                </div>
-                  <input 
-                    type="text" 
-                    value={localConfig.appName} 
-                    onChange={(e) => handleInputChange('appName', e.target.value)}
-                    className="w-1/2 bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right"
-                  />
-                </div>
-                <div className="flex justify-between items-center gap-6 pt-2">
-                  <div className="flex flex-col">
-                    <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">Proposal Feature</label>
-                    <p className="text-[8px] text-black/20 ml-1">Show or hide the proposal screen</p>
-                  </div>
-                  <button
-                    onClick={() => handleInputChange('showProposal', !localConfig.showProposal)}
-                    className={`w-12 h-6 rounded-full transition-all relative ${localConfig.showProposal ? 'bg-black' : 'bg-black/10'}`}
-                  >
-                    <motion.div 
-                      animate={{ x: localConfig.showProposal ? 24 : 4 }}
-                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                    />
-                  </button>
-                </div>
+           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+             <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
+               <h3 className="text-sm font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
+                 <i className="fas fa-info-circle opacity-30"></i> CORE SETUP
+               </h3>
+               
+               <div className="space-y-6">
+                 {/* World Name */}
+                 <div className="flex justify-between items-center gap-6">
+                   <div className="flex flex-col">
+                     <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">World Name</label>
+                     <p className="text-[8px] text-black/20 ml-1">The title of your magical space</p>
+                   </div>
+                   <input 
+                     type="text" 
+                     value={localConfig.appName} 
+                     onChange={(e) => handleInputChange('appName', e.target.value)}
+                     className="w-1/2 bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right uppercase tracking-[0.1em]"
+                   />
+                 </div>
 
-                <div className="flex justify-between items-center gap-6 pt-2">
-                  <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">Anniversary</label>
-                  <div className="w-1/2 text-right">
-                    <DatePicker
-                      selected={new Date(localConfig.anniversaryDate || Date.now())}
-                      onChange={(date: Date | null) => date && handleInputChange('anniversaryDate', date.toISOString())}
-                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right"
-                    />
-                  </div>
-                </div>
-
-                
-                {/* PWA / App Identity */}
-                <div className="bg-black/5 p-8 rounded-clay border border-black/5 space-y-6">
-                  <h4 className="text-[10px] font-black text-black opacity-40 uppercase tracking-[0.2em] flex items-center gap-3">
-                    <i className="fas fa-mobile-alt"></i> APP IDENTITY & PWA
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">App Name (Long)</label>
-                       <input 
-                         type="text" 
-                         value={localConfig.pwaName || localConfig.appName || ''} 
-                         onChange={(e) => handleInputChange('pwaName', e.target.value)}
-                         className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
-                         placeholder="Narinyland"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Short Name</label>
-                       <input 
-                         type="text" 
-                         value={localConfig.pwaShortName || ''} 
-                         onChange={(e) => handleInputChange('pwaShortName', e.target.value)}
-                         className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
-                         placeholder="Nariny"
-                       />
-                     </div>
-                  </div>
-
-                  <div>
-                     <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Description</label>
-                     <input 
-                       type="text" 
-                       value={localConfig.pwaDescription || ''} 
-                       onChange={(e) => handleInputChange('pwaDescription', e.target.value)}
-                       className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
-                       placeholder="Our magical world..."
+                 {/* Proposal Toggle */}
+                 <div className="flex justify-between items-center gap-6 pt-2">
+                   <div className="flex flex-col">
+                     <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">Proposal Feature</label>
+                     <p className="text-[8px] text-black/20 ml-1">Show or hide the proposal screen</p>
+                   </div>
+                   <button
+                     onClick={() => handleInputChange('showProposal', !localConfig.showProposal)}
+                     className={`w-12 h-6 rounded-full transition-all relative ${localConfig.showProposal ? 'bg-black' : 'bg-black/10'}`}
+                   >
+                     <motion.div 
+                       animate={{ x: localConfig.showProposal ? 24 : 4 }}
+                       className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
                      />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Theme Color</label>
-                       <div className="flex items-center gap-3 bg-white/50 border border-black/5 rounded-xl p-2 pl-4">
-                          <input 
-                            type="color" 
-                            value={localConfig.pwaThemeColor || '#000000'} 
-                            onChange={(e) => handleInputChange('pwaThemeColor', e.target.value)}
-                            className="w-8 h-8 rounded-full border-none cursor-pointer"
-                          />
-                          <span className="text-[10px] font-mono text-black/40">{localConfig.pwaThemeColor || '#000000'}</span>
-                       </div>
+                   </button>
+                 </div>
+
+                 {/* Anniversary */}
+                 <div className="flex justify-between items-center gap-6 pt-2">
+                   <label className="text-[10px] font-black text-black/30 uppercase tracking-[0.2em] ml-1">Anniversary</label>
+                   <div className="w-1/2 text-right">
+                     <DatePicker
+                       selected={new Date(localConfig.anniversaryDate || Date.now())}
+                       onChange={(date: Date | null) => date && handleInputChange('anniversaryDate', date.toISOString())}
+                       className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all text-right uppercase tracking-[0.2em]"
+                     />
+                   </div>
+                 </div>
+
+                 {/* PWA / App Identity */}
+                 <div className="bg-black/5 p-8 rounded-clay border border-black/5 space-y-6">
+                   <h4 className="text-[10px] font-black text-black opacity-40 uppercase tracking-[0.2em] flex items-center gap-3">
+                     <i className="fas fa-mobile-alt"></i> APP IDENTITY & PWA
+                   </h4>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">App Name (Long)</label>
+                        <input 
+                          type="text" 
+                          value={localConfig.pwaName || localConfig.appName || ''} 
+                          onChange={(e) => handleInputChange('pwaName', e.target.value)}
+                          className="w-full bg-white border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
+                          placeholder="Narinyland"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Short Name</label>
+                        <input 
+                          type="text" 
+                          value={localConfig.pwaShortName || ''} 
+                          onChange={(e) => handleInputChange('pwaShortName', e.target.value)}
+                          className="w-full bg-white border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
+                          placeholder="Nariny"
+                        />
+                      </div>
+                   </div>
+
+                   <div>
+                      <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Description</label>
+                      <input 
+                        type="text" 
+                        value={localConfig.pwaDescription || ''} 
+                        onChange={(e) => handleInputChange('pwaDescription', e.target.value)}
+                        className="w-full bg-white border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all"
+                        placeholder="Our magical world..."
+                      />
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Theme Color</label>
+                        <div className="flex items-center gap-3 bg-white border border-black/5 rounded-xl p-2 pl-4">
+                           <input 
+                             type="color" 
+                             value={localConfig.pwaThemeColor || '#000000'} 
+                             onChange={(e) => handleInputChange('pwaThemeColor', e.target.value)}
+                             className="w-8 h-8 rounded-full border-none cursor-pointer"
+                           />
+                           <span className="text-[10px] font-mono text-black/40">{localConfig.pwaThemeColor || '#000000'}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Background Color</label>
+                        <div className="flex items-center gap-3 bg-white border border-black/5 rounded-xl p-2 pl-4">
+                           <input 
+                             type="color" 
+                             value={localConfig.pwaBackgroundColor || '#ffffff'} 
+                             onChange={(e) => handleInputChange('pwaBackgroundColor', e.target.value)}
+                             className="w-8 h-8 rounded-full border-none cursor-pointer"
+                           />
+                           <span className="text-[10px] font-mono text-black/40">{localConfig.pwaBackgroundColor || '#ffffff'}</span>
+                        </div>
+                      </div>
+                   </div>
+
+                   <div>
+                     <label className="block text-[8px] font-black text-black/30 uppercase mb-3 tracking-[0.1em]">App Icon (512x512)</label>
+                     <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 rounded-clay bg-black/5 border border-black/5 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
+                           {localConfig.pwaIconUrl ? (
+                             <img src={localConfig.pwaIconUrl} alt="App Icon" className="w-full h-full object-cover" />
+                           ) : (
+                             <i className="fas fa-mobile text-3xl opacity-10"></i>
+                           )}
+                        </div>
+                        <label className="flex-1 cursor-pointer bg-black text-white px-6 py-3 rounded-pill text-[10px] font-black uppercase tracking-[0.2em] text-center hover:bg-black/80 transition-all">
+                           UPLOAD ICON
+                           <input 
+                             type="file" 
+                             className="hidden" 
+                             accept="image/*"
+                             onChange={async (e) => {
+                               const file = e.target.files?.[0];
+                               if (file) {
+                                 const url = await uploadAPI.upload(file);
+                                 handleInputChange('pwaIconUrl', url);
+                               }
+                             }}
+                           />
+                        </label>
                      </div>
+                   </div>
+                 </div>
 
-                     <div>
-                       <label className="block text-[8px] font-black text-black/30 uppercase mb-2 tracking-[0.1em]">Background Color</label>
-                       <div className="flex items-center gap-3 bg-white/50 border border-black/5 rounded-xl p-2 pl-4">
-                          <input 
-                            type="color" 
-                            value={localConfig.pwaBackgroundColor || '#ffffff'} 
-                            onChange={(e) => handleInputChange('pwaBackgroundColor', e.target.value)}
-                            className="w-8 h-8 rounded-full border-none cursor-pointer"
-                          />
-                          <span className="text-[10px] font-mono text-black/40">{localConfig.pwaBackgroundColor || '#ffffff'}</span>
-                       </div>
-                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] font-black text-black/30 uppercase mb-3 tracking-[0.1em]">App Icon (512x512)</label>
-                    <div className="flex items-center gap-6">
-                       <div className="w-20 h-20 rounded-clay bg-black/5 border border-black/5 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
-                          {localConfig.pwaIconUrl ? (
-                            <img src={localConfig.pwaIconUrl} alt="App Icon" className="w-full h-full object-cover" />
-                          ) : (
-                            <i className="fas fa-mobile text-3xl opacity-10"></i>
-                          )}
-                       </div>
-                       <label className="cursor-pointer bg-black text-white hover:bg-black/80 px-5 py-3 rounded-pill text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg active:scale-95">
-                          {isUploading === 999 ? 'UPLOADING...' : 'UPLOAD ICON'}
-                          <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && handlePwaIconUpload(e.target.files[0])} />
-                       </label>
-                       {localConfig.pwaIconUrl && (
-                          <button onClick={() => handleInputChange('pwaIconUrl', null)} className="text-black/30 hover:text-black text-xs px-2 transition-colors">
-                             <i className="fas fa-trash"></i>
-                          </button>
-                       )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-span-2">
-                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Music Playlist</label>
-                    <textarea 
-                      value={(localConfig.musicPlaylist || []).join('\n')} 
-                      onChange={(e) => handleInputChange('musicPlaylist', e.target.value.split('\n'))}
-                      className="w-full bg-black/5 border-2 border-transparent rounded-clay p-6 text-xs font-bold text-black focus:border-black outline-none transition-all h-32 resize-none"
-                      placeholder="https://youtube.com/watch?v=..." 
-                    />
-                  </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Anniversary</label>
-                    <DatePicker
-                      selected={localConfig.anniversaryDate ? new Date(localConfig.anniversaryDate) : null}
-                      onChange={(date: Date | null) => handleInputChange('anniversaryDate', date ? date.toISOString() : '')}
-                      dateFormat="MMMM d, yyyy"
-                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Forest Style</label>
-                    <select 
-                      value={localConfig.treeStyle} 
-                      onChange={(e) => handleInputChange('treeStyle', e.target.value)}
-                      className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
-                    >
-                      <option value="oak">CLASSIC OAK 🌳</option>
-                      <option value="sakura">SAKURA 🌸</option>
-                      <option value="neon">NEON 🔮</option>
-                      <option value="midnight">MIDNIGHT MAGIC ✨</option>
-                      <option value="frozen">FROZEN ❄️</option>
-                      <option value="golden">GOLDEN ☀️</option>
-                    </select>
-                  </div>
-
-                  <div className="col-span-2 border-t border-black/5 pt-8 mt-4">
+                 {/* Dynamic Pets Management */}
+                 <div className="space-y-6">
                     <div className="flex justify-between items-center mb-6">
                       <label className="text-[10px] font-black text-black opacity-30 uppercase tracking-[0.2em] ml-1">Dynamic Pets Management</label>
                       <button 
@@ -807,9 +776,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       </button>
                     </div>
 
-                    
                     <div className="space-y-4">
-                      {/* Show old single pet if pets array is empty */}
+                      {/* Legacy Pet Toggle */}
                       {(!localConfig.pets || localConfig.pets.length === 0) && (
                         <div className="p-6 bg-black/5 rounded-clay border border-black/5 flex items-center gap-6">
                            <div className="flex-1">
@@ -817,7 +785,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                               <select 
                                 value={localConfig.petType || 'cat'} 
                                 onChange={(e) => handleInputChange('petType', e.target.value)}
-                                className="w-full bg-white/50 border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
+                                className="w-full bg-white border border-black/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
                               >
                                 <option value="cat">FLUFFY CAT 🐱</option>
                                 <option value="dog">LOYAL DOG 🐶</option>
@@ -827,9 +795,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                               </select>
                            </div>
                            <p className="text-[9px] text-black/20 italic max-w-[140px] leading-relaxed">This is your legacy pet. Add more to go dynamic! ✨</p>
-                         </div>
-                       )}
-                      {/* Render Multiple Pets */}
+                        </div>
+                      )}
+
+                      {/* Multiple Pets Grid */}
                       {(localConfig.pets || []).map((pet, idx) => (
                         <motion.div 
                           key={pet.id}
@@ -851,7 +820,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                   type="text"
                                   value={pet.name || ''}
                                   onChange={(e) => handlePetChange(pet.id, 'name', e.target.value)}
-                                  className="w-full bg-white/50 border border-black/5 rounded-xl p-2.5 text-[10px] font-bold outline-none focus:border-black transition-all"
+                                  className="w-full bg-white border border-black/5 rounded-xl p-2.5 text-[10px] font-bold outline-none focus:border-black transition-all"
                                   placeholder="Name..."
                                 />
                              </div>
@@ -860,7 +829,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 <select 
                                   value={pet.type}
                                   onChange={(e) => handlePetChange(pet.id, 'type', e.target.value)}
-                                  className="w-full bg-white/50 border border-black/5 rounded-xl p-2.5 text-[10px] font-bold outline-none appearance-none"
+                                  className="w-full bg-white border border-black/5 rounded-xl p-2.5 text-[10px] font-bold outline-none appearance-none"
                                 >
                                   <option value="cat">CAT</option>
                                   <option value="dog">DOG</option>
@@ -876,10 +845,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         </motion.div>
                       ))}
                     </div>
-                  </div>
+                 </div>
 
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Sky Time</label>
+                 {/* Sky Time */}
+                 <div className="pt-4 border-t border-black/5">
+                    <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Sky Time Appearance</label>
                     <select 
                       value={localConfig.skyMode || 'follow_timezone'} 
                       onChange={(e) => handleInputChange('skyMode', e.target.value)}
@@ -889,149 +859,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       <option value="noon">ALWAYS NOON ☀️</option>
                       <option value="night">ALWAYS NIGHT 🌙</option>
                     </select>
-                  </div>
-
-                  <div className="col-span-2 bg-black/5 p-6 rounded-clay flex items-center justify-between border border-black/5">
-                     <div>
-                        <p className="text-[10px] font-black text-black flex items-center gap-3 uppercase tracking-[0.2em]">
-                           <i className="fas fa-qrcode opacity-30"></i> MOBILE QR UPLOADER
-                        </p>
-                        <p className="text-[9px] text-black/30 font-bold uppercase tracking-[0.1em] mt-1 ml-7">Floating QR code at bottom-left</p>
-                     </div>
-                     <button 
-                       onClick={() => handleInputChange('showQRCode', !localConfig.showQRCode)}
-                       className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showQRCode ? 'bg-black justify-end' : 'bg-black/10 justify-start'}`}
-                     >
-                        <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                     </button>
-                  </div>
-
-
-                  <div className="col-span-2 mt-4">
-                     <label className="block text-[10px] font-black text-black/30 uppercase mb-3 tracking-[0.2em] ml-1">Graphics Quality</label>
-                     <select 
-                       value={localConfig.graphicsQuality || 'medium'} 
-                       onChange={(e) => handleInputChange('graphicsQuality', e.target.value)}
-                       className="w-full bg-black/5 border-b-2 border-transparent rounded-t-xl p-4 text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-black transition-all appearance-none"
-                     >
-                       <option value="low">LOW (FASTEST) ⚡</option>
-                       <option value="medium">MEDIUM (BALANCED) ⚖️</option>
-                       <option value="high">HIGH (BEST VISUALS) ✨</option>
-                     </select>
-                  </div>
-
-                </div>
-              </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-seedling text-green-400"></i> Garden & Quality
-              </h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Graphics Quality</label>
-                      <select 
-                         value={localConfig.graphicsQuality || 'medium'} 
-                         onChange={(e) => handleInputChange('graphicsQuality', e.target.value)}
-                         className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white font-bold text-xs"
-                      >
-                         <option value="low">Low (Faster)</option>
-                         <option value="medium">Medium</option>
-                         <option value="high">High (Prettier)</option>
-                      </select>
-                   </div>
-                   <div className="flex flex-col justify-center">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2">Show QR Code</p>
-                      <button 
-                         onClick={() => handleInputChange('showQRCode', !localConfig.showQRCode)}
-                         className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showQRCode ? 'bg-green-500 justify-end' : 'bg-gray-200 justify-start'}`}
-                      >
-                         <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                      </button>
-                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Days per Tree</label>
-                    <input 
-                      type="number" 
-                      value={localConfig.daysPerTree} 
-                      onChange={(e) => handleInputChange('daysPerTree', parseInt(e.target.value))}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Days per Flower</label>
-                    <input 
-                      type="number" 
-                      value={localConfig.daysPerFlower || 7} 
-                      onChange={(e) => handleInputChange('daysPerFlower', parseInt(e.target.value))}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Flower Species</label>
-                  <select 
-                    value={localConfig.flowerType || 'sunflower'} 
-                    onChange={(e) => handleInputChange('flowerType', e.target.value)}
-                    className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white font-bold"
-                  >
-                    <option value="sunflower">🌻 Sunflower</option>
-                    <option value="tulip">🌷 Tulip</option>
-                    <option value="rose">🌹 Rose</option>
-                    <option value="cherry">🌸 Cherry Blossom</option>
-                    <option value="lavender">🪻 Lavender</option>
-                    <option value="cactus">🌵 Cactus (Rare)</option>
-                    <option value="heart">💖 Heart Bloom</option>
-                    <option value="mixed">🌈 Mixed Garden</option>
-                  </select>
-
-                  {localConfig.flowerType === 'mixed' && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-pink-50/50 p-4 rounded-2xl border border-pink-100 flex flex-wrap gap-2"
-                    >
-                      <p className="w-full text-[9px] font-black text-pink-400 uppercase tracking-widest mb-1 ml-1">Include in Mix:</p>
-                      {[
-                        { id: 'sunflower', label: '🌻' },
-                        { id: 'tulip', label: '🌷' },
-                        { id: 'rose', label: '🌹' },
-                        { id: 'cherry', label: '🌸' },
-                        { id: 'lavender', label: '🪻' },
-                        { id: 'cactus', label: '🌵' },
-                        { id: 'heart', label: '💖' }
-                      ].map(f => {
-                        const isSelected = localConfig.mixedFlowers?.includes(f.id);
-                        return (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => {
-                              const current = localConfig.mixedFlowers || [];
-                              const next = isSelected 
-                                ? current.filter(id => id !== f.id)
-                                : [...current, f.id];
-                              handleInputChange('mixedFlowers', next);
-                            }}
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all border-2 ${
-                              isSelected 
-                                ? 'bg-white border-pink-400 shadow-sm scale-110' 
-                                : 'bg-gray-50 border-transparent opacity-40 grayscale hover:grayscale-0 hover:opacity-100'
-                            }`}
-                            title={f.id}
-                          >
-                            {f.label}
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </div>
-              </div>
+            </div>
             </div>
 
             <div className="bg-white/60 p-8 rounded-clay shadow-sm border border-white/20">
@@ -1075,7 +905,6 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   <span className="text-[10px] text-black/30 font-black uppercase tracking-[0.2em]">
                   CIRCLE MEMBERS
                 </span>
-              </div>
               </div>
 
               {membersLoading ? (
