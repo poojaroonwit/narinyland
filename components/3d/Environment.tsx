@@ -19,7 +19,7 @@ export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: any, quality
             rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI] as [number, number, number],
             speed: 0.015 + Math.random() * 0.025,
             drift: 0.01 + Math.random() * 0.02,
-            color: theme.leaves[Math.floor(Math.random() * theme.leaves.length)]
+            color: '#d4d4d8' // Zinc-300 for minimalist falling leaves
         };
     }, [theme]);
 
@@ -143,7 +143,7 @@ export const Bird = () => {
                 </mesh>
                 <mesh position={[0, 0, 0.15]} rotation={[Math.PI / 2, 0, 0]}>
                     <coneGeometry args={[0.02, 0.08, 4]} />
-                    <meshStandardMaterial color="#f59e0b" />
+                    <meshStandardMaterial color="#f8fafc" />
                 </mesh>
             </group>
         </group>
@@ -155,7 +155,7 @@ export const Butterfly = ({ flowers }: { flowers: any[] }) => {
     const [activity, setActivity] = useState<'flutter' | 'hover' | 'zip' | 'land'>('flutter');
     const timer = useRef(0);
     const targetPos = useRef(new THREE.Vector3());
-    const color = useMemo(() => ['#f472b6', '#60a5fa', '#fbbf24', '#a78bfa', '#2dd4bf'][Math.floor(Math.random() * 5)], []);
+    const color = useMemo(() => ['#ffffff', '#e4e4e7', '#a1a1aa', '#52525b', '#27272a'][Math.floor(Math.random() * 5)], []);
     const basePos = useMemo(() => [(Math.random() - 0.5) * 10, 2 + Math.random() * 2, (Math.random() - 0.5) * 10], []);
 
     useFrame((state, delta) => {
@@ -399,7 +399,7 @@ export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, effectiveCount]}>
       <planeGeometry args={[0.1, 0.1]} />
-      <meshStandardMaterial color={theme.leaves[0]} side={THREE.DoubleSide} transparent opacity={0.8} />
+      <meshStandardMaterial color="#fafafa" side={THREE.DoubleSide} transparent opacity={0.6} />
     </instancedMesh>
   );
 };
@@ -409,12 +409,12 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
     const count = quality === 'high' ? 12 : (quality === 'medium' ? 6 : 0);
     
     const cloudColor = useMemo(() => {
-        if (hour >= 20 || hour < 5) return "#1a2030";
-        if (hour >= 19 && hour < 20) return new THREE.Color("#8b6050").lerp(new THREE.Color("#1a2030"), (hour - 19)).getStyle();
-        if (hour >= 17.5 && hour < 19) return new THREE.Color("#e8dcd0").lerp(new THREE.Color("#8b6050"), (hour - 17.5) / 1.5).getStyle();
-        if (hour >= 6.5 && hour < 8) return new THREE.Color("#d4b8a0").lerp(new THREE.Color("#e8e4e0"), (hour - 6.5) / 1.5).getStyle();
-        if (hour >= 5.5 && hour < 6.5) return new THREE.Color("#1a2030").lerp(new THREE.Color("#d4b8a0"), (hour - 5.5)).getStyle();
-        return "#e8e4e0";
+        if (hour >= 20 || hour < 5) return "#09090b"; // Zinc-950
+        if (hour >= 19 && hour < 20) return new THREE.Color("#18181b").lerp(new THREE.Color("#09090b"), (hour - 19)).getStyle();
+        if (hour >= 17.5 && hour < 19) return new THREE.Color("#27272a").lerp(new THREE.Color("#18181b"), (hour - 17.5) / 1.5).getStyle();
+        if (hour >= 6.5 && hour < 8) return new THREE.Color("#3f3f46").lerp(new THREE.Color("#52525b"), (hour - 6.5) / 1.5).getStyle();
+        if (hour >= 5.5 && hour < 6.5) return new THREE.Color("#09090b").lerp(new THREE.Color("#3f3f46"), (hour - 5.5)).getStyle();
+        return "#71717a"; // Zinc-500
     }, [hour]);
 
     const cloudEdgeColor = useMemo(() => {
@@ -680,17 +680,17 @@ export const SkyDome = ({ skyColor, hour, quality = 'medium' }: { skyColor: stri
     const { zenithColor, midColor, horizonColor } = useMemo(() => {
         // Deep night
         if (hour >= 21 || hour < 4.5) return {
-            zenithColor: '#020810',
-            midColor: '#0a1628',
-            horizonColor: '#111d35'
+            zenithColor: '#000000',
+            midColor: '#09090b',
+            horizonColor: '#18181b'
         };
         // Pre-dawn (4:30-5:30)
         if (hour >= 4.5 && hour < 5.5) {
             const t = (hour - 4.5) / 1.0;
             return {
-                zenithColor: new THREE.Color('#020810').lerp(new THREE.Color('#0c1225'), t).getStyle(),
-                midColor: new THREE.Color('#0a1628').lerp(new THREE.Color('#1c2340'), t).getStyle(),
-                horizonColor: new THREE.Color('#111d35').lerp(new THREE.Color('#8b5e3c'), t).getStyle()
+                zenithColor: new THREE.Color('#000000').lerp(new THREE.Color('#09090b'), t).getStyle(),
+                midColor: new THREE.Color('#09090b').lerp(new THREE.Color('#18181b'), t).getStyle(),
+                horizonColor: new THREE.Color('#18181b').lerp(new THREE.Color('#27272a'), t).getStyle()
             };
         }
         // Dawn twilight (5:30-6:15)
@@ -722,9 +722,9 @@ export const SkyDome = ({ skyColor, hour, quality = 'medium' }: { skyColor: stri
         }
         // Midday (10:00-15:00)
         if (hour >= 10 && hour < 15) return {
-            zenithColor: '#1e56a0',
-            midColor: '#5a9ac4',
-            horizonColor: '#c4dce8'
+            zenithColor: '#09090b',
+            midColor: '#18181b',
+            horizonColor: '#27272a'
         };
         // Afternoon (15:00-17:00)
         if (hour >= 15 && hour < 17) {
