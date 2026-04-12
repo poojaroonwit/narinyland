@@ -68,9 +68,9 @@ export async function refreshSession(): Promise<boolean> {
       return false;
     }
 
-    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || process.env.APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
-    const clientId = (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '').trim();
+    const clientId = (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || process.env.APPKIT_CLIENT_ID || '').trim();
 
     if (!clientSecret || !clientId) {
       console.error('BFF: Refresh failed - missing Client ID or Secret in environment.');

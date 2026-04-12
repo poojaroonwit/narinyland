@@ -48,6 +48,21 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const appKitClientId = (
+    process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID ||
+    process.env.APPKIT_CLIENT_ID ||
+    ''
+  ).trim();
+  const appKitDomain = (
+    process.env.NEXT_PUBLIC_APPKIT_DOMAIN ||
+    process.env.APPKIT_DOMAIN ||
+    'https://appkits.up.railway.app'
+  ).trim();
+  const injectedAppKitConfig = JSON.stringify({
+    clientId: appKitClientId,
+    domain: appKitDomain,
+  });
+
   return (
     <html lang="en">
       <head>
@@ -60,6 +75,11 @@ export default function RootLayout({
         {/* Preload hero assets from remote */}
         <link rel="preload" as="image" href="/images/hero_bg.jpeg" type="image/jpeg" />
         <link rel="preload" as="video" href="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260306_115329_5e00c9c5-4d69-49b7-94c3-9c31c60bb644.mp4" type="video/mp4" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__NARINYLAND_APPKIT_CONFIG__ = ${injectedAppKitConfig};`,
+          }}
+        />
       </head>
 
       <body>

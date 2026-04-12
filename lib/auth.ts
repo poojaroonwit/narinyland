@@ -18,6 +18,15 @@ const DEFAULT_APPKIT_DOMAIN = 'https://appkits.up.railway.app';
 const DEFAULT_APPKIT_SCOPES = ['openid', 'profile', 'email', 'offline_access'];
 const PUBLIC_AUTH_RETURN_PATH = '/';
 
+declare global {
+  interface Window {
+    __NARINYLAND_APPKIT_CONFIG__?: {
+      clientId?: string | null;
+      domain?: string | null;
+    };
+  }
+}
+
 function normalizeDomain(domain?: string | null): string {
   const trimmed = (domain || DEFAULT_APPKIT_DOMAIN).trim();
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
@@ -42,6 +51,14 @@ function getStaticConfig() {
 
 async function resolveAppKitConfig() {
   const config = getStaticConfig();
+
+  if (typeof window !== 'undefined') {
+    const injectedConfig = window.__NARINYLAND_APPKIT_CONFIG__;
+    if (injectedConfig) {
+      config.clientId = normalizeClientId(injectedConfig.clientId || config.clientId);
+      config.domain = normalizeDomain(injectedConfig.domain || config.domain);
+    }
+  }
 
   if (typeof window !== 'undefined') {
     try {
