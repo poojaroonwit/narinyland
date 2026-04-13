@@ -209,9 +209,9 @@ export default function MarketingPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center liquid-glass rounded-full px-1 py-1 mb-6"
+            className="flex items-center liquid-glass rounded-sm px-1 py-1 mb-6"
           >
-            <span className="bg-white text-black rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-black text-white rounded-sm px-3 py-1 text-[10px] font-black uppercase tracking-wider">
               NEW
             </span>
             <span className="text-xs font-bold text-white pr-4 pl-3 uppercase tracking-widest font-body">
@@ -231,7 +231,7 @@ export default function MarketingPage() {
             className="mt-6 text-sm md:text-base text-white/80 max-w-xl font-body font-medium leading-relaxed uppercase tracking-widest"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
           >
             Grow a 3D tree together, save memories on an interactive timeline, and exchange digital love letters.
           </motion.p>
@@ -240,11 +240,11 @@ export default function MarketingPage() {
             className="flex items-center gap-6 mt-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
           >
             <button
               onClick={handleAppKitLogin}
-              className="liquid-glass-strong flex items-center gap-3 rounded-full px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white font-body hover:scale-105 active:scale-95 transition-all shadow-2xl"
+              className="liquid-glass-strong flex items-center gap-3 rounded-sm px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white font-body hover:scale-105 active:scale-95 transition-all shadow-kriss border border-white/20"
             >
               Enter Garden
               <ArrowUpRightIcon className="h-5 w-5" />
@@ -306,7 +306,7 @@ export default function MarketingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group bg-pink-50/50 rounded-[2.5rem] p-10 border border-pink-100/50 hover:bg-white hover:shadow-2xl hover:border-white transition-all duration-500 flex flex-col items-start"
+                className="group bg-pink-50/50 rounded-2xl p-10 border border-pink-100/50 hover:bg-white hover:shadow-kriss hover:border-white transition-all duration-300 flex flex-col items-start"
               >
                 <div className="text-5xl mb-8 group-hover:scale-125 transition-transform duration-500 origin-left">{f.emoji}</div>
                 <h3 className="text-2xl font-heading italic text-black mb-4">

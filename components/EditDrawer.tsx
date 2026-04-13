@@ -843,7 +843,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 </select>
                              </div>
                           </div>
-                          <button onClick={() => removePet(pet.id)} className="w-10 h-10 rounded-none bg-black/5 hover:bg-black/10 flex items-center justify-center transition-colors group">
+                          <button onClick={onClose} className="w-12 h-12 border border-black/5 hover:bg-black hover:text-white transition-all duration-400 rounded-sm flex items-center justify-center">
                             <i className="fas fa-trash text-black/20 group-hover:text-black"></i>
                           </button>
                         </motion.div>
@@ -857,7 +857,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <select 
                       value={localConfig.skyMode || 'follow_timezone'} 
                       onChange={(e) => handleInputChange('skyMode', e.target.value)}
-                      className="w-full bg-black/5 border-b-2 border-transparent rounded-none p-4 text-xs font-bold outline-none focus:border-black transition-all appearance-none"
+                      className="w-full bg-black/5 border-b-2 border-transparent rounded-sm p-4 text-xs font-bold outline-none focus:border-black transition-all duration-400 appearance-none"
                     >
                       <option value="follow_timezone">LOCAL_SYNC.EXE</option>
                       <option value="noon">NOON_PHASE.EXE</option>
@@ -868,7 +868,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
             </div>
             </div>
 
-            <div className="bg-white/60 p-8 rounded-none shadow-sm border border-black/5">
+            <div className="bg-white/60 p-8 rounded-2xl shadow-sm border border-black/5">
               <h3 className="text-sm font-black text-black mb-8 flex items-center gap-3 uppercase tracking-[0.2em]">
                 <i className="fas fa-stream opacity-30"></i> TIMELINE DISPLAY
               </h3>
@@ -893,15 +893,15 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                    </div>
                    <button 
                       onClick={() => handleInputChange('showCouponsOnTimeline', !localConfig.showCouponsOnTimeline)}
-                      className={`w-12 h-6 rounded-none p-1 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-black justify-end' : 'bg-black/10 justify-start'}`}
+                      className={`w-12 h-6 rounded-sm p-1 transition-all duration-400 flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-black justify-end' : 'bg-black/10 justify-start'}`}
                    >
-                      <motion.div layout className="w-4 h-4 bg-white rounded-none shadow-sm" />
+                      <motion.div layout className="w-4 h-4 bg-white rounded-sm shadow-sm" />
                    </button>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/60 p-8 rounded-none shadow-sm border border-black/5">
+            <div className="bg-white/60 p-8 rounded-2xl shadow-sm border border-black/5">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-sm font-black text-black flex items-center gap-3 uppercase tracking-[0.2em]">
                   <i className="fas fa-user-friends opacity-30"></i> THE COUPLE
@@ -913,7 +913,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
               {membersLoading ? (
                 <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
-                  <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-none animate-spin" />
+                  <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-sm animate-spin" />
                   <span className="text-xs font-bold">Loading members…</span>
                 </div>
               ) : circleMembers.length > 0 ? (
@@ -923,8 +923,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     const displayName = partnerData?.name || member.name;
                     const displayAvatar = partnerData?.avatar || member.avatar || '👤';
                     return (
-                       <div key={member.userId ?? idx} className="flex items-center gap-3 p-3 bg-white rounded-none border border-black/5">
-                         <div className="w-10 h-10 rounded-none bg-black/5 flex items-center justify-center text-sm flex-shrink-0 border border-black/5 shadow-sm grayscale">
+                       <div key={member.userId ?? idx} className="flex items-center gap-3 p-3 bg-white rounded-sm border border-black/5">
+                         <div className="w-10 h-10 rounded-sm bg-black/5 flex items-center justify-center text-sm flex-shrink-0 border border-black/5 shadow-sm grayscale">
                            {displayAvatar.startsWith('http') ? (
                              // eslint-disable-next-line @next/next/no-img-element
                              <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
@@ -947,14 +947,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                               type="text"
                               value={displayName}
                               onChange={(e) => handlePartnerChange(member.partnerId!, 'name', e.target.value)}
-                              className="w-full border-b border-black/5 rounded-none px-2 py-1 text-[10px] font-black text-black focus:outline-none focus:border-black transition-all uppercase"
+                              className="w-full border-b border-black/5 rounded-sm px-2 py-1 text-[10px] font-black text-black focus:outline-none focus:border-black transition-all duration-400 uppercase"
                               placeholder="NAME..."
                             />
                             <input
                               type="text"
                               value={partnerData?.avatar || ''}
                               onChange={(e) => handlePartnerChange(member.partnerId!, 'avatar', e.target.value)}
-                              className="w-full border-b border-black/5 rounded-none px-2 py-1 text-sm text-center focus:outline-none focus:border-black transition-all grayscale"
+                              className="w-full border-b border-black/5 rounded-sm px-2 py-1 text-sm text-center focus:outline-none focus:border-black transition-all duration-400 grayscale"
                               placeholder="👤"
                             />
                           </div>
@@ -977,7 +977,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'proposal' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="bg-white p-10 border border-black/5">
+            <div className="bg-white p-10 border border-black/5 rounded-2xl">
               <div className="flex justify-between items-end mb-12">
                 <div className="space-y-1">
                   <h3 className="text-sm font-black text-black flex items-center gap-4 uppercase tracking-[0.3em]">
@@ -987,7 +987,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 </div>
                 <button 
                   onClick={addProposalQuestion}
-                  className="bg-black text-white text-[10px] font-black px-6 py-3 uppercase tracking-[0.3em] hover:bg-neutral-800 transition-all shadow-xl"
+                  className="bg-black text-white text-[10px] font-black px-6 py-3 uppercase tracking-[0.3em] hover:bg-neutral-800 transition-all duration-400 shadow-xl rounded-sm"
                 >
                   + ADD_STEP
                 </button>
@@ -995,7 +995,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
  
               <div className="space-y-6">
                 {localConfig.proposal.questions.map((q, idx) => (
-                  <div key={idx} className="relative group p-8 bg-black/[0.02] border border-black/5">
+                  <div key={idx} className="relative group p-8 bg-black/[0.02] border border-black/5 rounded-2xl">
                     <div className="flex justify-between items-center mb-4">
                       <label className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">
                         STEP_{String(idx + 1).padStart(2, '0')}
@@ -1003,7 +1003,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       {localConfig.proposal.questions.length > 1 && (
                         <button 
                           onClick={() => removeProposalQuestion(idx)}
-                          className="w-10 h-10 flex items-center justify-center text-black/10 hover:text-black hover:bg-black/5 transition-all"
+                          className="w-10 h-10 flex items-center justify-center text-black/10 hover:text-black hover:bg-black/5 transition-all duration-400 rounded-sm"
                         >
                           <i className="fas fa-trash-alt text-[10px]"></i>
                         </button>
@@ -1012,7 +1012,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <textarea 
                       value={q} 
                       onChange={(e) => updateProposalQuestion(idx, e.target.value)}
-                      className="w-full bg-white border border-black/5 p-5 text-[11px] font-black outline-none focus:border-black transition-all resize-none shadow-sm"
+                      className="w-full bg-white border border-black/5 p-5 text-[11px] font-black outline-none focus:border-black transition-all duration-400 resize-none shadow-sm rounded-sm"
                       rows={2}
                       placeholder={`INPUT DATA STEP ${idx + 1}`}
                     />
@@ -1021,13 +1021,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
             </div>
  
-            <div className="bg-white p-10 border border-black/5">
+            <div className="bg-white p-10 border border-black/5 rounded-2xl">
               <h3 className="text-sm font-black text-black mb-10 flex items-center gap-4 uppercase tracking-[0.3em]">
                  <span className="w-6 h-[1px] bg-black"></span> FLOW_STATUS
               </h3>
               
               <div className="space-y-10">
-                <div className="p-8 bg-black/[0.02] border border-black/5">
+                <div className="p-8 bg-black/[0.02] border border-black/5 rounded-2xl">
                   <div className="flex justify-between items-center mb-6">
                     <div>
                       <p className="text-[10px] font-black text-black uppercase tracking-[0.2em]">SYNCHRONIZATION</p>
@@ -1038,13 +1038,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <div className="flex gap-4">
                        <button 
                          onClick={() => setProposalProgress(0)}
-                         className="px-6 py-3 border border-black/5 text-black/30 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-black/5 transition-all"
+                         className="px-6 py-3 border border-black/5 text-black/30 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-black/5 transition-all duration-400 rounded-sm"
                        >
                          RESET_ALL
                        </button>
                        <button 
                          onClick={() => setProposalProgress(localConfig.proposal.questions.length)}
-                         className="px-6 py-3 bg-black text-white text-[10px] font-black uppercase tracking-[0.3em] hover:bg-neutral-800 transition-all shadow-xl"
+                         className="px-6 h-12 bg-black text-white hover:bg-zinc-800 transition-all duration-400 text-xs font-black uppercase tracking-widest rounded-sm"
                        >
                          BYPASS_ALL
                        </button>
@@ -1059,13 +1059,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         <button 
                           key={i}
                           onClick={() => setProposalProgress(isRead ? i : i + 1)}
-                          className={`flex-1 h-2 transition-all ${isRead ? 'bg-black' : 'bg-black/10'}`}
+                          className={`flex-1 h-2 transition-all duration-400 ${isRead ? 'bg-black' : 'bg-black/10'}`}
                         />
                       );
                     })}
                   </div>
                 </div>
-                <div className="flex items-center justify-between p-10 bg-black text-white shadow-2xl">
+                <div className="flex items-center justify-between p-10 bg-black text-white shadow-2xl rounded-2xl">
                   <div className="space-y-1">
                     <p className="text-[11px] font-black uppercase tracking-[0.2em]">FINAL_RESOLUTION</p>
                     <p className="text-[10px] opacity-30 font-black uppercase tracking-[0.3em]">
@@ -1079,7 +1079,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         proposal: { ...prev.proposal, isAccepted: !prev.proposal.isAccepted }
                       }));
                     }}
-                    className={`px-10 py-4 font-black text-[10px] uppercase tracking-[0.4em] transition-all ${
+                    className={`px-10 py-4 font-black text-[10px] uppercase tracking-[0.4em] transition-all duration-400 rounded-sm ${
                       localConfig.proposal.isAccepted 
                         ? 'bg-white/10 text-white hover:bg-white/20' 
                         : 'bg-white text-black hover:bg-neutral-200 shadow-xl'
@@ -1096,7 +1096,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
             </div>
 
             
-            <div className="p-6 bg-black text-white rounded-clay border-2 border-dashed border-white/20 shadow-lg">
+            <div className="p-6 bg-black text-white rounded-2xl border-2 border-dashed border-white/20 shadow-lg">
               <p className="text-xs font-black leading-relaxed flex items-center gap-3 uppercase tracking-[0.1em]">
                 <i className="fas fa-magic opacity-50"></i>
                 The user can only accept your proposal. Each "YES" leads to the next question until the final acceptance!
@@ -1108,18 +1108,18 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'gallery' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-             <div className="bg-white p-10 border border-black/5">
+             <div className="bg-white p-10 border border-black/5 rounded-2xl">
                 <label className="block text-[10px] font-black text-black/30 uppercase mb-8 tracking-[0.4em] ml-1">INVENTORY_SOURCE</label>
-                <div className="flex bg-black/[0.04] p-1.5 mb-8">
+                <div className="flex bg-black/[0.04] p-1.5 mb-8 rounded-sm">
                    <button 
                      onClick={() => handleInputChange('gallerySource', 'manual')}
-                     className={`flex-1 py-4 text-[10px] font-black transition-all uppercase tracking-[0.3em] ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-xl text-black' : 'text-black/20 hover:text-black/40'}`}
+                     className={`flex-1 py-4 text-[10px] font-black transition-all duration-400 uppercase tracking-[0.3em] rounded-sm ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-xl text-black' : 'text-black/20 hover:text-black/40'}`}
                    >
                      LOCAL_STORAGE
                    </button>
                    <button 
                      onClick={() => handleInputChange('gallerySource', 'instagram')}
-                     className={`flex-1 py-4 text-[10px] font-black transition-all uppercase tracking-[0.3em] flex items-center justify-center gap-3 ${localConfig.gallerySource === 'instagram' ? 'bg-black text-white shadow-xl' : 'text-black/20 hover:text-black/40'}`}
+                     className={`flex-1 py-4 text-[10px] font-black transition-all duration-400 uppercase tracking-[0.3em] rounded-sm flex items-center justify-center gap-3 ${localConfig.gallerySource === 'instagram' ? 'bg-black text-white shadow-xl' : 'text-black/20 hover:text-black/40'}`}
                    >
                      <i className="fab fa-instagram text-[11px]"></i> INSTA
                    </button>
@@ -1129,7 +1129,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 <AnimatePresence mode="wait">
                   {localConfig.gallerySource === 'instagram' && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-3">
-                       <div className="p-4 bg-black/[0.02] border border-black/5">
+                       <div className="p-4 bg-black/[0.02] border border-black/5 rounded-sm">
                           <p className="text-[11px] text-black font-black uppercase tracking-tight leading-relaxed">
                              <i className="fab fa-instagram mr-1"></i> <strong>INSTA_SOURCE:</strong> Paste valid URLs below for automated integration.
                           </p>
@@ -1154,7 +1154,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                              <button 
                                onClick={fetchInstagramProfile}
                                disabled={isFetchingIG || !localConfig.instagramUsername?.trim()}
-                               className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold px-5 rounded-xl text-xs disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
+                               className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold px-5 rounded-xl text-xs disabled:opacity-50 shadow-md hover:shadow-lg transition-all duration-400"
                              >
                                {isFetchingIG ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-download mr-1"></i> Fetch</>}
                              </button>
@@ -1167,7 +1167,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                        </div>
 
                        {/* Token-based Bulk Import */}
-                       <div className="p-4 bg-black/[0.02] border border-black/5">
+                       <div className="p-4 bg-black/[0.02] border border-black/5 rounded-sm">
                           <p className="text-[11px] text-black font-black uppercase tracking-tight leading-relaxed mb-3">
                              <i className="fas fa-key mr-1"></i> <strong>API_TOKEN_ACCESS:</strong> FEED_INGESTION_PROTOCOL
                           </p>
@@ -1177,12 +1177,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                placeholder="ACCESS_TOKEN_ID (IGQV...)"
                                value={igToken}
                                onChange={(e) => setIgToken(e.target.value)}
-                               className="flex-1 bg-white border border-black/5 rounded-none p-3 text-[10px] font-black focus:border-black outline-none font-mono"
+                               className="flex-1 bg-white border border-black/5 rounded-sm p-3 text-[10px] font-black focus:border-black outline-none font-mono"
                              />
                              <button 
                                onClick={fetchInstagramFeed}
                                disabled={isFetchingIG}
-                               className="bg-black text-white font-black px-6 rounded-none text-[10px] uppercase tracking-[0.2em] disabled:opacity-20 transition-all"
+                               className="bg-black text-white font-black px-6 rounded-sm text-[10px] uppercase tracking-[0.2em] disabled:opacity-20 transition-all duration-400"
                              >
                                {isFetchingIG ? <i className="fas fa-spinner fa-spin"></i> : 'FETCH_FEED'}
                              </button>
@@ -1193,7 +1193,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 </AnimatePresence>
              </div>
 
-             <div className="bg-white p-10 border border-black/5 flex flex-col gap-8">
+             <div className="bg-white p-10 border border-black/5 rounded-2xl flex flex-col gap-8">
                 <label className="block text-[10px] font-black text-black/30 uppercase tracking-[0.4em] ml-1">ARCHIVE_FOLDERS</label>
                 
                 <div className="flex gap-4">
@@ -1201,7 +1201,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      type="text" 
                      id="newAlbumInput"
                      placeholder="DESIGNATE_NEW_FOLDER..."
-                     className="flex-1 bg-black/[0.02] border border-black/5 p-5 text-[11px] font-black outline-none focus:bg-white focus:border-black transition-all uppercase tracking-widest"
+                     className="flex-1 bg-black/[0.02] border border-black/5 p-5 text-[11px] font-black outline-none focus:bg-white focus:border-black transition-all duration-400 uppercase tracking-widest rounded-sm"
                    />
                    <button 
                      onClick={() => {
@@ -1211,7 +1211,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                          input.value = '';
                        }
                      }}
-                     className="bg-black text-white px-8 font-black text-[10px] uppercase tracking-[0.4em] shadow-xl hover:bg-neutral-800 transition-all"
+                     className="bg-black text-white px-8 font-black text-[10px] uppercase tracking-[0.4em] shadow-xl hover:bg-neutral-800 transition-all duration-400 rounded-sm"
                    >
                      CREATE
                    </button>
@@ -1219,9 +1219,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
                 <div className="flex flex-wrap gap-2">
                    {(localConfig.albums || []).map(album => (
-                      <div key={album.id} className="bg-black/5 border border-black/5 px-5 py-2.5 flex items-center gap-4 group">
+                      <div key={album.id} className="bg-zinc-50 border border-black/5 p-6 rounded-2xl flex items-center gap-4 group">
                          <span className="text-[10px] font-black text-black/60 uppercase tracking-[0.2em] truncate max-w-[160px]">{album.name}</span>
-                         <button onClick={() => deleteAlbum(album.id)} className="text-black/20 hover:text-black transition-colors">
+                         <button onClick={() => deleteAlbum(album.id)} className="text-black/20 hover:text-black transition-colors duration-400">
                             <i className="fas fa-times text-[10px]"></i>
                          </button>
                       </div>
@@ -1254,11 +1254,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                  }}
                  className={`
                    relative group cursor-pointer transition-all duration-500
-                   border-2 border-dashed rounded-none py-12 flex flex-col items-center justify-center gap-4 mb-8
+                   border-2 border-dashed rounded-2xl py-12 flex flex-col items-center justify-center gap-4 mb-8
                    ${isDraggingOver ? 'border-black bg-black/5' : 'border-black/5 hover:border-black/20 hover:bg-black/5'}
                  `}
               >
-                 <div className={`p-6 rounded-none transition-all duration-500 ${isDraggingOver ? 'bg-black text-white scale-110 shadow-xl' : 'bg-black/5 text-black/20 group-hover:bg-black/10 group-hover:text-black'}`}>
+                 <div className={`p-6 rounded-2xl transition-all duration-500 ${isDraggingOver ? 'bg-black text-white scale-110 shadow-xl' : 'bg-black/5 text-black/20 group-hover:bg-black/10 group-hover:text-black'}`}>
                     <i className="fas fa-cloud-upload-alt text-3xl"></i>
                  </div>
                  <div className="text-center">
@@ -1280,9 +1280,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 const isAud = isAudio(item.url);
                 
                 return (
-                   <motion.div key={idx} layout className="bg-white p-2 rounded-none shadow-sm border border-black/5 flex flex-col gap-2 group relative aspect-[4/5] hover:shadow-2xl transition-all">
+                   <motion.div key={idx} layout className="bg-white p-2 rounded-2xl shadow-sm border border-black/5 flex flex-col gap-2 group relative aspect-[4/5] hover:shadow-2xl transition-all duration-400">
                      <div 
-                       className="flex-1 w-full rounded-none bg-black/[0.02] overflow-hidden relative cursor-zoom-in group/thumb grayscale hover:grayscale-0 transition-all"
+                       className="flex-1 w-full rounded-xl bg-black/[0.02] overflow-hidden relative cursor-zoom-in group/thumb grayscale hover:grayscale-0 transition-all duration-400"
                        onClick={() => {
                          const type = isAud ? 'audio' : isVid ? 'video' : 'image';
                          setPreviewItem({ url: item.url, type });
@@ -1300,15 +1300,15 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                              <img 
                                src={getPreviewUrl(item.url)} 
                                referrerPolicy="no-referrer"
-                               className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110" 
+                               className="w-full h-full object-cover transition-transform duration-400 group-hover/thumb:scale-110" 
                                onError={(e) => (e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23fef2f2'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23000000' font-size='12'%3EERR_FILE%3C/text%3E%3C/svg%3E")} 
                              />
                          )}
-                         <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition-colors flex items-center justify-center">
-                            <i className="fas fa-search-plus text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"></i>
+                         <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition-colors duration-400 flex items-center justify-center">
+                            <i className="fas fa-search-plus text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-400"></i>
                          </div>
                          {isIG && <div className="absolute inset-0 bg-black/10 pointer-events-none" />}
-                         {isIG && <div className="absolute top-1 right-1 w-4 h-4 bg-black text-white flex items-center justify-center rounded-none text-[6px] shadow-sm"><i className="fab fa-instagram"></i></div>}
+                         {isIG && <div className="absolute top-1 right-1 w-4 h-4 bg-black text-white flex items-center justify-center rounded-sm text-[6px] shadow-sm"><i className="fab fa-instagram"></i></div>}
                      </div>
 
                      {/* Compact Controls */}
@@ -1318,7 +1318,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 {/* Privacy Toggle as a tiny dot/icon */}
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); toggleGalleryPrivacy(idx); }}
-                                  className={`w-full text-xs font-black py-1 px-2 rounded-none flex items-center justify-center gap-2 transition-colors border ${item.privacy === 'public' ? 'bg-black text-white border-black' : 'bg-transparent text-black border-black/10'}`}
+                                  className={`w-full text-xs font-black py-1 px-2 rounded-sm flex items-center justify-center gap-2 transition-colors duration-400 border ${item.privacy === 'public' ? 'bg-black text-white border-black' : 'bg-transparent text-black border-black/10'}`}
                                 >
                                   <i className={`fas fa-${item.privacy === 'public' ? 'globe' : 'lock'} text-[8px]`}></i>
                                   <span className="text-[8px] uppercase tracking-widest">{item.privacy === 'public' ? 'PUBLIC' : 'PRIVATE'}</span>
@@ -1326,7 +1326,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                              </div>
                              <button 
                                onClick={(e) => { e.stopPropagation(); removeGalleryImage(idx); }}
-                               className="w-6 h-6 flex items-center justify-center text-black/10 hover:text-black hover:bg-black/5 transition-all shrink-0"
+                               className="w-6 h-6 flex items-center justify-center text-black/10 hover:text-black hover:bg-black/5 transition-all duration-400 rounded-sm"
                              >
                                <i className="fas fa-trash-alt text-[9px]"></i>
                              </button>
@@ -1336,7 +1336,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                              <select
                                 value={item.albumId || ''}
                                 onChange={(e) => handleGalleryAlbumChange(idx, e.target.value || null)}
-                                className="w-full text-[8px] font-black text-black/40 bg-black/[0.02] border border-black/5 rounded-none p-1.5 outline-none focus:border-black transition-all uppercase tracking-tight"
+                                className="w-full text-[8px] font-black text-black/40 bg-black/[0.02] border border-black/5 rounded-sm p-1.5 outline-none focus:border-black transition-all duration-400 uppercase tracking-tight"
                              >
                                 <option value="">NO_ALBUM</option>
                                 {localConfig.albums.map(a => (
@@ -1361,7 +1361,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                  </h3>
                  <button 
                    onClick={addTimelineEvent} 
-                   className="bg-black text-white text-[9px] font-black px-6 py-2 rounded-none uppercase tracking-[0.2em] shadow-lg hover:bg-neutral-800 transition-all font-geist"
+                   className="bg-black text-white text-[9px] font-black px-6 py-2 rounded-sm uppercase tracking-[0.2em] shadow-lg hover:bg-neutral-800 transition-all duration-400 font-geist"
                  >
                    + NEW EVENT
                  </button>
@@ -1369,13 +1369,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
 
                {/* View Settings (Moved from Timeline Toolbar) */}
-               <div className="bg-white p-10 border border-black/5">
+               <div className="bg-white p-10 border border-black/5 rounded-2xl">
                   <h3 className="text-[11px] font-black text-black mb-10 flex items-center gap-4 uppercase tracking-[0.4em]">
                     <span className="w-4 h-[1px] bg-black/20"></span> VIEWPORT_CONFIG
                   </h3>
                   
                   <label className="block text-[10px] font-black text-black/30 uppercase mb-6 tracking-[0.4em] ml-1">PROJECTION_MODE</label>
-                  <div className="flex bg-black/[0.02] p-1.5 mb-10">
+                  <div className="flex bg-black/[0.02] p-1.5 mb-10 rounded-sm">
                         {([
                            { id: 'wave', label: 'WAVE_AXIS', icon: 'fa-water' },
                            { id: 'vertical', label: 'LINEAR_AXIS', icon: 'fa-arrows-alt-v' }
@@ -1383,7 +1383,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                            <button
                                key={mode.id}
                                onClick={() => handleInputChange('timelineLayoutMode', mode.id)}
-                               className={`flex-1 py-4 px-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${
+                               className={`flex-1 py-4 px-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all duration-400 flex items-center justify-center gap-3 rounded-sm ${
                                      (localConfig.timelineLayoutMode || 'wave') === mode.id 
                                      ? 'bg-white text-black shadow-xl' 
                                      : 'text-black/20 hover:text-black/40'
@@ -1412,7 +1412,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
 
               {/* Timeline Display Settings */}
-               <div className="bg-black/5 p-8 rounded-none border border-black/5 space-y-8">
+               <div className="bg-black/5 p-8 rounded-2xl border border-black/5 space-y-8">
                  <div className="space-y-4">
                      <div className="flex justify-between items-center px-1">
                         <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em]">CARD SCALING</p>
@@ -1457,15 +1457,15 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                        key={item.id} 
                        initial={{ opacity: 0, x: -10 }} 
                        animate={{ opacity: 1, x: 0, transition: { delay: idx * 0.05 } }}
-                       className="bg-white p-4 rounded-none shadow-sm border border-black/5 flex items-center gap-6 group hover:shadow-2xl transition-all duration-500"
+                       className="bg-white p-4 rounded-2xl shadow-sm border border-black/5 flex items-center gap-6 group hover:shadow-2xl transition-all duration-500"
                     >
-                       <div className="w-14 h-14 shrink-0 bg-black/5 rounded-none overflow-hidden flex items-center justify-center border border-black/5 relative grayscale group-hover:grayscale-0 transition-all duration-700">
+                       <div className="w-14 h-14 shrink-0 bg-black/5 rounded-sm overflow-hidden flex items-center justify-center border border-black/5 relative grayscale group-hover:grayscale-0 transition-all duration-700">
                            {item.media?.type === 'image' && <img src={item.media.url} className="w-full h-full object-cover" />}
                            {item.media?.type === 'video' && <i className="fas fa-video opacity-20"></i>}
                            {item.media?.type === 'audio' && <i className="fas fa-microphone opacity-20"></i>}
                            {!item.media && <i className="fas fa-sticky-note opacity-10"></i>}
                            
-                           <label className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity z-10">
+                           <label className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-400 z-10">
                               <i className="fas fa-camera text-white text-[10px]"></i>
                               <input 
                                  type="file" 
@@ -1486,13 +1486,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 onChange={(date: Date | null) => date && handleTimelineChange(item.id, 'timestamp', date)}
                                 showTimeSelect
                                 dateFormat="MM/dd/yy"
-                                className="w-24 text-[10px] font-black text-black/20 bg-transparent outline-none p-0 cursor-pointer hover:text-black uppercase tracking-widest transition-colors"
+                                className="w-24 text-[10px] font-black text-black/20 bg-transparent outline-none p-0 cursor-pointer hover:text-black uppercase tracking-widest transition-colors duration-400"
                              />
                              <input 
                                 type="text"
                                 value={item.text}
                                 onChange={(e) => handleTimelineChange(item.id, 'text', e.target.value)}
-                                className="flex-1 text-[11px] font-black text-black bg-transparent outline-none truncate uppercase tracking-tight focus:bg-black/5 px-3 py-2 border-b border-transparent focus:border-black transition-all"
+                                className="flex-1 text-[11px] font-black text-black bg-transparent outline-none truncate uppercase tracking-tight focus:bg-black/5 px-3 py-2 border-b border-transparent focus:border-black transition-all duration-400"
                               />
                           </div>
                        </div>
@@ -1504,7 +1504,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 timeline: prev.timeline.filter(t => t.id !== item.id) 
                              }));
                           }}
-                          className="w-10 h-10 flex items-center justify-center text-black/5 hover:text-black hover:bg-black/5 rounded-full transition-all shrink-0"
+                          className="w-10 h-10 flex items-center justify-center text-black/5 hover:text-black hover:bg-black/5 rounded-full transition-all duration-400 shrink-0"
                        >
                           <i className="fas fa-trash-alt text-[10px]"></i>
                        </button>
@@ -1516,16 +1516,16 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'coupons' && (
            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-              <div className="bg-white p-10 border border-black/5 flex items-center justify-between shadow-sm">
+              <div className="bg-white p-10 border border-black/5 flex items-center justify-between shadow-sm rounded-2xl">
                  <div className="space-y-1">
                     <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.4em]">STORY_NODE_INTEGRATION</p>
                     <p className="text-[11px] font-black text-black uppercase tracking-widest">MAP_REDEEMED_TO_TIMELINE</p>
                  </div>
                  <button 
                     onClick={() => handleInputChange('showCouponsOnTimeline', !localConfig.showCouponsOnTimeline)}
-                    className={`w-14 h-7 p-1 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-black justify-end' : 'bg-black/10 justify-start'} rounded-none`}
+                    className={`w-14 h-7 p-1 transition-all duration-400 flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-black justify-end' : 'bg-black/10 justify-start'} rounded-sm`}
                   >
-                     <motion.div layout className="w-5 h-5 bg-white shadow-xl rounded-none" />
+                     <motion.div layout className="w-5 h-5 bg-white shadow-xl rounded-sm" />
                   </button>
               </div>
  
@@ -1538,7 +1538,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                  </div>
                  <button 
                     onClick={addCoupon} 
-                    className="bg-black text-white text-[10px] font-black px-8 py-3 uppercase tracking-[0.3em] shadow-2xl hover:bg-neutral-800 transition-all"
+                    className="bg-black text-white text-[10px] font-black px-8 py-3 uppercase tracking-[0.3em] shadow-2xl hover:bg-neutral-800 transition-all duration-400 rounded-sm"
                  >
                     + INITIALIZE_VOUCHER
                  </button>
@@ -1550,11 +1550,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                    return (
                     <div 
                        key={coupon.id} 
-                       className={`bg-white border rounded-none transition-all duration-500 ${isExpanded ? 'p-8 border-black shadow-2xl' : 'p-6 border-black/5 hover:bg-black/[0.02] cursor-pointer'}`}
+                       className={`bg-white border rounded-2xl transition-all duration-400 ${isExpanded ? 'p-8 border-black shadow-2xl' : 'p-6 border-black/5 hover:bg-black/[0.02] cursor-pointer'}`}
                        onClick={() => !isExpanded && setExpandedCouponId(coupon.id)}
                     >
                        <div className="flex items-center gap-8">
-                          <div className="w-16 h-16 bg-black/[0.02] border border-black/5 flex items-center justify-center text-3xl grayscale rounded-none">
+                          <div className="w-16 h-16 bg-black/[0.02] border border-black/5 flex items-center justify-center text-3xl grayscale rounded-sm">
                              {coupon.emoji}
                           </div>
                           <div className="flex-1 min-w-0 space-y-1">
@@ -1571,7 +1571,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 e.stopPropagation();
                                 setExpandedCouponId(isExpanded ? null : coupon.id);
                              }}
-                             className="w-10 h-10 flex items-center justify-center text-black/10 hover:text-black transition-all"
+                             className="w-10 h-10 flex items-center justify-center text-black/10 hover:text-black transition-all duration-400"
                           >
                              <i className={`fas fa-${isExpanded ? 'minus' : 'plus'} text-xs`}></i>
                           </button>
@@ -1593,7 +1593,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                            type="text" 
                                            value={coupon.emoji} 
                                            onChange={(e) => handleCouponChange(coupon.id, 'emoji', e.target.value)}
-                                           className="w-16 text-center border-b border-black/10 p-2 text-2xl bg-black/[0.02] rounded-none focus:border-black outline-none transition-all grayscale"
+                                           className="w-16 text-center border-b border-black/10 p-2 text-2xl bg-black/[0.02] rounded-sm focus:border-black outline-none transition-all duration-400 grayscale"
                                         />
                                     </div>
                                     <div className="flex-1 flex flex-col gap-1">
@@ -1602,7 +1602,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                            type="text" 
                                            value={coupon.title} 
                                            onChange={(e) => handleCouponChange(coupon.id, 'title', e.target.value)}
-                                           className="w-full border-b border-black/5 bg-black/[0.02] p-3 font-black text-[11px] uppercase tracking-widest focus:border-black outline-none transition-all"
+                                           className="w-full border-b border-black/5 bg-black/[0.02] p-3 font-black text-[11px] uppercase tracking-widest focus:border-black outline-none transition-all duration-400"
                                         />
                                     </div>
                                  </div>
@@ -1613,7 +1613,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                         type="text" 
                                         value={coupon.desc} 
                                         onChange={(e) => handleCouponChange(coupon.id, 'desc', e.target.value)}
-                                        className="w-full border-b border-black/5 bg-black/[0.02] p-3 text-[10px] font-black uppercase tracking-tight focus:border-black outline-none transition-all"
+                                        className="w-full border-b border-black/5 bg-black/[0.02] p-3 text-[10px] font-black uppercase tracking-tight focus:border-black outline-none transition-all duration-400"
                                         placeholder="DATA_INPUT..."
                                      />
                                   </div>
@@ -1627,7 +1627,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                            step="100"
                                            value={coupon.points || 0}
                                            onChange={(e) => handleCouponChange(coupon.id, 'points', parseInt(e.target.value))}
-                                           className="w-24 border-b border-black/5 bg-black/[0.02] p-3 text-[10px] font-black focus:border-black outline-none transition-all"
+                                           className="w-24 border-b border-black/5 bg-black/[0.02] p-3 text-[10px] font-black focus:border-black outline-none transition-all duration-400"
                                         />
                                      </div>
                                      <div className="flex-1 flex flex-col gap-1">
@@ -1635,7 +1635,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                         <select 
                                            value={coupon.for} 
                                            onChange={(e) => handleCouponChange(coupon.id, 'for', e.target.value)}
-                                           className="w-full text-[10px] font-black border-b border-black/5 p-3 bg-black/[0.02] uppercase tracking-widest rounded-none"
+                                           className="w-full text-[10px] font-black border-b border-black/5 p-3 bg-black/[0.02] uppercase tracking-widest rounded-sm"
                                         >
                                           {Object.entries(localConfig.partners || {}).map(([key, data]) => (
                                             <option key={key} value={key}>{data.name}</option>
@@ -1648,9 +1648,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                      <label className="flex items-center gap-4 cursor-pointer select-none group/toggle">
                                         <div 
                                            onClick={() => handleCouponChange(coupon.id, 'isRedeemed', !coupon.isRedeemed)}
-                                           className={`w-10 h-5 rounded-none transition-all relative ${coupon.isRedeemed ? 'bg-black' : 'bg-black/10'}`}
+                                           className={`w-10 h-5 rounded-sm transition-all duration-400 relative ${coupon.isRedeemed ? 'bg-black' : 'bg-black/10'}`}
                                         >
-                                           <div className={`absolute top-1 w-3 h-3 bg-white rounded-none transition-all ${coupon.isRedeemed ? 'left-6' : 'left-1'}`} />
+                                           <div className={`absolute top-1 w-3 h-3 bg-white rounded-sm transition-all duration-400 ${coupon.isRedeemed ? 'left-6' : 'left-1'}`} />
                                         </div>
                                         <span className={`text-[9px] font-black uppercase tracking-[0.4em] ${coupon.isRedeemed ? 'text-black' : 'text-black/20'}`}>
                                            {coupon.isRedeemed ? 'REDEEMED' : 'PENDING'}
@@ -1663,7 +1663,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                               updateLocal(prev => ({ ...prev, coupons: prev.coupons.filter(c => c.id !== coupon.id) }));
                                            }
                                         }}
-                                        className="text-[9px] font-black text-black/20 uppercase tracking-[0.4em] px-5 py-2 hover:bg-black hover:text-white transition-all shadow-sm"
+                                        className="text-[9px] font-black text-black/20 uppercase tracking-[0.4em] px-5 py-2 hover:bg-black hover:text-white transition-all duration-400 shadow-sm"
                                      >
                                         PURGE_RECORD
                                      </button>

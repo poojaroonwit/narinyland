@@ -1356,9 +1356,9 @@ const Home: React.FC = () => {
                 <motion.button
                   initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }}
                   onClick={handleInstallApp}
-                  className="flex items-center gap-4 bg-white border border-black/10 p-4 rounded-none shadow-2xl group transition-all"
+                  className="flex items-center gap-4 bg-white/95 border border-black/10 p-4 rounded-sm shadow-kriss group transition-all"
                 >
-                  <div className="w-10 h-10 bg-black text-white flex items-center justify-center text-lg">
+                  <div className="w-10 h-10 bg-black text-white flex items-center justify-center text-lg rounded-sm">
                     <i className="fas fa-terminal"></i>
                   </div>
                   <div className="text-left pr-4">
@@ -1373,7 +1373,7 @@ const Home: React.FC = () => {
                   initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                   whileHover={{ scale: 1.05 }}
                   onClick={handleAddLeaf}
-                  className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl shadow-2xl relative group overflow-hidden"
+                  className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl shadow-kriss rounded-sm relative group overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <span className="relative z-10 transition-transform group-hover:rotate-12">🌱</span>
@@ -1390,18 +1390,18 @@ const Home: React.FC = () => {
             {isStatsGuideOpen && (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-6"
+                className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-kriss flex items-center justify-center p-6"
                 onClick={() => setIsStatsGuideOpen(false)}
               >
                 <motion.div
                   initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                  className="bg-white w-full max-w-2xl border border-black/10 shadow-[0_50px_100px_rgba(0,0,0,0.2)] flex flex-col max-h-[90vh]"
+                  className="bg-white w-full max-w-2xl border border-black/5 shadow-kriss flex flex-col max-h-[90vh] rounded-2xl overflow-hidden"
                   onClick={e => e.stopPropagation()}
                 >
                   <div className="p-10 md:p-14 overflow-y-auto custom-scrollbar">
                     <div className="flex items-center justify-between mb-12 border-b border-black/5 pb-10">
                        <div className="flex items-center gap-8">
-                          <div className="w-20 h-20 bg-black flex items-center justify-center text-3xl font-black text-white">
+                          <div className="w-20 h-20 bg-black flex items-center justify-center text-3xl font-black text-white rounded-sm">
                             {loveStats.level}
                           </div>
                           <div>
@@ -1409,7 +1409,7 @@ const Home: React.FC = () => {
                              <h4 className="text-4xl font-black text-black tracking-extratight uppercase leading-none">GARDEN_MANIFEST</h4>
                           </div>
                        </div>
-                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-14 h-14 border border-black/5 hover:bg-black hover:text-white transition-all flex items-center justify-center">
+                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-14 h-14 border border-black/5 hover:bg-black hover:text-white transition-all flex items-center justify-center rounded-sm">
                           <i className="fas fa-times"></i>
                        </button>
                     </div>
@@ -1437,7 +1437,7 @@ const Home: React.FC = () => {
                             { label: 'ARTIFACTS', val: loveStats.leaves, icon: '🍃' },
                             { label: 'UNITS', val: loveStats.points, icon: '🪙' }
                           ].map(stat => (
-                            <div key={stat.label} className="border border-black/5 p-6 space-y-3">
+                            <div key={stat.label} className="border border-black/5 p-6 space-y-3 rounded-2xl">
                                <div className="flex items-center justify-between">
                                   <span className="text-[8px] font-black text-black/30 uppercase tracking-widest">{stat.label}</span>
                                   <span className="text-xl grayscale opacity-40">{stat.icon}</span>

@@ -65,24 +65,33 @@ async function resolveAppKitConfig() {
       const res = await fetch(`/api/config/appkit?ts=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const runtimeConfig = await res.json();
-        config.clientId = normalizeClientId(
+        const resolvedClientId = normalizeClientId(
           runtimeConfig.clientId ||
           runtimeConfig.appId ||
           runtimeConfig.applicationId ||
           config.clientId
         );
-        config.domain = normalizeDomain(runtimeConfig.domain || config.domain);
+        const resolvedDomain = normalizeDomain(runtimeConfig.domain || config.domain);
+
+        console.log('[Auth] Resolved AppKit Config:', {
+          clientId: resolvedClientId ? 'SET' : 'MISSING',
+          domain: resolvedDomain ? 'SET' : 'MISSING'
+        });
+
+        config.clientId = resolvedClientId;
+        config.domain = resolvedDomain;
       } else {
         const details = await res.text().catch(() => '');
-        console.error('Failed to fetch runtime AppKit config:', res.status, details);
+        console.error('[Auth] Failed to fetch runtime AppKit config:', res.status, details);
       }
     } catch (err) {
-      console.error('Failed to fetch runtime AppKit config:', err);
+      console.error('[Auth] Error fetching runtime AppKit config:', err);
     }
   }
 
-  if (!config.clientId) {
-    throw new Error('Sign in is temporarily unavailable because AppKit is not configured. If you just added the env vars, restart the Next.js server so they are loaded.');
+  if (!config.clientId || !config.domain) {
+    console.error('[Auth] Final Config Validation Failed:', config);
+    throw new Error('Sign in is temporarily unavailable because AppKit is not configured properly. Please ensure NEXT_PUBLIC_APPKIT_CLIENT_ID and NEXT_PUBLIC_APPKIT_DOMAIN are set and the server is restarted.');
   }
 
   return config;

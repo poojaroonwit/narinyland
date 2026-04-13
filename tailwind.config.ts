@@ -20,24 +20,32 @@ const config: Config = {
         }
       },
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        sans: ['Geist', 'Inter', 'sans-serif'],
         geist: ['Geist', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
         outfit: ['Outfit', 'sans-serif'],
-        kanit: ['Kanit', 'sans-serif'],
         pacifico: ['Pacifico', 'cursive'],
         heading: ["'Instrument Serif'", 'serif'],
-        body: ["'Barlow'", 'sans-serif'],
+        body: ["'Geist'", 'sans-serif'],
       },
       borderRadius: {
+        'xs': '2px',
+        'sm': '4px',
+        'md': '8px',
+        'lg': '12px',
+        'xl': '14px',
+        '2xl': '16px',
+        '3xl': '24px',
         'pill': '9999px',
         'clay': '40px',
       },
       backdropBlur: {
         'xs': '2px',
-        'kriss': '20px',
+        'kriss': '12px',
       },
       boxShadow: {
         'clay': '10px 10px 20px rgba(0, 0, 0, 0.05), -10px -10px 20px rgba(255, 255, 255, 0.8), inset 4px 4px 8px rgba(255, 255, 255, 0.5), inset -4px -4px 8px rgba(0, 0, 0, 0.02)',
+        'kriss': '0 4px 12px rgba(0, 0, 0, 0.03)',
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

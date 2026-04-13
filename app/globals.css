@@ -10,9 +10,9 @@
   --primary: #000000;
   --secondary: #121212;
   --accent: #242424;
-  --glass-bg: rgba(255, 255, 255, 0.3);
-  --glass-border: rgba(0, 0, 0, 0.04);
-  --blur-amount: 32px; /* Stronger blur for premium feel */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --blur-amount: 12px; /* kriss.ai style blur */
 
   /* Z-index management */
   --z-index-base: 1;
@@ -28,26 +28,19 @@
 @layer components {
   /* Archive Style Box Utilities */
   .archive-panel {
-    @apply border border-black/10 bg-white shadow-sm;
+    @apply border border-black/10 bg-white/95 backdrop-blur-kriss shadow-kriss rounded-2xl;
   }
   
   .archive-glass {
-    @apply border border-black/5 bg-white/60 backdrop-blur-md shadow-sm;
+    @apply border border-black/5 bg-white/5 backdrop-blur-kriss shadow-kriss rounded-2xl;
   }
 
   .liquid-glass {
-    background: rgba(255, 255, 255, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    @apply bg-white/40 backdrop-blur-kriss border border-black/5 rounded-2xl;
   }
   
   .liquid-glass-strong {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.03);
+    @apply bg-white/70 backdrop-blur-2xl border border-black/10 shadow-kriss rounded-2xl;
   }
 
   /* Glassmorphism utility */
@@ -60,7 +53,7 @@
 
   /* Legacy Claymorphism refactored to Archive Grid */
   .clay-morphism {
-      @apply bg-white border border-black/10 shadow-sm rounded-none;
+      @apply bg-white/80 border border-black/5 shadow-kriss rounded-3xl backdrop-blur-kriss;
   }
 
   .pill-button {
@@ -68,7 +61,7 @@
   }
 
   .pill-button-primary {
-      @apply bg-black text-white hover:bg-gray-800 shadow-md;
+      @apply bg-black text-white hover:bg-gray-800 rounded-sm shadow-kriss;
   }
 
   .pill-button-glass {
@@ -94,7 +87,7 @@ body {
 
 @layer components {
   .premium-label {
-    @apply inline-flex items-center gap-2 border border-black/10 bg-white/50 backdrop-blur-md text-black px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-none;
+    @apply inline-flex items-center gap-2 border border-black/5 bg-white/40 backdrop-blur-kriss text-black px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm;
   }
 }
 
