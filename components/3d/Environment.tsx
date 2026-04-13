@@ -130,20 +130,20 @@ export const Bird = () => {
         <group ref={ref}>
             <mesh position={[-0.15, 0, 0]}>
                 <boxGeometry args={[0.3, 0.01, 0.15]} />
-                <meshStandardMaterial color="#334155" />
+                <meshStandardMaterial color="#000000" />
             </mesh>
             <mesh position={[0.15, 0, 0]}>
                 <boxGeometry args={[0.3, 0.01, 0.15]} />
-                <meshStandardMaterial color="#334155" />
+                <meshStandardMaterial color="#000000" />
             </mesh>
             <group>
                 <mesh castShadow rotation={[Math.PI / 2, 0, 0]}>
                     <capsuleGeometry args={[0.06, 0.15, 4, 8]} />
-                    <meshStandardMaterial color="#475569" />
+                    <meshStandardMaterial color="#000000" />
                 </mesh>
                 <mesh position={[0, 0, 0.15]} rotation={[Math.PI / 2, 0, 0]}>
                     <coneGeometry args={[0.02, 0.08, 4]} />
-                    <meshStandardMaterial color="#f8fafc" />
+                    <meshStandardMaterial color="#ffffff" />
                 </mesh>
             </group>
         </group>
@@ -337,11 +337,11 @@ export const Fireflies = ({ count = 20, quality = 'medium' }: { count?: number, 
         <instancedMesh ref={meshRef} args={[undefined, undefined, effectiveCount]}>
             <sphereGeometry args={[0.04, 4, 4]} />
             <meshStandardMaterial 
-                color="#fef08a" 
-                emissive="#fef08a" 
-                emissiveIntensity={2} 
+                color="#000000" 
+                emissive="#000000" 
+                emissiveIntensity={0.5} 
                 transparent 
-                opacity={0.8} 
+                opacity={0.3} 
             />
         </instancedMesh>
     );
@@ -409,19 +409,21 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
     const count = quality === 'high' ? 12 : (quality === 'medium' ? 6 : 0);
     
     const cloudColor = useMemo(() => {
+        if (theme && theme.grid) return "#000000"; // Archive look
         if (hour >= 20 || hour < 5) return "#09090b"; // Zinc-950
         if (hour >= 19 && hour < 20) return new THREE.Color("#18181b").lerp(new THREE.Color("#09090b"), (hour - 19)).getStyle();
         if (hour >= 17.5 && hour < 19) return new THREE.Color("#27272a").lerp(new THREE.Color("#18181b"), (hour - 17.5) / 1.5).getStyle();
         if (hour >= 6.5 && hour < 8) return new THREE.Color("#3f3f46").lerp(new THREE.Color("#52525b"), (hour - 6.5) / 1.5).getStyle();
         if (hour >= 5.5 && hour < 6.5) return new THREE.Color("#09090b").lerp(new THREE.Color("#3f3f46"), (hour - 5.5)).getStyle();
         return "#71717a"; // Zinc-500
-    }, [hour]);
+    }, [hour, theme]);
 
     const cloudEdgeColor = useMemo(() => {
+        if (theme && theme.grid) return "#333333"; // Archive look
         if (hour >= 17 && hour < 19.5) return "#c49070";
         if (hour >= 5.5 && hour < 8) return "#c4a888";
         return cloudColor;
-    }, [hour, cloudColor]);
+    }, [hour, cloudColor, theme]);
 
     const clouds = useMemo(() => {
         return Array.from({ length: count }).map((_, i) => ({

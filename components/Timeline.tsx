@@ -218,63 +218,69 @@ const Timeline: React.FC<TimelineProps> = ({
 
   return (
     <div className="w-full relative pb-40 font-geist">
-      {/* Precision Controls */}
-      <div className="fixed top-32 right-8 flex flex-col gap-6 items-end pointer-events-none z-[100]">
-          <div className="pointer-events-auto flex flex-col gap-3">
+      {/* Archive Controls */}
+      <div className="fixed top-32 right-12 flex flex-col gap-8 items-end pointer-events-none z-[100]">
+          <div className="pointer-events-auto flex flex-col gap-4">
               {/* View Toggle */}
               <button 
                 onClick={() => {
                   const modes: ('vertical' | 'wave' | 'gallery')[] = ['vertical', 'wave', 'gallery'];
                   handleLayoutModeChange(modes[(modes.indexOf(layoutMode) + 1) % 3]);
                 }}
-                className="w-14 h-14 bg-black text-white rounded-pill shadow-2xl flex items-center justify-center hover:scale-110 transition-all border border-white/10"
+                className="w-16 h-16 bg-black text-white shadow-2xl flex items-center justify-center hover:bg-neutral-800 transition-all border border-white/10"
               >
                  <i className={`fas ${layoutMode === 'vertical' ? 'fa-stream' : layoutMode === 'wave' ? 'fa-water' : 'fa-images'} text-xs`}></i>
               </button>
-
+ 
               {/* Zoom System */}
-              <div className="flex flex-col gap-2 p-2 bg-black/5 backdrop-blur-md rounded-clay border border-black/5">
+              <div className="flex flex-col bg-black/[0.02] border border-black/5">
                 <button 
-                  onClick={() => handleZoomLevelChange(Math.min(zoomLevel + 1, ZOOM_LEVELS.length - 1))}
-                  className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-black hover:bg-black hover:text-white transition-all"
+                   onClick={() => handleZoomLevelChange(Math.min(zoomLevel + 1, ZOOM_LEVELS.length - 1))}
+                   className="w-12 h-12 bg-white flex items-center justify-center text-black hover:bg-black hover:text-white transition-all border-b border-black/5"
                 >
                    <i className="fas fa-plus text-[10px]"></i>
                 </button>
                 <button 
-                  onClick={() => handleZoomLevelChange(Math.max(zoomLevel - 1, 0))}
-                  className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-black hover:bg-black hover:text-white transition-all"
+                   onClick={() => handleZoomLevelChange(Math.max(zoomLevel - 1, 0))}
+                   className="w-12 h-12 bg-white flex items-center justify-center text-black hover:bg-black hover:text-white transition-all"
                 >
                    <i className="fas fa-minus text-[10px]"></i>
                 </button>
               </div>
-
-              {/* Bulk Actions */}
+ 
+              {/* Spreadsheet Action */}
               <button 
-                onClick={() => onOpenSpreadsheet?.()}
-                className="w-14 h-14 bg-white text-black rounded-pill shadow-xl flex items-center justify-center hover:scale-110 transition-all border border-black/5"
+                 onClick={() => onOpenSpreadsheet?.()}
+                 className="w-16 h-16 bg-white text-black shadow-xl flex items-center justify-center hover:bg-black hover:text-white transition-all border border-black/5"
               >
-                <i className="fas fa-table text-xs"></i>
+                 <i className="fas fa-table text-xs"></i>
               </button>
           </div>
-
-          {/* Core Action */}
+ 
+          {/* Create Entry */}
           <button 
              onClick={() => {
                const newItem: Interaction = { id: Date.now().toString(), text: "", timestamp: new Date(), type: 'system' };
                setActiveItem(newItem);
                setIsNew(true);
              }}
-             className="pointer-events-auto w-16 h-16 bg-black text-white rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-center hover:scale-110 transition-all group"
+             className="pointer-events-auto w-20 h-20 bg-black text-white shadow-[0_30px_60px_rgba(0,0,0,0.4)] flex items-center justify-center hover:bg-neutral-800 transition-all group"
           >
-            <i className="fas fa-plus text-lg"></i>
+            <i className="fas fa-plus text-xl"></i>
           </button>
       </div>
 
-      {/* Hero Header */}
-      <div className="text-center mb-24 pt-12">
-        <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em] mb-4">ARCHIVE OF MOMENTS</p>
-        <h1 className="text-5xl font-black text-black uppercase tracking-tight">TIMELINE</h1>
-        <div className="w-16 h-1 bg-black mx-auto mt-8 opacity-10"></div>
+      {/* Hero Header - ARCHIVE STYLE */}
+      <div className="text-center mb-32 pt-20">
+        <div className="flex flex-col items-center gap-6">
+          <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.6em]">INDEX_VERSION_2.0 // RELATIONSHIP_CHRONICLE</p>
+          <h1 className="text-7xl font-black text-black uppercase tracking-extratight leading-none">ARCHIVE_MOMENTS</h1>
+          <div className="flex items-center gap-10 mt-12 opacity-10">
+            <div className="w-32 h-[1px] bg-black"></div>
+            <div className="text-[10px] font-black tracking-[0.4em]">SYSTEM_STABLE</div>
+            <div className="w-32 h-[1px] bg-black"></div>
+          </div>
+        </div>
       </div>
 
       <div className="w-full flex justify-center pt-10 px-4 relative">
@@ -290,22 +296,22 @@ const Timeline: React.FC<TimelineProps> = ({
                     d={timelineLayout.path}
                     fill="none"
                     stroke="black"
-                    strokeWidth="1"
-                    strokeOpacity="0.05"
+                    strokeWidth="0.5"
+                    strokeOpacity="0.08"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 2, ease: "easeInOut" }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
                  />
                  <motion.path 
                     d={timelineLayout.path}
                     fill="none"
                     stroke="black"
                     strokeWidth="1"
-                    strokeDasharray="4 8"
-                    strokeOpacity="0.1"
+                    strokeDasharray="1 10"
+                    strokeOpacity="0.2"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 3, ease: "easeInOut" }}
+                    transition={{ duration: 2.5, ease: "linear" }}
                  />
               </svg>
 
@@ -313,8 +319,8 @@ const Timeline: React.FC<TimelineProps> = ({
               {timelineLayout.nowY > 0 && (
                  <div className="absolute w-full z-0 flex items-center justify-center" style={{ top: timelineLayout.nowY }}>
                     <div className="h-[1px] bg-black/5 w-full absolute"></div>
-                    <div className="bg-white px-4 py-1 border border-black/5 rounded-pill shadow-sm">
-                       <span className="text-[8px] font-black text-black/30 uppercase tracking-[0.3em]">PRESENT DAY</span>
+                    <div className="bg-black px-6 py-2 shadow-2xl border border-black/5">
+                       <span className="text-[9px] font-black text-white uppercase tracking-[0.4em]">CURRENT_T_ZERO</span>
                     </div>
                  </div>
               )}
@@ -332,39 +338,39 @@ const Timeline: React.FC<TimelineProps> = ({
                      className="absolute z-10"
                      style={{ top: item.y, left: item.x, transform: 'translate(-50%, -50%)' }}
                    >
-                     {/* Pivot point */}
-                     <div className={`w-3 h-3 rounded-full border border-white shadow-xl bg-black relative z-40 ${isAnniv ? 'scale-150 bg-black' : ''}`}>
-                        {isAnniv && <div className="absolute inset-0 animate-ping bg-black/20 rounded-full"></div>}
-                     </div>
-
-                     {/* Content Card */}
-                     <div 
-                        className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-6 group cursor-pointer ${item.isRightSide ? 'flex-row left-8' : 'flex-row-reverse right-8'}`}
-                        onClick={() => !isAnniv && setActiveItem(item)}
-                     >
-                        <div className={`h-px w-8 bg-black/10`} />
-                        
-                        <div className="bg-white/60 backdrop-blur-md p-4 rounded-clay shadow-sm border border-white/20 min-w-[180px] max-w-[280px] hover:shadow-2xl hover:bg-white transition-all duration-700 group">
-                           <div className="flex justify-between items-center mb-3">
-                              <span className="text-[9px] font-black text-black/20 uppercase tracking-[0.2em]">
-                                {format(item.timestamp, 'MMM dd, yyyy')}
-                              </span>
-                           </div>
-                           
-                           <h3 className={`text-[11px] font-black uppercase tracking-tight leading-relaxed ${isAnniv ? 'text-black' : 'text-black/60'}`}>
-                             {item.text}
-                           </h3>
-
-                           {item.media?.url && (
-                             <div className="mt-4 rounded-xl overflow-hidden aspect-[4/3] bg-black/5">
-                                <img 
-                                  src={item.media.url} 
-                                  className="w-full h-full object-cover grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000" 
-                                />
-                             </div>
-                           )}
-                        </div>
-                     </div>
+                      {/* Pivot point */}
+                      <div className={`w-2 h-2 border border-black/10 bg-black relative z-40 ${isAnniv ? 'scale-[2.5] outline outline-offset-4 outline-black/5' : ''}`}>
+                         {isAnniv && <div className="absolute inset-0 animate-ping bg-black/20"></div>}
+                      </div>
+ 
+                      {/* Content Card */}
+                      <div 
+                         className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-12 group cursor-pointer ${item.isRightSide ? 'flex-row left-12' : 'flex-row-reverse right-12'}`}
+                         onClick={() => !isAnniv && setActiveItem(item)}
+                      >
+                         <div className={`h-[1px] w-12 bg-black/10`} />
+                         
+                         <div className="bg-white border border-black/5 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.05)] min-w-[220px] max-w-[320px] transition-all duration-700 hover:shadow-2xl hover:border-black group">
+                            <div className="flex justify-between items-center mb-6">
+                               <span className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">
+                                 DATA.ENTRY::{format(item.timestamp, 'yy.MM.dd').toUpperCase()}
+                               </span>
+                            </div>
+                            
+                            <h3 className={`text-[12px] font-black uppercase tracking-extratight leading-relaxed ${isAnniv ? 'text-black' : 'text-black/60 group-hover:text-black transition-colors'}`}>
+                              {item.text}
+                            </h3>
+ 
+                            {item.media?.url && (
+                              <div className="mt-8 overflow-hidden aspect-[4/5] bg-black/[0.02] border border-black/5">
+                                 <img 
+                                   src={item.media.url} 
+                                   className="w-full h-full object-cover grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-1000" 
+                                 />
+                              </div>
+                            )}
+                         </div>
+                      </div>
                    </motion.div>
                  );
               })}

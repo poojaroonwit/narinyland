@@ -39,7 +39,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
-      alert("PROMPT: SYSTEM REQUIRES .GLB OR .GLTF");
+      alert("SIGNAL_ERROR: ARCHIVE_REQUIRES_.GLB_OR_.GLTF");
       return;
     }
     const customItem = SHOP_ITEMS.find(i => i.id === 'custom-3d');
@@ -58,7 +58,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
       const uploadResult = await uploadAPI.upload(file, 'models');
       await onPurchase({ ...customItem, modelUrl: uploadResult.url });
     } catch (err) {
-      alert("UPLOAD FAILURE");
+      alert("SIGNAL_ERROR: TRANSFER_FAILURE");
     } finally {
       setPurchasingId(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -88,28 +88,28 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 
   if (compact) {
     return (
-      <div className="space-y-3 font-geist">
+      <div className="space-y-4 font-geist">
         {SHOP_ITEMS.map(item => (
           <motion.div
             key={item.id}
-            whileHover={{ scale: 1.02 }}
-            className="bg-white/60 backdrop-blur-md rounded-clay p-4 border border-white/20 flex items-center gap-4 group transition-all duration-500"
+            whileHover={{ x: 4 }}
+            className="bg-black/[0.02] border border-black/5 p-5 flex items-center gap-6 group transition-all duration-500"
           >
-            <div className="text-xl w-12 h-12 bg-black/5 rounded-xl flex items-center justify-center shrink-0 grayscale group-hover:grayscale-0 transition-all">{item.icon}</div>
+            <div className="text-2xl w-14 h-14 bg-white border border-black/5 flex items-center justify-center shrink-0 grayscale group-hover:grayscale-0 transition-all">{item.icon}</div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-black text-black text-[11px] truncate uppercase tracking-tight">{item.name}</h4>
-              <div className="text-black/30 text-[9px] font-black uppercase tracking-widest mt-1">
-                {item.price} CREDITS
+              <h4 className="font-black text-black text-[11px] truncate uppercase tracking-widest leading-none">{item.name}</h4>
+              <div className="text-black/20 text-[8px] font-black uppercase tracking-[0.3em] mt-2">
+                COST_UNIT::{item.price}
               </div>
             </div>
             <button
               onClick={() => handleBuy(item)}
               disabled={points < item.price || purchasingId === item.id}
-              className={`px-4 py-2 rounded-pill text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${
+              className={`px-6 py-3 text-[9px] font-black uppercase tracking-[0.4em] transition-all shrink-0 ${
                 purchasingId === item.id
-                  ? 'bg-black/10 text-black/20'
+                  ? 'bg-black/5 text-black/10'
                   : points >= item.price
-                    ? 'bg-black text-white hover:shadow-xl'
+                    ? 'bg-black text-white hover:bg-neutral-800'
                     : 'bg-black/5 text-black/10'
               }`}
             >
@@ -123,49 +123,55 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col items-center font-geist">
-      <div className="w-full p-8 flex flex-col">
-        <div className="flex justify-between items-end mb-16">
-          <div>
-            <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em] mb-4">EXCHANGE</p>
-            <h2 className="text-4xl font-black text-black uppercase tracking-tight">MARKETPLACE</h2>
+    <div className="w-full max-w-6xl mx-auto flex flex-col items-center font-geist">
+      <div className="w-full p-10 flex flex-col">
+        <div className="flex justify-between items-end mb-24">
+          <div className="space-y-4">
+             <div className="flex items-center gap-4">
+               <span className="w-8 h-[1px] bg-black opacity-20"></span>
+               <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.6em]">EXCHANGE_PROTOCOL</p>
+             </div>
+             <h2 className="text-6xl font-black text-black uppercase tracking-extratight leading-none">MARKETPLACE</h2>
           </div>
-          <div className="bg-black text-white px-8 py-4 rounded-pill flex items-center gap-4 shadow-2xl border border-white/10">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">AVAILABLE CREDITS</span>
-            <span className="font-black text-lg">{points}</span>
+          <div className="bg-black text-white px-10 py-6 flex flex-col items-end gap-2 shadow-2xl border border-white/10 rounded-none">
+            <span className="text-[9px] font-black uppercase tracking-[0.5em] opacity-30">CREDIT_BALANCE</span>
+            <span className="font-black text-2xl tracking-tighter leading-none">{points}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {SHOP_ITEMS.map(item => (
             <motion.div 
               key={item.id}
-              whileHover={{ scale: 1.02, y: -4 }}
-              className="bg-white/60 backdrop-blur-md rounded-clay p-8 border border-white/20 shadow-sm flex flex-col justify-between hover:shadow-2xl transition-all duration-700 group"
+              whileHover={{ y: -8 }}
+              className="bg-white border border-black/5 p-12 shadow-[0_40px_80px_rgba(0,0,0,0.05)] flex flex-col justify-between hover:border-black hover:shadow-2xl transition-all duration-700 group rounded-none"
             >
               <div>
-                <div className="text-5xl text-center mb-8 grayscale group-hover:grayscale-0 transition-all duration-700">{item.icon}</div>
-                <h3 className="font-black text-black text-xs uppercase tracking-widest mb-4">{item.name}</h3>
-                <p className="text-[10px] text-black/40 font-bold leading-relaxed uppercase tracking-[0.05em] h-12 overflow-hidden">{item.description}</p>
+                <div className="text-6xl text-center mb-12 grayscale group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-110">{item.icon}</div>
+                <div className="space-y-4">
+                   <h3 className="font-black text-black text-sm uppercase tracking-[0.2em]">{item.name}</h3>
+                   <div className="w-6 h-[1px] bg-black opacity-10"></div>
+                   <p className="text-[11px] text-black/40 font-black leading-relaxed uppercase tracking-[0.1em] h-14 overflow-hidden">{item.description}</p>
+                </div>
               </div>
               
-              <div className="mt-8 pt-8 border-t border-black/5 flex items-center justify-between">
-                <div className="text-black/60 font-black text-xs">
-                  {item.price} <span className="text-[8px] opacity-30">PTS</span>
+              <div className="mt-12 pt-10 border-t border-black/5 flex items-center justify-between">
+                <div className="text-black/10 font-black text-sm tracking-tighter">
+                  <span className="text-black">{item.price}</span>_UNIT
                 </div>
                 
                 <button
                   onClick={() => handleBuy(item)}
                   disabled={points < item.price || purchasingId === item.id}
-                  className={`px-6 py-2.5 rounded-pill text-[9px] font-black uppercase tracking-widest transition-all ${
+                  className={`px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] transition-all ${
                     purchasingId === item.id
-                      ? 'bg-black/10 text-black/20'
+                      ? 'bg-black/[0.02] text-black/10'
                       : points >= item.price
-                        ? 'bg-black text-white hover:shadow-2xl'
-                        : 'bg-black/5 text-black/10'
+                        ? 'bg-black text-white hover:bg-neutral-800'
+                        : 'bg-black/[0.02] text-black/10'
                   }`}
                 >
-                  {purchasingId === item.id ? 'PROCESSING' : 'ACQUIRE'}
+                  {purchasingId === item.id ? 'PROTOCOL_BUSY' : 'ACQUIRE_ASSET'}
                 </button>
               </div>
             </motion.div>

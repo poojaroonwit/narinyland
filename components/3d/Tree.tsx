@@ -15,18 +15,18 @@ function seededRandom(seed: number) {
 // Heart Fruit component
 const HeartFruit = ({ position, color, scale = 1 }: { position: [number, number, number], color: string, scale?: number }) => {
     return (
-        <group position={position} scale={[0.15 * scale, 0.15 * scale, 0.15 * scale]}>
+        <group position={position} scale={[0.1 * scale, 0.1 * scale, 0.1 * scale]}>
             <mesh rotation={[0, 0, Math.PI / 4]}>
                 <boxGeometry args={[1, 1, 0.5]} />
-                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
+                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.1} transparent opacity={0.8} />
             </mesh>
             <mesh position={[0.35, 0.35, 0]}>
-                <sphereGeometry args={[0.5, 12, 12]} />
-                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
+                <sphereGeometry args={[0.5, 8, 8]} />
+                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.1} transparent opacity={0.8} />
             </mesh>
             <mesh position={[-0.35, 0.35, 0]}>
-                <sphereGeometry args={[0.5, 12, 12]} />
-                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
+                <sphereGeometry args={[0.5, 8, 8]} />
+                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.1} transparent opacity={0.8} />
             </mesh>
         </group>
     );
@@ -173,7 +173,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
             pos.push({
                 position: [lx, ly, lz] as [number, number, number],
                 scale: 0.20 + r1 * 0.25,
-                color: getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
+                color: theme.grid ? theme.leaves[Math.floor(r2 * theme.leaves.length)] : getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
                 offset: r3 * Math.PI * 2,
                 rotX: r4 * Math.PI * 2,
                 rotY: r2 * Math.PI * 2,
@@ -208,7 +208,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
                     0.05 + curveAmount * 0.1 + Math.sin(phi) * Math.sin(theta) * tipRadius
                 ] as [number, number, number],
                 scale: 0.12 + r1 * 0.15,
-                color: getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
+                color: theme.grid ? theme.leaves[Math.floor(r2 * theme.leaves.length)] : getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
                 offset: r3 * Math.PI * 2,
                 rotX: r1 * Math.PI * 2,
                 rotY: r2 * Math.PI * 2,
@@ -242,7 +242,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
                     -0.08 + curveAmount * 0.15 + Math.sin(phi) * Math.sin(theta) * tipRadius
                 ] as [number, number, number],
                 scale: 0.12 + r1 * 0.15,
-                color: getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
+                color: theme.grid ? theme.leaves[Math.floor(r2 * theme.leaves.length)] : getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
                 offset: r3 * Math.PI * 2,
                 rotX: r1 * Math.PI * 2,
                 rotY: r2 * Math.PI * 2,
@@ -391,7 +391,7 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
         const spread = 0.8 + seededRandom(i * 11.3) * 1.5;
         return {
             position: [Math.cos(angle) * spread, height, Math.sin(angle) * spread] as [number, number, number],
-            color: i % 2 === 0 ? '#ff4d6d' : '#ff758f'
+            color: theme.grid ? theme.leaves[0] : (i % 2 === 0 ? '#ff4d6d' : '#ff758f')
         };
     });
   }, [leafCount]);
@@ -428,10 +428,10 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
       const posZ = Math.sin(angle) * radius + crownAsymmetry.asymmetryZ * (1 - heightInCrown) + crownAsymmetry.crownLean * Math.sin(angle);
       
       clusters.push({
-        position: [posX, crownY, posZ] as [number, number, number],
-        scale: (0.6 + r1 * 0.7) * (1 - heightInCrown * 0.4) * (1 + r4 * 0.2),
-        color: getSeasonalLeafColor(theme.leaves[i % theme.leaves.length], season),
-      });
+          position: [posX, crownY, posZ] as [number, number, number],
+          scale: (0.6 + r1 * 0.7) * (1 - heightInCrown * 0.4) * (1 + r4 * 0.2),
+          color: theme.grid ? theme.leaves[i % theme.leaves.length] : getSeasonalLeafColor(theme.leaves[i % theme.leaves.length], season),
+        });
     }
     return clusters;
   }, [isLow, isMid, theme.leaves, crownAsymmetry, season]);
@@ -474,7 +474,7 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
           Math.sin(angle) * dist
         ] as [number, number, number],
         scale: 0.12 + r1 * 0.18,
-        color: getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
+        color: theme.grid ? theme.leaves[Math.floor(r2 * theme.leaves.length)] : getSeasonalLeafColor(theme.leaves[Math.floor(r2 * theme.leaves.length)], season),
         offset: r3 * Math.PI * 2,
         rotX: r4 * Math.PI * 2,
         rotY: r2 * Math.PI * 2,

@@ -116,27 +116,27 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
       initial={isInline ? { opacity: 0 } : { x: "100%" }}
       animate={{ x: 0, opacity: 1 }}
       exit={isInline ? { opacity: 0 } : { x: "100%" }}
-      className={`${isInline ? 'w-full h-full max-w-4xl mx-auto rounded-clay border border-black/5' : 'bg-white w-full md:w-[500px] h-full shadow-2xl'} overflow-hidden flex flex-col font-geist relative`}
+      className={`${isInline ? 'w-full h-full max-w-4xl mx-auto border border-black/5 shadow-sm' : 'bg-white w-full md:w-[600px] h-full shadow-2xl'} overflow-hidden flex flex-col font-geist relative`}
       onClick={e => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="bg-white border-b border-black/5 p-8 flex justify-between items-center z-20">
-        <div className="flex items-center gap-6">
+      <div className="bg-white border-b border-black/5 p-10 flex justify-between items-end z-20">
+        <div className="flex items-center gap-10">
           <button 
             onClick={() => {
               if (view !== 'list') setView('list');
               else onClose();
             }} 
-            className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-all"
+            className="w-14 h-14 flex items-center justify-center bg-black/5 hover:bg-black text-black hover:text-white transition-all border border-black/5"
           >
-            <i className={`fas ${view === 'list' ? 'fa-times' : 'fa-arrow-left'} text-xs text-black/40`}></i>
+            <i className={`fas ${view === 'list' ? 'fa-times' : 'fa-arrow-left'} text-xs`}></i>
           </button>
-          <div className="space-y-1">
-            <p className="text-[9px] font-black text-black opacity-20 uppercase tracking-[0.5em]">
-              {view === 'list' ? 'ARCHIVE' : view === 'compose' ? 'CREATE' : 'READING'}
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.6em]">
+              {view === 'list' ? 'REPOSITORY_ACCESS' : view === 'compose' ? 'NEW_ENCRYPTION' : 'LOG_DECRYPTION'}
             </p>
-            <h2 className="font-black text-xl text-black uppercase tracking-tight">
-              {view === 'list' ? 'MESSAGES' : view === 'compose' ? 'NEW RECORD' : 'LOG ENTRY'}
+            <h2 className="font-black text-2xl text-black uppercase tracking-extratight leading-none">
+              {view === 'list' ? 'MESSAGES' : view === 'compose' ? 'CREATE_ENTRY' : 'ARCHIVE_VIEW'}
             </h2>
           </div>
         </div>
@@ -145,22 +145,22 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
       {/* --- LIST VIEW --- */}
       {view === 'list' && (
         <div className="flex flex-col h-full bg-white">
-          <div className="flex gap-4 p-4 overflow-x-auto no-scrollbar border-b border-black/5">
+          <div className="flex p-6 overflow-x-auto no-scrollbar border-b border-black/5 bg-black/[0.02]">
             {folders.map(f => (
               <button 
                 key={f}
                 onClick={() => setCurrentFolder(f)}
-                className={`px-6 py-2.5 rounded-pill text-[9px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${currentFolder === f ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'}`}
+                className={`px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all whitespace-nowrap ${currentFolder === f ? 'bg-black text-white shadow-2xl' : 'text-black/20 hover:text-black/40'}`}
               >
                 {f}
               </button>
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 space-y-6">
+          <div className="flex-1 overflow-y-auto p-10 space-y-10">
             {messages.filter(m => (m.folder || 'Inbox') === currentFolder).length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full opacity-20">
-                <p className="text-[10px] font-black uppercase tracking-[0.5em]">ZERO ARCHIVES</p>
+              <div className="flex flex-col items-center justify-center h-full opacity-10">
+                <p className="text-[12px] font-black uppercase tracking-[0.8em]">NULL_ARCHIVE_RETURNED</p>
               </div>
             ) : (
               [...messages]
@@ -173,30 +173,29 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                     <motion.div
                       key={msg.id}
                       layout
-                      whileHover={{ x: 4 }}
                       onClick={() => {
                         if (isLocked) return;
                         if (!msg.isRead && onUpdateMessage) onUpdateMessage({ ...msg, isRead: true });
                         setSelectedMessage(msg);
                         setView('read');
                       }}
-                      className="group cursor-pointer flex items-center gap-8 py-4 border-b border-black/5 last:border-0"
+                      className="group cursor-pointer flex items-center gap-10 py-6 border-b border-black/5 last:border-0 hover:bg-black/[0.01] transition-all -mx-10 px-10"
                     >
-                      <div className="w-14 h-14 bg-black/5 rounded-xl flex items-center justify-center text-2xl grayscale group-hover:grayscale-0 transition-all flex-shrink-0">
+                      <div className="w-16 h-16 bg-black/[0.02] border border-black/5 flex items-center justify-center text-3xl grayscale group-hover:grayscale-0 transition-all flex-shrink-0">
                         {isLocked ? '🔒' : getPartnerAvatar(msg.fromId)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-end mb-1">
-                          <h4 className="text-[11px] font-black text-black uppercase tracking-tight">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex justify-between items-end">
+                          <h4 className="text-[13px] font-black text-black uppercase tracking-tight">
                             {getPartnerName(msg.fromId)}
-                            {isUnread && <span className="ml-2 w-2 h-2 bg-black rounded-full inline-block"></span>}
+                            {isUnread && <span className="ml-3 w-1.5 h-1.5 bg-black inline-block animate-pulse"></span>}
                           </h4>
-                          <span className="text-[8px] font-black text-black/20 uppercase tracking-widest">
-                            {new Date(msg.timestamp).toLocaleDateString()}
+                          <span className="text-[9px] font-black text-black/20 uppercase tracking-[0.3em]">
+                            {format(new Date(msg.timestamp), 'yy.MM.dd').toUpperCase()}
                           </span>
                         </div>
-                        <p className="text-[10px] font-bold text-black/40 truncate uppercase tracking-widest">
-                          {isLocked ? `LOCKED UNTIL ${new Date(msg.unlockDate).toLocaleDateString()}` : (msg.content || 'RECORD ATTACHED')}
+                        <p className="text-[10px] font-black text-black/40 truncate uppercase tracking-[0.2em] leading-none">
+                          {isLocked ? `ACCESS_LOCKED::UNL_DATE_${format(new Date(msg.unlockDate), 'yy.MM.dd').toUpperCase()}` : (msg.content || 'ATTACHMENT_PROTOCOL')}
                         </p>
                       </div>
                     </motion.div>
@@ -207,57 +206,57 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
           
           <button
             onClick={() => setView('compose')}
-            className="absolute bottom-10 right-10 w-16 h-16 bg-black text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-30 border border-white/10"
+            className="absolute bottom-12 right-12 w-20 h-20 bg-black text-white shadow-[0_30px_60px_rgba(0,0,0,0.4)] flex items-center justify-center hover:bg-neutral-800 transition-all z-30 border border-white/10"
           >
-            <i className="fas fa-plus"></i>
+            <i className="fas fa-plus text-xl"></i>
           </button>
         </div>
       )}
 
       {/* --- COMPOSE VIEW --- */}
       {view === 'compose' && (
-        <div className="flex-1 p-8 bg-white flex flex-col gap-10 overflow-y-auto">
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em]">SOURCE</label>
-            <div className="flex bg-black/5 p-1.5 rounded-pill overflow-x-auto max-w-full">
+        <div className="flex-1 p-12 bg-white flex flex-col gap-12 overflow-y-auto">
+          <div className="space-y-6">
+            <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.6em]">IDENT_SOURCE</label>
+            <div className="flex bg-black/[0.02] border border-black/5 p-2">
               {partnerEntries.map(([id, p]) => (
                 <button 
                   key={id}
                   onClick={() => setComposeFrom(id)} 
-                  className={`flex-1 py-3 px-4 rounded-pill text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${composeFrom === id ? 'bg-black text-white shadow-xl' : 'text-black/30'}`}
+                  className={`flex-1 py-4 px-6 text-[10px] font-black transition-all uppercase tracking-[0.3em] whitespace-nowrap ${composeFrom === id ? 'bg-black text-white shadow-2xl' : 'text-black/20 hover:text-black/40'}`}
                 >
                   {p.name.toUpperCase()}
                 </button>
               ))}
             </div>
           </div>
-
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em]">RESTRICTION DATE</label>
+ 
+          <div className="space-y-6">
+            <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.6em]">SYSTEM_RESTRICTION_DATE</label>
             <DatePicker
               selected={new Date(composeDate)}
               onChange={(date: Date | null) => date && setComposeDate(date.toISOString().slice(0, 16))}
               showTimeSelect
-              className="w-full bg-black/5 border border-transparent rounded-clay p-4 text-[11px] font-black uppercase tracking-widest focus:bg-white focus:border-black outline-none transition-all"
+              className="w-full bg-black/[0.02] border border-black/5 p-6 text-[12px] font-black uppercase tracking-[0.3em] focus:bg-white focus:border-black outline-none transition-all"
             />
           </div>
-
-          <div className="space-y-4 flex-1 flex flex-col">
-            <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em]">ENCRYPTION CONTENT</label>
+ 
+          <div className="space-y-6 flex-1 flex flex-col">
+            <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.6em]">ENCRYPTION_CONTENT</label>
             <textarea 
               value={composeContent}
               onChange={(e) => setComposeContent(e.target.value)}
-              className="w-full h-full bg-black/5 border border-transparent rounded-clay p-6 text-[12px] font-black uppercase tracking-wider leading-relaxed focus:bg-white focus:border-black outline-none transition-all resize-none shadow-inner"
-              placeholder="INPUT LOG DATA..."
+              className="w-full h-full bg-black/[0.02] border border-black/5 p-8 text-[14px] font-black uppercase tracking-extratight leading-relaxed focus:bg-white focus:border-black outline-none transition-all resize-none shadow-inner"
+              placeholder="ENTER_LOG_DATA..."
             />
           </div>
-
+ 
           <button 
             onClick={handleSend}
             disabled={!composeContent.trim() && !composeMedia}
-            className="w-full py-6 bg-black text-white font-black rounded-clay shadow-2xl hover:bg-black/80 transition-all disabled:opacity-20 uppercase tracking-[0.3em] text-[11px]"
+            className="w-full py-8 bg-black text-white font-black shadow-[0_40px_80px_rgba(0,0,0,0.4)] hover:bg-neutral-800 transition-all disabled:opacity-20 uppercase tracking-[0.6em] text-[12px]"
           >
-            TRANSMIT RECORD
+            TRANSMIT_RECORD::FINAL
           </button>
         </div>
       )}
@@ -271,35 +270,35 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-[50] bg-white flex flex-col p-8 md:p-12 overflow-y-auto"
           >
-            <div className="flex justify-between items-start mb-20">
-              <div className="space-y-2">
-                <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em]">LOG {selectedMessage.id}</p>
-                <p className="text-[11px] font-black text-black uppercase tracking-widest">FROM: {getPartnerName(selectedMessage.fromId).toUpperCase()}</p>
-                <p className="text-[9px] font-black text-black/30 uppercase tracking-[0.2em]">{new Date(selectedMessage.timestamp).toLocaleString().toUpperCase()}</p>
+            <div className="flex justify-between items-start mb-32">
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.8em]">RECORD_AUTH::{selectedMessage.id}</p>
+                <p className="text-[14px] font-black text-black uppercase tracking-[0.4em]">FROM_ID:: {getPartnerName(selectedMessage.fromId).toUpperCase()}</p>
+                <div className="bg-black/5 px-6 py-2 text-[10px] font-black text-black uppercase tracking-[0.3em] inline-block">{format(new Date(selectedMessage.timestamp), 'yy.MM.dd // HH:mm:ss').toUpperCase()}</div>
               </div>
               <button 
                 onClick={() => setView('list')}
-                className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-all"
+                className="w-16 h-16 flex items-center justify-center bg-black/5 hover:bg-black text-black hover:text-white transition-all border border-black/5"
               >
-                <i className="fas fa-times text-xs text-black/40"></i>
+                <i className="fas fa-times text-xs"></i>
               </button>
             </div>
-
-            <div className="flex-1 max-w-lg mx-auto w-full">
+ 
+            <div className="flex-1 max-w-2xl mx-auto w-full space-y-20">
                {selectedMessage.media && (
-                 <div className="mb-12 rounded-clay overflow-hidden grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all duration-1000 shadow-2xl border border-black/5">
+                 <div className="rounded-none overflow-hidden grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-1000 shadow-2xl border border-black/5">
                    {selectedMessage.media.type === 'image' && <img src={selectedMessage.media.url} className="w-full object-cover" />}
                    {selectedMessage.media.type === 'video' && <video src={selectedMessage.media.url} controls className="w-full h-auto" />}
                    {selectedMessage.media.type === 'audio' && <audio src={selectedMessage.media.url} controls className="w-full" />}
                  </div>
                )}
-               <div className="text-xl font-black text-black uppercase tracking-tight leading-relaxed whitespace-pre-wrap">
+               <div className="text-2xl font-black text-black uppercase tracking-extratight leading-snug whitespace-pre-wrap">
                   {selectedMessage.content}
                </div>
             </div>
-
-            <div className="mt-20 pt-10 border-t border-black/5 text-center">
-              <p className="text-[9px] font-black text-black/20 uppercase tracking-[0.8em]">END OF ARCHIVE</p>
+ 
+            <div className="mt-40 py-20 border-t border-black/10 text-center">
+              <p className="text-[10px] font-black text-black/20 uppercase tracking-[1em]">SYSTEM_END_OF_ARCHIVE</p>
             </div>
           </motion.div>
         )}

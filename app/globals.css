@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-  /* Kriss.ai inspired minimalist palette */
-  --background-start: #EAE6E1; /* Slight warm off-white */
-  --background-end: #F4F2F0;
-  --foreground: #111111;
+  /* Digital Archive pure monochromatic palette */
+  --background-start: #ffffff; 
+  --background-end: #f8f8f8;
+  --foreground: #000000;
   --primary: #000000;
-  --secondary: #2C2C2C;
-  --accent: #000000;
-  --glass-bg: rgba(255, 255, 255, 0.4);
-  --glass-border: rgba(0, 0, 0, 0.05);
-  --blur-amount: 20px;
+  --secondary: #121212;
+  --accent: #242424;
+  --glass-bg: rgba(255, 255, 255, 0.3);
+  --glass-border: rgba(0, 0, 0, 0.04);
+  --blur-amount: 32px; /* Stronger blur for premium feel */
 
   /* Z-index management */
   --z-index-base: 1;
@@ -58,12 +58,9 @@
       border: 1px solid var(--glass-border);
   }
 
-  /* Claymorphism removed in favor of minimalist flat UI */
+  /* Legacy Claymorphism refactored to Archive Grid */
   .clay-morphism {
-      background: #ffffff;
-      border: 1px solid rgba(0, 0, 0, 0.05);
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      @apply bg-white border border-black/10 shadow-sm rounded-none;
   }
 
   .pill-button {
@@ -86,6 +83,19 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     line-height: 1.6;
+    letter-spacing: -0.01em;
+}
+
+@layer utilities {
+  .tracking-extratight {
+    letter-spacing: -0.05em;
+  }
+}
+
+@layer components {
+  .premium-label {
+    @apply inline-flex items-center gap-2 border border-black/10 bg-white/50 backdrop-blur-md text-black px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-none;
+  }
 }
 
 /* Animations */

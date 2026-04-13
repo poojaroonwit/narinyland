@@ -7,9 +7,12 @@ import { Detailed } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Simplified Flower Content for LOD
-export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high', seed }: any) => {
+export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high', seed, theme }: any) => {
     const groupRef = useRef<THREE.Group>(null);
-    const stemColor = "#15803d";
+    const isArchive = theme && theme.grid;
+    const stemColor = isArchive ? theme.trunk : "#15803d";
+    const highlightColor = isArchive ? theme.leaves[0] : null;
+    const secondaryColor = isArchive ? theme.leaves[2] : null;
     
     useFrame((state) => {
         if (groupRef.current && detail !== 'low') {
@@ -73,14 +76,18 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                             <meshStandardMaterial color={stemColor} />
                                         </mesh>
                                         
-                                        {/* Petals */}
+                                         {/* Petals */}
                                         {Array.from({ length: isLow ? 6 : (isMid ? 10 : 12) }).map((_, i) => {
                                             const step = isLow ? 6 : (isMid ? 10 : 12);
                                             return (
                                                 <mesh key={i} rotation={[0, 0, (i / step) * Math.PI * 2]} position={[0, 0, 0]}>
                                                     <mesh position={[0.18, 0, 0]}>
                                                         <sphereGeometry args={[0.1, 6, 4]} scale={[1.8, 0.4, 1]} />
-                                                        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={0.2} />
+                                                        <meshStandardMaterial 
+                                                            color={isArchive ? highlightColor : "#fbbf24"} 
+                                                            emissive={isArchive ? highlightColor : "#d97706"} 
+                                                            emissiveIntensity={isArchive ? 0.05 : 0.2} 
+                                                        />
                                                     </mesh>
                                                 </mesh>
                                             )
@@ -88,7 +95,7 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                         {/* Center */}
                                         <mesh position={[0, 0, 0.03]}>
                                             <circleGeometry args={[0.14, isLow ? 6 : 16]} />
-                                            <meshStandardMaterial color="#451a03" roughness={1} />
+                                            <meshStandardMaterial color={isArchive ? secondaryColor : "#451a03"} roughness={1} />
                                         </mesh>
                                         {/* Seeds Detail */}
                                         {detail === 'high' && (
@@ -123,10 +130,10 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                      {/* Flower Head */}
                                      <group position={[0, 0.12, 0]}>
                                         <group scale={[1, 1, 1]}>
-                                            {/* Main Cup */}
+                                             {/* Main Cup */}
                                             <mesh position={[0, 0.08, 0]}>
                                                 <cylinderGeometry args={[0.04, 0.07, 0.12, isLow ? 5: 8, 1, true]} />
-                                                <meshStandardMaterial color="#be123c" side={THREE.DoubleSide} />
+                                                <meshStandardMaterial color={isArchive ? highlightColor : "#be123c"} side={THREE.DoubleSide} />
                                             </mesh>
                                             {/* Petals */}
                                             {[0, 1, 2].map((i) => (
@@ -136,7 +143,12 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                                     position={[Math.sin(i * (Math.PI * 2 / 3)) * 0.03, 0.1, Math.cos(i * (Math.PI * 2 / 3)) * 0.03]}
                                                 >
                                                     <sphereGeometry args={[0.045, isLow ? 3 : 8, isLow ? 4 : 12, 0, Math.PI * 2, 0, Math.PI/2]} />
-                                                    <meshStandardMaterial color="#f43f5e" emissive="#be123c" emissiveIntensity={0.1} side={THREE.DoubleSide} />
+                                                    <meshStandardMaterial 
+                                                        color={isArchive ? highlightColor : "#f43f5e"} 
+                                                        emissive={isArchive ? highlightColor : "#be123c"} 
+                                                        emissiveIntensity={isArchive ? 0.05 : 0.1} 
+                                                        side={THREE.DoubleSide} 
+                                                    />
                                                 </mesh>
                                             ))}
                                         </group>
@@ -176,7 +188,12 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                     ) : (
                                         <torusKnotGeometry args={[0.08, 0.03, 24, 8, 2, 3]} />
                                     )}
-                                    <meshStandardMaterial color={rData.c} roughness={0.3} emissive={rData.c} emissiveIntensity={0.2} />
+                                    <meshStandardMaterial 
+                                        color={isArchive ? highlightColor : rData.c} 
+                                        roughness={0.3} 
+                                        emissive={isArchive ? highlightColor : rData.c} 
+                                        emissiveIntensity={isArchive ? 0.05 : 0.2} 
+                                    />
                                 </mesh>
                                 {/* Leaves */}
                                 {!isLow && (
@@ -200,12 +217,12 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                         {Array.from({ length: isLow ? 3 : 5 }).map((_, i) => (
                             <mesh key={i} rotation={[0, (i / 5) * Math.PI * 2, 0.5]} position={[0, 0, 0]}>
                                 <sphereGeometry args={[0.1, isLow ? 3 : 8, isLow ? 3 : 8]} scale={[1.2, 0.4, 1]} />
-                                <meshStandardMaterial color="#fbcfe8" transparent opacity={0.9} />
+                                <meshStandardMaterial color={isArchive ? highlightColor : "#fbcfe8"} transparent opacity={0.9} />
                             </mesh>
                         ))}
                         <mesh>
                             <sphereGeometry args={[0.04, isLow ? 3 : 8, isLow ? 3 : 8]} />
-                            <meshStandardMaterial color="#f472b6" />
+                            <meshStandardMaterial color={isArchive ? secondaryColor : "#f472b6"} />
                         </mesh>
                     </group>
                 )}
@@ -230,7 +247,11 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                 {Array.from({ length: isLow ? 3 : 7 }).map((_, i) => (
                                     <mesh key={i} position={[0, 0.1 + i * 0.05, 0]}>
                                         <sphereGeometry args={[0.025, 4, 3]} />
-                                        <meshStandardMaterial color="#a78bfa" emissive="#7c3aed" emissiveIntensity={0.3} />
+                                        <meshStandardMaterial 
+                                            color={isArchive ? highlightColor : "#a78bfa"} 
+                                            emissive={isArchive ? highlightColor : "#7c3aed"} 
+                                            emissiveIntensity={isArchive ? 0.05 : 0.3} 
+                                        />
                                     </mesh>
                                 ))}
                             </group>
@@ -241,7 +262,7 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                     <group>
                         <mesh position={[0, 0.1, 0]}>
                             <cylinderGeometry args={[0.12, 0.12, 0.3, isLow ? 4 : 8]} />
-                            <meshStandardMaterial color="#166534" flatShading />
+                            <meshStandardMaterial color={isArchive ? highlightColor : "#166534"} flatShading />
                         </mesh>
                         {/* Spikes - skip on low */}
                         {!isLow && Array.from({ length: 8 }).map((_, i) => (
@@ -255,7 +276,11 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                 {type === 'heart' && (
                     <mesh position={[0, 0, 0]}>
                         <sphereGeometry args={[0.15, isLow ? 6 : 12, isLow ? 6 : 12]} />
-                        <meshStandardMaterial color="#ec4899" emissive="#db2777" emissiveIntensity={0.5} />
+                        <meshStandardMaterial 
+                            color={isArchive ? highlightColor : "#ec4899"} 
+                            emissive={isArchive ? highlightColor : "#db2777"} 
+                            emissiveIntensity={isArchive ? 0.05 : 0.5} 
+                        />
                     </mesh>
                 )}
                 {!['sunflower', 'tulip', 'rose', 'cherry', 'lavender', 'cactus', 'heart'].includes(type) && (
@@ -270,15 +295,15 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
 };
 
 // Flower Wrapper with LOD
-export const Flower = ({ type, position, scale = 1, windFactor = 1, quality = 'medium' }: { type: string, position: [number, number, number], scale?: number, windFactor?: number, quality?: string }) => {
+export const Flower = ({ type, position, scale = 1, windFactor = 1, quality = 'medium', theme }: { type: string, position: [number, number, number], scale?: number, windFactor?: number, quality?: string, theme?: any }) => {
     const seed = useMemo(() => Math.random() * Math.PI * 2, []);
     
     return (
         <group position={position}>
             <Detailed distances={[0, 10, 20]}>
-                <FlowerContent type={type} scale={scale} windFactor={windFactor} quality={quality} detail="high" seed={seed} />
-                <FlowerContent type={type} scale={scale} windFactor={windFactor} quality={quality} detail="medium" seed={seed} />
-                <FlowerContent type={type} scale={scale} windFactor={windFactor} quality={quality} detail="low" seed={seed} />
+                <FlowerContent type={type} scale={scale} windFactor={windFactor} quality={quality} detail="high" seed={seed} theme={theme} />
+                <FlowerContent type={type} scale={scale} windFactor={windFactor} quality={quality} detail="medium" seed={seed} theme={theme} />
+                <FlowerContent type={type} scale={scale} windFactor={windFactor} quality={quality} detail="low" seed={seed} theme={theme} />
             </Detailed>
         </group>
     );

@@ -735,7 +735,7 @@ const Home: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden">
+    <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden bg-[#F7f5f2]">
         {/* Fullscreen Background & Tree/Globe */}
         <div className="fixed inset-0 z-0">
            {worldMode === 'tree' ? (
@@ -1127,48 +1127,147 @@ const Home: React.FC = () => {
              )}
           </div>
 
-          {/* Bottom Navigation Tab Bar */}
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 archive-glass border border-black/10 shadow-sm rounded-none px-6 py-3 flex items-center gap-8 z-[70]">
+          {/* Bottom Navigation Tab Bar - DIGITAL ARCHIVE STYLE */}
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/50 backdrop-blur-xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-none px-12 py-5 flex items-center gap-14 z-[70]">
              <button 
                onClick={() => setActiveTab('home')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
+               className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'home' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
              >
-               <i className="fas fa-home text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
+               <i className={`fas fa-fingerprint transition-all ${activeTab === 'home' ? 'text-lg' : 'text-sm'}`}></i>
+               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Archive</span>
              </button>
-
+ 
              <button 
                onClick={() => setActiveTab('timeline')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
+               className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'timeline' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
              >
-               <i className="fas fa-calendar-alt text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-widest">Timeline</span>
+               <i className={`fas fa-barcode transition-all ${activeTab === 'timeline' ? 'text-lg' : 'text-sm'}`}></i>
+               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Timeline</span>
              </button>
-
+ 
              <button 
                onClick={() => setActiveTab('coupons')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
+               className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'coupons' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
              >
-               <i className="fas fa-ticket-alt text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-widest">Coupons</span>
+               <i className={`fas fa-terminal transition-all ${activeTab === 'coupons' ? 'text-lg' : 'text-sm'}`}></i>
+               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Utility</span>
              </button>
-
+ 
              <button 
                onClick={() => setActiveTab('letters')}
-               className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-black scale-110' : 'text-black/40 hover:text-black/80'}`}
+               className={`flex flex-col items-center gap-2 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
              >
-               <i className="fas fa-envelope text-xl"></i>
-               <span className="text-[10px] font-bold uppercase tracking-widest">Letters</span>
+               <i className={`fas fa-folder-open transition-all ${activeTab === 'letters' ? 'text-lg' : 'text-sm'}`}></i>
+               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Records</span>
                {loveLetters.filter(l => !l.isRead).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] w-4 h-4 flex items-center justify-center font-bold shadow-sm">
+                  <span className="absolute -top-1 -right-4 bg-black text-white text-[8px] px-2 py-0.5 font-black shadow-sm">
                     {loveLetters.filter(l => !l.isRead).length}
                   </span>
                )}
-             </button>
+                 {/* Config & Top Menu - Persistently Visible */}
+       <div className="fixed top-8 right-8 md:right-14 flex items-center gap-4 z-[60]">
+ 
+          {/* World Config button + popover */}
+          <div className="relative">
+            <button
+              onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
+              className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none group ${
+                isWorldConfigOpen ? 'bg-black text-white' : 'bg-white/50 text-black hover:bg-black hover:text-white'
+              }`}
+            >
+              <i className={`fas ${isWorldConfigOpen ? 'fa-times' : 'fa-sliders-h'} text-[10px]`}></i>
+              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-black opacity-20 group-hover:opacity-100"></div>
+            </button>
+ 
+            <AnimatePresence>
+              {isWorldConfigOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close world config"
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => { setIsWorldConfigOpen(false); setLandSearch(''); }}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full right-0 mt-4 z-50 w-64 rounded-none bg-white/90 backdrop-blur-2xl border border-black/10 shadow-[0_30px_60px_rgba(0,0,0,0.15)] p-6 space-y-6 text-black overflow-hidden"
+                  >
+                    {/* View mode toggle */}
+                    <div className="flex gap-1 bg-black/5 rounded-none p-1">
+                      <button
+                        onClick={() => setWorldMode('tree')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
+                          worldMode === 'tree' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
+                        }`}
+                      >
+                         Garden.exe
+                      </button>
+                      <button
+                        onClick={() => setWorldMode('globe')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
+                          worldMode === 'globe' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
+                        }`}
+                      >
+                         Globe.exe
+                      </button>
+                    </div>
+ 
+                    {/* World list */}
+                    {circles.length > 0 && (
+                      <div>
+                        <p className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20 mb-3 ml-1">Archive_Indices</p>
+                        <div className="space-y-1 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                          {circles.map(circle => (
+                            <button
+                              key={circle.id}
+                              onClick={async () => {
+                                if (circle.id !== activeCircleId) {
+                                  await setActiveCircle(circle.id);
+                                  showToast(`Switched to ${circle.name}!`);
+                                }
+                                setIsWorldConfigOpen(false);
+                                setLandSearch('');
+                              }}
+                              className={`w-full flex items-center gap-4 px-4 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all text-left group ${
+                                circle.id === activeCircleId
+                                  ? 'bg-black text-white'
+                                  : 'text-black/40 hover:bg-black/5 hover:text-black'
+                              }`}
+                            >
+                              <span className="flex-1 truncate">{circle.name}</span>
+                              {circle.id === activeCircleId && <div className="w-1.5 h-1.5 bg-white"></div>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
-
-        </motion.div>
-      )}
+ 
+          <button
+            onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
+            className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none ${
+              isMusicMuted ? 'bg-[#EAE6E1] text-black opacity-40' : 'bg-white text-black hover:bg-black hover:text-white'
+            }`}
+          >
+            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
+          </button>
+ 
+          <UserDropdown
+             user={user}
+             onLogout={logout}
+             onEditUserInfo={() => setIsUserProfileModalOpen(true)}
+             onOpenSettings={() => setIsEditDrawerOpen(true)}
+             loading={authLoading}
+           />
+       </div>
+          </div>
 
       {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
       
@@ -1230,373 +1329,255 @@ const Home: React.FC = () => {
                          {circles.map(circle => (
                            <button
                              key={circle.id}
-                             onClick={async () => {
-                               if (circle.id !== activeCircleId) {
-                                 await setActiveCircle(circle.id);
-                                 showToast(`Switched to ${circle.name}!`);
-                               }
-                               setIsWorldConfigOpen(false);
-                               setLandSearch('');
-                             }}
-                             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
-                               circle.id === activeCircleId
-                                 ? 'bg-[#EAE6E1] text-black/80'
-                                 : 'text-white/60 hover:bg-white/8 hover:text-white/90'
-                             }`}
-                           >
-                             <i className="fas fa-heart text-[9px] opacity-60 flex-shrink-0"></i>
-                             <span className="flex-1 truncate">{circle.name}</span>
-                             {circle.id === activeCircleId && <i className="fas fa-check text-[9px] text-black/40 flex-shrink-0"></i>}
-                           </button>
-                         ))}
                        </div>
-                     </div>
-                   )}
 
-                   {/* Land list */}
-                   {worldMode === 'tree' && (appConfig.lands?.length || 0) > 0 && (
-                     <div>
-                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/35 px-1 mb-1">Land</p>
-                       <div className="space-y-0.5 max-h-28 overflow-y-auto">
-                         {filteredLands.map(land => (
-                           <button
-                             key={land.id}
-                             onClick={() => handleSelectLand(land.id, land.name)}
-                             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
-                               land.isActive
-                                 ? 'bg-amber-500/20 text-amber-200'
-                                 : 'text-white/60 hover:bg-white/8 hover:text-white/90'
-                             }`}
-                           >
-                             <span className="text-sm leading-none flex-shrink-0">{land.icon || '🏞'}</span>
-                             <span className="flex-1 truncate">{land.name}</span>
-                             {land.isActive && <i className="fas fa-check text-[9px] text-amber-300 flex-shrink-0"></i>}
-                           </button>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-                 </motion.div>
-               </>
-             )}
-           </AnimatePresence>
-         </div>
-
-         <button
-           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
-           className={`w-10 h-10 flex items-center justify-center transition-all transform hover:scale-105 border backdrop-blur-md rounded-sm ${
-             isMusicMuted ? 'bg-[#EAE6E1] text-black border-black/10 object-cover opacity-60' : 'bg-white text-black border-black/10'
-           }`}
-         >
-           <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
-         </button>
-
-         <UserDropdown
-            user={user}
-            onLogout={logout}
-            onEditUserInfo={() => setIsUserProfileModalOpen(true)}
-            onOpenSettings={() => setIsEditDrawerOpen(true)}
-            loading={authLoading}
-          />
-      </div>
-
-      <UserProfileModal 
-        isOpen={isUserProfileModalOpen} 
-        onClose={() => setIsUserProfileModalOpen(false)} 
-      />
-
-      {/* Music Adjustment Modal */}
-      <AnimatePresence>
-        {isVolumeModalOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
-          >
-             <label className="text-[8px] font-black text-black uppercase tracking-tighter w-full text-center mb-2">VOL</label>
-             <div className="h-32 w-1.5 bg-gray-100 rounded-none relative overflow-hidden group">
-                <input 
-                   type="range"
-                   min="0"
-                   max="1"
-                   step="0.01"
-                   value={isMusicMuted ? 0 : musicVolume}
-                   onChange={(e) => {
-                     setMusicVolume(parseFloat(e.target.value));
-                     setIsMusicMuted(false);
-                   }}
-                   className="absolute inset-0 w-32 h-1.5 appearance-none bg-transparent cursor-pointer -rotate-90 origin-left translate-y-[128px] translate-x-[-1px] z-10"
-                   style={{ width: '128px' }}
-                />
-                <div 
-                   className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-pink-500 to-rose-400 transition-all duration-150"
-                   style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }}
-                />
+                       {circles.length > 0 && (
+                         <div>
+                           <p className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20 mb-3 ml-1">Archive_Indices</p>
+                           <div className="space-y-1 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                             {circles.map(circle => (
+                               <button
+                                 key={circle.id}
+                                 onClick={async () => {
+                                   if (circle.id !== activeCircleId) {
+                                     await setActiveCircle(circle.id);
+                                     showToast(`Switched to ${circle.name}!`);
+                                   }
+                                   setIsWorldConfigOpen(false);
+                                 }}
+                                 className={`w-full flex items-center justify-between px-4 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all ${
+                                   circle.id === activeCircleId ? 'bg-black text-white' : 'text-black/40 hover:bg-black/5'
+                                 }`}
+                               >
+                                 <span className="truncate">{circle.name}</span>
+                                 {circle.id === activeCircleId && <div className="w-1.5 h-1.5 bg-white"></div>}
+                               </button>
+                             ))}
+                           </div>
+                         </div>
+                       )}
+                     </motion.div>
+                   </>
+                 )}
+               </AnimatePresence>
              </div>
-             <button 
-               onClick={() => setIsMusicMuted(!isMusicMuted)}
-               className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isMusicMuted ? 'bg-gray-100 text-gray-400' : 'bg-pink-100 text-pink-500'}`}
-             >
-               <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
-             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {hasAcceptedProposal && (
-        <>
-          {/* CENTERED STATUS BAR - HOME ONLY */}
+             {/* Volume Control */}
+             <div className="relative">
+               <button
+                 onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
+                 className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none ${
+                   isMusicMuted ? 'bg-black/5 text-black/30' : 'bg-white/50 text-black hover:bg-black hover:text-white'
+                 }`}
+               >
+                 <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
+               </button>
+               
+               <AnimatePresence>
+                  {isVolumeModalOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full right-0 mt-4 bg-white/90 backdrop-blur-xl p-4 rounded-none shadow-2xl border border-black/10 flex flex-col items-center gap-4 w-12"
+                    >
+                       <span className="text-[7px] font-black text-black/30 uppercase tracking-widest">VOL</span>
+                       <div className="h-32 w-[2px] bg-black/5 relative overflow-hidden">
+                          <input 
+                             type="range" min="0" max="1" step="0.01" value={isMusicMuted ? 0 : musicVolume}
+                             onChange={(e) => { setMusicVolume(parseFloat(e.target.value)); setIsMusicMuted(false); }}
+                             className="absolute inset-0 w-32 h-full opacity-0 cursor-pointer -rotate-90 origin-left translate-y-32"
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 bg-black" style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }} />
+                       </div>
+                    </motion.div>
+                  )}
+               </AnimatePresence>
+             </div>
+
+             <UserDropdown
+                user={user}
+                onLogout={logout}
+                onEditUserInfo={() => setIsUserProfileModalOpen(true)}
+                onOpenSettings={() => setIsEditDrawerOpen(true)}
+                loading={authLoading}
+              />
+          </div>
+
+          {/* TOP CENTER: System Status */}
           {activeTab === 'home' && (
             <div 
-              className="fixed top-24 md:top-8 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center pointer-events-auto cursor-pointer"
+              className="fixed top-12 left-1/2 transform -translate-x-1/2 z-[80] flex flex-col items-center pointer-events-auto cursor-pointer group"
               onClick={() => setIsStatsGuideOpen(true)}
             >
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex items-center gap-4 md:gap-16 pb-1.5 md:pb-2"
-              >
-                  {/* Together Stat */}
+              <div className="flex items-center gap-10 md:gap-24 pb-4 px-12 border-x border-black/5">
                   <div className="flex flex-col items-center">
-                    <span className="text-[7px] md:text-[10px] font-black text-black/50 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Together</span>
-                    <span className="text-sm md:text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-2">
-                       <i className="fas fa-heart text-red-500 animate-pulse text-[10px] md:text-xl"></i> {daysTogether} <span className="text-[10px] md:text-sm font-bold opacity-80">Days</span>
+                    <span className="text-[8px] md:text-[9px] font-black text-black/20 uppercase tracking-[0.6em] mb-2">ALLOCATION_TIME</span>
+                    <span className="text-xl md:text-4xl font-black text-black flex items-center gap-3 tracking-extratight leading-none">
+                        {daysTogether} <span className="text-[9px] md:text-[10px] font-black text-black/30 uppercase tracking-[0.4em]">DAYS</span>
                     </span>
                   </div>
-
-                  <div className="w-px h-6 md:h-10 bg-white/20 hidden md:block"></div>
-
-                  {/* Garden Stats */}
+                  <div className="w-[1px] h-8 md:h-12 bg-black/10"></div>
                   <div className="flex flex-col items-center">
-                    <span className="text-[7px] md:text-[10px] font-black text-black/50 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Garden</span>
-                    <div className="flex items-center gap-2 md:gap-8">
+                    <span className="text-[8px] md:text-[9px] font-black text-black/20 uppercase tracking-[0.6em] mb-2">SYSTEM_RESOURCES</span>
+                    <div className="flex items-center gap-6 md:gap-16">
                        <div className="flex flex-col items-center">
-                          <span className="text-xs md:text-2xl font-bold text-white drop-shadow-[0_2px_4_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-sm md:text-2xl">🌸</span> {flowerCount}</span>
-                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Flowers</span>
+                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{flowerCount}</span>
+                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">BLOOMS</span>
                        </div>
                        <div className="flex flex-col items-center">
-                          <span className="text-xs md:text-2xl font-bold text-white drop-shadow-[0_2px_4_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-sm md:text-2xl">🍃</span> {loveStats.leaves?.toLocaleString()}</span>
-                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Leaves</span>
+                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{loveStats.leaves?.toLocaleString()}</span>
+                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">ARTIFACTS</span>
                        </div>
                        <div className="flex flex-col items-center">
-                          <span className="text-xs md:text-2xl font-black text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-[10px] md:text-base">⭐</span> {loveStats.level}</span>
-                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Level</span>
+                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{loveStats.level}</span>
+                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">INDEX</span>
                        </div>
                        <div className="flex flex-col items-center">
-                          <span className="text-xs md:text-2xl font-bold text-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-[10px] md:text-base">🪙</span> {loveStats.points?.toLocaleString()}</span>
-                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Points</span>
+                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{loveStats.points?.toLocaleString()}</span>
+                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">UNITS</span>
                        </div>
                     </div>
                   </div>
-              </motion.div>
-
-              {/* Minimal XP Bar Underneath */}
-              <div className="w-24 md:w-96 h-0.5 md:h-1 bg-white/10 rounded-none overflow-hidden mt-0.5 md:mt-1 border border-white/5 isolate relative">
+              </div>
+              <div className="w-72 md:w-full h-[1px] bg-black/5 mt-4 relative overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
-                    className="h-full bg-black shadow-sm"
+                    className="h-full bg-black group-hover:bg-zinc-400 transition-colors"
                   />
-                  
-
               </div>
             </div>
           )}
 
-          {/* Logo - Fixed Top Left on Desktop, Centered on Mobile */}
-          <div className="fixed top-4 md:top-6 left-1/2 md:left-6 transform -translate-x-1/2 md:translate-x-0 flex items-center justify-center"
-             style={{ zIndex: 'var(--z-index-fixed)' }}>
-            <Logo 
-              size={isMobile ? 80 : 120} 
-              title={appConfig.appName} 
-              className="grayscale" 
-            />
+          {/* TOP LEFT: Auth Session Marker */}
+          <div className="fixed top-8 left-8 md:left-14 flex flex-col items-start gap-2 z-[80]">
+            <Logo size={isMobile ? 40 : 50} title={appConfig.appName} className="grayscale opacity-80" />
+            <div className="h-[1px] w-12 bg-black/10"></div>
+            <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">AUTH_SESSION::ACTIVE</span>
           </div>
 
-            {/* PWA Install Button & Grow Leaf Button */}
-            <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 items-end">
-              {/* PWA Install Notification */}
-              <AnimatePresence>
-                {showInstallPrompt && (
-                  <motion.button
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: 50, opacity: 0 }}
-                    onClick={handleInstallApp}
-                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-none shadow-2xl border border-black/10 group hover:border-black/30 transition-all"
-                  >
-                    <div className="w-10 h-10 bg-black rounded-none flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
-                      <i className="fas fa-mobile-alt"></i>
-                    </div>
-                    <div className="text-left">
-                       <p className="text-[10px] font-black text-black/60 uppercase tracking-widest leading-none mb-1">Install App</p>
-                       <p className="text-sm font-bold text-gray-700 leading-none">Add to Home</p>
-                    </div>
-                  </motion.button>
-                )}
-              </AnimatePresence>
+          {/* RIGHT CENTER: Quick Actions */}
+          <div className="fixed right-8 top-1/2 -translate-y-1/2 z-[80] flex flex-col gap-6 items-end">
+            <AnimatePresence>
+              {showInstallPrompt && (
+                <motion.button
+                  initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }}
+                  onClick={handleInstallApp}
+                  className="flex items-center gap-4 bg-white border border-black/10 p-4 rounded-none shadow-2xl group transition-all"
+                >
+                  <div className="w-10 h-10 bg-black text-white flex items-center justify-center text-lg">
+                    <i className="fas fa-terminal"></i>
+                  </div>
+                  <div className="text-left pr-4">
+                     <p className="text-[9px] font-black text-black/30 uppercase tracking-widest leading-none mb-1">SYNC_DEVICE</p>
+                     <p className="text-[11px] font-black text-black uppercase tracking-widest">DEPLOY_ARCHIVE</p>
+                  </div>
+                </motion.button>
+              )}
 
-              {/* Grow Leaf Button (Visible only if points >= 100) */}
-              <AnimatePresence>
-                {loveStats.points >= 100 && activeTab === 'home' && (
-                  <motion.button
-                    initial={{ scale: 0, opacity: 0, x: 20 }}
-                    animate={{ scale: 1, opacity: 1, x: 0 }}
-                    exit={{ scale: 0, opacity: 0, x: 20 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={handleAddLeaf}
-                    className="group relative flex flex-col items-center"
-                    title="Grow a new leaf (Costs 100 points)"
-                  >
-                    <div className="absolute -top-12 right-0 bg-black/80 text-white text-[10px] font-black px-3 py-1.5 rounded-full whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity animate-bounce">
-                       GROW LEAF! 🌱 -100 🪙
-                    </div>
-                    <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full shadow-[0_20px_50px_rgba(16,185,129,0.4)] flex items-center justify-center text-3xl relative overflow-hidden group">
-                       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                       <motion.span 
-                         animate={{ rotate: [0, 10, -10, 0] }}
-                         transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                       >
-                         🍃
-                       </motion.span>
-                    </div>
-                  </motion.button>
-                )}
-              </AnimatePresence>
+              {loveStats.points >= 100 && activeTab === 'home' && (
+                <motion.button
+                  initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  onClick={handleAddLeaf}
+                  className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl shadow-2xl relative group overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+                  <span className="relative z-10 transition-transform group-hover:rotate-12">🌱</span>
+                  <div className="absolute -top-10 right-0 bg-black text-white text-[8px] font-black px-2 py-1 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    Initialize_Growth
+                  </div>
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
 
-           </div>
-
-          {/* STATS GUIDE MODAL/DRAWER */}
+          {/* GARDEN GUIDE MODAL - ARCHIVAL DOCUMENT STYLE */}
           <AnimatePresence>
             {isStatsGuideOpen && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-6"
                 onClick={() => setIsStatsGuideOpen(false)}
               >
                 <motion.div
-                  initial={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0, y: 20 }}
-                  animate={isMobile ? { y: 0 } : { scale: 1, opacity: 1, y: 0 }}
-                  exit={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0, y: 20 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className={`bg-white w-full max-w-2xl overflow-hidden shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex flex-col ${
-                    isMobile ? 'rounded-t-[3rem] max-h-[90vh]' : 'rounded-[3rem] max-h-[85vh]'
-                  }`}
+                  initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  className="bg-white w-full max-w-2xl border border-black/10 shadow-[0_50px_100px_rgba(0,0,0,0.2)] flex flex-col max-h-[90vh]"
                   onClick={e => e.stopPropagation()}
                 >
-                  {/* Handle for mobile */}
-                  {isMobile && (
-                    <div className="flex justify-center pt-4 pb-2 shrink-0">
-                      <div className="w-12 h-1.5 bg-gray-200 rounded-full"></div>
-                    </div>
-                  )}
-
-                  <div className="overflow-y-auto custom-scrollbar p-6 md:p-10">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-8">
-                       <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 md:w-20 md:h-20 bg-zinc-800 rounded-none flex items-center justify-center text-3xl font-black text-white border border-black/10">
+                  <div className="p-10 md:p-14 overflow-y-auto custom-scrollbar">
+                    <div className="flex items-center justify-between mb-12 border-b border-black/5 pb-10">
+                       <div className="flex items-center gap-8">
+                          <div className="w-20 h-20 bg-black flex items-center justify-center text-3xl font-black text-white">
                             {loveStats.level}
                           </div>
                           <div>
-                             <h3 className="font-geist font-bold tracking-tight text-3xl md:text-4xl text-black">Garden Guide</h3>
-                             <p className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em]">World Status & Progress</p>
+                             <h3 className="text-[9px] font-black text-black/30 uppercase tracking-[0.5em] mb-2">SYSTEM_DOCUMENTATION</h3>
+                             <h4 className="text-4xl font-black text-black tracking-extratight uppercase leading-none">GARDEN_MANIFEST</h4>
                           </div>
                        </div>
-                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-12 h-12 bg-gray-100 rounded-none flex items-center justify-center text-black/60 hover:bg-black/10 hover:text-black transition-all">
-                          <i className="fas fa-times text-xl"></i>
+                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-14 h-14 border border-black/5 hover:bg-black hover:text-white transition-all flex items-center justify-center">
+                          <i className="fas fa-times"></i>
                        </button>
                     </div>
 
-                    {/* XP Progress */}
-                    <div className="bg-gray-50 rounded-none p-6 md:p-8 border border-black/10 mb-8 overflow-hidden relative group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                           <i className="fas fa-chart-line text-black text-6xl"></i>
-                        </div>
-                        <div className="flex justify-between items-end mb-4 relative z-10">
-                           <div>
-                              <span className="text-[10px] font-black text-black/50 uppercase tracking-widest block mb-1">Experience Points</span>
-                              <div className="flex items-baseline gap-2">
-                                 <span className="text-4xl font-black text-gray-800">{loveStats.xp}</span>
-                                 <span className="text-sm font-bold text-gray-400">/ {loveStats.level * 100} XP</span>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">World Level</span>
-                              <span className="text-xl font-black text-amber-600">Level {loveStats.level}</span>
-                           </div>
-                        </div>
-                        <div className="w-full h-4 bg-white/50 rounded-none overflow-hidden border border-black/10 relative p-0.5">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
-                              className="h-full bg-black rounded-none relative"
-                            >
-                               <div className="absolute inset-0 opacity-20 bg-noise"></div>
-                            </motion.div>
-                        </div>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4 md:gap-6 mb-10">
-                       <div className="bg-gray-50 p-6 rounded-none border border-black/5 flex flex-col items-center text-center gap-2 transition-all">
-                          <span className="text-4xl transition-transform">🌸</span>
-                          <span className="font-black text-gray-800 text-2xl">{flowerCount}</span>
-                          <span className="text-[10px] font-black text-black/50 uppercase tracking-widest">Flowers Bloomed</span>
-                       </div>
-                       <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-[2rem] border border-green-100/50 flex flex-col items-center text-center gap-2 hover:shadow-lg transition-all group">
-                          <span className="text-4xl group-hover:scale-125 transition-transform">🍃</span>
-                          <span className="font-black text-gray-800 text-2xl drop-shadow-sm">{loveStats.leaves?.toLocaleString()}</span>
-                          <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Leaves Grown</span>
-                       </div>
-                    </div>
-
-                    {/* Guide Section */}
-                    <div className="space-y-6">
-                       <h4 className="font-pacifico text-2xl text-gray-800 border-b border-gray-100 pb-4">How to grow our garden?</h4>
-                       
-                       <div className="space-y-4">
-                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                             <div className="w-12 h-12 shrink-0 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl">🌸</div>
-                             <div>
-                                <h5 className="font-black text-gray-800 text-sm">Automated Blooms</h5>
-                                <p className="text-xs text-gray-500 font-medium leading-relaxed">A new flower blooms every <span className="text-pink-500 font-black">{appConfig.daysPerFlower} days</span> automatically to celebrate our journey together.</p>
+                    <div className="space-y-12">
+                       <div className="grid grid-cols-2 gap-10">
+                          <div className="space-y-2">
+                             <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">EXP_BUFFER</span>
+                             <div className="text-4xl font-black text-black flex items-baseline gap-2">
+                                {loveStats.xp} <span className="text-xs text-black/30">/ {loveStats.level * 100}</span>
+                             </div>
+                             <div className="h-[2px] w-full bg-black/5 overflow-hidden">
+                                <motion.div className="h-full bg-black" animate={{ width: `${(loveStats.xp / (loveStats.level * 100)) * 100}%` }} />
                              </div>
                           </div>
-
-                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                             <div className="w-12 h-12 shrink-0 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">🍃</div>
-                             <div>
-                                <h5 className="font-black text-gray-800 text-sm">Manual Growth</h5>
-                                <p className="text-xs text-gray-500 font-medium leading-relaxed">You can manually grow a leaf by spending <span className="text-green-600 font-black">100 points</span>. Use the button on the right of the home screen!</p>
-                             </div>
+                          <div className="space-y-2 text-right">
+                             <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">SYSTEM_VERSION</span>
+                             <div className="text-4xl font-black text-black">V_{loveStats.level}.0.ARCH</div>
                           </div>
+                       </div>
 
-                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                             <div className="w-12 h-12 shrink-0 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">⭐</div>
-                             <div>
-                                <h5 className="font-black text-gray-800 text-sm">Earning Points & XP</h5>
-                                <p className="text-xs text-gray-500 font-medium leading-relaxed">Every milestone, memory, or letter shared adds <span className="text-purple-600 font-black">Points and XP</span> to our joint account.</p>
-                             </div>
+                       <div className="grid grid-cols-3 gap-6">
+                          {[
+                            { label: 'BLOOMS', val: flowerCount, icon: '🌸' },
+                            { label: 'ARTIFACTS', val: loveStats.leaves, icon: '🍃' },
+                            { label: 'UNITS', val: loveStats.points, icon: '🪙' }
+                          ].map(stat => (
+                            <div key={stat.label} className="border border-black/5 p-6 space-y-3">
+                               <div className="flex items-center justify-between">
+                                  <span className="text-[8px] font-black text-black/30 uppercase tracking-widest">{stat.label}</span>
+                                  <span className="text-xl grayscale opacity-40">{stat.icon}</span>
+                               </div>
+                               <p className="text-3xl font-black text-black">{stat.val?.toLocaleString()}</p>
+                            </div>
+                          ))}
+                       </div>
+
+                       <div className="space-y-6 pt-10 border-t border-black/5">
+                          <p className="text-[9px] font-black text-black uppercase tracking-[0.5em] mb-6">OPERATIONAL_GUIDELINES</p>
+                          <div className="space-y-6">
+                             {[
+                               { h: 'AUTOMATED_BLOOMS', d: `System automatically initializes a new bloom every ${appConfig.daysPerFlower} cycles.` },
+                               { h: 'MANUAL_GROWTH', d: 'Allocate 100 units to manually initialize a new artifact growth sequence.' },
+                               { h: 'DATA_ACQUISITION', d: 'Sharing memories, logs, or records generates system XP and units.' }
+                             ].map(item => (
+                               <div key={item.h} className="group flex gap-6 items-start">
+                                  <div className="w-1.5 h-1.5 bg-black mt-1.5" />
+                                  <div>
+                                     <h5 className="text-[10px] font-black text-black uppercase tracking-widest mb-1">{item.h}</h5>
+                                     <p className="text-[12px] text-black/40 font-black uppercase tracking-[0.1em] leading-relaxed">{item.d}</p>
+                                  </div>
+                               </div>
+                             ))}
                           </div>
                        </div>
                     </div>
 
-                    {/* Footer Stats Info */}
-                    <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="flex items-center gap-3">
-                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></div>
-                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Relationship Length: {daysTogether} Days</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-none border border-black/10">
-                           <i className="fas fa-clock text-black/60 text-[10px]"></i>
-                           <span className="text-[10px] font-black text-black uppercase tracking-widest">Next Flower: {appConfig.daysPerFlower - (daysTogether % appConfig.daysPerFlower)} Days</span>
-                        </div>
+                    <div className="mt-20 pt-10 border-t border-black/5 flex justify-between items-center text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">
+                        <span>REF_ID::GARDEN_{new Date().getTime().toString(16).toUpperCase()}</span>
+                        <span>NEXT_BLOOM_EST::IN_{appConfig.daysPerFlower - (daysTogether % appConfig.daysPerFlower)}_CYCLES</span>
                     </div>
                   </div>
                 </motion.div>
@@ -1605,27 +1586,31 @@ const Home: React.FC = () => {
           </AnimatePresence>
 
           <LoveLetter 
-            isOpen={isLetterOpen} 
-            onClose={() => setIsLetterOpen(false)} 
-            messages={loveLetters}
-            onSendMessage={handleSendMessage}
-            onUpdateMessage={handleUpdateMessage}
-            partners={appConfig.partners}
-            folders={appConfig.mailFolders}
+            isOpen={isLetterOpen} onClose={() => setIsLetterOpen(false)} 
+            messages={loveLetters} onSendMessage={handleSendMessage} onUpdateMessage={handleUpdateMessage}
+            partners={appConfig.partners} folders={appConfig.mailFolders}
           />
 
           <EditDrawer 
-            isOpen={isEditDrawerOpen} 
-            onClose={() => setIsEditDrawerOpen(false)} 
-            config={appConfig} 
-            setConfig={handleSetAppConfig} 
-            onSave={() => showToast("Settings saved successfully! ✨")}
+            isOpen={isEditDrawerOpen} onClose={() => setIsEditDrawerOpen(false)} 
+            config={appConfig} setConfig={handleSetAppConfig} 
+            onSave={() => showToast("SYNC_COMPLETE :: CONFIG_SAVED")}
           />
+
+          <TimelineSpreadsheet 
+            isOpen={isSpreadsheetOpen} onClose={() => setIsSpreadsheetOpen(false)}
+            interactions={appConfig.timeline} onSave={handleMassTimelineUpdate} onDelete={handleDeleteTimeline}
+          />
+
+          <UserProfileModal 
+            isOpen={isUserProfileModalOpen} onClose={() => setIsUserProfileModalOpen(false)} 
+          />
+
           <Toast 
-            message={toast.message} 
-            isVisible={toast.isVisible} 
+            message={toast.message} isVisible={toast.isVisible} 
             onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
           />
+
           <SimplePlayer 
             playlist={appConfig.musicPlaylist || ["https://www.youtube.com/watch?v=igx8-BdblEI"]} 
             volume={musicVolume}

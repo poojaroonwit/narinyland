@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export async function generateViewport(): Promise<Viewport> {
    const config = await getConfig();
    return {
-     themeColor: (config as any)?.pwaThemeColor || '#ec4899',
+     themeColor: (config as any)?.pwaThemeColor || '#000000',
      width: 'device-width',
      initialScale: 1,
      maximumScale: 1,

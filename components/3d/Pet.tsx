@@ -108,8 +108,8 @@ export const PetVisuals = ({ petType, colors, emotion, active, quality, detail =
                 </>
             )}
 
-            {/* Blush */}
-            {(emotion === 'happy' || emotion === 'excited') && !isLow && (
+            {/* Blush - Disabled in Archive mode */}
+            {(emotion === 'happy' || emotion === 'excited') && !isLow && !colors.isArchive && (
                 <>
                     <mesh position={[0.18, -0.05, 0.15]}>
                         <circleGeometry args={[0.06, 8]} />
@@ -176,7 +176,7 @@ export const PetVisuals = ({ petType, colors, emotion, active, quality, detail =
                 {(emotion === 'excited' || emotion === 'playing' || active) && (
                     <Float speed={5} rotationIntensity={0} floatIntensity={0.5}>
                         <Text position={[0, 1.8, 0]} fontSize={0.5} outlineWidth={0.02} outlineColor="#ffffff">
-                            {emotion === 'excited' ? '❤️' : '🎵'}
+                            {colors.isArchive ? '✦' : (emotion === 'excited' ? '❤️' : '🎵')}
                         </Text>
                     </Float>
                 )}
@@ -203,6 +203,16 @@ export const Pet3D = React.forwardRef<THREE.Group, { emotion: Emotion; theme: an
   const [active, setActive] = useState(false);
   
   const colors = useMemo(() => {
+    // Check if theme is monochromatic (Archive look)
+    if (theme && theme.grid) {
+      return { 
+        primary: theme.leaves[0], 
+        secondary: theme.leaves[2], 
+        nose: "#000",
+        isArchive: true 
+      };
+    }
+
     switch(petType) {
       case 'cat': return { primary: "#555", secondary: "#fff", nose: "#ff99ad" };
       case 'dog': return { primary: "#e69138", secondary: "#fff", nose: "#222" };
@@ -211,7 +221,7 @@ export const Pet3D = React.forwardRef<THREE.Group, { emotion: Emotion; theme: an
       case 'fox': return { primary: "#f97316", secondary: "#fff", nose: "#222" };
       default: return { primary: "#e69138", secondary: "#fff", nose: "#222" };
     }
-  }, [petType]);
+  }, [petType, theme]);
 
   const [activity, setActivity] = useState<'walk' | 'sit' | 'lie' | 'idle' | 'play'>('idle');
   const activityTimer = useRef(0);
