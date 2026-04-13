@@ -735,7 +735,7 @@ const Home: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden bg-[#F7f5f2]">
+    <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden bg-transparent">
         {/* Fullscreen Background & Tree/Globe */}
         <div className="fixed inset-0 z-0">
            {worldMode === 'tree' ? (

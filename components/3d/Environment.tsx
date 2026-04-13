@@ -409,7 +409,6 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
     const count = quality === 'high' ? 12 : (quality === 'medium' ? 6 : 0);
     
     const cloudColor = useMemo(() => {
-        if (theme && theme.grid) return "#000000"; // Archive look
         if (hour >= 20 || hour < 5) return "#09090b"; // Zinc-950
         if (hour >= 19 && hour < 20) return new THREE.Color("#18181b").lerp(new THREE.Color("#09090b"), (hour - 19)).getStyle();
         if (hour >= 17.5 && hour < 19) return new THREE.Color("#27272a").lerp(new THREE.Color("#18181b"), (hour - 17.5) / 1.5).getStyle();
@@ -419,7 +418,6 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
     }, [hour, theme]);
 
     const cloudEdgeColor = useMemo(() => {
-        if (theme && theme.grid) return "#333333"; // Archive look
         if (hour >= 17 && hour < 19.5) return "#c49070";
         if (hour >= 5.5 && hour < 8) return "#c4a888";
         return cloudColor;
