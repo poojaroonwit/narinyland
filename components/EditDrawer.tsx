@@ -976,7 +976,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
 
         {activeTab === 'proposal' && (
-          <motion.div initial={{ opacity            <div className="bg-white p-10 border border-black/5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <div className="bg-white p-10 border border-black/5">
               <div className="flex justify-between items-end mb-12">
                 <div className="space-y-1">
                   <h3 className="text-sm font-black text-black flex items-center gap-4 uppercase tracking-[0.3em]">

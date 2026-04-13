@@ -1128,7 +1128,7 @@ const Home: React.FC = () => {
           </div>
 
           {/* Bottom Navigation Tab Bar - DIGITAL ARCHIVE STYLE */}
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/50 backdrop-blur-xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-none px-12 py-5 flex items-center gap-14 z-[70]">
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/80 backdrop-blur-xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-none px-12 py-5 flex items-center gap-14 z-[70]">
              <button 
                onClick={() => setActiveTab('home')}
                className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'home' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
@@ -1136,7 +1136,7 @@ const Home: React.FC = () => {
                <i className={`fas fa-fingerprint transition-all ${activeTab === 'home' ? 'text-lg' : 'text-sm'}`}></i>
                <span className="text-[9px] font-black uppercase tracking-[0.3em]">Archive</span>
              </button>
- 
+
              <button 
                onClick={() => setActiveTab('timeline')}
                className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'timeline' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
@@ -1144,7 +1144,7 @@ const Home: React.FC = () => {
                <i className={`fas fa-barcode transition-all ${activeTab === 'timeline' ? 'text-lg' : 'text-sm'}`}></i>
                <span className="text-[9px] font-black uppercase tracking-[0.3em]">Timeline</span>
              </button>
- 
+
              <button 
                onClick={() => setActiveTab('coupons')}
                className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'coupons' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
@@ -1152,7 +1152,7 @@ const Home: React.FC = () => {
                <i className={`fas fa-terminal transition-all ${activeTab === 'coupons' ? 'text-lg' : 'text-sm'}`}></i>
                <span className="text-[9px] font-black uppercase tracking-[0.3em]">Utility</span>
              </button>
- 
+
              <button 
                onClick={() => setActiveTab('letters')}
                className={`flex flex-col items-center gap-2 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
@@ -1164,173 +1164,63 @@ const Home: React.FC = () => {
                     {loveLetters.filter(l => !l.isRead).length}
                   </span>
                )}
-                 {/* Config & Top Menu - Persistently Visible */}
-       <div className="fixed top-8 right-8 md:right-14 flex items-center gap-4 z-[60]">
- 
-          {/* World Config button + popover */}
-          <div className="relative">
-            <button
-              onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
-              className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none group ${
-                isWorldConfigOpen ? 'bg-black text-white' : 'bg-white/50 text-black hover:bg-black hover:text-white'
-              }`}
-            >
-              <i className={`fas ${isWorldConfigOpen ? 'fa-times' : 'fa-sliders-h'} text-[10px]`}></i>
-              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-black opacity-20 group-hover:opacity-100"></div>
-            </button>
- 
-            <AnimatePresence>
-              {isWorldConfigOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close world config"
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={() => { setIsWorldConfigOpen(false); setLandSearch(''); }}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute top-full right-0 mt-4 z-50 w-64 rounded-none bg-white/90 backdrop-blur-2xl border border-black/10 shadow-[0_30px_60px_rgba(0,0,0,0.15)] p-6 space-y-6 text-black overflow-hidden"
-                  >
-                    {/* View mode toggle */}
-                    <div className="flex gap-1 bg-black/5 rounded-none p-1">
-                      <button
-                        onClick={() => setWorldMode('tree')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
-                          worldMode === 'tree' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
-                        }`}
-                      >
-                         Garden.exe
-                      </button>
-                      <button
-                        onClick={() => setWorldMode('globe')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
-                          worldMode === 'globe' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
-                        }`}
-                      >
-                         Globe.exe
-                      </button>
-                    </div>
- 
-                    {/* World list */}
-                    {circles.length > 0 && (
-                      <div>
-                        <p className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20 mb-3 ml-1">Archive_Indices</p>
-                        <div className="space-y-1 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                          {circles.map(circle => (
-                            <button
-                              key={circle.id}
-                              onClick={async () => {
-                                if (circle.id !== activeCircleId) {
-                                  await setActiveCircle(circle.id);
-                                  showToast(`Switched to ${circle.name}!`);
-                                }
-                                setIsWorldConfigOpen(false);
-                                setLandSearch('');
-                              }}
-                              className={`w-full flex items-center gap-4 px-4 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all text-left group ${
-                                circle.id === activeCircleId
-                                  ? 'bg-black text-white'
-                                  : 'text-black/40 hover:bg-black/5 hover:text-black'
-                              }`}
-                            >
-                              <span className="flex-1 truncate">{circle.name}</span>
-                              {circle.id === activeCircleId && <div className="w-1.5 h-1.5 bg-white"></div>}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
- 
-          <button
-            onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
-            className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none ${
-              isMusicMuted ? 'bg-[#EAE6E1] text-black opacity-40' : 'bg-white text-black hover:bg-black hover:text-white'
-            }`}
-          >
-            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
-          </button>
- 
-          <UserDropdown
-             user={user}
-             onLogout={logout}
-             onEditUserInfo={() => setIsUserProfileModalOpen(true)}
-             onOpenSettings={() => setIsEditDrawerOpen(true)}
-             loading={authLoading}
-           />
-       </div>
+             </button>
           </div>
 
-      {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
-      
-      {/* Config & Top Menu - Persistently Visible */}
-      <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
+          {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
+          
+          {/* Config & Top Menu - Persistently Visible */}
+          <div className="fixed top-8 right-8 md:right-14 flex items-center gap-4 z-[60]">
 
-         {/* World Config button + popover */}
-         <div className="relative">
-           <button
-             onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
-             className={`w-10 h-10 flex items-center justify-center transition-all transform hover:scale-105 border backdrop-blur-md rounded-none ${
-               isWorldConfigOpen ? 'bg-white text-black border-black/10' : 'bg-black text-white border-black/10'
-             }`}
-           >
-             <i className="fas fa-sliders-h text-xs"></i>
-           </button>
+             {/* World Config button + popover */}
+             <div className="relative">
+               <button
+                 onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
+                 className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none group ${
+                   isWorldConfigOpen ? 'bg-black text-white' : 'bg-white/50 text-black hover:bg-black hover:text-white'
+                 }`}
+               >
+                 <i className={`fas ${isWorldConfigOpen ? 'fa-times' : 'fa-sliders-h'} text-[10px]`}></i>
+                 <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-black opacity-20 group-hover:opacity-100"></div>
+               </button>
 
-           <AnimatePresence>
-             {isWorldConfigOpen && (
-               <>
-                 <button
-                   type="button"
-                   aria-label="Close world config"
-                   className="fixed inset-0 z-40 cursor-default"
-                   onClick={() => { setIsWorldConfigOpen(false); setLandSearch(''); }}
-                 />
-                 <motion.div
-                   initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                   transition={{ duration: 0.15 }}
-                   className="absolute top-full right-0 mt-2 z-50 w-56 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/10 shadow-2xl p-2.5 space-y-2 text-white overflow-hidden"
-                 >
-                   {/* View mode toggle */}
-                   <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+               <AnimatePresence>
+                 {isWorldConfigOpen && (
+                   <>
                      <button
-                       onClick={() => setWorldMode('tree')}
-                       className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                         worldMode === 'tree' ? 'bg-rose-500/80 text-white shadow' : 'text-white/45 hover:text-white/80'
-                       }`}
+                       type="button"
+                       aria-label="Close world config"
+                       className="fixed inset-0 z-40 cursor-default"
+                       onClick={() => { setIsWorldConfigOpen(false); setLandSearch(''); }}
+                     />
+                     <motion.div
+                       initial={{ opacity: 0, scale: 0.98 }}
+                       animate={{ opacity: 1, scale: 1 }}
+                       exit={{ opacity: 0, scale: 0.98 }}
+                       transition={{ duration: 0.2 }}
+                       className="absolute top-full right-0 mt-4 z-50 w-64 rounded-none bg-white/90 backdrop-blur-2xl border border-black/10 shadow-[0_30px_60px_rgba(0,0,0,0.15)] p-6 space-y-6 text-black overflow-hidden"
                      >
-                       <i className="fas fa-tree text-[10px]"></i> Garden
-                     </button>
-                     <button
-                       onClick={() => setWorldMode('globe')}
-                       className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                         worldMode === 'globe' ? 'bg-sky-500/80 text-white shadow' : 'text-white/45 hover:text-white/80'
-                       }`}
-                     >
-                       <i className="fas fa-globe text-[10px]"></i> Globe
-                     </button>
-                   </div>
-
-                   {/* World list */}
-                   {circles.length > 0 && (
-                     <div>
-                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/35 px-1 mb-1">World</p>
-                       <div className="space-y-0.5 max-h-36 overflow-y-auto">
-                         {circles.map(circle => (
-                           <button
-                             key={circle.id}
+                       {/* View mode toggle */}
+                       <div className="flex gap-1 bg-black/5 rounded-none p-1">
+                         <button
+                           onClick={() => setWorldMode('tree')}
+                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
+                             worldMode === 'tree' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
+                           }`}
+                         >
+                            Garden.exe
+                         </button>
+                         <button
+                           onClick={() => setWorldMode('globe')}
+                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
+                             worldMode === 'globe' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
+                           }`}
+                         >
+                            Globe.exe
+                         </button>
                        </div>
 
+                       {/* World list */}
                        {circles.length > 0 && (
                          <div>
                            <p className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20 mb-3 ml-1">Archive_Indices</p>
@@ -1344,12 +1234,15 @@ const Home: React.FC = () => {
                                      showToast(`Switched to ${circle.name}!`);
                                    }
                                    setIsWorldConfigOpen(false);
+                                   setLandSearch('');
                                  }}
-                                 className={`w-full flex items-center justify-between px-4 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all ${
-                                   circle.id === activeCircleId ? 'bg-black text-white' : 'text-black/40 hover:bg-black/5'
+                                 className={`w-full flex items-center gap-4 px-4 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all text-left group ${
+                                   circle.id === activeCircleId
+                                     ? 'bg-black text-white'
+                                     : 'text-black/40 hover:bg-black/5 hover:text-black'
                                  }`}
                                >
-                                 <span className="truncate">{circle.name}</span>
+                                 <span className="flex-1 truncate">{circle.name}</span>
                                  {circle.id === activeCircleId && <div className="w-1.5 h-1.5 bg-white"></div>}
                                </button>
                              ))}
@@ -1364,35 +1257,34 @@ const Home: React.FC = () => {
 
              {/* Volume Control */}
              <div className="relative">
-               <button
-                 onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
-                 className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none ${
-                   isMusicMuted ? 'bg-black/5 text-black/30' : 'bg-white/50 text-black hover:bg-black hover:text-white'
-                 }`}
-               >
-                 <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
-               </button>
-               
-               <AnimatePresence>
-                  {isVolumeModalOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full right-0 mt-4 bg-white/90 backdrop-blur-xl p-4 rounded-none shadow-2xl border border-black/10 flex flex-col items-center gap-4 w-12"
-                    >
-                       <span className="text-[7px] font-black text-black/30 uppercase tracking-widest">VOL</span>
-                       <div className="h-32 w-[2px] bg-black/5 relative overflow-hidden">
-                          <input 
-                             type="range" min="0" max="1" step="0.01" value={isMusicMuted ? 0 : musicVolume}
-                             onChange={(e) => { setMusicVolume(parseFloat(e.target.value)); setIsMusicMuted(false); }}
-                             className="absolute inset-0 w-32 h-full opacity-0 cursor-pointer -rotate-90 origin-left translate-y-32"
-                          />
-                          <div className="absolute bottom-0 left-0 right-0 bg-black" style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }} />
-                       </div>
-                    </motion.div>
-                  )}
-               </AnimatePresence>
+                <button
+                  onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
+                  className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none ${
+                    isMusicMuted ? 'bg-[#EAE6E1] text-black opacity-40' : 'bg-white text-black hover:bg-black hover:text-white'
+                  }`}
+                >
+                  <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
+                </button>
+                <AnimatePresence>
+                   {isVolumeModalOpen && (
+                     <motion.div
+                       initial={{ opacity: 0, y: -10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="absolute top-full right-0 mt-4 bg-white/90 backdrop-blur-xl p-4 rounded-none shadow-2xl border border-black/10 flex flex-col items-center gap-4 w-12"
+                     >
+                        <span className="text-[7px] font-black text-black/30 uppercase tracking-widest">VOL</span>
+                        <div className="h-32 w-[2px] bg-black/5 relative overflow-hidden">
+                           <input 
+                              type="range" min="0" max="1" step="0.01" value={isMusicMuted ? 0 : musicVolume}
+                              onChange={(e) => { setMusicVolume(parseFloat(e.target.value)); setIsMusicMuted(false); }}
+                              className="absolute inset-0 w-32 h-full opacity-0 cursor-pointer -rotate-90 origin-left translate-y-32"
+                           />
+                           <div className="absolute bottom-0 left-0 right-0 bg-black" style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }} />
+                        </div>
+                     </motion.div>
+                   )}
+                </AnimatePresence>
              </div>
 
              <UserDropdown
@@ -1613,22 +1505,11 @@ const Home: React.FC = () => {
 
           <SimplePlayer 
             playlist={appConfig.musicPlaylist || ["https://www.youtube.com/watch?v=igx8-BdblEI"]} 
-            volume={musicVolume}
-            setVolume={setMusicVolume}
-            playing={isMusicPlaying}
-            setPlaying={setIsMusicPlaying}
-            muted={isMusicMuted}
-            setMuted={setIsMusicMuted}
+            volume={musicVolume} setVolume={setMusicVolume}
+            playing={isMusicPlaying} setPlaying={setIsMusicPlaying}
+            muted={isMusicMuted} setMuted={setIsMusicMuted}
           />
-          
-          <TimelineSpreadsheet 
-            isOpen={isSpreadsheetOpen}
-            onClose={() => setIsSpreadsheetOpen(false)}
-            interactions={appConfig.timeline}
-            onSave={handleMassTimelineUpdate}
-            onDelete={handleDeleteTimeline}
-          />
-        </>
+        </motion.div>
       )}
     </div>
   );

@@ -4,173 +4,169 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model AppConfig {
-  id              String   @id @default("default")
-  appName         String   @default("Narinyland")
-  anniversaryDate DateTime @default(now())
-  treeStyle       String   @default("sakura")
-  galleryStyle    String   @default("carousel")
-  gallerySource   String   @default("manual") // "manual" | "instagram"
-  instagramUsername String  @default("")
-  daysPerTree     Int      @default(100)
-  daysPerFlower   Int      @default(7)
-  flowerType      String   @default("sunflower")
-  mixedFlowers    String[] @default(["sunflower", "tulip", "rose", "cherry", "lavender", "heart"])
-  skyMode         String   @default("follow_timezone") // "follow_timezone" | "noon" | "night"
-  petType         String   @default("cat")
-  pets            Json     @default("[]")
-  graphicsQuality String   @default("medium") // "low" | "medium" | "high"
-  showQRCode      Boolean  @default(false)
-  showCouponsOnTimeline Boolean @default(true)
-  timelineCardScale Float  @default(1.0)
-  timelineDefaultRows Int      @default(5)
-  timelineLayoutMode  String   @default("vertical")
-  timelineZoomLevel   Int      @default(0)
-  timelineThumbnailHeight Int @default(150)
-  
-  musicPlaylist   String[] @default(["https://www.youtube.com/watch?v=5qap5aO4i9A"])
-  mailFolders     String[] @default(["Inbox", "Archive", "Trash"])
-  showProposal    Boolean  @default(true)
-  proposalQuestions String[] @default(["Will you be my Valentine?", "Jaroonwit is so handsome, right?"])
-  isProposalAccepted Boolean  @default(false)
-  proposalProgress   Int      @default(0)
-  gallery          Json     @default("[]") // Store gallery items as JSON
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  partners Partner[]
-  coupons  Coupon[]
-  timeline TimelineEvent[]
-  albums   Album[]
-  lands    Land[]
+  id                      String          @id @default("default")
+  appName                 String          @default("Narinyland")
+  anniversaryDate         DateTime        @default(now())
+  treeStyle               String          @default("sakura")
+  galleryStyle            String          @default("carousel")
+  gallerySource           String          @default("manual")
+  instagramUsername       String          @default("")
+  daysPerTree             Int             @default(100)
+  daysPerFlower           Int             @default(7)
+  flowerType              String          @default("sunflower")
+  mixedFlowers            String[]        @default(["sunflower", "tulip", "rose", "cherry", "lavender", "heart"])
+  skyMode                 String          @default("follow_timezone")
+  petType                 String          @default("cat")
+  pets                    Json            @default("[]")
+  graphicsQuality         String          @default("medium")
+  showQRCode              Boolean         @default(false)
+  showCouponsOnTimeline   Boolean         @default(true)
+  timelineCardScale       Float           @default(1.0)
+  timelineDefaultRows     Int             @default(5)
+  timelineLayoutMode      String          @default("vertical")
+  timelineZoomLevel       Int             @default(0)
+  timelineThumbnailHeight Int             @default(150)
+  musicPlaylist           String[]        @default(["https://www.youtube.com/watch?v=5qap5aO4i9A"])
+  mailFolders             String[]        @default(["Inbox", "Archive", "Trash"])
+  proposalQuestions       String[]        @default(["Will you be my Valentine?", "Jaroonwit is so handsome, right?"])
+  isProposalAccepted      Boolean         @default(false)
+  proposalProgress        Int             @default(0)
+  gallery                 Json            @default("[]")
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  showProposal            Boolean         @default(true)
+  albums                  Album[]
+  coupons                 Coupon[]
+  lands                   Land[]
+  partners                Partner[]
+  timeline                TimelineEvent[]
 }
 
 model Album {
   id        String    @id @default(uuid())
   name      String
-  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
   configId  String    @default("default")
-  memories  Memory[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  memories  Memory[]
 }
 
 model Land {
-  id        String    @id @default(uuid())
+  id        String          @id @default(uuid())
   name      String
-  isActive  Boolean   @default(false)
-  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  configId  String    @default("default")
+  isActive  Boolean         @default(false)
+  configId  String          @default("default")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  config    AppConfig       @relation(fields: [configId], references: [id], onDelete: Cascade)
   items     PurchasedItem[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 }
 
 model PurchasedItem {
   id        String   @id @default(uuid())
-  type      String   // e.g., 'pet-dog', 'flower-rose', 'rock', 'house', 'custom_3d'
-  modelUrl  String?  // URL to the custom uploaded .glb/.gltf file
+  type      String
+  modelUrl  String?
   x         Float    @default(0)
   y         Float    @default(0)
   z         Float    @default(0)
   rotation  Float    @default(0)
-  land      Land     @relation(fields: [landId], references: [id], onDelete: Cascade)
   landId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  land      Land     @relation(fields: [landId], references: [id], onDelete: Cascade)
 }
 
 model Partner {
-  id        String    @id @default(uuid())
-  partnerId String
-  name      String
-  avatar    String
-  userId    String?   // AppKit user sub who owns this partner slot
-  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  configId  String
-  points    Int       @default(0)
-  lifetimePoints Int  @default(0)
-  sentLetters LoveLetter[] @relation("SentLetters")
+  id             String       @id @default(uuid())
+  partnerId      String
+  name           String
+  avatar         String
+  configId       String
+  points         Int          @default(0)
+  lifetimePoints Int          @default(0)
+  sentLetters    LoveLetter[] @relation("SentLetters")
+  config         AppConfig    @relation(fields: [configId], references: [id], onDelete: Cascade)
+
   @@unique([configId, partnerId])
 }
 
 model Memory {
   id        String   @id @default(uuid())
-  url       String   
-  s3Key     String?  
+  url       String
+  s3Key     String?
   privacy   String   @default("public")
   caption   String?
   sortOrder Int      @default(0)
-  album     Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
-  albumId   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  albumId   String?
+  album     Album?   @relation(fields: [albumId], references: [id])
 }
 
 model TimelineEvent {
-  id        String   @id @default(uuid())
-  text      String
-  type      String   
-  location  String?
-  latitude  Float?
-  longitude Float?
-  timestamp DateTime
-  mediaType String?   
-  mediaUrl  String?   
-  mediaS3Key String?  
-  mediaUrls   String[] @default([])
-  mediaTypes  String[] @default([])
-  mediaS3Keys String[] @default([])
-  config      AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  text        String
+  type        String
+  location    String?
+  timestamp   DateTime
+  mediaType   String?
+  mediaUrl    String?
+  mediaS3Key  String?
+  mediaUrls   String[]  @default([])
+  mediaTypes  String[]  @default([])
+  mediaS3Keys String[]  @default([])
   configId    String    @default("default")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  latitude    Float?
+  longitude   Float?
+  config      AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
 }
 
 model LoveLetter {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   content    String
-  from       Partner  @relation("SentLetters", fields: [fromId], references: [id], onDelete: Cascade)
   fromId     String
-  folder     String   @default("Inbox")
+  folder     String    @default("Inbox")
   unlockDate DateTime
-  isRead     Boolean  @default(false)
+  isRead     Boolean   @default(false)
   readAt     DateTime?
-  mediaType  String?  
+  mediaType  String?
   mediaUrl   String?
   mediaS3Key String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  from       Partner   @relation("SentLetters", fields: [fromId], references: [id], onDelete: Cascade)
 }
 
 model Coupon {
-  id        String    @id @default(uuid())
-  title     String
-  emoji     String
-  desc      String
-  color     String
-  points    Int       @default(0)
-  forPartner String   
-  isRedeemed Boolean  @default(false)
+  id         String    @id @default(uuid())
+  title      String
+  emoji      String
+  desc       String
+  color      String
+  points     Int       @default(0)
+  forPartner String
+  isRedeemed Boolean   @default(false)
   redeemedAt DateTime?
-  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  configId  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  configId   String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  config     AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
 }
 
 model LoveStats {
-  id              String @id @default("default")
-  xp              Int    @default(0)
-  level           Int    @default(1)
-  leaves          Int    @default(0)
-  points          Int    @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        String   @id @default("default")
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  leaves    Int      @default(0)
+  points    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
-
