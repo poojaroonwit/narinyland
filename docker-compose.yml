@@ -6,6 +6,8 @@ services:
       args:
         DATABASE_URL: ${DATABASE_URL}
         DIRECT_URL: ${DIRECT_URL}
+        NEXT_PUBLIC_APPKIT_DOMAIN: ${NEXT_PUBLIC_APPKIT_DOMAIN}
+        NEXT_PUBLIC_APPKIT_CLIENT_ID: ${NEXT_PUBLIC_APPKIT_CLIENT_ID}
     container_name: narinyland-app
     restart: always
     ports:
