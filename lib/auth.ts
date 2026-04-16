@@ -306,10 +306,17 @@ export async function logout(): Promise<void> {
  * Proxied through our own backend to avoid CORS restrictions when calling
  * the AppKit API directly from the browser.
  */
+export class AuthRequiredError extends Error {
+  constructor(message = 'Authentication required') {
+    super(message);
+    this.name = 'AuthRequiredError';
+  }
+}
+
 export async function getUserCircles(): Promise<Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }>> {
   try {
     if (typeof window === 'undefined') return [];
-    if (!isAuthenticated()) return [];
+    if (!isAuthenticated()) throw new AuthRequiredError('Not authenticated');
 
     // Use our server-side proxy. In BFF mode, auth lives in cookies rather than
     // the SDK's browser storage state, so rely on the cookie-backed session.
@@ -317,11 +324,18 @@ export async function getUserCircles(): Promise<Array<{ id: string; name: string
       credentials: 'include',
       cache: 'no-store',
     });
+
+    // Distinguish auth errors from empty circles - auth errors should redirect to login
+    if (res.status === 401 || res.status === 403) {
+      throw new AuthRequiredError(`Auth error: ${res.status}`);
+    }
+
     if (!res.ok) return [];
     const data = await res.json();
     // API may return array directly or wrapped in { circles: [] }
     return Array.isArray(data) ? data : (data.circles || data.data || []);
   } catch (err) {
+    if (err instanceof AuthRequiredError) throw err;
     console.error('getUserCircles error:', err);
     return [];
   }

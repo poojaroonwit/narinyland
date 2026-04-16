@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit, getUserCircles } from '@/lib/auth';
+import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit, getUserCircles, AuthRequiredError } from '@/lib/auth';
 import { setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -119,8 +119,30 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setUser(userInfo);
 
       // Fetch circles and determine active circle
-      const userCircles = await getUserCircles();
-      setCircles(userCircles);
+      let userCircles: Circle[] = [];
+      try {
+        userCircles = await getUserCircles();
+        setCircles(userCircles);
+      } catch (err) {
+        if (err instanceof AuthRequiredError) {
+          console.warn('AuthProvider: getUserCircles returned auth error, session likely expired.');
+          // Clear auth state and redirect to login
+          setIsLoggedIn(false);
+          setUser(null);
+          if (typeof window !== 'undefined') {
+            // Clear cookies to stop loop
+            document.cookie = 'narinyland_is_auth=; Max-Age=0; path=/;';
+            // Clear localStorage tokens
+            Object.keys(localStorage).filter(k => k.includes('appkit') || k.includes('token')).forEach(k => localStorage.removeItem(k));
+          }
+          router.replace('/');
+          setLoading(false);
+          checkingRef.current = false;
+          return;
+        }
+        // Non-auth errors: treat as no circles
+        setCircles([]);
+      }
 
       // Use the explicitly stored circle ID, falling back to first available circle
       const savedCircleId = userInfo.attributes?.circleId as string | undefined;

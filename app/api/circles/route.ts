@@ -6,6 +6,8 @@ import { createCircleViaServer } from '@/lib/appkit-server';
 export async function GET(req: NextRequest) {
   try {
     let { token, userId, error, status, isSoft } = await getAuthSession(req);
+    console.log('BFF /api/circles: Session resolved:', { hasToken: !!token, userId, isSoft, error });
+
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
@@ -52,17 +54,47 @@ export async function GET(req: NextRequest) {
       }
 
       if (res.ok) {
+        const data = await res.json();
+        const circles = Array.isArray(data) ? data : (data.circles || data.data || []);
+
+        // Ensure local AppConfig and Partner records exist for circles from AppKit
+        for (const circle of circles) {
+          const id = circle.id || circle._id;
+          if (!id || !userId) continue;
+
+          // Ensure local config exists
+          const existingConfig = await prisma.appConfig.findUnique({ where: { id } });
+          if (!existingConfig) {
+            await prisma.appConfig.create({
+              data: { id, appName: circle.name || 'Untitled World' },
+            }).catch(() => {}); // Ignore conflicts
+          }
+
+          // Ensure Partner record exists linking user to this config
+          const existingPartner = await prisma.partner.findUnique({
+            where: { configId_partnerId: { configId: id, partnerId: userId } },
+          });
+          if (!existingPartner) {
+            await prisma.partner.create({
+              data: {
+                partnerId: userId,
+                name: circle.name || 'Partner',
+                avatar: '',
+                configId: id,
+              },
+            }).catch(() => {}); // Ignore conflicts
+            console.log('BFF /api/circles: Auto-created Partner for existing circle:', id, 'user:', userId);
+          }
+        }
+
         const localConfigs = await prisma.appConfig.findMany({
           select: { id: true, appName: true },
         });
         const localConfigMap = new Map(localConfigs.map((c) => [c.id, c]));
 
-        const data = await res.json();
-        const circles = Array.isArray(data) ? data : (data.circles || data.data || []);
-
         const mergedCircles = circles.map((circle: any) => {
           const id = circle.id || circle._id;
-          if (!id) return null; // Filter out malformed objects
+          if (!id) return null;
 
           const localConfig = localConfigMap.get(id);
           return {
@@ -81,8 +113,9 @@ export async function GET(req: NextRequest) {
 
     // 2. Local Fallback (Prisma)
     // IMPORTANT: Filter by userId (partnerId) to avoid leaking other users' data!
-    let configs;
+    let configs: any[] = [];
     if (userId) {
+      console.log('BFF /api/circles: Querying Prisma for userId:', userId);
       configs = await prisma.appConfig.findMany({
         where: {
           partners: { some: { partnerId: userId } }
@@ -90,8 +123,33 @@ export async function GET(req: NextRequest) {
         include: { lands: { orderBy: { createdAt: 'asc' } } },
         orderBy: { createdAt: 'asc' },
       });
+      console.log('BFF /api/circles: Prisma returned configs:', configs.length, configs.map(c => ({ id: c.id, name: c.appName })));
+
+      // MIGRATION: If user has no partners but circles exist, auto-create partner for first circle
+      // This handles legacy circles created before Partner records were added
+      if (configs.length === 0) {
+        const orphanedConfig = await prisma.appConfig.findFirst({
+          orderBy: { createdAt: 'asc' },
+        });
+        if (orphanedConfig) {
+          console.log('BFF /api/circles: No partners found but orphaned config exists:', orphanedConfig.id, '- creating Partner record');
+          try {
+            await prisma.partner.create({
+              data: {
+                partnerId: userId,
+                name: 'Partner',
+                avatar: '',
+                configId: orphanedConfig.id,
+              },
+            });
+            configs = [orphanedConfig];
+          } catch (err) {
+            console.warn('BFF /api/circles: Failed to create Partner for orphaned config:', err);
+          }
+        }
+      }
     } else {
-      configs = [];
+      console.warn('BFF /api/circles: No userId available for local fallback');
     }
 
     return NextResponse.json(
@@ -125,7 +183,8 @@ export async function POST(req: NextRequest) {
 
     // 1. Create circle in AppKit
     let circleId: string;
-    let { token, error, status, isSoft } = await getAuthSession(req);
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    let { token, userId: sessionUserId, error, status, isSoft } = await getAuthSession(req);
 
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
@@ -171,6 +230,44 @@ export async function POST(req: NextRequest) {
       },
       update: {},
     });
+
+    // 2b. Create Partner record for the creating user (so they can see their circles)
+    // Use sessionUserId from auth (the actual logged-in user), not userId from request body
+    if (sessionUserId) {
+      try {
+        // Fetch user info from AppKit to get name/avatar
+        const userRes = await fetch(`${domain}/users/me`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        let userName = 'Partner';
+        let userAvatar = '';
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          userName = userData.name || userData.given_name || 'Partner';
+          userAvatar = userData.picture || userData.avatar || '';
+        }
+
+        await prisma.partner.upsert({
+          where: {
+            configId_partnerId: {
+              configId: circleId,
+              partnerId: sessionUserId,
+            },
+          },
+          create: {
+            partnerId: sessionUserId,
+            name: userName,
+            avatar: userAvatar,
+            configId: circleId,
+          },
+          update: {},
+        });
+        console.log('BFF /api/circles: Created Partner record for user:', sessionUserId, 'in config:', circleId);
+      } catch (partnerErr) {
+        console.warn('BFF /api/circles: Failed to create Partner record:', partnerErr);
+        // Don't fail the whole request if partner creation fails
+      }
+    }
 
     // 3. Create a default Land inside this world
     const land = await prisma.land.create({
