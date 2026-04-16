@@ -7,14 +7,38 @@ import L from 'leaflet';
 import { Interaction } from '../types';
 
 // Fix for default marker icon in react-leaflet
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+// Fix for default marker icon in react-leaflet using an inline SVG DivIcon
+const createCustomIcon = () => {
+  return L.divIcon({
+    className: 'custom-marker-icon',
+    html: `<div style="
+      width: 28px;
+      height: 28px;
+      background-color: #ec4899;
+      border: 3px solid white;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        width: 10px;
+        height: 10px;
+        background-color: white;
+        border-radius: 50%;
+        transform: rotate(45deg);
+      "></div>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28]
+  });
+};
+const DefaultIcon = createCustomIcon();
 L.Marker.prototype.options.icon = DefaultIcon;
+
 
 interface World2DMapProps {
   timeline: Interaction[];
@@ -50,14 +74,22 @@ export default function World2DMap({ timeline, onFlagClick, onZoomOut }: World2D
         />
         <ZoomHandler onZoomOut={onZoomOut} />
         
-        {timeline.filter(t => t.latitude != null && t.longitude != null && isFinite(t.latitude) && isFinite(t.longitude)).map((item) => (
-          <Marker 
-            key={item.id} 
-            position={[item.latitude!, item.longitude!]}
-            eventHandlers={{
-              click: () => onFlagClick(item),
-            }}
-          >
+        {timeline.filter(t => {
+          const lat = typeof t.latitude === 'string' ? parseFloat(t.latitude) : t.latitude;
+          const lng = typeof t.longitude === 'string' ? parseFloat(t.longitude) : t.longitude;
+          return lat != null && lng != null && isFinite(lat) && isFinite(lng);
+        }).map((item) => {
+          const lat = typeof item.latitude === 'string' ? parseFloat(item.latitude) : item.latitude!;
+          const lng = typeof item.longitude === 'string' ? parseFloat(item.longitude) : item.longitude!;
+          return (
+            <Marker 
+              key={item.id} 
+              position={[lat, lng]}
+              eventHandlers={{
+                click: () => onFlagClick(item),
+              }}
+            >
+
             <Popup>
                <div className="text-center">
                   <p className="font-bold text-sm mb-1">{item.location || item.text}</p>

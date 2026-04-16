@@ -24,6 +24,16 @@ interface EditDrawerProps {
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave }) => {
   const { circles, activeCircleId, setActiveCircle } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'objects'>('general');
+  const [isMobile, setIsMobile] = useState(false);
+  const [expandedAccordion, setExpandedAccordion] = useState<string | null>('general');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [objectCategoryFilter, setObjectCategoryFilter] = useState<'all' | 'pet' | 'deco' | 'bldg' | 'custom'>('all');
   
@@ -467,6 +477,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   };
 
   const handleDeleteWorld = async (id: string, name: string) => {
+    if (!id || id === 'undefined') {
+      alert('Cannot delete this world: Invalid ID.');
+      return;
+    }
     if (!confirm(`Are you sure you want to delete "${name}"? This will permanently remove all associated Narinyland data (memories, letters, etc.) for this world.`)) return;
     
     setIsCircleUpdating(true);
@@ -569,85 +583,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     objects: 'fa-cube',
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="bg-white w-full max-w-4xl h-[85vh] rounded-[2rem] shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Vertical Tabs Sidebar */}
-            <div className="w-56 bg-gray-50 border-r border-gray-100 flex flex-col shrink-0">
-              {/* Header */}
-              <div className="p-5 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  ⚙️ Settings
-                  {hasChanges && <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />}
-                </h2>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Customize Narinyland</p>
-              </div>
-
-              {/* Tab Buttons */}
-              <div className="flex-1 overflow-y-auto py-2">
-                {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'objects'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab as any)}
-                    className={`w-full text-left px-5 py-3 flex items-center gap-3 text-sm font-bold capitalize transition-all ${
-                      activeTab === tab 
-                        ? 'bg-pink-50 text-pink-600 border-l-4 border-pink-500' 
-                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-l-4 border-transparent'
-                    }`}
-                  >
-                    <i className={`fas ${TAB_ICONS[tab] || 'fa-circle'} text-xs w-4`}></i>
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              {/* Save Button in Sidebar */}
-              <div className="p-4 border-t border-gray-100">
-                <button
-                  onClick={handleSave}
-                  disabled={!hasChanges}
-                  className={`w-full py-3 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
-                    hasChanges
-                      ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {hasChanges ? 'Save Changes' : 'No Changes'}
-                </button>
-              </div>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
-              {/* Top Bar with Close */}
-              <div className="p-5 border-b border-gray-100 flex justify-between items-center shrink-0 bg-white">
-                <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
-                  <i className={`fas ${TAB_ICONS[activeTab] || 'fa-circle'} text-pink-400`}></i>
-                  {activeTab}
-                </h3>
-                <button onClick={onClose} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-md flex items-center justify-center transition-colors">
-                  <i className="fas fa-times text-gray-500"></i>
-                </button>
-              </div>
-
-              {/* Scrollable Content Area */}
-              <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-8 pb-32">
-        {activeTab === 'general' && (
+  const renderTabContent = (tab: 'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'objects') => {
+    switch (tab) {
+      case 'general':
+        return (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -987,98 +926,6 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                     />
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Flower Species</label>
-                  <select 
-                    value={localConfig.flowerType || 'sunflower'} 
-                    onChange={(e) => handleInputChange('flowerType', e.target.value)}
-                    className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white font-bold"
-                  >
-                    <option value="sunflower">🌻 Sunflower</option>
-                    <option value="tulip">🌷 Tulip</option>
-                    <option value="rose">🌹 Rose</option>
-                    <option value="cherry">🌸 Cherry Blossom</option>
-                    <option value="lavender">🪻 Lavender</option>
-                    <option value="cactus">🌵 Cactus (Rare)</option>
-                    <option value="heart">💖 Heart Bloom</option>
-                    <option value="mixed">🌈 Mixed Garden</option>
-                  </select>
-
-                  {localConfig.flowerType === 'mixed' && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-pink-50/50 p-4 rounded-md border border-pink-100 flex flex-wrap gap-2"
-                    >
-                      <p className="w-full text-[9px] font-black text-pink-400 uppercase tracking-widest mb-1 ml-1">Include in Mix:</p>
-                      {[
-                        { id: 'sunflower', label: '🌻' },
-                        { id: 'tulip', label: '🌷' },
-                        { id: 'rose', label: '🌹' },
-                        { id: 'cherry', label: '🌸' },
-                        { id: 'lavender', label: '🪻' },
-                        { id: 'cactus', label: '🌵' },
-                        { id: 'heart', label: '💖' }
-                      ].map(f => {
-                        const isSelected = localConfig.mixedFlowers?.includes(f.id);
-                        return (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => {
-                              const current = localConfig.mixedFlowers || [];
-                              const next = isSelected 
-                                ? current.filter(id => id !== f.id)
-                                : [...current, f.id];
-                              handleInputChange('mixedFlowers', next);
-                            }}
-                            className={`w-10 h-10 rounded-md flex items-center justify-center text-xl transition-all border-2 ${
-                              isSelected 
-                                ? 'bg-white border-pink-400 shadow-sm scale-110' 
-                                : 'bg-gray-50 border-transparent opacity-40 grayscale hover:grayscale-0 hover:opacity-100'
-                            }`}
-                            title={f.id}
-                          >
-                            {f.label}
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-stream text-purple-400"></i> Timeline Display
-              </h3>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Default Rows Shown</label>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="range" 
-                    min="1" max="20" 
-                    value={localConfig.timelineDefaultRows || 5} 
-                    onChange={(e) => handleInputChange('timelineDefaultRows', parseInt(e.target.value))}
-                    className="flex-1 accent-pink-500"
-                  />
-                  <span className="text-lg font-black text-pink-500 w-8 text-center">{localConfig.timelineDefaultRows || 5}</span>
-                </div>
-                <p className="text-[9px] text-gray-400 mt-1 ml-1">Number of year rows visible before "Explore Further" button</p>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                 <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Show Coupons in Story</p>
-                    <p className="text-[8px] text-gray-300 font-bold tracking-tight ml-1">Events for redeemed coupons</p>
-                 </div>
-                 <button 
-                    onClick={() => handleInputChange('showCouponsOnTimeline', !localConfig.showCouponsOnTimeline)}
-                    className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${localConfig.showCouponsOnTimeline ? 'bg-pink-500 justify-end' : 'bg-gray-200 justify-start'}`}
-                 >
-                    <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                 </button>
               </div>
             </div>
 
@@ -1109,10 +956,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                 * Names and avatars are pulled directly from the Circle members. If you are alone, a placeholder is shown.
               </p>
             </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'proposal' && (
+        );
+      case 'proposal':
+        return (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-4">
@@ -1134,359 +980,290 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                       Step {idx + 1}
                     </label>
                     <div className="flex gap-2">
-                      <textarea 
-                        value={q} 
+                      <input 
+                        type="text"
+                        value={q}
                         onChange={(e) => updateProposalQuestion(idx, e.target.value)}
-                        className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all resize-none bg-gray-50/30"
-                        rows={2}
-                        placeholder={`Question ${idx + 1}`}
+                        className={`flex-1 bg-gray-50 border-2 rounded-md p-3 text-xs font-bold outline-none transition-all ${localConfig.proposal.progress === idx ? 'border-red-200 bg-red-50/30' : 'border-gray-100 focus:border-red-100'}`}
+                        placeholder="Question text..."
                       />
-                      {localConfig.proposal.questions.length > 1 && (
-                        <button 
-                          onClick={() => removeProposalQuestion(idx)}
-                          className="self-center p-2 text-gray-300 hover:text-red-500 transition-colors"
-                        >
-                          <i className="fas fa-trash-alt"></i>
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => setProposalProgress(idx)}
+                        className={`w-10 h-10 rounded-md flex items-center justify-center transition-all ${localConfig.proposal.progress === idx ? 'bg-red-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:text-red-400 hover:bg-red-50'}`}
+                        title="Set as current active step"
+                      >
+                        <i className="fas fa-flag-checkered text-xs"></i>
+                      </button>
+                      <button 
+                         onClick={() => removeProposalQuestion(idx)}
+                         className="w-10 h-10 bg-gray-50 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                      >
+                         <i className="fas fa-trash-alt text-xs"></i>
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i className="fas fa-check-circle text-green-400"></i> Proposal Status
-              </h3>
-              
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-md">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-bold text-gray-700">Completion</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
-                        {localConfig.proposal.progress || 0} / {localConfig.proposal.questions.length} Questions Read
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                       <button 
-                         onClick={() => setProposalProgress(0)}
-                         className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-gray-300"
-                       >
-                         Reset All
-                       </button>
-                       <button 
-                         onClick={() => setProposalProgress(localConfig.proposal.questions.length)}
-                         className="px-3 py-1.5 bg-green-500 text-white rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-green-600"
-                       >
-                         Mark All Read
-                       </button>
-                    </div>
-                  </div>
-                  
-                  {/* Step Indicators */}
-                  <div className="flex gap-1.5 mt-2">
-                    {localConfig.proposal.questions.map((_, i) => {
-                      const isRead = (localConfig.proposal.progress || 0) > i;
-                      return (
-                        <button 
-                          key={i}
-                          onClick={() => setProposalProgress(isRead ? i : i + 1)}
-                          className={`flex-1 h-2 rounded-full transition-all ${isRead ? 'bg-green-500' : 'bg-gray-200'}`}
-                          title={`Question ${i+1}: ${isRead ? 'Read' : 'Unread'}`}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md">
+              <div className="mt-6 p-4 bg-red-50 rounded-md border border-red-100">
+                <h4 className="text-[10px] font-black text-red-500 uppercase flex items-center gap-2 mb-2">
+                  <i className="fas fa-info-circle"></i> Final Confirmation
+                </h4>
+                <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-bold text-gray-700">Proposal Fully Accepted</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
-                      {localConfig.proposal.isAccepted ? '✨ Final YES Received' : '❌ Outcome Pending'}
-                    </p>
+                    <label className="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-1">Wording (e.g. Will you marry me?)</label>
+                    <input 
+                      type="text"
+                      value={localConfig.proposal.finalWording}
+                      onChange={(e) => handleInputChange('proposal', { ...localConfig.proposal, finalWording: e.target.value })}
+                      className="w-full bg-white border border-red-100 rounded-md p-2 text-xs font-bold outline-none"
+                    />
                   </div>
-                  <button 
-                    onClick={() => {
-                      updateLocal(prev => ({
-                        ...prev,
-                        proposal: { ...prev.proposal, isAccepted: !prev.proposal.isAccepted }
-                      }));
-                    }}
-                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
-                      localConfig.proposal.isAccepted 
-                        ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                        : 'bg-green-100 text-green-600 hover:bg-green-200'
-                    }`}
-                  >
-                    {localConfig.proposal.isAccepted ? 'Reset Acceptance' : 'Mark as Accepted'}
-                  </button>
+                  <div className="flex items-center gap-3 pt-1">
+                    <label className="text-[8px] font-black text-gray-400 uppercase">Is Accepted?</label>
+                    <button 
+                      onClick={() => handleInputChange('proposal', { ...localConfig.proposal, isAccepted: !localConfig.proposal.isAccepted })}
+                      className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${localConfig.proposal.isAccepted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}
+                    >
+                      {localConfig.proposal.isAccepted ? 'Yes! 🎉' : 'No'}
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <p className="text-[9px] text-gray-400 mt-3 ml-1 italic">
-                * The proposal screen skips "Read" questions. If progress is reset to 0, it starts from Question 1.
-              </p>
-            </div>
-            
-            <div className="p-4 bg-red-50 rounded-md border-2 border-dashed border-red-100">
-              <p className="text-[11px] text-red-600 font-bold leading-relaxed flex items-center gap-2">
-                <i className="fas fa-magic"></i>
+              <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
                 The user can only accept your proposal. Each "Yes" leads to the next question until the final acceptance!
               </p>
             </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'gallery' && (
+        );
+      case 'gallery':
+        return (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
              <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Gallery Interaction</label>
-                <div className="flex bg-gray-100 rounded-md p-1.5 mb-4">
-                   <button 
-                     onClick={() => handleInputChange('gallerySource', 'manual')}
-                     className={`flex-1 py-3 text-xs font-black rounded-md transition-all uppercase tracking-widest ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-md text-pink-500' : 'text-gray-500'}`}
-                   >
-                     Manual Uploads
-                   </button>
-                   <button 
-                     onClick={() => handleInputChange('gallerySource', 'instagram')}
-                     className={`flex-1 py-3 text-xs font-black rounded-md transition-all uppercase tracking-widest flex items-center justify-center gap-2 ${localConfig.gallerySource === 'instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-md text-white' : 'text-gray-500'}`}
-                   >
-                     <i className="fab fa-instagram"></i> Instagram Mode
-                   </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-pink-50/50 p-4 rounded-md border border-pink-100 flex items-center justify-between">
+                     <div>
+                        <p className="text-[10px] font-black text-gray-700 uppercase">3D Physics Flow</p>
+                        <p className="text-[8px] text-gray-400">Apply floating effect</p>
+                     </div>
+                     <button 
+                        onClick={() => handleInputChange('galleryPhysicsEnabled', !localConfig.galleryPhysicsEnabled)}
+                        className={`w-10 h-5 rounded-full p-1 transition-all flex items-center ${localConfig.galleryPhysicsEnabled ? 'bg-pink-500 justify-end' : 'bg-gray-200 justify-start'}`}
+                     >
+                        <motion.div layout className="w-3 h-3 bg-white rounded-full shadow-sm" />
+                     </button>
+                  </div>
+                  <div className="bg-amber-50/50 p-4 rounded-md border border-amber-100 flex items-center justify-between">
+                     <div>
+                        <p className="text-[10px] font-black text-gray-700 uppercase">Auto-Slide Time</p>
+                        <p className="text-[8px] text-gray-400">Interval in seconds</p>
+                     </div>
+                     <input 
+                        type="number" 
+                        min="2" 
+                        max="30"
+                        value={localConfig.galleryInterval || 5} 
+                        onChange={(e) => handleInputChange('galleryInterval', parseInt(e.target.value))}
+                        className="w-12 bg-white border border-amber-200 rounded-md p-1.5 text-xs font-bold outline-none text-center"
+                     />
+                  </div>
                 </div>
-
-                <AnimatePresence mode="wait">
-                  {localConfig.gallerySource === 'instagram' && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-3">
-                       <div className="p-4 bg-purple-50 rounded-md border-2 border-dashed border-purple-200">
-                          <p className="text-[11px] text-purple-600 font-bold leading-relaxed">
-                             <i className="fab fa-instagram mr-1"></i> <strong>Paste URLs:</strong> Add any public Instagram post link below and the photo will display automatically!
-                          </p>
-                       </div>
-
-                       {/* Public Profile Fetch */}
-                       <div className="p-4 bg-gradient-to-br from-violet-50 to-fuchsia-50 rounded-md border-2 border-dashed border-violet-200">
-                          <p className="text-[11px] text-violet-600 font-bold leading-relaxed mb-3">
-                             <i className="fas fa-user-circle mr-1"></i> <strong>Import from Profile:</strong> Enter any public Instagram username to pull their recent posts.
-                          </p>
-                          <div className="flex gap-2">
-                             <div className="flex-1 relative">
-                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-300 text-xs font-bold">@</span>
-                               <input 
-                                 type="text" 
-                                 placeholder="username"
-                                 value={localConfig.instagramUsername || ''}
-                                 onChange={(e) => handleInputChange('instagramUsername', e.target.value)}
-                                 className="w-full bg-white border border-violet-100 rounded-md p-3 pl-7 text-xs focus:ring-2 focus:ring-violet-300 outline-none"
-                               />
-                             </div>
-                             <button 
-                               onClick={fetchInstagramProfile}
-                               disabled={isFetchingIG || !localConfig.instagramUsername?.trim()}
-                               className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold px-5 rounded-md text-xs disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
-                             >
-                               {isFetchingIG ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-download mr-1"></i> Fetch</>}
-                             </button>
-                          </div>
-                          {igProfileResult && (
-                            <p className={`text-[10px] mt-2 font-bold ${igProfileResult.startsWith('✅') ? 'text-green-600' : igProfileResult.startsWith('⚠') ? 'text-amber-600' : 'text-red-500'}`}>
-                              {igProfileResult}
-                            </p>
-                          )}
-                       </div>
-
-                       {/* Token-based Bulk Import */}
-                       <div className="p-4 bg-pink-50 rounded-md border-2 border-dashed border-pink-200">
-                          <p className="text-[11px] text-pink-600 font-bold leading-relaxed mb-3">
-                             <i className="fas fa-key mr-1"></i> <strong>API Token:</strong> Or use an Access Token to fetch your feed.
-                          </p>
-                          <div className="flex gap-2">
-                             <input 
-                               type="text" 
-                               placeholder="Paste Access Token (e.g. IGQV...)"
-                               value={igToken}
-                               onChange={(e) => setIgToken(e.target.value)}
-                               className="flex-1 bg-white border border-pink-100 rounded-md p-3 text-xs focus:ring-2 focus:ring-pink-300 outline-none font-mono"
-                             />
-                             <button 
-                               onClick={fetchInstagramFeed}
-                               disabled={isFetchingIG}
-                               className="bg-pink-500 text-white font-bold px-4 rounded-md text-xs disabled:opacity-50"
-                             >
-                               {isFetchingIG ? <i className="fas fa-spinner fa-spin"></i> : 'Fetch'}
-                             </button>
-                          </div>
-                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
              </div>
 
-             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 flex flex-col gap-4">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo Albums</label>
-                
-                <div className="flex gap-2">
-                   <input 
-                     type="text" 
-                     id="newAlbumInput"
-                     placeholder="New Album Name..."
-                     className="flex-1 border-2 border-gray-50 rounded-md p-3 text-xs font-bold outline-none focus:border-pink-200"
-                   />
-                   <button 
-                     onClick={() => {
-                       const input = document.getElementById('newAlbumInput') as HTMLInputElement;
-                       if (input && input.value) {
-                         addAlbum(input.value);
-                         input.value = '';
-                       }
-                     }}
-                     className="bg-pink-500 text-white px-4 rounded-md font-black text-xs shadow-md hover:bg-pink-600 transition-colors"
-                   >
-                     Create
-                   </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-2">
-                   {(localConfig.albums || []).map(album => (
-                      <div key={album.id} className="bg-pink-50 border border-pink-100 rounded-md px-3 py-2 flex items-center gap-2">
-                         <span className="text-xs font-bold text-pink-600 truncate max-w-[120px]">{album.name}</span>
-                         <button onClick={() => deleteAlbum(album.id)} className="text-pink-300 hover:text-red-500 transition-colors bg-white rounded-full w-4 h-4 flex items-center justify-center">
-                            <i className="fas fa-times text-[8px]"></i>
+             <div className="space-y-4">
+               {/* Albums Management */}
+               <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                      <i className="fas fa-folder-open text-amber-400"></i> Photo Albums
+                    </h3>
+                    <button 
+                      onClick={() => {
+                        const name = prompt("Enter album name:");
+                        if (name) addAlbum(name);
+                      }}
+                      className="bg-amber-50 text-amber-600 text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-amber-100 hover:bg-amber-100"
+                    >
+                      + Create Album
+                    </button>
+                 </div>
+                 <div className="flex flex-wrap gap-2">
+                    {localConfig.albums?.map(album => (
+                      <div key={album.id} className="bg-amber-50/30 px-3 py-2 rounded-md border border-amber-100 flex items-center gap-3">
+                         <span className="text-xs font-bold text-gray-700">{album.name}</span>
+                         <span className="text-[8px] bg-amber-100 text-amber-600 px-1 rounded-full font-black">
+                           {localConfig.gallery.filter(item => item.albumId === album.id).length}
+                         </span>
+                         <button onClick={() => deleteAlbum(album.id)} className="text-red-300 hover:text-red-500 transition-colors">
+                           <i className="fas fa-times text-[10px]"></i>
                          </button>
                       </div>
-                   ))}
-                   {(!localConfig.albums || localConfig.albums.length === 0) && (
-                      <p className="text-xs text-gray-400 italic">No albums created yet.</p>
-                   )}
-                </div>
-             </div>
+                    ))}
+                    {(localConfig.albums?.length || 0) === 0 && <p className="text-[10px] text-gray-400 italic">No albums created yet</p>}
+                 </div>
+               </div>
 
-             <div className="flex justify-between items-center px-1 mb-2 mt-4">
-               <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Memories & Links</h3>
-             </div>
+               {/* Instagram Import */}
+               <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-6 rounded-md shadow-lg text-white space-y-4">
+                 <div className="flex items-center gap-3">
+                    <i className="fab fa-instagram text-3xl"></i>
+                    <div>
+                      <h4 className="font-black text-sm uppercase tracking-wider">Instagram Import</h4>
+                      <p className="text-[9px] text-white/70 uppercase font-bold tracking-widest">Connect your digital life</p>
+                    </div>
+                 </div>
+                 
+                 <div className="space-y-3">
+                    <div className="flex flex-col gap-1">
+                       <label className="text-[9px] font-black text-white/60 uppercase tracking-widest ml-1">Method A: Public Profile (No Login)</label>
+                       <div className="flex gap-2">
+                         <div className="flex-1 bg-white/20 rounded-md flex items-center px-3 gap-2 border border-white/30 focus-within:bg-white/30 transition-all">
+                           <span className="text-white/40 text-sm">@</span>
+                           <input 
+                             type="text" 
+                             value={localConfig.instagramUsername || ''} 
+                             onChange={(e) => handleInputChange('instagramUsername', e.target.value)}
+                             className="flex-1 bg-transparent py-3 text-xs font-bold placeholder:text-white/40 outline-none"
+                             placeholder="username"
+                           />
+                         </div>
+                         <button 
+                           onClick={fetchInstagramProfile}
+                           disabled={isFetchingIG || !localConfig.instagramUsername}
+                           className="bg-white text-purple-600 px-4 rounded-md font-black text-[10px] uppercase shadow-md disabled:opacity-50 hover:bg-purple-50 transition-all"
+                         >
+                           {isFetchingIG ? '...' : 'Fetch'}
+                         </button>
+                       </div>
+                    </div>
 
-             {/* Drag & Drop Zone */}
-             <div 
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => {
-                   const input = document.createElement('input');
-                   input.type = 'file';
-                   input.multiple = true;
-                   input.accept = 'image/*,video/*,audio/*';
-                   input.onchange = (e) => {
-                      const files = (e.target as HTMLInputElement).files;
-                      if(files) handleMultiFileUpload(files);
-                   };
-                   input.click();
-                }}
-                className={`
-                  relative group cursor-pointer transition-all duration-300
-                  border-2 border-dashed rounded-md py-8 flex flex-col items-center justify-center gap-3 mb-6
-                  ${isDraggingOver ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-pink-300 hover:bg-gray-50'}
-                `}
-             >
-                <div className={`p-4 rounded-full transition-colors ${isDraggingOver ? 'bg-pink-100' : 'bg-gray-100 group-hover:bg-pink-50'}`}>
-                   <i className={`fas fa-cloud-upload-alt text-2xl ${isDraggingOver ? 'text-pink-600' : 'text-gray-400 group-hover:text-pink-400'}`}></i>
-                </div>
-                <div className="text-center">
-                   <p className="text-xs font-bold text-gray-600">
-                      {isDraggingOver ? 'Drop files now!' : 'Click or Drag files here'}
-                   </p>
-                   <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-                      Supports JPG, PNG, MP4, MP3
-                   </p>
-                </div>
-             </div>
-             
-             {/* Gallery Grid */}
-             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {localConfig.gallery.map((item, idx) => {
-                const isIG = item.url.includes('instagram.com') || item.url.includes('cdninstagram.com');
-                const isVid = isVideo(item.url);
-                const isAud = isAudio(item.url);
-                
-                return (
-                  <motion.div key={idx} layout className="bg-white p-2 rounded-md shadow-sm border border-gray-100 flex flex-col gap-2 group relative aspect-[4/5] hover:shadow-md transition-shadow">
-                    <div 
-                      className="flex-1 w-full rounded-md bg-gray-100 overflow-hidden relative cursor-zoom-in group/thumb"
-                      onClick={() => {
-                        const type = isAud ? 'audio' : isVid ? 'video' : 'image';
-                        setPreviewItem({ url: item.url, type });
-                      }}
-                    >
-                        {isAud ? (
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl text-orange-400">
-                                <i className="fas fa-microphone"></i>
-                            </div>
-                        ) : isVid ? (
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl text-blue-400">
-                                <i className="fas fa-video"></i>
-                            </div>
+                    <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
+                       <label className="text-[9px] font-black text-white/60 uppercase tracking-widest ml-1">Method B: Access Token (Bulk)</label>
+                       <div className="flex gap-2">
+                         <input 
+                           type="password" 
+                           value={igToken} 
+                           onChange={(e) => setIgToken(e.target.value)}
+                           className="flex-1 bg-white/20 border border-white/30 rounded-md p-3 text-xs font-bold placeholder:text-white/40 outline-none focus:bg-white/30"
+                           placeholder="IG Access Token..."
+                         />
+                         <button 
+                           onClick={fetchInstagramFeed}
+                           disabled={isFetchingIG || !igToken}
+                           className="bg-white text-pink-600 px-4 rounded-md font-black text-[10px] uppercase shadow-md disabled:opacity-50 hover:bg-pink-50 transition-all"
+                         >
+                           Import
+                         </button>
+                       </div>
+                    </div>
+                    {igProfileResult && <p className={`text-[10px] font-bold p-2 rounded-md ${igProfileResult.startsWith('❌') ? 'bg-red-500/20' : 'bg-green-500/20'}`}>{igProfileResult}</p>}
+                 </div>
+               </div>
+
+               <div className="flex justify-between items-center px-1">
+                 <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Memory Grid</h3>
+                 <div className="flex gap-2">
+                   <button onClick={addGalleryImage} className="bg-pink-500 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-md">+ Add Image</button>
+                   <label className="cursor-pointer bg-white text-pink-500 border border-pink-200 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-sm hover:bg-pink-50 transition-all">
+                      Upload Files
+                      <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => e.target.files && handleMultiFileUpload(e.target.files)} />
+                   </label>
+                 </div>
+               </div>
+
+               {/* Bulk Drop Zone */}
+               <div 
+                 onDragOver={handleDragOver}
+                 onDragLeave={handleDragLeave}
+                 onDrop={handleDrop}
+                 className={`w-full py-10 rounded-md border-2 border-dashed transition-all flex flex-col items-center justify-center gap-3 ${isDraggingOver ? 'bg-pink-50 border-pink-400 text-pink-500' : 'bg-gray-100 border-gray-200 text-gray-400'}`}
+               >
+                  <i className={`fas fa-cloud-upload-alt text-4xl ${isDraggingOver ? 'animate-bounce' : 'opacity-20'}`}></i>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em]">Drop many photos to upload in bulk</p>
+                  <p className="text-[9px] opacity-60">or click the button above</p>
+               </div>
+
+               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                 {localConfig.gallery.map((item, idx) => (
+                   <motion.div 
+                     layout
+                     key={idx} 
+                     initial={{ opacity: 0, scale: 0.9 }} 
+                     animate={{ opacity: 1, scale: 1 }}
+                     className="bg-white p-3 rounded-md shadow-sm border border-gray-100 space-y-3 relative group"
+                   >
+                     <div className="w-full aspect-square bg-gray-50 rounded-md overflow-hidden relative border border-gray-100">
+                        {isVideo(item.url) ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-blue-50/30">
+                             <i className="fas fa-video text-2xl text-blue-300"></i>
+                             <p className="text-[8px] font-black text-blue-400 uppercase mt-1">Video File</p>
+                          </div>
                         ) : (
-                            <img 
-                              src={getPreviewUrl(item.url)} 
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110" 
-                              onError={(e) => (e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23fef2f2'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23f87171' font-size='12'%3EInvalid%3C/text%3E%3C/svg%3E")} 
-                            />
+                          <img 
+                            src={getPreviewUrl(item.url)} 
+                            alt={`Gallery ${idx}`} 
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110 cursor-zoom-in" 
+                            onClick={() => setPreviewItem({ url: getPreviewUrl(item.url), type: 'image' })}
+                          />
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition-colors flex items-center justify-center">
-                           <i className="fas fa-search-plus text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"></i>
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <button 
+                             onClick={() => toggleGalleryPrivacy(idx)}
+                             title={item.privacy === 'public' ? 'Public' : 'Private'}
+                             className={`w-6 h-6 rounded-md backdrop-blur-md flex items-center justify-center text-[10px] transition-all ${item.privacy === 'public' ? 'bg-emerald-500/80 text-white' : 'bg-red-500/80 text-white'}`}
+                          >
+                             <i className={`fas ${item.privacy === 'public' ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                          </button>
                         </div>
-                        {isIG && <div className="absolute inset-0 bg-pink-500/10 pointer-events-none" />}
-                        {isIG && <div className="absolute top-1 right-1 w-4 h-4 bg-gradient-to-tr from-yellow-400 to-purple-600 text-white flex items-center justify-center rounded-full text-[6px] shadow-sm"><i className="fab fa-instagram"></i></div>}
-                    </div>
 
-                    {/* Compact Controls */}
-                    <div className="flex flex-col gap-1.5 px-1 pb-1">
-                        <div className="flex items-center gap-1.5">
-                            <div className="flex-1 min-w-0">
-                               {/* Privacy Toggle as a tiny dot/icon */}
-                               <button 
-                                 onClick={(e) => { e.stopPropagation(); toggleGalleryPrivacy(idx); }}
-                                 className={`w-full text-xs font-bold py-1 px-2 rounded-md flex items-center justify-center gap-1 transition-colors ${item.privacy === 'public' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}
-                               >
-                                 <i className={`fas fa-${item.privacy === 'public' ? 'globe' : 'lock'} text-[9px]`}></i>
-                                 <span className="text-[9px] uppercase tracking-wider">{item.privacy === 'public' ? 'Public' : 'Private'}</span>
-                               </button>
-                            </div>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); removeGalleryImage(idx); }}
-                              className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0"
-                            >
-                              <i className="fas fa-trash-alt text-[10px]"></i>
-                            </button>
+                        {/* Hover Tools Overlay */}
+                        <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent translate-y-full group-hover:translate-y-0 transition-transform flex justify-between gap-1 items-center">
+                           <label className="cursor-pointer bg-white/20 hover:bg-white/40 text-white p-1.5 rounded-md transition-all flex-1 text-center">
+                              <i className="fas fa-camera text-[10px]"></i>
+                              <input type="file" className="hidden" accept="image/*,video/*" onChange={(e) => e.target.files?.[0] && handleFileUpload(idx, e.target.files[0])} />
+                           </label>
+                           <button onClick={() => removeGalleryImage(idx)} className="bg-red-500/80 hover:bg-red-600 text-white p-1.5 rounded-md transition-all flex-1">
+                              <i className="fas fa-trash text-[10px]"></i>
+                           </button>
                         </div>
-                        
-                        {(localConfig.albums && localConfig.albums.length > 0) && (
-                            <select
-                               value={item.albumId || ''}
-                               onChange={(e) => handleGalleryAlbumChange(idx, e.target.value || null)}
-                               className="w-full text-[9px] font-bold text-gray-600 bg-gray-50 border border-gray-100 rounded-md p-1 outline-none focus:border-pink-200 truncate"
-                            >
-                               <option value="">No Album</option>
-                               {localConfig.albums.map(a => (
-                                   <option key={a.id} value={a.id}>{a.name}</option>
-                               ))}
-                            </select>
+
+                        {isUploading === idx && (
+                          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                             <i className="fas fa-circle-notch animate-spin text-pink-500"></i>
+                          </div>
                         )}
-                    </div>
-                  </motion.div>
-                 );
-               })}
+                     </div>
+                     <div className="space-y-2">
+                        <input 
+                           type="text" 
+                           value={item.url} 
+                           onChange={(e) => handleGalleryUrlChange(idx, e.target.value)}
+                           className="w-full bg-gray-50 border border-gray-100 rounded-md p-2 text-[8px] font-mono text-gray-500 outline-none focus:border-pink-200"
+                           placeholder="Direct image/video URL..."
+                        />
+                        <div>
+                           <label className="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">Assign to Album</label>
+                           <select
+                             value={item.albumId || ''}
+                             onChange={(e) => handleGalleryAlbumChange(idx, e.target.value || null)}
+                             className="w-full bg-white border border-gray-200 rounded-md p-1.5 text-[9px] font-bold outline-none"
+                           >
+                             <option value="">No Album</option>
+                             {localConfig.albums?.map(album => (
+                               <option key={album.id} value={album.id}>{album.name}</option>
+                             ))}
+                           </select>
+                        </div>
+                     </div>
+                   </motion.div>
+                 ))}
+               </div>
              </div>
           </motion.div>
-        )}
-
-        {/* Other tabs follow the same pattern, simplified for brevity here */}
-        {activeTab === 'timeline' && (
-           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        );
+      case 'timeline':
+        return (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div className="flex justify-between items-center px-1">
                  <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">Our Story</h3>
                  <button onClick={addTimelineEvent} className="bg-pink-500 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-md">+ New Event</button>
@@ -1636,10 +1413,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
 
            </motion.div>
-        )}
-
-        {activeTab === 'coupons' && (
-           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        );
+      case 'coupons':
+        return (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div className="bg-pink-50/30 p-4 rounded-md flex items-center justify-between border border-pink-50 mb-4">
                  <div>
                     <p className="text-xs font-bold text-gray-800 flex items-center gap-2 italic">
@@ -1789,9 +1566,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                );
             })}
          </motion.div>
-      )}
-               {activeTab === 'world' && (
-           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        );
+      case 'world':
+        return (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
              
              {/* Create New World Section */}
              <div className="bg-gradient-to-br from-pink-500 to-rose-600 p-5 rounded-md shadow-lg text-white">
@@ -1928,10 +1706,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                </p>
              </div>
 
-           </motion.div>
-        )}
-
-        {activeTab === 'objects' && (
+          </motion.div>
+        );
+      case 'objects':
+        return (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 space-y-6">
               <div className="flex justify-between items-center">
@@ -2008,8 +1786,171 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
               </div>
             </div>
           </motion.div>
-        )}
-      </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={isMobile ? { y: "100%" } : { scale: 0.95, opacity: 0, y: 20 }}
+            animate={isMobile ? { y: 0 } : { scale: 1, opacity: 1, y: 0 }}
+            exit={isMobile ? { y: "100%" } : { scale: 0.95, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className={`bg-white w-full max-w-4xl rounded-t-[2.5rem] md:rounded-md shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex flex-col md:flex-row overflow-hidden ${isMobile ? 'h-[95vh] mt-auto' : 'h-[85vh]'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header (Mobile Only) */}
+            {isMobile && (
+              <div className="flex flex-col items-center shrink-0 pt-4 pb-2 border-b border-gray-100 bg-white sticky top-0 z-20">
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-4"></div>
+                <div className="w-full px-6 flex justify-between items-center">
+                  <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
+                    System Settings
+                  </h2>
+                  <button onClick={onClose} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
+                    <i className="fas fa-times text-gray-400"></i>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Vertical Tabs Sidebar (Desktop Only) */}
+            {!isMobile && (
+              <div className="w-56 bg-gray-50 border-r border-gray-100 flex flex-col shrink-0">
+                {/* Header */}
+                <div className="p-5 border-b border-gray-100">
+                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    ⚙️ Settings
+                    {hasChanges && <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />}
+                  </h2>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Customize Narinyland</p>
+                </div>
+
+                {/* Tab Buttons */}
+                <div className="flex-1 overflow-y-auto py-2">
+                  {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'objects'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab as any)}
+                      className={`w-full text-left px-5 py-3 flex items-center gap-3 text-sm font-bold capitalize transition-all ${
+                        activeTab === tab 
+                          ? 'bg-pink-50 text-pink-600 border-l-4 border-pink-500' 
+                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-l-4 border-transparent'
+                      }`}
+                    >
+                      <i className={`fas ${TAB_ICONS[tab] || 'fa-circle'} text-xs w-4`}></i>
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Save Button in Sidebar */}
+                <div className="p-4 border-t border-gray-100">
+                  <button
+                    onClick={handleSave}
+                    disabled={!hasChanges}
+                    className={`w-full py-3 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
+                      hasChanges
+                        ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {hasChanges ? 'Save Changes' : 'No Changes'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Top Bar with Title (Desktop Only) */}
+              {!isMobile && (
+                <div className="p-5 border-b border-gray-100 flex justify-between items-center shrink-0 bg-white">
+                  <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
+                    <i className={`fas ${TAB_ICONS[activeTab] || 'fa-circle'} text-pink-400`}></i>
+                    {activeTab}
+                  </h3>
+                  <button onClick={onClose} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-md flex items-center justify-center transition-colors">
+                    <i className="fas fa-times text-gray-500"></i>
+                  </button>
+                </div>
+              )}
+
+              {/* Scrollable Content Area */}
+              <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-0 px-4' : 'p-6'} bg-gray-50/50 space-y-4 md:space-y-8 pb-32 custom-scrollbar`}>
+                {isMobile ? (
+                  /* Mobile Accordion Layout */
+                  <div className="space-y-3 mt-4">
+                    {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'objects'].map((tab) => (
+                      <div key={tab} className="bg-white rounded-md border border-gray-100 overflow-hidden shadow-sm">
+                        <button 
+                          onClick={() => setExpandedAccordion(expandedAccordion === tab ? null : tab)}
+                          className={`w-full px-5 py-4 flex items-center justify-between text-sm font-black uppercase tracking-widest ${expandedAccordion === tab ? 'bg-pink-50 text-pink-600' : 'text-gray-600'}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <i className={`fas ${TAB_ICONS[tab] || 'fa-circle'} text-xs`}></i>
+                            {tab}
+                          </div>
+                          <i className={`fas fa-chevron-down text-[10px] transition-transform ${expandedAccordion === tab ? 'rotate-180' : ''}`}></i>
+                        </button>
+                        <AnimatePresence>
+                          {expandedAccordion === tab && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="border-t border-gray-50"
+                            >
+                               {renderTabContent(tab as any)}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Desktop Direct Layout */
+                  renderTabContent(activeTab)
+                )}
+              </div>
+              
+              {/* Sticky Footer Save Button (Mobile Only) */}
+              {isMobile && (
+                <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-30">
+                  <button
+                    onClick={handleSave}
+                    disabled={!hasChanges}
+                    className={`w-full py-4 rounded-full text-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
+                      hasChanges
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xl shadow-pink-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    }`}
+                  >
+                    {hasChanges ? (
+                      <>
+                        <i className="fas fa-check-circle"></i>
+                        Save All Changes
+                      </>
+                    ) : 'Up to Date'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+      )}
 
       {/* FULLSCREEN PREVIEW OVERLAY */}
       <AnimatePresence>
@@ -2079,13 +2020,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
           </motion.div>
         )}
       </AnimatePresence>
-          </div>
-        </motion.div>
-      </motion.div>
-      )}
     </AnimatePresence>
   );
 };
 
 export default EditDrawer;
-

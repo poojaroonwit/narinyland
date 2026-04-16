@@ -10,9 +10,12 @@ export async function PUT(
 ) {
   try {
     const { circleId } = await params;
+    if (circleId === 'undefined') {
+       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+    }
     const { name, description } = await req.json();
 
-    let { token, error, status } = await getAuthSession(req);
+    let { token, userId, error, status, isSoft } = await getAuthSession(req);
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
@@ -43,8 +46,11 @@ export async function DELETE(
 ) {
   try {
     const { circleId } = await params;
+    if (circleId === 'undefined') {
+       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+    }
 
-    let { token, error, status } = await getAuthSession(req);
+    let { token, userId, error, status, isSoft } = await getAuthSession(req);
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }

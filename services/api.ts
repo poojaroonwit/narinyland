@@ -328,18 +328,25 @@ export const circlesAPI = {
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: { name?: string; description?: string }) =>
-    fetchAPI<any>(`/circles/${id}`, {
+  update: (id: string, data: { name?: string; description?: string }) => {
+    if (!id || id === 'undefined') throw new Error('Invalid World ID');
+    return fetchAPI<any>(`/circles/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
-    }),
+    });
+  },
 
-  delete: (id: string) =>
-    fetchAPI<any>(`/circles/${id}`, { method: 'DELETE' }),
+  delete: (id: string) => {
+    if (!id || id === 'undefined') throw new Error('Invalid World ID');
+    return fetchAPI<any>(`/circles/${id}`, { method: 'DELETE' });
+  },
 
-  listMembers: (id: string) =>
-    fetchAPI<{ members: any[] }>(`/circles/${id}/members`),
+  listMembers: (id: string) => {
+    if (!id || id === 'undefined') throw new Error('Invalid World ID');
+    return fetchAPI<{ members: any[] }>(`/circles/${id}/members`);
+  },
 };
+
 
 // ─── Health Check ────────────────────────────────────────────────────
 

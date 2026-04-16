@@ -39,6 +39,8 @@ interface LoveTree3DProps {
   onUpdateItemPosition?: (id: string, x: number, y: number, z: number) => void;
   activeLandId?: string;
   onPurchase?: (item: ShopItem) => Promise<void>;
+  isEditMode?: boolean;
+  setIsEditMode?: (val: boolean) => void;
 }
 
 const DraggableItem = ({ item, onUpdate, children }: { item: PurchasedItem, onUpdate?: (id: string, x: number, y: number, z: number) => void, children: React.ReactNode }) => {
@@ -129,9 +131,9 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
      pets = [], albums = [],
      graphicsQuality = 'medium',
      purchasedItems = [], onUpdateItemPosition,
-     activeLandId, onPurchase
+     activeLandId, onPurchase,
+     isEditMode = false, setIsEditMode
  }) => {
-   const [isEditMode, setIsEditMode] = useState(false);
    const [isShopPopoverOpen, setIsShopPopoverOpen] = useState(false);
    const theme = THEMES[treeStyle] || THEMES['oak'];
    const [isQRUploadOpen, setIsQRUploadOpen] = useState(false);
@@ -724,24 +726,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
       </Canvas>
       
-      {/* Edit Mode Floating FAB */}
-      <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            setIsEditMode(!isEditMode);
-            if (isEditMode) setIsShopPopoverOpen(false);
-          }}
-          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
-            isEditMode
-              ? 'bg-pink-500 text-white border-pink-400 shadow-pink-500/40'
-              : 'bg-white/80 backdrop-blur-md text-gray-600 border-white/50 hover:bg-white'
-          }`}
-          title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
-        >
-          <i className={`fas ${isEditMode ? 'fa-times' : 'fa-pencil-alt'}`}></i>
-        </motion.button>
+
 
         <AnimatePresence>
           {isEditMode && (
@@ -765,20 +750,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Edit Mode Badge */}
-      <AnimatePresence>
-        {isEditMode && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-pink-500/90 backdrop-blur-md text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-2"
-          >
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            <span className="text-xs font-black uppercase tracking-widest">Edit Mode</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Floating Shop Popover */}
       <AnimatePresence>
@@ -822,7 +794,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             className="fixed bottom-6 left-6 z-[70] hidden md:flex flex-col items-center gap-2 group"
           >
              <div 
-                className="bg-white/80 backdrop-blur-xl p-3 rounded-[2rem] shadow-2xl border border-white/50 cursor-pointer hover:scale-105 transition-transform relative overflow-hidden active:scale-95"
+                className="bg-white/80 backdrop-blur-xl p-3 rounded-md shadow-2xl border border-white/50 cursor-pointer hover:scale-105 transition-transform relative overflow-hidden active:scale-95"
                 onClick={() => setIsQRUploadOpen(true)}
               >
                  <img 
@@ -859,7 +831,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 onClick={e => e.stopPropagation()}
               >
                  <div className="p-8 text-center space-y-4">
-                    <div className="w-20 h-20 bg-pink-100 rounded-[2rem] flex items-center justify-center text-pink-500 text-3xl mx-auto mb-2">
+                    <div className="w-20 h-20 bg-pink-100 rounded-md flex items-center justify-center text-pink-500 text-3xl mx-auto mb-2">
                        <i className="fas fa-qrcode"></i>
                     </div>
                     <h2 className="text-2xl font-black text-gray-800 tracking-tight">Upload via Phone</h2>

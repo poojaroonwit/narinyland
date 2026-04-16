@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 
 /**
  * BFF Auth Helper for Server Components and Route Handlers.
@@ -20,12 +19,6 @@ export async function getAuthSession(req?: Request) {
   let token = cookieStore.get('appkit_access_token')?.value;
   const refreshToken = cookieStore.get('appkit_refresh_token')?.value;
 
-  console.log('BFF Session Check:', { 
-    hasAccessToken: !!token, 
-    hasRefreshToken: !!refreshToken,
-    isAuthMetaSet: cookieStore.has('narinyland_is_auth')
-  });
-
   // 2. Self-Healing: Auto-refresh if access token is missing but refresh token exists
   if (!token && refreshToken) {
     console.log('BFF: Access token cookie expired, attempting silent refresh...');
@@ -35,6 +28,12 @@ export async function getAuthSession(req?: Request) {
     }
   }
 
+  console.log('BFF Session Check:', { 
+    hasAccessToken: !!token, 
+    hasRefreshToken: !!refreshToken,
+    isAuthMetaSet: cookieStore.has('narinyland_is_auth'),
+  });
+
   if (!token) {
     // 3. Fallback: Check for name-based "soft session" (narinyland_sub)
     const sub = cookieStore.get('narinyland_sub')?.value;
@@ -42,7 +41,7 @@ export async function getAuthSession(req?: Request) {
       console.log('BFF: No AppKit token, but name-based sub found:', sub);
       // Return the sub as a pseudo-token. This works for routes that only check 
       // for session existence or use the sub for local Prisma queries.
-      return { token: `name_session_${sub}`, userId: sub, status: 200 };
+      return { token: `name_session_${sub}`, userId: sub, status: 200, isSoft: true };
     }
 
     // Do NOT clear narinyland_is_auth here.
@@ -51,7 +50,21 @@ export async function getAuthSession(req?: Request) {
     return { error: 'unauthorized', status: 401 };
   }
 
-  return { token, status: 200 };
+  // Extract userId (sub) from token if possible
+  let userId: string | undefined;
+  if (token.startsWith('name_session_')) {
+    userId = token.replace('name_session_', '');
+  } else {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+        userId = payload.sub;
+      }
+    } catch {}
+  }
+
+  return { token, userId, status: 200, isSoft: token.startsWith('name_session_') };
 }
 
 /**

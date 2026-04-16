@@ -443,7 +443,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                           key={item.url}
                           layout
                           whileHover={{ scale: 1.05, y: -8 }}
-                          className={`snap-center shrink-0 w-[20rem] md:w-[24rem] lg:w-[28rem] xl:w-[32rem] bg-white p-2 pb-12 md:p-2.5 pb-14 lg:p-3 pb-16 xl:p-4 pb-20 shadow-[0_25px_60px_rgba(0,0,0,0.12)] rounded-[2rem] md:rounded-[2.2rem] lg:rounded-[2.4rem] xl:rounded-[2.5rem] transition-all cursor-zoom-in relative border-[4px] md:border-[8px] lg:border-[12px] xl:border-[16px] border-white/90 group`}
+                          className={`snap-center shrink-0 w-[20rem] md:w-[24rem] lg:w-[28rem] xl:w-[32rem] bg-white p-2 pb-12 md:p-2.5 pb-14 lg:p-3 pb-16 xl:p-4 pb-20 shadow-[0_25px_60px_rgba(0,0,0,0.12)] rounded-md md:rounded-[2.2rem] lg:rounded-[2.4rem] xl:rounded-[2.5rem] transition-all cursor-zoom-in relative border-[4px] md:border-[8px] lg:border-[12px] xl:border-[16px] border-white/90 group`}
                           onClick={() => handleZoom(item.url)}
                         >
                            <div className="w-full h-56 md:h-72 lg:h-80 xl:h-96 overflow-hidden rounded-[1.2rem] md:rounded-[1.4rem] lg:rounded-[1.5rem] xl:rounded-[1.6rem] bg-gray-50 relative border border-gray-100 flex items-center justify-center">

@@ -5,7 +5,7 @@ import { createCircleViaServer } from '@/lib/appkit-server';
 
 export async function GET(req: NextRequest) {
   try {
-    let { token, error, status } = await getAuthSession(req);
+    let { token, userId, error, status, isSoft } = await getAuthSession(req);
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
@@ -15,65 +15,71 @@ export async function GET(req: NextRequest) {
 
     // Helper to check if token is valid (this GET route primarily uses Prisma, 
     // but we can use the token to verify the user exists if needed, 
-    // or just let Prisma handle the data since the session is valid).
-    // Actually, for consistency, let's just use the token we have.
-
-    // If a specific circle is requested, return its config
-    if (circleId) {
-      const config = await prisma.appConfig.findUnique({
-        where: { id: circleId },
-        include: { lands: { orderBy: { createdAt: 'asc' } } },
+    // 1. AppKit Fetch (Skip for soft sessions)
+    if (!isSoft) {
+      const fetchCircles = (t: string) => fetch(`${domain}/api/v1/circles`, {
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        cache: 'no-store',
       });
-      return NextResponse.json(config || null);
-    }
 
-    // Otherwise return the authenticated user's real AppKit circles.
-    // Local AppConfig is only used to enrich matching circles with local names.
-    const localConfigs = await prisma.appConfig.findMany({
-      select: { id: true, appName: true },
-    });
-    const localConfigMap = new Map(localConfigs.map((config) => [config.id, config]));
+      let res = await fetchCircles(token);
 
-    if (!token.startsWith('name_session_')) {
-      try {
-        const res = await fetch(`${domain}/api/v1/circles`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const circles = Array.isArray(data) ? data : (data.circles || data.data || []);
-
-          const mergedCircles = circles.map((circle: any) => {
-            const localConfig = localConfigMap.get(circle.id || circle._id);
-            return {
-              ...circle,
-              id: circle.id || circle._id,
-              name: localConfig?.appName || circle.name || 'Untitled World',
-            };
-          });
-
-          return NextResponse.json(mergedCircles);
+      // --- 401 RETRY LOGIC ---
+      if (res.status === 401) {
+        console.log('BFF /api/circles: 401 from AppKit, attempting refresh...');
+        const { refreshSession } = await import('@/lib/auth-server');
+        if (await refreshSession()) {
+          const { cookies } = await import('next/headers');
+          const newToken = (await cookies()).get('appkit_access_token')?.value;
+          if (newToken) {
+            token = newToken;
+            res = await fetchCircles(token);
+          }
         }
-
-        const appkitError = await res.json().catch(() => ({}));
-        console.warn('GET /api/circles AppKit fallback to local configs:', {
-          status: res.status,
-          appkitError,
-        });
-      } catch (appkitErr: any) {
-        console.warn('GET /api/circles failed to fetch AppKit circles, falling back locally:', appkitErr?.message || appkitErr);
       }
+
+      if (res.ok) {
+        const localConfigs = await prisma.appConfig.findMany({
+          select: { id: true, appName: true },
+        });
+        const localConfigMap = new Map(localConfigs.map((c) => [c.id, c]));
+
+        const data = await res.json();
+        const circles = Array.isArray(data) ? data : (data.circles || data.data || []);
+
+        const mergedCircles = circles.map((circle: any) => {
+          const id = circle.id || circle._id;
+          if (!id) return null; // Filter out malformed objects
+
+          const localConfig = localConfigMap.get(id);
+          return {
+            ...circle,
+            id,
+            name: localConfig?.appName || circle.name || 'Untitled World',
+          };
+        }).filter(Boolean);
+
+        return NextResponse.json(mergedCircles);
+      }
+
+      const appkitError = await res.json().catch(() => ({}));
+      console.warn('GET /api/circles AppKit fallback to local configs:', { status: res.status, appkitError });
     }
 
-    const configs = await prisma.appConfig.findMany({
-      include: { lands: { orderBy: { createdAt: 'asc' } } },
-      orderBy: { createdAt: 'asc' },
-    });
+    // 2. Local Fallback (Prisma)
+    // IMPORTANT: Filter by userId (partnerId) to avoid leaking other users' data!
+    let configs;
+    if (userId) {
+      configs = await prisma.appConfig.findMany({
+        where: {
+          partners: { some: { partnerId: userId } }
+        },
+        include: { lands: { orderBy: { createdAt: 'asc' } } },
+        orderBy: { createdAt: 'asc' },
+      });
+    } else {
+      configs = [];
+    }
 
     return NextResponse.json(
       configs.map((config) => ({
@@ -106,7 +112,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Create circle in AppKit
     let circleId: string;
-    let { token, error, status } = await getAuthSession(req);
+    let { token, error, status, isSoft } = await getAuthSession(req);
 
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
