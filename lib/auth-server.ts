@@ -18,6 +18,8 @@ export async function getAuthSession(req?: Request) {
   const cookieStore = await cookies();
   let token = cookieStore.get('appkit_access_token')?.value;
   const refreshToken = cookieStore.get('appkit_refresh_token')?.value;
+  // Keep reference to original token in case we need to extract sub after clearing
+  const lastAccessToken = token;
 
   // 2. Self-Healing: Auto-refresh if access token is missing but refresh token exists
   if (!token && refreshToken) {
@@ -34,41 +36,64 @@ export async function getAuthSession(req?: Request) {
     isAuthMetaSet: cookieStore.has('narinyland_is_auth'),
   });
 
-  // Token exists but refresh token is missing - token may be expired and unrefreshable
+  // Token exists but refresh token is missing - check if token is expired
+  // If expired, clear it and allow fallback to soft session (Redis + narinyland_sub)
   if (token && !refreshToken) {
-    console.warn('BFF: Access token exists but refresh token is missing. Token may be expired. Attempting validation...');
-    // Try to decode token expiry - if expired, clear it and force re-auth
+    console.warn('BFF: Access token exists but refresh token is missing. Checking expiry...');
+    let isExpired = false;
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
         const now = Math.floor(Date.now() / 1000);
         if (payload.exp && payload.exp < now) {
-          console.warn('BFF: Access token is expired and no refresh token available. Clearing cookies and forcing re-auth.');
-          cookieStore.delete('appkit_access_token');
-          cookieStore.delete('narinyland_is_auth');
-          return { error: 'session_expired', status: 401, reauthRequired: true };
+          isExpired = true;
         }
       }
     } catch {
-      // If we can't decode, assume it's expired when no refresh token exists
-      console.warn('BFF: Cannot validate token expiry. Clearing and forcing re-auth.');
+      // If we can't decode, assume it might be expired
+      isExpired = true;
+    }
+
+    if (isExpired) {
+      console.warn('BFF: Access token is expired and no refresh token available. Clearing token to allow soft session fallback.');
       cookieStore.delete('appkit_access_token');
-      cookieStore.delete('narinyland_is_auth');
-      return { error: 'session_expired', status: 401, reauthRequired: true };
+      token = undefined; // Allow soft session fallback below
     }
   }
 
   if (!token) {
     // 3. Fallback: Check for name-based "soft session" (narinyland_sub)
-    const sub = cookieStore.get('narinyland_sub')?.value;
+    let sub = cookieStore.get('narinyland_sub')?.value;
+    const hasAuthMeta = cookieStore.has('narinyland_is_auth');
+
+    // Recovery: If narinyland_sub is missing but we just cleared an expired token,
+    // try to extract the sub from that expired token (it's still in the cookie store reference)
+    if (!sub && lastAccessToken) {
+      try {
+        const parts = lastAccessToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+          if (payload.sub) {
+            sub = payload.sub;
+            console.log('BFF: Recovered sub from expired access token:', sub);
+          }
+        }
+      } catch {
+        // Ignore extraction errors
+      }
+    }
+
+    console.log('BFF: No AppKit token. Checking soft session:', { sub: sub || 'NOT_FOUND', hasAuthMeta });
+
     if (sub) {
-      console.log('BFF: No AppKit token, but name-based sub found:', sub);
-      // Return the sub as a pseudo-token. This works for routes that only check 
+      console.log('BFF: Soft session found, returning name_session for sub:', sub);
+      // Return the sub as a pseudo-token. This works for routes that only check
       // for session existence or use the sub for local Prisma queries.
       return { token: `name_session_${sub}`, userId: sub, status: 200, isSoft: true };
     }
 
+    console.warn('BFF: No AppKit token and no narinyland_sub cookie. Returning 401.');
     // Do NOT clear narinyland_is_auth here.
     // /api/auth/me owns that cookie and handles the soft-session fallback independently.
     // Other routes simply return 401 when the access token is absent.
