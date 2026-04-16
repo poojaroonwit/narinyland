@@ -15,7 +15,7 @@ import SimplePlayer from '../../components/SimplePlayer';
 import Toast from '../../components/Toast';
 import TimelineSpreadsheet from '../../components/TimelineSpreadsheet';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../../types';
-import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../../services/api';
+import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI, circlesAPI } from '../../services/api';
 import { useAuth } from '../../components/AuthProvider';
 import UserDropdown from '../../components/UserDropdown';
 import UserProfileModal from '../../components/UserProfileModal';
@@ -97,6 +97,26 @@ const Home: React.FC = () => {
     showProposal: true,
   });
 
+  const [circleMembers, setCircleMembers] = useState<any[]>([]);
+
+  // Compute activePartners from circle members with placeholder support
+  const activePartners = useMemo(() => {
+    const members = circleMembers || [];
+    const p1 = members[0];
+    const p2 = members[1];
+
+    return {
+      partner1: {
+        name: p1?.name || (user?.name ? user.name : 'Partner 1'),
+        avatar: p1?.avatar || user?.picture || '❤️'
+      },
+      partner2: {
+        name: p2?.name || 'Waiting for Partner...',
+        avatar: p2?.avatar || '💖'
+      }
+    };
+  }, [circleMembers, user]);
+
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
   const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
@@ -132,6 +152,17 @@ const Home: React.FC = () => {
     };
   }, []);
 
+  const handleSelectLand = (landId: string) => {
+    setAppConfig(prev => ({
+      ...prev,
+      lands: prev.lands?.map(l => ({
+        ...l,
+        isActive: l.id === landId
+      }))
+    }));
+    setIsLandDropdownOpen(false);
+  };
+
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -149,14 +180,20 @@ const Home: React.FC = () => {
           letters,
           timelineData,
           memories,
-          stats
+          stats,
+          membersData
         ] = await Promise.all([
           configAPI.get(),
           lettersAPI.list().catch(() => []),
           timelineAPI.list().catch(() => []), 
           memoriesAPI.list().catch(() => []),
-          statsAPI.get().catch(() => ({ xp: 0, level: 1, leaves: 0, points: 0 }))
+          statsAPI.get().catch(() => ({ xp: 0, level: 1, leaves: 0, points: 0 })),
+          activeCircleId ? circlesAPI.listMembers(activeCircleId).catch(() => ({ members: [] })) : Promise.resolve({ members: [] })
         ]);
+
+        if (membersData?.members) {
+          setCircleMembers(membersData.members);
+        }
 
         // Transform Timeline Data
         const mappedTimeline = timelineData.map((t: any) => ({
@@ -764,29 +801,8 @@ const Home: React.FC = () => {
         {activeTab === 'home' && (
           <div className="fixed top-24 right-4 z-50 flex flex-col items-end gap-2">
 
-            {/* 3D / Reality World pill toggle */}
-            <div className="flex items-center bg-white/85 backdrop-blur-md rounded-full border border-pink-100 shadow-lg p-1">
-              <button
-                onClick={() => setWorldMode('tree')}
-                className={`rounded-full px-3 py-1.5 text-[10px] font-black tracking-wide transition-all flex items-center gap-1 ${
-                  worldMode === 'tree'
-                    ? 'bg-pink-500 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-pink-500'
-                }`}
-              >
-                <i className="fas fa-tree text-[9px]"></i> 3D
-              </button>
-              <button
-                onClick={() => setWorldMode('globe')}
-                className={`rounded-full px-3 py-1.5 text-[10px] font-black tracking-wide transition-all flex items-center gap-1 ${
-                  worldMode === 'globe'
-                    ? 'bg-pink-500 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-pink-500'
-                }`}
-              >
-                <i className="fas fa-globe-americas text-[9px]"></i> World
-              </button>
-            </div>
+            {/* Circle (World) Switcher — only when user has multiple circles */}
+            {circles.length > 1 && (
 
             {/* Circle (World) Switcher — only when user has multiple circles */}
             {circles.length > 1 && (
@@ -1089,7 +1105,7 @@ const Home: React.FC = () => {
                 >
                   <LoveCoupons 
                     coupons={appConfig.coupons} 
-                    partners={appConfig.partners} 
+                    partners={activePartners} 
                     onRedeem={handleRedeemCoupon}
                     onDelete={handleDeleteCoupon}
                     onAdd={handleAddCoupon}
@@ -1156,7 +1172,7 @@ const Home: React.FC = () => {
                     onClose={() => setActiveTab('home')} 
                     messages={loveLetters}
                     onSendMessage={handleSendMessage}
-                    partners={appConfig.partners}
+                    partners={activePartners}
                   />
                 </motion.div>
              )}
@@ -1217,7 +1233,92 @@ const Home: React.FC = () => {
          >
            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
          </button>
-         <UserDropdown 
+           {/* Land Switcher */}
+           {appConfig.lands && appConfig.lands.length > 1 && (
+             <div className="relative">
+                <button
+                  onClick={() => setIsLandDropdownOpen(!isLandDropdownOpen)}
+                  className="h-10 px-4 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-gray-700 shadow-lg flex items-center gap-2 hover:bg-white/60 transition-all transform hover:scale-105"
+                >
+                  <i className="fas fa-map-marked-alt text-amber-500 text-xs"></i>
+                  <span className="text-xs font-bold truncate max-w-[80px] md:max-w-[120px]">
+                    {appConfig.lands.find(l => l.isActive)?.name || 'Select Land'}
+                  </span>
+                  <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`}></i>
+                </button>
+
+                <AnimatePresence>
+                  {isLandDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80] p-1.5"
+                    >
+                      {appConfig.lands?.map(land => (
+                        <button
+                          key={land.id}
+                          onClick={() => handleSelectLand(land.id)}
+                          className={`w-full text-left px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between group ${
+                            land.isActive 
+                            ? 'bg-amber-500 text-white shadow-md' 
+                            : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'
+                          }`}
+                        >
+                          <span className="truncate">{land.name}</span>
+                          {land.isActive && <i className="fas fa-check text-[10px]"></i>}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+             </div>
+           )}
+
+          {/* Circle Switcher */}
+          <div className="relative">
+             <button
+               onClick={() => setIsCircleDropdownOpen(!isCircleDropdownOpen)}
+               className="h-10 px-4 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-gray-700 shadow-lg flex items-center gap-2 hover:bg-white/60 transition-all transform hover:scale-105"
+             >
+               <i className="fas fa-globe-asia text-emerald-500 text-xs"></i>
+               <span className="text-xs font-bold truncate max-w-[80px] md:max-w-[120px]">
+                 {circles.find(c => c.id === activeCircleId)?.name || 'Select World'}
+               </span>
+               <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isCircleDropdownOpen ? 'rotate-180' : ''}`}></i>
+             </button>
+
+             <AnimatePresence>
+               {isCircleDropdownOpen && (
+                 <motion.div
+                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                   className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80] p-1.5"
+                 >
+                   {circles.map(circle => (
+                     <button
+                       key={circle.id}
+                       onClick={() => {
+                         setActiveCircle(circle.id);
+                         setIsCircleDropdownOpen(false);
+                       }}
+                       className={`w-full text-left px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between group ${
+                         circle.id === activeCircleId 
+                         ? 'bg-pink-500 text-white shadow-md' 
+                         : 'text-gray-600 hover:bg-pink-50 hover:text-pink-600'
+                       }`}
+                     >
+                       <span className="truncate">{circle.name}</span>
+                       {circle.id === activeCircleId && <i className="fas fa-check text-[10px]"></i>}
+                     </button>
+                   ))}
+                 </motion.div>
+               )}
+             </AnimatePresence>
+          </div>
+
+          <UserDropdown 
             user={user} 
             onLogout={logout} 
             onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
@@ -1325,8 +1426,33 @@ const Home: React.FC = () => {
                     animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
                     className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-yellow-400 shadow-[0_0_8px_rgba(244,114,182,0.5)]"
                   />
-                  
+              </div>
 
+              {/* 3D / World toggle integrated below status bar */}
+              <div 
+                className="mt-4 flex items-center bg-white/80 backdrop-blur-md rounded-md border border-pink-100 shadow-md p-1 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setWorldMode('tree')}
+                  className={`rounded-md px-4 py-1.5 text-[10px] font-black tracking-widest transition-all flex items-center gap-1.5 ${
+                    worldMode === 'tree'
+                      ? 'bg-pink-500 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-pink-500'
+                  }`}
+                >
+                  <i className="fas fa-tree text-[9px]"></i> 3D
+                </button>
+                <button
+                  onClick={() => setWorldMode('globe')}
+                  className={`rounded-md px-4 py-1.5 text-[10px] font-black tracking-widest transition-all flex items-center gap-1.5 ${
+                    worldMode === 'globe'
+                      ? 'bg-pink-500 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-pink-500'
+                  }`}
+                >
+                  <i className="fas fa-globe-americas text-[9px]"></i> WORLD
+                </button>
               </div>
             </div>
           )}
@@ -1411,7 +1537,7 @@ const Home: React.FC = () => {
                   exit={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0, y: 20 }}
                   transition={{ type: "spring", damping: 25, stiffness: 300 }}
                   className={`bg-white w-full max-w-2xl overflow-hidden shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex flex-col ${
-                    isMobile ? 'rounded-t-[3rem] max-h-[90vh]' : 'rounded-[3rem] max-h-[85vh]'
+                    isMobile ? 'rounded-t-md max-h-[90vh]' : 'rounded-md max-h-[85vh]'
                   }`}
                   onClick={e => e.stopPropagation()}
                 >
@@ -1536,7 +1662,7 @@ const Home: React.FC = () => {
             messages={loveLetters}
             onSendMessage={handleSendMessage}
             onUpdateMessage={handleUpdateMessage}
-            partners={appConfig.partners}
+            partners={activePartners}
             folders={appConfig.mailFolders}
           />
 
@@ -1544,6 +1670,7 @@ const Home: React.FC = () => {
             isOpen={isEditDrawerOpen} 
             onClose={() => setIsEditDrawerOpen(false)} 
             config={appConfig} 
+            partners={activePartners}
             setConfig={handleSetAppConfig} 
             onSave={() => showToast("Settings saved successfully! ✨")}
           />

@@ -90,7 +90,7 @@
 }
 
 body {
-    font-family: 'Outfit', 'Kanit', sans-serif;
+    font-family: 'DM Sans', 'Prompt', sans-serif;
     background-color: #fdf2f8; /* pink-50 */
     overflow-x: hidden;
 }
@@ -99,8 +99,12 @@ body {
     font-family: 'Pacifico', cursive;
 }
 
-.font-outfit {
-    font-family: 'Outfit', sans-serif;
+.font-dmsans {
+    font-family: 'DM Sans', sans-serif;
+}
+
+.font-prompt {
+    font-family: 'Prompt', sans-serif;
 }
 
 @keyframes holographic-sweep {

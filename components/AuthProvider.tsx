@@ -192,6 +192,33 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  // Idle timeout logic: automatically logout after 1 hour of inactivity
+  useEffect(() => {
+    if (!isLoggedIn || pathname.startsWith('/auth/callback')) return;
+
+    const TIMEOUT_MS = 3600 * 1000; // 1 hour
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.warn('Session timed out due to inactivity');
+        handleLogout();
+      }, TIMEOUT_MS);
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    resetTimer(); // Initialize timer
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, pathname]);
+
   // Re-run auth check when pathname changes (e.g. after callback navigates to /).
   // This ensures the auth state is always up-to-date on client-side route changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps

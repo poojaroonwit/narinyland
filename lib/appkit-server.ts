@@ -177,3 +177,50 @@ export async function addCircleMemberViaServer(circleId: string, userId: string,
   }
   return res.json();
 }
+
+/**
+ * Update a circle (world) via the AppKit API.
+ */
+export async function updateCircleViaServer(circleId: string, data: { name?: string; description?: string }, userToken?: string) {
+  const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
+  const token = effectiveToken || await getServiceToken();
+  if (!token) throw new Error('Missing authentication token');
+
+  const res = await fetch(
+    ${APPKIT_DOMAIN}/api/v1/ + (effectiveToken ? '' : 'admin/applications/' + APPKIT_CLIENT_ID + '/') + 'circles/' + circleId,
+    {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update circle: ' + res.status);
+  }
+  return res.json();
+}
+
+/**
+ * Delete a circle (world) via the AppKit API.
+ */
+export async function deleteCircleViaServer(circleId: string, userToken?: string) {
+  const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
+  const token = effectiveToken || await getServiceToken();
+  if (!token) throw new Error('Missing authentication token');
+
+  const res = await fetch(
+    ${APPKIT_DOMAIN}/api/v1/ + (effectiveToken ? '' : 'admin/applications/' + APPKIT_CLIENT_ID + '/') + 'circles/' + circleId,
+    {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token },
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to delete circle: ' + res.status);
+  }
+  return true;
+}

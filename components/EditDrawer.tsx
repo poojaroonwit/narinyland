@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Interaction, MemoryItem, AppConfig, Emotion } from '../types';
-import { uploadAPI } from '../services/api';
+import { uploadAPI, circlesAPI } from '../services/api';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { SHOP_ITEMS, ShopItem } from './Shop';
@@ -13,11 +13,15 @@ interface EditDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   config: AppConfig;
+  partners?: {
+    partner1: { name: string; avatar: string };
+    partner2: { name: string; avatar: string };
+  };
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   onSave?: () => void;
 }
 
-const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setConfig, onSave }) => {
+const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave }) => {
   const { circles, activeCircleId, setActiveCircle } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'objects'>('general');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -37,6 +41,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
   const [isUploading, setIsUploading] = useState<number | null>(null); // index of item being uploaded
   const [previewItem, setPreviewItem] = useState<{ url: string; type: 'image' | 'video' | 'audio' } | null>(null);
   const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
+
+  // World (Circle) management state
+  const [newWorldName, setNewWorldName] = useState('');
+  const [editingCircleId, setEditingCircleId] = useState<string | null>(null);
+  const [editingCircleName, setEditingCircleName] = useState('');
+  const [isCircleUpdating, setIsCircleUpdating] = useState(false);
 
   // Fetch posts from a public Instagram profile (username-based, no token)
   const fetchInstagramProfile = async () => {
@@ -425,6 +435,53 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
       points: 0
     };
     updateLocal(prev => ({ ...prev, coupons: [...prev.coupons, newCoupon] }));
+  };
+
+  const handleCreateWorld = async () => {
+    if (!newWorldName.trim()) return;
+    setIsCircleUpdating(true);
+    try {
+      const res = await circlesAPI.create({ name: newWorldName.trim() });
+      setNewWorldName('');
+      await refreshUser();
+      alert('World created successfully!');
+    } catch (err: any) {
+      alert(`Failed to create world: ${err.message}`);
+    } finally {
+      setIsCircleUpdating(false);
+    }
+  };
+
+  const handleUpdateWorld = async (id: string) => {
+    if (!editingCircleName.trim()) return;
+    setIsCircleUpdating(true);
+    try {
+      await circlesAPI.update(id, { name: editingCircleName.trim() });
+      setEditingCircleId(null);
+      await refreshUser();
+    } catch (err: any) {
+      alert(`Failed to update world: ${err.message}`);
+    } finally {
+      setIsCircleUpdating(false);
+    }
+  };
+
+  const handleDeleteWorld = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This will permanently remove all associated Narinyland data (memories, letters, etc.) for this world.`)) return;
+    
+    setIsCircleUpdating(true);
+    try {
+      await circlesAPI.delete(id);
+      await refreshUser();
+      if (id === activeCircleId) {
+        // We'll be redirected or switched by refreshUser logic if remaining circles exist
+        window.location.reload(); 
+      }
+    } catch (err: any) {
+      alert(`Failed to delete world: ${err.message}`);
+    } finally {
+      setIsCircleUpdating(false);
+    }
   };
 
   const handlePetChange = (id: string, field: string, value: any) => {
@@ -1026,45 +1083,31 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
             </div>
 
             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
                 <i className="fas fa-user-friends text-blue-400"></i> The Couple
               </h3>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <i className="fas fa-sync-alt animate-spin-slow text-green-500"></i> Synchronized with World Members
+              </p>
               <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
-                   <h4 className="text-[10px] font-black text-pink-500 uppercase border-b pb-1">Her</h4>
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner1.name} 
-                     onChange={(e) => handlePartnerChange('partner1', 'name', e.target.value)}
-                     className="w-full border rounded-md p-3 text-sm"
-                     placeholder="Name"
-                   />
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner1.avatar} 
-                     onChange={(e) => handlePartnerChange('partner1', 'avatar', e.target.value)}
-                     className="w-full border rounded-md p-3 text-2xl text-center"
-                     placeholder="👩"
-                   />
+                <div className="space-y-3 opacity-80">
+                   <h4 className="text-[10px] font-black text-pink-500 uppercase border-b pb-1">Profile 1</h4>
+                   <div className="w-full border rounded-md p-3 text-sm bg-gray-50 flex items-center gap-2">
+                      <span className="text-lg">{partners?.partner1.avatar}</span>
+                      <span className="font-bold text-gray-700">{partners?.partner1.name}</span>
+                   </div>
                 </div>
-                <div className="space-y-3">
-                   <h4 className="text-[10px] font-black text-blue-500 uppercase border-b pb-1">Him</h4>
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner2.name} 
-                     onChange={(e) => handlePartnerChange('partner2', 'name', e.target.value)}
-                     className="w-full border rounded-md p-3 text-sm"
-                     placeholder="Name"
-                   />
-                   <input 
-                     type="text" 
-                     value={localConfig.partners.partner2.avatar} 
-                     onChange={(e) => handlePartnerChange('partner2', 'avatar', e.target.value)}
-                     className="w-full border rounded-md p-3 text-2xl text-center"
-                     placeholder="👨"
-                   />
+                <div className="space-y-3 opacity-80">
+                   <h4 className="text-[10px] font-black text-blue-500 uppercase border-b pb-1">Profile 2</h4>
+                   <div className="w-full border rounded-md p-3 text-sm bg-gray-50 flex items-center gap-2">
+                      <span className="text-lg">{partners?.partner2.avatar}</span>
+                      <span className="font-bold text-gray-700">{partners?.partner2.name}</span>
+                   </div>
                 </div>
               </div>
+              <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
+                * Names and avatars are pulled directly from the Circle members. If you are alone, a placeholder is shown.
+              </p>
             </div>
           </motion.div>
         )}
@@ -1740,105 +1783,147 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                  </div>
                               </div>
                            </motion.div>
-                        )}
-                     </AnimatePresence>
-                  </div>
-                 );
-              })}
-            </motion.div>
-        )}
-
-        {activeTab === 'world' && (
+               {activeTab === 'world' && (
            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-
-             {/* AppKit Circles / World Selector */}
-             {circles.length > 0 && (
-               <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 flex flex-col gap-3">
-                 <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">
-                   <i className="fas fa-globe text-pink-500 mr-2"></i>Your Circles (Worlds)
-                 </h3>
-                 {circles.map(circle => (
-                   <div key={circle.id} className={`flex items-center justify-between p-3 rounded-md border ${circle.id === activeCircleId ? 'border-pink-300 bg-pink-50' : 'border-gray-100 bg-white'}`}>
-                     <div>
-                       <p className="text-xs font-bold text-gray-700">{circle.name}</p>
-                       <p className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[160px]">{circle.id}</p>
-                     </div>
-                     <div className="flex items-center gap-2">
-                       <button
-                         onClick={() => { navigator.clipboard.writeText(circle.id); }}
-                         title="Copy world code"
-                         className="text-gray-300 hover:text-pink-400 transition-colors"
-                       >
-                         <i className="fas fa-copy text-xs"></i>
-                       </button>
-                       {circle.id !== activeCircleId && (
-                         <button
-                           onClick={() => setActiveCircle(circle.id)}
-                           className="text-xs bg-pink-500 text-white px-2 py-1 rounded-md font-bold hover:bg-pink-600 transition-colors"
-                         >
-                           Switch
-                         </button>
-                       )}
-                       {circle.id === activeCircleId && (
-                         <span className="text-xs bg-pink-100 text-pink-500 px-2 py-1 rounded-md font-bold">Active</span>
-                       )}
-                     </div>
-                   </div>
-                 ))}
-                 <p className="text-[10px] text-gray-400 mt-1">
-                   Share your World Code with your partner so they can join the same world.
-                 </p>
-               </div>
-             )}
-
-             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 flex flex-col gap-4">
-                <div className="flex justify-between items-center px-1 mb-2">
-                   <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest"><i className="fas fa-globe-asia text-emerald-500 mr-2"></i>My Lands</h3>
-                   <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{localConfig.lands?.length || 0} Lands</div>
-                </div>
-
+             
+             {/* Create New World Section */}
+             <div className="bg-gradient-to-br from-pink-500 to-rose-600 p-5 rounded-md shadow-lg text-white">
+                <h3 className="font-black uppercase text-[11px] tracking-widest mb-3 flex items-center gap-2">
+                  <i className="fas fa-plus-circle"></i> Create New World
+                </h3>
                 <div className="flex gap-2">
-                   <input 
-                     type="text" 
-                     id="newLandInput"
-                     placeholder="New World Name..."
-                     className="flex-1 border-2 border-gray-50 rounded-md p-3 text-xs font-bold outline-none focus:border-emerald-200"
-                   />
-                   <button 
-                     onClick={() => {
-                       const input = document.getElementById('newLandInput') as HTMLInputElement;
-                       if (input && input.value) {
-                         addLand(input.value);
-                         input.value = '';
-                       }
-                     }}
-                     className="bg-emerald-500 text-white px-4 rounded-md font-black text-xs shadow-md hover:bg-emerald-600 transition-colors"
-                   >
-                     Create
-                   </button>
+                  <input 
+                    type="text" 
+                    value={newWorldName}
+                    onChange={(e) => setNewWorldName(e.target.value)}
+                    placeholder="Enter world name..."
+                    className="flex-1 bg-white/20 border border-white/30 rounded-md p-3 text-xs font-bold placeholder:text-white/60 outline-none focus:bg-white/30 transition-all"
+                  />
+                  <button 
+                    onClick={handleCreateWorld}
+                    disabled={isCircleUpdating || !newWorldName.trim()}
+                    className="bg-white text-pink-600 px-4 py-2 rounded-md font-black text-[10px] uppercase shadow-md hover:bg-pink-50 transition-all disabled:opacity-50"
+                  >
+                    {isCircleUpdating ? '...' : 'Create'}
+                  </button>
                 </div>
+                <p className="text-[9px] mt-3 text-white/80 italic">A world is a shared space for you and your partner. Each world has its own timeline, memories, and settings.</p>
+             </div>
 
-                <div className="flex flex-col gap-2 mt-2">
-                   {(localConfig.lands || []).map(land => (
-                      <div key={land.id} className={`border rounded-md p-3 flex items-center justify-between gap-2 transition-all ${land.isActive ? 'border-emerald-300 bg-emerald-50 shadow-sm' : 'border-gray-100 bg-white'}`}>
-                         <div className="flex items-center gap-3">
-                           <button 
-                              onClick={() => toggleLandActive(land.id)}
-                              className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${land.isActive ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-transparent hover:bg-emerald-100'}`}
-                           >
-                              <i className="fas fa-check text-[10px]"></i>
-                           </button>
-                           <span className={`text-xs font-bold ${land.isActive ? 'text-emerald-700' : 'text-gray-600'}`}>{land.name}</span>
-                         </div>
-                         <button onClick={() => deleteLand(land.id)} className="text-gray-300 hover:text-red-500 transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50">
-                            <i className="fas fa-trash-alt text-[10px]"></i>
-                         </button>
+             {/* Circles List */}
+             <div className="space-y-4">
+               <div className="flex justify-between items-center px-1">
+                 <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">
+                   <i className="fas fa-globe-asia text-emerald-500 mr-2"></i> My Worlds (Circles)
+                 </h3>
+                 <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{circles.length} Active</div>
+               </div>
+
+               <div className="flex flex-col gap-3">
+                 {circles.map(circle => (
+                    <div 
+                      key={circle.id} 
+                      className={`bg-white rounded-md shadow-sm border transition-all duration-300 ${circle.id === activeCircleId ? 'border-pink-300 ring-4 ring-pink-50' : 'border-gray-100 hover:shadow-md'}`}
+                    >
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          {editingCircleId === circle.id ? (
+                            <div className="flex gap-2 mb-1">
+                              <input 
+                                type="text"
+                                value={editingCircleName}
+                                onChange={(e) => setEditingCircleName(e.target.value)}
+                                className="flex-1 bg-gray-50 border border-gray-200 rounded-md p-1.5 text-xs font-bold outline-none focus:border-pink-300"
+                                autoFocus
+                              />
+                              <button 
+                                onClick={() => handleUpdateWorld(circle.id)}
+                                disabled={isCircleUpdating}
+                                className="px-3 py-1 bg-pink-500 text-white rounded-md text-[10px] font-black uppercase"
+                              >
+                                Save
+                              </button>
+                              <button 
+                                onClick={() => setEditingCircleId(null)}
+                                className="px-3 py-1 bg-gray-100 text-gray-500 rounded-md text-[10px] font-black uppercase"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <h4 className="font-black text-gray-800 text-sm truncate flex items-center gap-2">
+                              {circle.name}
+                              {circle.id === activeCircleId && <span className="bg-pink-100 text-pink-500 text-[8px] px-1.5 py-0.5 rounded-full">ACTIVE</span>}
+                            </h4>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <code className="text-[9px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">{circle.id}</code>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(circle.id);
+                                alert('World Code copied to clipboard!');
+                              }}
+                              className="text-gray-300 hover:text-pink-500 transition-colors"
+                              title="Copy World Code"
+                            >
+                              <i className="fas fa-copy text-[10px]"></i>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                           {circle.id !== activeCircleId && (
+                             <button 
+                               onClick={() => setActiveCircle(circle.id)}
+                               className="px-4 py-2 bg-pink-50 text-pink-600 hover:bg-pink-500 hover:text-white rounded-md text-[10px] font-black uppercase tracking-widest transition-all"
+                             >
+                               Switch
+                             </button>
+                           )}
+                           
+                           <div className="flex items-center border-l border-gray-100 pl-2">
+                              <button 
+                                 onClick={() => {
+                                   setEditingCircleId(circle.id);
+                                   setEditingCircleName(circle.name);
+                                 }}
+                                 className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all"
+                                 title="Rename World"
+                              >
+                                 <i className="fas fa-edit text-xs"></i>
+                              </button>
+                              <button 
+                                 onClick={() => handleDeleteWorld(circle.id, circle.name)}
+                                 className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                 title="Delete World"
+                              >
+                                 <i className="fas fa-trash-alt text-xs"></i>
+                              </button>
+                           </div>
+                        </div>
                       </div>
-                   ))}
-                   {(!localConfig.lands || localConfig.lands.length === 0) && (
-                      <div className="text-center py-6 bg-gray-50 rounded-md border border-dashed border-gray-200">
-                         <i className="fas fa-globe-americas text-2xl text-gray-300 mb-2"></i>
-                         <p className="text-xs font-bold text-gray-400">No worlds created yet.</p>
+                    </div>
+                 ))}
+
+                 {circles.length === 0 && (
+                   <div className="text-center py-10 bg-gray-50 rounded-md border-2 border-dashed border-gray-200">
+                     <i className="fas fa-globe text-4xl text-gray-200 mb-3"></i>
+                     <p className="text-sm font-bold text-gray-400">No worlds found. Create your first one above!</p>
+                   </div>
+                 )}
+               </div>
+             </div>
+             
+             <div className="bg-emerald-50/50 p-4 rounded-md border border-emerald-100 flex items-start gap-3">
+               <i className="fas fa-info-circle text-emerald-500 mt-0.5"></i>
+               <p className="text-[10px] text-emerald-700 leading-relaxed">
+                 Invite your partner by sharing the <strong>World Code</strong>. When they enter the code in the "Join World" section, both of you will share all the magic across Narinyland.
+               </p>
+             </div>
+
+           </motion.div>
+        )}
+400">No worlds created yet.</p>
                       </div>
                    )}
                 </div>

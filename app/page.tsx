@@ -479,7 +479,7 @@ export default function MarketingPage() {
           font-family: 'Pacifico', cursive;
         }
         .font-body {
-          font-family: 'Outfit', sans-serif;
+          font-family: 'DM Sans', 'Prompt', sans-serif;
         }
         html {
           scroll-behavior: smooth;

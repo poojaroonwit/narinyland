@@ -124,7 +124,7 @@ export async function POST(req: Request) {
             sub,
             name: idClaims.name || `${idClaims.given_name || ''} ${idClaims.family_name || ''}`.trim(),
             email: idClaims.email || '',
-            avatar: idClaims.picture || idClaims.avatar || '',
+            avatar: idClaims.picture || idClaims.avatar || idClaims.profile_image || idClaims.image || '',
             attributes: idClaims.attributes || {},
           };
           // 7-day TTL: user info outlives the 1-hour access token so the soft

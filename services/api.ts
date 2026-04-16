@@ -31,6 +31,12 @@ async function fetchAPI<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        document.cookie = 'narinyland_is_auth=; Max-Age=0; path=/;';
+        window.location.href = '/';
+      }
+    }
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `API request failed: ${response.status}`);
   }
@@ -49,6 +55,12 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        document.cookie = 'narinyland_is_auth=; Max-Age=0; path=/;';
+        window.location.href = '/';
+      }
+    }
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `API request failed: ${response.status}`);
   }
@@ -303,6 +315,30 @@ export const landsAPI = {
       method: 'PUT',
       body: JSON.stringify({ isActive: true }),
     }),
+};
+
+// ─── Circles API ──────────────────────────────────────────────────────────
+
+export const circlesAPI = {
+  list: () => fetchAPI<any[]>('/circles'),
+
+  create: (data: { name: string; description?: string }) =>
+    fetchAPI<any>('/circles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: { name?: string; description?: string }) =>
+    fetchAPI<any>(`/circles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<any>(`/circles/${id}`, { method: 'DELETE' }),
+
+  listMembers: (id: string) =>
+    fetchAPI<{ members: any[] }>(`/circles/${id}/members`),
 };
 
 // ─── Health Check ────────────────────────────────────────────────────

@@ -268,7 +268,7 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
       sub: user.id || user.sub,
       name: user.name || '',
       email: user.email || '',
-      picture: user.avatar || user.picture || '',
+      picture: user.avatar || user.picture || user.profile_image || user.image || '',
       attributes: user.attributes || {},
     };
   } catch (err) {
