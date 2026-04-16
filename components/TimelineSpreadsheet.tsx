@@ -21,7 +21,7 @@ const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: {
   onRemove: (id: string) => void,
   onViewImage: (url: string) => void
 }) => (
-  <div className="bg-white p-5 rounded-3xl shadow-sm border border-pink-100 flex flex-col gap-4 relative">
+  <div className="bg-white p-5 rounded-md shadow-sm border border-pink-100 flex flex-col gap-4 relative">
     <button 
       onClick={() => onRemove(item.id)}
       className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full"
@@ -48,12 +48,12 @@ const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: {
     <textarea 
       value={item.text}
       onChange={(e) => onUpdate(item.id, 'text', e.target.value)}
-      className="w-full bg-gray-50 border-none font-medium text-sm text-gray-700 resize-none py-3 px-4 rounded-xl focus:bg-white focus:ring-2 ring-pink-100 min-h-[80px]"
+      className="w-full bg-gray-50 border-none font-medium text-sm text-gray-700 resize-none py-3 px-4 rounded-md focus:bg-white focus:ring-2 ring-pink-100 min-h-[80px]"
       placeholder="Write your memory..."
     />
 
     <div className="flex items-center gap-2">
-        <div className="flex-1 bg-blue-50/50 rounded-xl px-3 py-2 flex items-center gap-2">
+        <div className="flex-1 bg-blue-50/50 rounded-md px-3 py-2 flex items-center gap-2">
             <i className="fas fa-map-marker-alt text-blue-300 text-xs"></i>
             <input 
               type="text" 
@@ -67,12 +67,12 @@ const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: {
 
     {/* Media Scroll */}
     <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        <label className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 shrink-0">
+        <label className="w-16 h-16 rounded-md border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 shrink-0">
            <i className="fas fa-camera text-gray-300"></i>
            <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => onFileChange(item.id, e)} />
         </label>
         {(item.mediaItems || (item.media ? [item.media] : [])).map((m, idx) => (
-          <div key={idx} className="w-16 h-16 rounded-xl overflow-hidden relative shrink-0 group cursor-pointer" onClick={() => onViewImage(m.url)}>
+          <div key={idx} className="w-16 h-16 rounded-md overflow-hidden relative shrink-0 group cursor-pointer" onClick={() => onViewImage(m.url)}>
              <img src={m.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
              <button 
                 onClick={() => {
@@ -171,7 +171,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
             <div className="flex items-center gap-6">
               <button 
                 onClick={onClose} 
-                className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-2xl transition-colors text-gray-500"
+                className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-md transition-colors text-gray-500"
               >
                  <i className="fas fa-arrow-left text-lg"></i>
               </button>
@@ -189,14 +189,14 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
             <div className="flex items-center gap-4">
                <button 
                  onClick={handleAddRow}
-                 className="bg-white text-pink-500 px-8 py-3 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-pink-50 transition-all border-2 border-pink-100 shadow-sm"
+                 className="bg-white text-pink-500 px-8 py-3 rounded-md font-black uppercase text-[11px] tracking-widest hover:bg-pink-50 transition-all border-2 border-pink-100 shadow-sm"
                >
                  <i className="fas fa-plus mr-2"></i> Add Memory
                </button>
                <button 
                  onClick={handleApply}
                  disabled={isSaving}
-                 className={`bg-gradient-to-r from-pink-500 to-rose-500 text-white px-10 py-3 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-pink-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
+                 className={`bg-gradient-to-r from-pink-500 to-rose-500 text-white px-10 py-3 rounded-md font-black uppercase text-[11px] tracking-widest shadow-xl shadow-pink-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
                >
                  {isSaving ? <><i className="fas fa-spinner animate-spin"></i> Saving...</> : 'Save Changes'}
                </button>
@@ -221,7 +221,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                   ))}
                   <button 
                      onClick={handleAddRow}
-                     className="w-full py-4 rounded-3xl border-2 border-dashed border-pink-200 text-pink-400 font-black uppercase tracking-widest hover:bg-pink-50 transition-colors"
+                     className="w-full py-4 rounded-md border-2 border-dashed border-pink-200 text-pink-400 font-black uppercase tracking-widest hover:bg-pink-50 transition-colors"
                   >
                      + Add New Memory
                   </button>
@@ -244,7 +244,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                     {localItems.map((item) => (
                       <tr key={item.id} className="hover:bg-pink-50/20 transition-colors group">
                         <td className="p-4 w-56 pl-10">
-                          <div className="bg-gray-50 rounded-2xl p-2 flex items-center gap-2 border border-transparent focus-within:border-pink-200 focus-within:bg-white transition-all">
+                          <div className="bg-gray-50 rounded-md p-2 flex items-center gap-2 border border-transparent focus-within:border-pink-200 focus-within:bg-white transition-all">
                             <i className="fas fa-clock text-pink-300 text-xs ml-1"></i>
                             <DatePicker
                               selected={item.timestamp}
@@ -259,7 +259,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                           <select 
                             value={item.type}
                             onChange={(e) => handleUpdate(item.id, 'type', e.target.value)}
-                            className="w-full bg-pink-50/50 border-none font-black text-[10px] uppercase tracking-wider text-pink-500 cursor-pointer p-3 rounded-2xl focus:ring-2 ring-pink-100"
+                            className="w-full bg-pink-50/50 border-none font-black text-[10px] uppercase tracking-wider text-pink-500 cursor-pointer p-3 rounded-md focus:ring-2 ring-pink-100"
                           >
                             <option value="pet">Pet</option>
                             <option value="system">System</option>
@@ -271,7 +271,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                           <textarea 
                             value={item.text}
                             onChange={(e) => handleUpdate(item.id, 'text', e.target.value)}
-                            className="w-full bg-transparent border-none font-bold text-sm text-gray-700 resize-none py-3 px-4 focus:bg-white focus:ring-2 ring-pink-50 rounded-2xl leading-relaxed min-h-[45px]"
+                            className="w-full bg-transparent border-none font-bold text-sm text-gray-700 resize-none py-3 px-4 focus:bg-white focus:ring-2 ring-pink-50 rounded-md leading-relaxed min-h-[45px]"
                             rows={1}
                             placeholder="Tell the story..."
                             onInput={(e) => {
@@ -282,7 +282,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                           />
                         </td>
                         <td className="p-4 w-48">
-                          <div className="bg-blue-50/30 rounded-2xl p-2 flex items-center gap-2 border border-transparent focus-within:border-blue-200 focus-within:bg-white transition-all">
+                          <div className="bg-blue-50/30 rounded-md p-2 flex items-center gap-2 border border-transparent focus-within:border-blue-200 focus-within:bg-white transition-all">
                             <i className="fas fa-map-marker-alt text-blue-300 text-xs ml-1"></i>
                             <input 
                               type="text" 
@@ -296,7 +296,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                         <td className="p-4 w-56">
                           <div className="flex items-center gap-3 overflow-x-auto max-w-[220px] scrollbar-hide py-1">
                             {(item.mediaItems || (item.media ? [item.media] : [])).map((m, idx) => (
-                              <div key={idx} className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 border-2 border-white shadow-sm shrink-0 relative group/img cursor-pointer" onClick={() => setViewingImage(m.url)}>
+                              <div key={idx} className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 border-2 border-white shadow-sm shrink-0 relative group/img cursor-pointer" onClick={() => setViewingImage(m.url)}>
                                 {m.type === 'image' && <img src={m.url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform" />}
                                 {m.type === 'video' && <div className="w-full h-full flex items-center justify-center text-xs">🎥</div>}
                                 <button 
@@ -311,7 +311,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                                 </button>
                               </div>
                             ))}
-                            <label className="w-12 h-12 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-pink-300 transition-all shrink-0 hover:shadow-md">
+                            <label className="w-12 h-12 rounded-md border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-pink-300 transition-all shrink-0 hover:shadow-md">
                                <i className="fas fa-plus text-[10px] text-gray-300"></i>
                                <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleFileChange(item.id, e)} />
                             </label>
@@ -320,7 +320,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                         <td className="p-4 w-20 text-center pr-10">
                           <button 
                             onClick={() => handleRemoveRow(item.id)}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 active:scale-95"
+                            className="w-10 h-10 flex items-center justify-center rounded-md bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 active:scale-95"
                           >
                             <i className="fas fa-trash-alt text-sm"></i>
                           </button>
@@ -355,7 +355,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             src={viewingImage}
-            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-md shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </motion.div>
@@ -365,3 +365,4 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
 };
 
 export default TimelineSpreadsheet;
+

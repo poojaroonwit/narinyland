@@ -215,11 +215,11 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                  onClick={() => handleZoom(item.url)}
                  whileHover={{ scale: 1.2, zIndex: 50, rotate: 0 }}
                >
-                 <div className="w-full h-full p-3 bg-white/40 backdrop-blur-md rounded-2xl border-2 border-white/60 shadow-lg transform rotate-[-2deg] hover:rotate-0 transition-all duration-300 overflow-hidden flex items-center justify-center">
+                 <div className="w-full h-full p-3 bg-white/40 backdrop-blur-md rounded-md border-2 border-white/60 shadow-lg transform rotate-[-2deg] hover:rotate-0 transition-all duration-300 overflow-hidden flex items-center justify-center">
                     <div className="w-full h-full flex items-center justify-center">
                       <OptimizedImage 
                         src={item.url} 
-                        className="w-auto h-auto max-w-full max-h-full object-contain rounded-xl"
+                        className="w-auto h-auto max-w-full max-h-full object-contain rounded-md"
                         alt={`Memory ${idx}`}
                         priority={idx < 3} // Prioritize first 3 images for sky variant
                         fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='112' height='112'%3E%3Crect width='112' height='112' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='10'%3EImage%3C/text%3E%3C/svg%3E"
@@ -257,7 +257,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                 <OptimizedImage 
                   src={zoomedImage} 
                   alt="Zoomed Memory" 
-                  className="w-full h-full object-cover object-center rounded-3xl shadow-[0_0_100px_rgba(236,72,153,0.2)] border-4 border-white/10"
+                  className="w-full h-full object-cover object-center rounded-md shadow-[0_0_100px_rgba(236,72,153,0.2)] border-4 border-white/10"
                   priority={true} // Prioritize zoomed images
                   fallback="https://images.unsplash.com/photo-1516589174184-c6848463ea2a?q=80&w=800&auto=format&fit=crop"
                 />
@@ -294,10 +294,10 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
            </div>
 
            <div className="flex flex-col gap-3">
-              <div className={`flex bg-white/40 backdrop-blur-xl p-1.5 rounded-2xl shadow-inner border border-white self-center lg:self-end`}>
+              <div className={`flex bg-white/40 backdrop-blur-xl p-1.5 rounded-md shadow-inner border border-white self-center lg:self-end`}>
                  <button
                    onClick={() => onViewModeChange('all')}
-                   className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
+                   className={`px-5 py-2 rounded-md text-[10px] font-black transition-all uppercase tracking-widest ${
                      viewMode === 'all' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
                    }`}
                  >
@@ -305,7 +305,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                  </button>
                  <button
                    onClick={() => onViewModeChange('public')}
-                   className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
+                   className={`px-5 py-2 rounded-md text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
                      viewMode === 'public' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
                    }`}
                  >
@@ -313,7 +313,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                  </button>
                  <button
                    onClick={() => onViewModeChange('private')}
-                   className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
+                   className={`px-5 py-2 rounded-md text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 ${
                      viewMode === 'private' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-500'
                    }`}
                  >
@@ -362,7 +362,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 className={'w-full max-w-[20rem] md:max-w-[24rem] lg:max-w-[28rem] xl:max-w-[32rem] mx-auto'}
               >
-                <div className="relative bg-white p-2 pb-12 md:p-2.5 pb-14 lg:p-3 pb-16 xl:p-4 pb-20 shadow-[0_35px_80px_rgba(0,0,0,0.15)] border-[8px] md:border-[10px] lg:border-[12px] xl:border-[16px] border-white/90 rounded-xl transform rotate-[-1deg] hover:rotate-0 transition-all duration-700">
+                <div className="relative bg-white p-2 pb-12 md:p-2.5 pb-14 lg:p-3 pb-16 xl:p-4 pb-20 shadow-[0_35px_80px_rgba(0,0,0,0.15)] border-[8px] md:border-[10px] lg:border-[12px] xl:border-[16px] border-white/90 rounded-md transform rotate-[-1deg] hover:rotate-0 transition-all duration-700">
                   <div 
                     className="relative w-full aspect-square overflow-hidden bg-gray-50 rounded-sm cursor-zoom-in group"
                     onClick={() => handleZoom(filteredItems[currentIndex].url)}
@@ -522,7 +522,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
                    e.currentTarget.src = "https://images.unsplash.com/photo-1516589174184-c6848463ea2a?q=80&w=800&auto=format&fit=crop";
                 }}
                 alt="Zoomed Memory" 
-                className="w-full h-full object-contain rounded-3xl shadow-[0_0_100px_rgba(236,72,153,0.2)] border-4 border-white/10"
+                className="w-full h-full object-contain rounded-md shadow-[0_0_100px_rgba(236,72,153,0.2)] border-4 border-white/10"
               />
               <div className="absolute -bottom-16 left-0 w-full flex justify-center gap-4">
                 {items.find(i => getDisplayUrl(i.url) === zoomedImage)?.privacy === 'private' && (
@@ -545,3 +545,4 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
 };
 
 export default MemoryFrame;
+

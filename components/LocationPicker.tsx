@@ -80,7 +80,7 @@ export default function LocationPicker({ location, latitude, longitude, onChange
             // Optimistically update location text without changing lat/lng yet
             onChange(e.target.value, latitude, longitude);
           }}
-          className={`w-full border-2 rounded-2xl p-4 pr-10 text-sm font-bold text-gray-700 outline-none transition-all bg-white shadow-sm hover:border-pink-100 ${colorFocus}`}
+          className={`w-full border-2 rounded-md p-4 pr-10 text-sm font-bold text-gray-700 outline-none transition-all bg-white shadow-sm hover:border-pink-100 ${colorFocus}`}
           placeholder="Enter location..."
         />
         {isSearching && (
@@ -91,12 +91,12 @@ export default function LocationPicker({ location, latitude, longitude, onChange
       </div>
 
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 max-h-[280px] overflow-y-auto bg-white/95 backdrop-blur-md border border-gray-100 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-[100] p-2 divide-y divide-gray-50 scale-in-center">
+        <div className="absolute top-full left-0 right-0 mt-2 max-h-[280px] overflow-y-auto bg-white/95 backdrop-blur-md border border-gray-100 rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-[100] p-2 divide-y divide-gray-50 scale-in-center">
           {suggestions.map((suggestion, idx) => (
             <div 
               key={idx}
               onClick={() => handleSelectLocation(suggestion)}
-              className="p-4 hover:bg-pink-50/50 cursor-pointer flex items-center gap-4 transition-all first:rounded-t-xl last:rounded-b-xl group/item"
+              className="p-4 hover:bg-pink-50/50 cursor-pointer flex items-center gap-4 transition-all first:rounded-t-md last:rounded-b-md group/item"
             >
               <div className="w-8 h-8 rounded-full bg-gray-50 group-hover/item:bg-white flex items-center justify-center shrink-0 transition-colors shadow-sm">
                 <i className="fas fa-location-arrow text-pink-400 text-xs"></i>
@@ -112,3 +112,4 @@ export default function LocationPicker({ location, latitude, longitude, onChange
     </div>
   );
 }
+

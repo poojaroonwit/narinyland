@@ -140,7 +140,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
       animate={{ x: 0, y: 0, opacity: 1 }}
       exit={isInline ? { opacity: 0, y: 20 } : { x: "100%", y: "100%" }}
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className={`${isInline ? 'w-full h-full max-w-4xl mx-auto rounded-3xl shadow-xl' : 'bg-white w-full md:w-[450px] h-[100dvh] md:h-full rounded-t-3xl md:rounded-l-3xl md:rounded-tr-none shadow-2xl'} overflow-hidden flex flex-col relative bg-white`}
+      className={`${isInline ? 'w-full h-full max-w-4xl mx-auto rounded-md shadow-xl' : 'bg-white w-full md:w-[450px] h-[100dvh] md:h-full rounded-t-md md:rounded-l-md md:rounded-tr-none shadow-2xl'} overflow-hidden flex flex-col relative bg-white`}
       onClick={e => e.stopPropagation()}
     >
             {/* Header */}
@@ -180,7 +180,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                        <button 
                          key={f}
                          onClick={() => setCurrentFolder(f)}
-                         className={`px-3 py-2 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap flex items-center gap-2 ${currentFolder === f ? 'bg-pink-100 text-pink-600 shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+                         className={`px-3 py-2 rounded-md text-xs font-bold capitalize transition-all whitespace-nowrap flex items-center gap-2 ${currentFolder === f ? 'bg-pink-100 text-pink-600 shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
                        >
                          <i className={`fas fa-${f === 'Inbox' ? 'inbox' : f === 'Sent' ? 'paper-plane' : f === 'Archive' ? 'archive' : f === 'Trash' ? 'trash' : 'folder'}`}></i>
                          {f}
@@ -226,7 +226,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                               setSelectedMessage(msg);
                               setView('read');
                            }}
-                           className={`bg-white p-4 rounded-2xl shadow-sm border ${isUnread ? 'border-pink-300 shadow-md bg-pink-50/30' : 'border-gray-100'} flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-pink-200 group relative`}
+                           className={`bg-white p-4 rounded-md shadow-sm border ${isUnread ? 'border-pink-300 shadow-md bg-pink-50/30' : 'border-gray-100'} flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-pink-200 group relative`}
                          >
                             {isUnread && <div className="absolute top-2 right-2 w-2 h-2 bg-pink-500 rounded-full animate-pulse shadow-sm"></div>}
                             
@@ -281,16 +281,16 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                  
                  <div>
                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Sender</label>
-                   <div className="flex bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
+                   <div className="flex bg-white rounded-md p-1.5 shadow-sm border border-gray-200">
                       <button 
                         onClick={() => setComposeFrom('partner1')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${composeFrom === 'partner1' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-500'}`}
+                        className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${composeFrom === 'partner1' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-500'}`}
                       >
                          {partners.partner1.avatar} {partners.partner1.name}
                       </button>
                       <button 
                         onClick={() => setComposeFrom('partner2')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${composeFrom === 'partner2' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500'}`}
+                        className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${composeFrom === 'partner2' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500'}`}
                       >
                          {partners.partner2.avatar} {partners.partner2.name}
                       </button>
@@ -304,7 +304,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                      onChange={(date: Date | null) => date && setComposeDate(date.toISOString().slice(0, 16))}
                      showTimeSelect
                      dateFormat="Pp"
-                     className="w-full bg-white border border-gray-200 rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-pink-300 outline-none shadow-sm"
+                     className="w-full bg-white border border-gray-200 rounded-md p-3.5 text-sm focus:ring-2 focus:ring-pink-300 outline-none shadow-sm"
                    />
                  </div>
 
@@ -312,13 +312,13 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Add Memory</label>
                    {!composeMedia ? (
                      <div className="flex gap-3">
-                        <label className="flex-1 flex flex-col items-center justify-center py-4 px-2 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:bg-pink-50 hover:border-pink-300 transition-all bg-white group">
+                        <label className="flex-1 flex flex-col items-center justify-center py-4 px-2 border-2 border-dashed border-gray-200 rounded-md cursor-pointer hover:bg-pink-50 hover:border-pink-300 transition-all bg-white group">
                           <i className="fas fa-image text-pink-400 text-2xl mb-1.5 group-hover:scale-110 transition-transform"></i>
                           <span className="text-[10px] font-black text-gray-400 uppercase">Photo</span>
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'image')} />
                         </label>
 
-                        <label className="flex-1 flex flex-col items-center justify-center py-4 px-2 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all bg-white group">
+                        <label className="flex-1 flex flex-col items-center justify-center py-4 px-2 border-2 border-dashed border-gray-200 rounded-md cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all bg-white group">
                           <i className="fas fa-video text-blue-400 text-2xl mb-1.5 group-hover:scale-110 transition-transform"></i>
                           <span className="text-[10px] font-black text-gray-400 uppercase">Video</span>
                           <input type="file" accept="video/*" className="hidden" onChange={(e) => handleFileChange(e, 'video')} />
@@ -326,7 +326,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
 
                         <button 
                           onClick={isRecording ? stopRecording : startRecording}
-                          className={`flex-1 flex flex-col items-center justify-center py-4 px-2 border-2 border-dashed rounded-2xl transition-all bg-white group ${
+                          className={`flex-1 flex flex-col items-center justify-center py-4 px-2 border-2 border-dashed rounded-md transition-all bg-white group ${
                             isRecording 
                               ? 'bg-red-50 border-red-400 animate-pulse' 
                               : 'border-gray-200 hover:bg-orange-50 hover:border-orange-300'
@@ -337,9 +337,9 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                         </button>
                      </div>
                    ) : (
-                      <div className="relative bg-white border border-gray-200 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+                      <div className="relative bg-white border border-gray-200 rounded-md p-3 flex items-center justify-between shadow-sm">
                         <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center shadow-inner overflow-hidden border border-gray-100">
+                          <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center shadow-inner overflow-hidden border border-gray-100">
                             {composeMedia.type === 'image' && <OptimizedImage src={composeMedia.url} className="w-full h-full object-cover" alt="Compose media" />}
                             {composeMedia.type === 'video' && <div className="text-2xl">🎥</div>}
                             {composeMedia.type === 'audio' && <div className="text-2xl">🎤</div>}
@@ -367,7 +367,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                    <textarea 
                      value={composeContent}
                      onChange={(e) => setComposeContent(e.target.value)}
-                     className="w-full h-full bg-white border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-pink-300 outline-none resize-none font-quicksand shadow-sm"
+                     className="w-full h-full bg-white border border-gray-200 rounded-md p-4 text-sm focus:ring-2 focus:ring-pink-300 outline-none resize-none font-quicksand shadow-sm"
                      placeholder="Pour your heart out here..."
                    />
                  </div>
@@ -375,7 +375,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
                  <button 
                    onClick={handleSend}
                    disabled={!composeContent.trim() && !composeMedia}
-                   className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-widest text-sm"
+                   className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-md shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-widest text-sm"
                  >
                    Seal & Send 📮
                  </button>
@@ -431,10 +431,10 @@ const ReadAnimation: React.FC<{ message: LoveLetterMessage; onClose: () => void;
               opacity: 1 
             }}
             transition={{ type: "spring", duration: 1, bounce: 0.3 }}
-            className="relative w-80 h-56 bg-pink-500 rounded-b-3xl shadow-2xl z-10 flex justify-center"
+            className="relative w-80 h-56 bg-pink-500 rounded-b-md shadow-2xl z-10 flex justify-center"
         >
             {/* Envelope Body (Front) */}
-            <div className="absolute inset-0 rounded-b-3xl z-20 pointer-events-none" 
+            <div className="absolute inset-0 rounded-b-md z-20 pointer-events-none" 
                 style={{
                     background: 'linear-gradient(135deg, #ec4899, #db2777)',
                     clipPath: 'polygon(0 0, 50% 55%, 100% 0, 100% 100%, 0 100%)' 
@@ -442,7 +442,7 @@ const ReadAnimation: React.FC<{ message: LoveLetterMessage; onClose: () => void;
             />
             
             {/* Envelope Back */}
-            <div className="absolute inset-0 bg-pink-600/50 rounded-b-3xl -z-10 shadow-inner"></div>
+            <div className="absolute inset-0 bg-pink-600/50 rounded-b-md -z-10 shadow-inner"></div>
 
             {/* THE LETTER */}
             <motion.div
@@ -478,7 +478,7 @@ const ReadAnimation: React.FC<{ message: LoveLetterMessage; onClose: () => void;
                               initial={{ opacity: 0, scale: 0.9, y: 10 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               transition={{ delay: 0.4 }}
-                              className="mb-4 rounded-lg overflow-hidden border-2 border-white shadow-md bg-gray-100"
+                              className="mb-4 rounded-md overflow-hidden border-2 border-white shadow-md bg-gray-100"
                             >
                               {message.media.type === 'image' && (
                                 <OptimizedImage src={message.media.url} className="w-full h-auto object-cover max-h-48" alt="Memory" />
@@ -568,3 +568,4 @@ const ReadAnimation: React.FC<{ message: LoveLetterMessage; onClose: () => void;
 };
 
 export default LoveLetter;
+

@@ -53,7 +53,7 @@ export default function LocationPickerMap({
     : defaultCenter;
 
   return (
-    <div className="w-full h-[250px] rounded-xl overflow-hidden shadow-inner border-2 border-pink-50 relative z-0">
+    <div className="w-full h-[250px] rounded-md overflow-hidden shadow-inner border-2 border-pink-50 relative z-0">
       <MapContainer 
         center={mapCenter} 
         zoom={13} 
@@ -72,3 +72,4 @@ export default function LocationPickerMap({
     </div>
   );
 }
+

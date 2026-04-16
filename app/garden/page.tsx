@@ -794,7 +794,7 @@ const Home: React.FC = () => {
                 {/* Dropdown trigger */}
                 <button
                   onClick={() => setIsCircleDropdownOpen(prev => !prev)}
-                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-md px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
                 >
                   <span className="text-base leading-none">🌍</span>
                   <div className="text-left">
@@ -820,7 +820,7 @@ const Home: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full left-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-2 min-w-[180px] z-50 flex flex-col gap-1"
+                        className="absolute top-full left-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-md p-2 min-w-[180px] z-50 flex flex-col gap-1"
                       >
                         {circles.map(circle => (
                           <button
@@ -831,7 +831,7 @@ const Home: React.FC = () => {
                               await setActiveCircle(circle.id);
                               showToast(`Switched to ${circle.name}! 🌍`);
                             }}
-                            className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                            className={`flex items-center gap-3 p-2.5 rounded-md text-xs font-semibold transition-all text-left ${
                               circle.id === activeCircleId
                                 ? 'bg-pink-500 text-white shadow-sm'
                                 : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
@@ -854,7 +854,7 @@ const Home: React.FC = () => {
                 {/* FAB trigger */}
                 <button
                   onClick={() => { setIsLandDropdownOpen(prev => !prev); setLandSearch(''); }}
-                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-md px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
                 >
                   <span className="text-base leading-none">
                     {appConfig.lands.find(l => l.isActive)?.icon || '🏞️'}
@@ -882,10 +882,10 @@ const Home: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-3 min-w-[210px] z-50"
+                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-md p-3 min-w-[210px] z-50"
                       >
                         {/* Search */}
-                        <div className="flex items-center gap-2 bg-pink-50 rounded-xl px-3 py-2 mb-2">
+                        <div className="flex items-center gap-2 bg-pink-50 rounded-md px-3 py-2 mb-2">
                           <i className="fas fa-search text-[10px] text-pink-400"></i>
                           <input
                             type="text"
@@ -926,13 +926,13 @@ const Home: React.FC = () => {
                                     console.error('Failed to persist active land:', e);
                                   }
                                 }}
-                                className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                                className={`flex items-center gap-3 p-2.5 rounded-md text-xs font-semibold transition-all text-left ${
                                   land.isActive
                                     ? 'bg-pink-500 text-white shadow-sm'
                                     : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
                                 }`}
                               >
-                                <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
+                                <span className={`w-8 h-8 rounded-md flex items-center justify-center text-base flex-shrink-0 ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
                                   {land.icon || '🏞️'}
                                 </span>
                                 <span className="flex-1 truncate">{land.name}</span>
@@ -963,7 +963,7 @@ const Home: React.FC = () => {
                 onClick={() => setSelectedFlagItem(null)}
              >
                 <motion.div 
-                   className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl overflow-hidden"
+                   className="bg-white rounded-md p-6 max-w-sm w-full shadow-2xl overflow-hidden"
                    onClick={(e) => e.stopPropagation()}
                    initial={{ scale: 0.9, y: 20 }}
                    animate={{ scale: 1, y: 0 }}
@@ -980,7 +980,7 @@ const Home: React.FC = () => {
                    </div>
                    
                    {selectedFlagItem.mediaItems?.[0] && selectedFlagItem.mediaItems[0].type === 'image' && (
-                     <div className="rounded-xl overflow-hidden mb-4 shadow-sm border-2 border-pink-50 max-h-48">
+                     <div className="rounded-md overflow-hidden mb-4 shadow-sm border-2 border-pink-50 max-h-48">
                         <img src={selectedFlagItem.mediaItems[0].url} alt="" className="w-full object-cover" />
                      </div>
                    )}
@@ -988,7 +988,7 @@ const Home: React.FC = () => {
                    <p className="text-gray-700 font-medium mb-4">{selectedFlagItem.text}</p>
                    
                    {selectedFlagItem.location && (
-                     <div className="flex items-center gap-2 text-xs font-bold font-mono text-purple-500 bg-purple-50 px-3 py-2 rounded-lg">
+                     <div className="flex items-center gap-2 text-xs font-bold font-mono text-purple-500 bg-purple-50 px-3 py-2 rounded-md">
                         <i className="fas fa-map-marker-alt"></i>
                         <span>{selectedFlagItem.location}</span>
                      </div>
@@ -1000,7 +1000,7 @@ const Home: React.FC = () => {
                        setWorldMode('tree');
                        setActiveTab('timeline');
                      }} 
-                     className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+                     className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-md shadow-md hover:shadow-lg transition-all"
                    >
                       View on Timeline
                    </button>
@@ -1238,7 +1238,7 @@ const Home: React.FC = () => {
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
+            className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-md shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
           >
              <label className="text-[8px] font-black text-pink-500 uppercase tracking-tighter w-full text-center mb-2">VOL</label>
              <div className="h-32 w-1.5 bg-gray-100 rounded-full relative overflow-hidden group">
@@ -1351,9 +1351,9 @@ const Home: React.FC = () => {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 50, opacity: 0 }}
                     onClick={handleInstallApp}
-                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border-2 border-pink-100 group hover:border-pink-300 transition-all"
+                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-md shadow-2xl border-2 border-pink-100 group hover:border-pink-300 transition-all"
                   >
-                    <div className="w-10 h-10 bg-pink-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
+                    <div className="w-10 h-10 bg-pink-500 rounded-md flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
                       <i className="fas fa-mobile-alt"></i>
                     </div>
                     <div className="text-left">
@@ -1426,7 +1426,7 @@ const Home: React.FC = () => {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                        <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 rounded-3xl flex items-center justify-center text-3xl font-black text-white shadow-xl border-4 border-white rotate-3">
+                          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 rounded-md flex items-center justify-center text-3xl font-black text-white shadow-xl border-4 border-white rotate-3">
                             {loveStats.level}
                           </div>
                           <div>
@@ -1434,7 +1434,7 @@ const Home: React.FC = () => {
                              <p className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em]">World Status & Progress</p>
                           </div>
                        </div>
-                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all">
+                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all">
                           <i className="fas fa-times text-xl"></i>
                        </button>
                     </div>
@@ -1487,24 +1487,24 @@ const Home: React.FC = () => {
                        <h4 className="font-pacifico text-2xl text-gray-800 border-b border-gray-100 pb-4">How to grow our garden?</h4>
                        
                        <div className="space-y-4">
-                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                             <div className="w-12 h-12 shrink-0 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl">🌸</div>
+                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-md hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                             <div className="w-12 h-12 shrink-0 bg-pink-100 rounded-md flex items-center justify-center text-2xl">🌸</div>
                              <div>
                                 <h5 className="font-black text-gray-800 text-sm">Automated Blooms</h5>
                                 <p className="text-xs text-gray-500 font-medium leading-relaxed">A new flower blooms every <span className="text-pink-500 font-black">{appConfig.daysPerFlower} days</span> automatically to celebrate our journey together.</p>
                              </div>
                           </div>
 
-                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                             <div className="w-12 h-12 shrink-0 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">🍃</div>
+                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-md hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                             <div className="w-12 h-12 shrink-0 bg-green-100 rounded-md flex items-center justify-center text-2xl">🍃</div>
                              <div>
                                 <h5 className="font-black text-gray-800 text-sm">Manual Growth</h5>
                                 <p className="text-xs text-gray-500 font-medium leading-relaxed">You can manually grow a leaf by spending <span className="text-green-600 font-black">100 points</span>. Use the button on the right of the home screen!</p>
                              </div>
                           </div>
 
-                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                             <div className="w-12 h-12 shrink-0 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">⭐</div>
+                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-md hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                             <div className="w-12 h-12 shrink-0 bg-purple-100 rounded-md flex items-center justify-center text-2xl">⭐</div>
                              <div>
                                 <h5 className="font-black text-gray-800 text-sm">Earning Points & XP</h5>
                                 <p className="text-xs text-gray-500 font-medium leading-relaxed">Every milestone, memory, or letter shared adds <span className="text-purple-600 font-black">Points and XP</span> to our joint account.</p>
@@ -1576,3 +1576,4 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+

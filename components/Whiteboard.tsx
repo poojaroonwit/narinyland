@@ -163,7 +163,7 @@ export default function Whiteboard() {
   return (
     <div 
       ref={containerRef}
-      className={`flex flex-col rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/40 backdrop-blur-xl ${
+      className={`flex flex-col rounded-md overflow-hidden shadow-2xl border border-white/20 bg-black/40 backdrop-blur-xl ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none' : 'w-full h-[600px] my-8'
       }`}
     >
@@ -195,7 +195,7 @@ export default function Whiteboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <label className="cursor-pointer px-4 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 text-sm font-medium rounded-lg transition-colors border border-purple-500/30">
+          <label className="cursor-pointer px-4 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 text-sm font-medium rounded-md transition-colors border border-purple-500/30">
             Upload Image
             <input 
               type="file" 
@@ -207,14 +207,14 @@ export default function Whiteboard() {
           
           <button 
             onClick={clearCanvas}
-            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 text-sm font-medium rounded-lg transition-colors border border-red-500/30"
+            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 text-sm font-medium rounded-md transition-colors border border-red-500/30"
           >
             Clear
           </button>
           
           <button 
             onClick={toggleFullscreen}
-            className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/40 text-blue-200 text-sm font-medium rounded-lg transition-colors border border-blue-500/30"
+            className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/40 text-blue-200 text-sm font-medium rounded-md transition-colors border border-blue-500/30"
           >
             {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           </button>
@@ -245,3 +245,4 @@ export default function Whiteboard() {
     </div>
   );
 }
+

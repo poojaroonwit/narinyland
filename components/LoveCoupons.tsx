@@ -94,7 +94,7 @@ const CouponCard: React.FC<{
           onCardClick(coupon.id, isRedeemed);
         }}
         className={`
-          relative flex h-32 w-full overflow-hidden rounded-2xl shadow-2xl 
+          relative flex h-32 w-full overflow-hidden rounded-md shadow-2xl 
           transition-all duration-500 glass-morphism border-2 border-white/40
           ${isRedeemed ? 'opacity-50 grayscale-[0.6] border-gray-200 shadow-none' : 'hover:border-pink-200/50'}
         `}
@@ -309,7 +309,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       <div className="flex justify-center mb-10 gap-3">
           <button 
             onClick={() => setStatusTab('available')}
-            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`px-5 py-2 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
               statusTab === 'available' 
                 ? 'bg-white text-pink-500 shadow-sm border-2 border-pink-200' 
                 : 'bg-transparent text-gray-400 hover:text-pink-300'
@@ -319,7 +319,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
           </button>
           <button 
             onClick={() => setStatusTab('redeemed')}
-            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`px-5 py-2 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
               statusTab === 'redeemed' 
                 ? 'bg-white text-gray-600 shadow-sm border-2 border-gray-200' 
                 : 'bg-transparent text-gray-400 hover:text-gray-500'
@@ -377,7 +377,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white"
+              className="relative w-full max-w-sm bg-white rounded-md shadow-2xl overflow-hidden border-4 border-white"
             >
               {/* Top Section / Gradient Header */}
               <div className={`h-32 bg-gradient-to-br ${selectedCoupon.color} relative flex items-center justify-center`}>
@@ -418,7 +418,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                   <button
                     onClick={confirmRedeem}
                     disabled={isRedeeming}
-                    className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-pink-100 transition-all hover:scale-[1.02] active:scale-95 ${isRedeeming ? 'bg-gray-400 opacity-50' : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'}`}
+                    className={`w-full py-4 rounded-md font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-pink-100 transition-all hover:scale-[1.02] active:scale-95 ${isRedeeming ? 'bg-gray-400 opacity-50' : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'}`}
                   >
                     {isRedeeming ? 'Redeeming...' : 'Redeem Now 🎟️'}
                   </button>
@@ -483,7 +483,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                initial={{ opacity: 0, y: 50 }}
                animate={{ opacity: 1, y: 0 }}
                exit={{ opacity: 0, y: 50 }}
-               className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 overflow-hidden"
+               className="relative w-full max-w-sm bg-white rounded-md shadow-2xl p-8 overflow-hidden"
             >
                <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
                  <i className="fas fa-magic text-pink-500"></i> Create Coupon
@@ -497,7 +497,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                            type="text" 
                            value={newCoupon.emoji} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, emoji: e.target.value }))}
-                           className="w-full text-center border-2 border-pink-50 rounded-2xl p-3 text-2xl focus:border-pink-200 outline-none"
+                           className="w-full text-center border-2 border-pink-50 rounded-md p-3 text-2xl focus:border-pink-200 outline-none"
                         />
                      </div>
                      <div className="flex-1 flex flex-col gap-1">
@@ -507,7 +507,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                            placeholder="Unlimited Hugs"
                            value={newCoupon.title} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, title: e.target.value }))}
-                           className="w-full border-2 border-pink-50 rounded-2xl p-4 text-base font-black focus:border-pink-200 outline-none placeholder:text-gray-300 transition-all"
+                           className="w-full border-2 border-pink-50 rounded-md p-4 text-base font-black focus:border-pink-200 outline-none placeholder:text-gray-300 transition-all"
                         />
                      </div>
                   </div>
@@ -518,7 +518,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                         placeholder="Valid for one very long hug..."
                         value={newCoupon.desc} 
                         onChange={e => setNewCoupon(prev => ({ ...prev, desc: e.target.value }))}
-                        className="w-full border-2 border-pink-50 rounded-2xl p-4 text-sm font-bold focus:border-pink-200 outline-none min-h-[100px] resize-none transition-all placeholder:text-gray-300"
+                        className="w-full border-2 border-pink-50 rounded-md p-4 text-sm font-bold focus:border-pink-200 outline-none min-h-[100px] resize-none transition-all placeholder:text-gray-300"
                      />
                   </div>
 
@@ -529,7 +529,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                            type="number" 
                            value={newCoupon.points} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, points: parseInt(e.target.value) || 0 }))}
-                           className="w-full border-2 border-pink-50 rounded-2xl p-4 text-base font-black focus:border-pink-200 outline-none transition-all"
+                           className="w-full border-2 border-pink-50 rounded-md p-4 text-base font-black focus:border-pink-200 outline-none transition-all"
                         />
                      </div>
                      <div className="flex flex-col gap-1">
@@ -537,7 +537,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                         <select 
                            value={newCoupon.forPartner} 
                            onChange={e => setNewCoupon(prev => ({ ...prev, forPartner: e.target.value as any }))}
-                           className="w-full border-2 border-pink-50 rounded-2xl p-4 text-sm font-black uppercase tracking-widest focus:border-pink-200 outline-none bg-white transition-all"
+                           className="w-full border-2 border-pink-50 rounded-md p-4 text-sm font-black uppercase tracking-widest focus:border-pink-200 outline-none bg-white transition-all"
                         >
                            <option value="partner1">{p1Name}</option>
                            <option value="partner2">{p2Name}</option>
@@ -553,7 +553,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                            setIsAdding(false);
                            setNewCoupon({ title: '', emoji: '🎁', desc: '', points: 0, forPartner: 'partner1', color: 'from-pink-400 to-rose-400' });
                         }}
-                        className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xl shadow-pink-100 hover:scale-[1.02] active:scale-95 transition-all"
+                        className="w-full py-4 rounded-md font-black text-xs uppercase tracking-[0.2em] bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xl shadow-pink-100 hover:scale-[1.02] active:scale-95 transition-all"
                      >
                         Create Ticket 🎟️
                      </button>
@@ -574,3 +574,4 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
 };
 
 export default LoveCoupons;
+

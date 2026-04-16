@@ -564,7 +564,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 <button
                   onClick={handleSave}
                   disabled={!hasChanges}
-                  className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                  className={`w-full py-3 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
                     hasChanges
                       ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -583,7 +583,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   <i className={`fas ${TAB_ICONS[activeTab] || 'fa-circle'} text-pink-400`}></i>
                   {activeTab}
                 </h3>
-                <button onClick={onClose} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition-colors">
+                <button onClick={onClose} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-md flex items-center justify-center transition-colors">
                   <i className="fas fa-times text-gray-500"></i>
                 </button>
               </div>
@@ -592,7 +592,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-8 pb-32">
         {activeTab === 'general' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i className="fas fa-info-circle text-pink-400"></i> Core Setup
               </h3>
@@ -606,7 +606,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     type="text" 
                     value={localConfig.appName} 
                     onChange={(e) => handleInputChange('appName', e.target.value)}
-                    className="w-1/2 bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
+                    className="w-1/2 bg-gray-50 border-2 border-gray-100 rounded-md p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
                   />
                 </div>
 
@@ -631,13 +631,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <DatePicker
                       selected={new Date(localConfig.anniversaryDate || Date.now())}
                       onChange={(date: Date | null) => date && handleInputChange('anniversaryDate', date.toISOString())}
-                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
+                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-md p-3 text-xs font-bold outline-none focus:border-pink-200 transition-all text-right"
                     />
                   </div>
                 </div>
                 
                 {/* PWA / App Identity */}
-                <div className="bg-pink-50/30 p-4 rounded-2xl border border-pink-100 space-y-4">
+                <div className="bg-pink-50/30 p-4 rounded-md border border-pink-100 space-y-4">
                   <h4 className="text-xs font-black text-pink-400 uppercase tracking-widest flex items-center gap-2">
                     <i className="fas fa-mobile-alt"></i> App Identity & PWA
                   </h4>
@@ -648,7 +648,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                          type="text" 
                          value={localConfig.pwaName || localConfig.appName || ''} 
                          onChange={(e) => handleInputChange('pwaName', e.target.value)}
-                         className="w-full border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none focus:border-pink-300"
+                         className="w-full border border-gray-200 rounded-md p-2 text-xs font-bold outline-none focus:border-pink-300"
                          placeholder="Narinyland"
                        />
                      </div>
@@ -658,7 +658,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                          type="text" 
                          value={localConfig.pwaShortName || ''} 
                          onChange={(e) => handleInputChange('pwaShortName', e.target.value)}
-                         className="w-full border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none focus:border-pink-300"
+                         className="w-full border border-gray-200 rounded-md p-2 text-xs font-bold outline-none focus:border-pink-300"
                          placeholder="Nariny"
                        />
                      </div>
@@ -669,14 +669,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                        type="text" 
                        value={localConfig.pwaDescription || ''} 
                        onChange={(e) => handleInputChange('pwaDescription', e.target.value)}
-                       className="w-full border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none focus:border-pink-300"
+                       className="w-full border border-gray-200 rounded-md p-2 text-xs font-bold outline-none focus:border-pink-300"
                        placeholder="Our magical world..."
                      />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                      <div>
                        <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Theme Color</label>
-                       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1.5 pl-3">
+                       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md p-1.5 pl-3">
                           <input 
                             type="color" 
                             value={localConfig.pwaThemeColor || '#ec4899'} 
@@ -688,7 +688,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      </div>
                      <div>
                        <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Background Color</label>
-                       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1.5 pl-3">
+                       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md p-1.5 pl-3">
                           <input 
                             type="color" 
                             value={localConfig.pwaBackgroundColor || '#ffffff'} 
@@ -702,14 +702,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   <div>
                     <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">App Icon (512x512)</label>
                     <div className="flex items-center gap-4">
-                       <div className="w-16 h-16 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                       <div className="w-16 h-16 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
                           {localConfig.pwaIconUrl ? (
                             <img src={localConfig.pwaIconUrl} alt="App Icon" className="w-full h-full object-cover" />
                           ) : (
                             <i className="fas fa-mobile text-2xl text-gray-300"></i>
                           )}
                        </div>
-                       <label className="cursor-pointer bg-white border border-pink-200 text-pink-500 hover:bg-pink-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm">
+                       <label className="cursor-pointer bg-white border border-pink-200 text-pink-500 hover:bg-pink-50 px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shadow-sm">
                           {isUploading === 999 ? 'Uploading...' : 'Upload Icon'}
                           <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && handlePwaIconUpload(e.target.files[0])} />
                        </label>
@@ -726,7 +726,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <textarea 
                       value={(localConfig.musicPlaylist || []).join('\n')} 
                       onChange={(e) => handleInputChange('musicPlaylist', e.target.value.split('\n'))}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 text-xs font-bold text-gray-600 focus:border-pink-200 outline-none transition-colors h-24 resize-none"
+                      className="w-full border-2 border-gray-50 rounded-md p-4 text-xs font-bold text-gray-600 focus:border-pink-200 outline-none transition-colors h-24 resize-none"
                       placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..." 
                     />
                   </div>
@@ -737,7 +737,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       selected={localConfig.anniversaryDate ? new Date(localConfig.anniversaryDate) : null}
                       onChange={(date: Date | null) => handleInputChange('anniversaryDate', date ? date.toISOString() : '')}
                       dateFormat="MMMM d, yyyy"
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white"
+                      className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white"
                     />
                   </div>
                   <div>
@@ -745,7 +745,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <select 
                       value={localConfig.treeStyle} 
                       onChange={(e) => handleInputChange('treeStyle', e.target.value)}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white"
+                      className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white"
                     >
                       <option value="oak">Classic Oak 🌳</option>
                       <option value="sakura">Sakura 🌸</option>
@@ -769,13 +769,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <div className="space-y-3">
                       {/* Show old single pet if pets array is empty */}
                       {(!localConfig.pets || localConfig.pets.length === 0) && (
-                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-4">
+                        <div className="p-4 bg-gray-50 rounded-md border border-gray-100 flex items-center gap-4">
                            <div className="flex-1">
                               <label className="block text-[8px] font-black text-gray-400 uppercase mb-1">Primary Pet Type</label>
                               <select 
                                 value={localConfig.petType || 'cat'} 
                                 onChange={(e) => handleInputChange('petType', e.target.value)}
-                                className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs font-bold outline-none"
+                                className="w-full bg-white border border-gray-200 rounded-md p-2 text-xs font-bold outline-none"
                               >
                                 <option value="cat">Fluffy Cat 🐱</option>
                                 <option value="dog">Loyal Dog 🐶</option>
@@ -794,9 +794,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                           key={pet.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className="p-4 bg-pink-50/30 rounded-2xl border border-pink-100 flex items-center gap-3"
+                          className="p-4 bg-pink-50/30 rounded-md border border-pink-100 flex items-center gap-3"
                         >
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-pink-50">
+                          <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center text-xl shadow-sm border border-pink-50">
                             {pet.type === 'cat' && '🐱'}
                             {pet.type === 'dog' && '🐶'}
                             {pet.type === 'rabbit' && '🐰'}
@@ -810,7 +810,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                   type="text"
                                   value={pet.name || ''}
                                   onChange={(e) => handlePetChange(pet.id, 'name', e.target.value)}
-                                  className="w-full bg-white border border-pink-50 rounded-lg p-1.5 text-[10px] font-bold outline-none"
+                                  className="w-full bg-white border border-pink-50 rounded-md p-1.5 text-[10px] font-bold outline-none"
                                   placeholder="Name..."
                                 />
                              </div>
@@ -819,7 +819,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 <select 
                                   value={pet.type} 
                                   onChange={(e) => handlePetChange(pet.id, 'type', e.target.value)}
-                                  className="w-full bg-white border border-pink-50 rounded-lg p-1.5 text-[10px] font-bold outline-none"
+                                  className="w-full bg-white border border-pink-50 rounded-md p-1.5 text-[10px] font-bold outline-none"
                                 >
                                   <option value="cat">Cat 🐱</option>
                                   <option value="dog">Dog 🐶</option>
@@ -844,14 +844,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <select 
                       value={localConfig.skyMode || 'follow_timezone'} 
                       onChange={(e) => handleInputChange('skyMode', e.target.value)}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white"
+                      className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white"
                     >
                       <option value="follow_timezone">Device Timezone 🕒</option>
                       <option value="noon">Always Noon ☀️</option>
                       <option value="night">Always Night 🌙</option>
                     </select>
                   </div>
-                  <div className="col-span-2 bg-pink-50/30 p-4 rounded-2xl flex items-center justify-between border border-pink-50">
+                  <div className="col-span-2 bg-pink-50/30 p-4 rounded-md flex items-center justify-between border border-pink-50">
                      <div>
                         <p className="text-xs font-bold text-gray-800 flex items-center gap-2 italic">
                            <i className="fas fa-qrcode text-pink-500"></i> Show Mobile Upload QR
@@ -871,7 +871,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      <select 
                        value={localConfig.graphicsQuality || 'medium'} 
                        onChange={(e) => handleInputChange('graphicsQuality', e.target.value)}
-                       className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white font-bold text-sm"
+                       className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white font-bold text-sm"
                      >
                        <option value="low">Low (Fastest) ⚡</option>
                        <option value="medium">Medium (Balanced) ⚖️</option>
@@ -882,7 +882,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i className="fas fa-seedling text-green-400"></i> Garden & Quality
               </h3>
@@ -893,7 +893,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       <select 
                          value={localConfig.graphicsQuality || 'medium'} 
                          onChange={(e) => handleInputChange('graphicsQuality', e.target.value)}
-                         className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white font-bold text-xs"
+                         className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white font-bold text-xs"
                       >
                          <option value="low">Low (Faster)</option>
                          <option value="medium">Medium</option>
@@ -917,7 +917,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       type="number" 
                       value={localConfig.daysPerTree} 
                       onChange={(e) => handleInputChange('daysPerTree', parseInt(e.target.value))}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all"
+                      className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -926,7 +926,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       type="number" 
                       value={localConfig.daysPerFlower || 7} 
                       onChange={(e) => handleInputChange('daysPerFlower', parseInt(e.target.value))}
-                      className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all"
+                      className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -935,7 +935,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   <select 
                     value={localConfig.flowerType || 'sunflower'} 
                     onChange={(e) => handleInputChange('flowerType', e.target.value)}
-                    className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none bg-white font-bold"
+                    className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none bg-white font-bold"
                   >
                     <option value="sunflower">🌻 Sunflower</option>
                     <option value="tulip">🌷 Tulip</option>
@@ -951,7 +951,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                     <motion.div 
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-pink-50/50 p-4 rounded-2xl border border-pink-100 flex flex-wrap gap-2"
+                      className="bg-pink-50/50 p-4 rounded-md border border-pink-100 flex flex-wrap gap-2"
                     >
                       <p className="w-full text-[9px] font-black text-pink-400 uppercase tracking-widest mb-1 ml-1">Include in Mix:</p>
                       {[
@@ -975,7 +975,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                 : [...current, f.id];
                               handleInputChange('mixedFlowers', next);
                             }}
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all border-2 ${
+                            className={`w-10 h-10 rounded-md flex items-center justify-center text-xl transition-all border-2 ${
                               isSelected 
                                 ? 'bg-white border-pink-400 shadow-sm scale-110' 
                                 : 'bg-gray-50 border-transparent opacity-40 grayscale hover:grayscale-0 hover:opacity-100'
@@ -992,7 +992,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i className="fas fa-stream text-purple-400"></i> Timeline Display
               </h3>
@@ -1025,7 +1025,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i className="fas fa-user-friends text-blue-400"></i> The Couple
               </h3>
@@ -1036,14 +1036,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      type="text" 
                      value={localConfig.partners.partner1.name} 
                      onChange={(e) => handlePartnerChange('partner1', 'name', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-sm"
+                     className="w-full border rounded-md p-3 text-sm"
                      placeholder="Name"
                    />
                    <input 
                      type="text" 
                      value={localConfig.partners.partner1.avatar} 
                      onChange={(e) => handlePartnerChange('partner1', 'avatar', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-2xl text-center"
+                     className="w-full border rounded-md p-3 text-2xl text-center"
                      placeholder="👩"
                    />
                 </div>
@@ -1053,14 +1053,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      type="text" 
                      value={localConfig.partners.partner2.name} 
                      onChange={(e) => handlePartnerChange('partner2', 'name', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-sm"
+                     className="w-full border rounded-md p-3 text-sm"
                      placeholder="Name"
                    />
                    <input 
                      type="text" 
                      value={localConfig.partners.partner2.avatar} 
                      onChange={(e) => handlePartnerChange('partner2', 'avatar', e.target.value)}
-                     className="w-full border rounded-xl p-3 text-2xl text-center"
+                     className="w-full border rounded-md p-3 text-2xl text-center"
                      placeholder="👨"
                    />
                 </div>
@@ -1071,7 +1071,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'proposal' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
                   <i className="fas fa-heart text-red-400"></i> Proposal Flow
@@ -1094,7 +1094,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       <textarea 
                         value={q} 
                         onChange={(e) => updateProposalQuestion(idx, e.target.value)}
-                        className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all resize-none bg-gray-50/30"
+                        className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all resize-none bg-gray-50/30"
                         rows={2}
                         placeholder={`Question ${idx + 1}`}
                       />
@@ -1112,13 +1112,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i className="fas fa-check-circle text-green-400"></i> Proposal Status
               </h3>
               
               <div className="space-y-4">
-                <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-md">
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-sm font-bold text-gray-700">Completion</p>
@@ -1158,7 +1158,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md">
                   <div>
                     <p className="text-sm font-bold text-gray-700">Proposal Fully Accepted</p>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
@@ -1188,7 +1188,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </p>
             </div>
             
-            <div className="p-4 bg-red-50 rounded-2xl border-2 border-dashed border-red-100">
+            <div className="p-4 bg-red-50 rounded-md border-2 border-dashed border-red-100">
               <p className="text-[11px] text-red-600 font-bold leading-relaxed flex items-center gap-2">
                 <i className="fas fa-magic"></i>
                 The user can only accept your proposal. Each "Yes" leads to the next question until the final acceptance!
@@ -1199,18 +1199,18 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'gallery' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Gallery Interaction</label>
-                <div className="flex bg-gray-100 rounded-2xl p-1.5 mb-4">
+                <div className="flex bg-gray-100 rounded-md p-1.5 mb-4">
                    <button 
                      onClick={() => handleInputChange('gallerySource', 'manual')}
-                     className={`flex-1 py-3 text-xs font-black rounded-xl transition-all uppercase tracking-widest ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-md text-pink-500' : 'text-gray-500'}`}
+                     className={`flex-1 py-3 text-xs font-black rounded-md transition-all uppercase tracking-widest ${localConfig.gallerySource === 'manual' ? 'bg-white shadow-md text-pink-500' : 'text-gray-500'}`}
                    >
                      Manual Uploads
                    </button>
                    <button 
                      onClick={() => handleInputChange('gallerySource', 'instagram')}
-                     className={`flex-1 py-3 text-xs font-black rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-2 ${localConfig.gallerySource === 'instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-md text-white' : 'text-gray-500'}`}
+                     className={`flex-1 py-3 text-xs font-black rounded-md transition-all uppercase tracking-widest flex items-center justify-center gap-2 ${localConfig.gallerySource === 'instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-md text-white' : 'text-gray-500'}`}
                    >
                      <i className="fab fa-instagram"></i> Instagram Mode
                    </button>
@@ -1219,14 +1219,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 <AnimatePresence mode="wait">
                   {localConfig.gallerySource === 'instagram' && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-3">
-                       <div className="p-4 bg-purple-50 rounded-2xl border-2 border-dashed border-purple-200">
+                       <div className="p-4 bg-purple-50 rounded-md border-2 border-dashed border-purple-200">
                           <p className="text-[11px] text-purple-600 font-bold leading-relaxed">
                              <i className="fab fa-instagram mr-1"></i> <strong>Paste URLs:</strong> Add any public Instagram post link below and the photo will display automatically!
                           </p>
                        </div>
 
                        {/* Public Profile Fetch */}
-                       <div className="p-4 bg-gradient-to-br from-violet-50 to-fuchsia-50 rounded-2xl border-2 border-dashed border-violet-200">
+                       <div className="p-4 bg-gradient-to-br from-violet-50 to-fuchsia-50 rounded-md border-2 border-dashed border-violet-200">
                           <p className="text-[11px] text-violet-600 font-bold leading-relaxed mb-3">
                              <i className="fas fa-user-circle mr-1"></i> <strong>Import from Profile:</strong> Enter any public Instagram username to pull their recent posts.
                           </p>
@@ -1238,13 +1238,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                  placeholder="username"
                                  value={localConfig.instagramUsername || ''}
                                  onChange={(e) => handleInputChange('instagramUsername', e.target.value)}
-                                 className="w-full bg-white border border-violet-100 rounded-xl p-3 pl-7 text-xs focus:ring-2 focus:ring-violet-300 outline-none"
+                                 className="w-full bg-white border border-violet-100 rounded-md p-3 pl-7 text-xs focus:ring-2 focus:ring-violet-300 outline-none"
                                />
                              </div>
                              <button 
                                onClick={fetchInstagramProfile}
                                disabled={isFetchingIG || !localConfig.instagramUsername?.trim()}
-                               className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold px-5 rounded-xl text-xs disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
+                               className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold px-5 rounded-md text-xs disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
                              >
                                {isFetchingIG ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-download mr-1"></i> Fetch</>}
                              </button>
@@ -1257,7 +1257,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                        </div>
 
                        {/* Token-based Bulk Import */}
-                       <div className="p-4 bg-pink-50 rounded-2xl border-2 border-dashed border-pink-200">
+                       <div className="p-4 bg-pink-50 rounded-md border-2 border-dashed border-pink-200">
                           <p className="text-[11px] text-pink-600 font-bold leading-relaxed mb-3">
                              <i className="fas fa-key mr-1"></i> <strong>API Token:</strong> Or use an Access Token to fetch your feed.
                           </p>
@@ -1267,12 +1267,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                placeholder="Paste Access Token (e.g. IGQV...)"
                                value={igToken}
                                onChange={(e) => setIgToken(e.target.value)}
-                               className="flex-1 bg-white border border-pink-100 rounded-xl p-3 text-xs focus:ring-2 focus:ring-pink-300 outline-none font-mono"
+                               className="flex-1 bg-white border border-pink-100 rounded-md p-3 text-xs focus:ring-2 focus:ring-pink-300 outline-none font-mono"
                              />
                              <button 
                                onClick={fetchInstagramFeed}
                                disabled={isFetchingIG}
-                               className="bg-pink-500 text-white font-bold px-4 rounded-xl text-xs disabled:opacity-50"
+                               className="bg-pink-500 text-white font-bold px-4 rounded-md text-xs disabled:opacity-50"
                              >
                                {isFetchingIG ? <i className="fas fa-spinner fa-spin"></i> : 'Fetch'}
                              </button>
@@ -1283,7 +1283,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 </AnimatePresence>
              </div>
 
-             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 flex flex-col gap-4">
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo Albums</label>
                 
                 <div className="flex gap-2">
@@ -1291,7 +1291,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      type="text" 
                      id="newAlbumInput"
                      placeholder="New Album Name..."
-                     className="flex-1 border-2 border-gray-50 rounded-2xl p-3 text-xs font-bold outline-none focus:border-pink-200"
+                     className="flex-1 border-2 border-gray-50 rounded-md p-3 text-xs font-bold outline-none focus:border-pink-200"
                    />
                    <button 
                      onClick={() => {
@@ -1301,7 +1301,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                          input.value = '';
                        }
                      }}
-                     className="bg-pink-500 text-white px-4 rounded-2xl font-black text-xs shadow-md hover:bg-pink-600 transition-colors"
+                     className="bg-pink-500 text-white px-4 rounded-md font-black text-xs shadow-md hover:bg-pink-600 transition-colors"
                    >
                      Create
                    </button>
@@ -1309,7 +1309,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
                 <div className="flex flex-wrap gap-2 mt-2">
                    {(localConfig.albums || []).map(album => (
-                      <div key={album.id} className="bg-pink-50 border border-pink-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                      <div key={album.id} className="bg-pink-50 border border-pink-100 rounded-md px-3 py-2 flex items-center gap-2">
                          <span className="text-xs font-bold text-pink-600 truncate max-w-[120px]">{album.name}</span>
                          <button onClick={() => deleteAlbum(album.id)} className="text-pink-300 hover:text-red-500 transition-colors bg-white rounded-full w-4 h-4 flex items-center justify-center">
                             <i className="fas fa-times text-[8px]"></i>
@@ -1344,7 +1344,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 }}
                 className={`
                   relative group cursor-pointer transition-all duration-300
-                  border-2 border-dashed rounded-2xl py-8 flex flex-col items-center justify-center gap-3 mb-6
+                  border-2 border-dashed rounded-md py-8 flex flex-col items-center justify-center gap-3 mb-6
                   ${isDraggingOver ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-pink-300 hover:bg-gray-50'}
                 `}
              >
@@ -1369,9 +1369,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                 const isAud = isAudio(item.url);
                 
                 return (
-                  <motion.div key={idx} layout className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2 group relative aspect-[4/5] hover:shadow-md transition-shadow">
+                  <motion.div key={idx} layout className="bg-white p-2 rounded-md shadow-sm border border-gray-100 flex flex-col gap-2 group relative aspect-[4/5] hover:shadow-md transition-shadow">
                     <div 
-                      className="flex-1 w-full rounded-xl bg-gray-100 overflow-hidden relative cursor-zoom-in group/thumb"
+                      className="flex-1 w-full rounded-md bg-gray-100 overflow-hidden relative cursor-zoom-in group/thumb"
                       onClick={() => {
                         const type = isAud ? 'audio' : isVid ? 'video' : 'image';
                         setPreviewItem({ url: item.url, type });
@@ -1407,7 +1407,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                {/* Privacy Toggle as a tiny dot/icon */}
                                <button 
                                  onClick={(e) => { e.stopPropagation(); toggleGalleryPrivacy(idx); }}
-                                 className={`w-full text-xs font-bold py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-colors ${item.privacy === 'public' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}
+                                 className={`w-full text-xs font-bold py-1 px-2 rounded-md flex items-center justify-center gap-1 transition-colors ${item.privacy === 'public' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}
                                >
                                  <i className={`fas fa-${item.privacy === 'public' ? 'globe' : 'lock'} text-[9px]`}></i>
                                  <span className="text-[9px] uppercase tracking-wider">{item.privacy === 'public' ? 'Public' : 'Private'}</span>
@@ -1450,13 +1450,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
               </div>
 
                {/* View Settings (Moved from Timeline Toolbar) */}
-               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+               <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
                   <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <i className="fas fa-eye text-blue-400"></i> View Settings
                   </h3>
                   
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest ml-1">Layout Mode</label>
-                  <div className="flex bg-gray-100 p-1 rounded-2xl mb-4">
+                  <div className="flex bg-gray-100 p-1 rounded-md mb-4">
                         {([
                            { id: 'wave', label: 'Wave', icon: 'fa-water' },
                            { id: 'vertical', label: 'Vertical', icon: 'fa-arrows-alt-v' }
@@ -1464,7 +1464,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                            <button
                               key={mode.id}
                               onClick={() => handleInputChange('timelineLayoutMode', mode.id)}
-                              className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
+                              className={`flex-1 py-3 px-2 rounded-md text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
                                     (localConfig.timelineLayoutMode || 'wave') === mode.id 
                                     ? 'bg-white text-pink-500 shadow-md' 
                                     : 'text-gray-400 hover:text-gray-600'
@@ -1483,7 +1483,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         step="1"
                         value={localConfig.timelineZoomLevel || 0}
                         onChange={(e) => handleInputChange('timelineZoomLevel', parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        className="w-full h-1.5 bg-gray-200 rounded-md appearance-none cursor-pointer accent-pink-500"
                   />
                   <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-widest">
                         <span>Close</span>
@@ -1492,7 +1492,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                </div>
 
               {/* Timeline Display Settings */}
-              <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-4">
+              <div className="bg-gray-50/50 p-4 rounded-md border border-gray-100 space-y-4">
                  <div className="space-y-2">
                      <div className="flex justify-between items-center px-1">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Card Sizing (Desktop)</p>
@@ -1507,7 +1507,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         step="0.05"
                         value={localConfig.timelineCardScale || 1.0}
                         onChange={(e) => handleInputChange('timelineCardScale', parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        className="w-full h-1.5 bg-gray-200 rounded-md appearance-none cursor-pointer accent-pink-500"
                      />
                  </div>
 
@@ -1525,7 +1525,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                         step="10"
                         value={localConfig.timelineThumbnailHeight || 150}
                         onChange={(e) => handleInputChange('timelineThumbnailHeight', parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        className="w-full h-1.5 bg-gray-200 rounded-md appearance-none cursor-pointer accent-pink-500"
                      />
                  </div>
               </div>
@@ -1535,9 +1535,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                        key={item.id} 
                        initial={{ opacity: 0, x: -10 }} 
                        animate={{ opacity: 1, x: 0, transition: { delay: idx * 0.05 } }}
-                       className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 hover:shadow-md transition-all group"
+                       className="bg-white p-2 rounded-md shadow-sm border border-gray-100 flex items-center gap-3 hover:shadow-md transition-all group"
                     >
-                       <div className="w-10 h-10 shrink-0 bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center border border-gray-200 relative">
+                       <div className="w-10 h-10 shrink-0 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center border border-gray-200 relative">
                            {item.media?.type === 'image' && <img src={item.media.url} className="w-full h-full object-cover" />}
                            {item.media?.type === 'video' && <i className="fas fa-video text-blue-400"></i>}
                            {item.media?.type === 'audio' && <i className="fas fa-microphone text-orange-400"></i>}
@@ -1597,7 +1597,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'coupons' && (
            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              <div className="bg-pink-50/30 p-4 rounded-2xl flex items-center justify-between border border-pink-50 mb-4">
+              <div className="bg-pink-50/30 p-4 rounded-md flex items-center justify-between border border-pink-50 mb-4">
                  <div>
                     <p className="text-xs font-bold text-gray-800 flex items-center gap-2 italic">
                        <i className="fas fa-history text-pink-500"></i> Show Redeemed on Timeline
@@ -1621,11 +1621,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                  return (
                   <div 
                      key={coupon.id} 
-                     className={`bg-white rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 ${isExpanded ? 'p-4 ring-2 ring-pink-100' : 'p-3 hover:shadow-md cursor-pointer'}`}
+                     className={`bg-white rounded-md shadow-sm border border-gray-100 transition-all duration-300 ${isExpanded ? 'p-4 ring-2 ring-pink-100' : 'p-3 hover:shadow-md cursor-pointer'}`}
                      onClick={() => !isExpanded && setExpandedCouponId(coupon.id)}
                   >
                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-pink-50 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+                        <div className="w-12 h-12 bg-pink-50 rounded-md flex items-center justify-center text-2xl shadow-inner">
                            {coupon.emoji}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1664,7 +1664,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                           type="text" 
                                           value={coupon.emoji} 
                                           onChange={(e) => handleCouponChange(coupon.id, 'emoji', e.target.value)}
-                                          className="w-16 text-center border rounded-xl p-2 text-2xl"
+                                          className="w-16 text-center border rounded-md p-2 text-2xl"
                                        />
                                     </div>
                                     <div className="flex-1 flex flex-col gap-1">
@@ -1673,7 +1673,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                           type="text" 
                                           value={coupon.title} 
                                           onChange={(e) => handleCouponChange(coupon.id, 'title', e.target.value)}
-                                          className="w-full border-2 border-gray-100 rounded-xl p-3 font-black text-sm focus:border-purple-200 outline-none transition-all"
+                                          className="w-full border-2 border-gray-100 rounded-md p-3 font-black text-sm focus:border-purple-200 outline-none transition-all"
                                        />
                                     </div>
                                  </div>
@@ -1684,7 +1684,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                        type="text" 
                                        value={coupon.desc} 
                                        onChange={(e) => handleCouponChange(coupon.id, 'desc', e.target.value)}
-                                       className="w-full border-2 border-gray-100 rounded-xl p-3 text-xs font-bold focus:border-purple-200 outline-none transition-all"
+                                       className="w-full border-2 border-gray-100 rounded-md p-3 text-xs font-bold focus:border-purple-200 outline-none transition-all"
                                        placeholder="Coupon description..."
                                     />
                                  </div>
@@ -1698,7 +1698,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                           step="100"
                                           value={coupon.points || 0}
                                           onChange={(e) => handleCouponChange(coupon.id, 'points', parseInt(e.target.value))}
-                                          className="w-24 border-2 border-gray-100 rounded-xl p-3 text-xs font-bold focus:border-purple-200 outline-none transition-all"
+                                          className="w-24 border-2 border-gray-100 rounded-md p-3 text-xs font-bold focus:border-purple-200 outline-none transition-all"
                                        />
                                     </div>
                                     <div className="flex-1 flex flex-col gap-1">
@@ -1706,7 +1706,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                        <select 
                                           value={coupon.for} 
                                           onChange={(e) => handleCouponChange(coupon.id, 'for', e.target.value)}
-                                          className="w-full text-xs font-black border rounded-xl p-3 bg-gray-50 uppercase"
+                                          className="w-full text-xs font-black border rounded-md p-3 bg-gray-50 uppercase"
                                        >
                                           <option value="partner1">{localConfig.partners.partner1.name}</option>
                                           <option value="partner2">{localConfig.partners.partner2.name}</option>
@@ -1733,7 +1733,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                                              updateLocal(prev => ({ ...prev, coupons: prev.coupons.filter(c => c.id !== coupon.id) }));
                                           }
                                        }}
-                                       className="text-[9px] font-black text-red-400 uppercase tracking-widest bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                                       className="text-[9px] font-black text-red-400 uppercase tracking-widest bg-red-50 px-3 py-1.5 rounded-md hover:bg-red-500 hover:text-white transition-all"
                                     >
                                        Delete Coupon
                                     </button>
@@ -1753,12 +1753,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
              {/* AppKit Circles / World Selector */}
              {circles.length > 0 && (
-               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
+               <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 flex flex-col gap-3">
                  <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest">
                    <i className="fas fa-globe text-pink-500 mr-2"></i>Your Circles (Worlds)
                  </h3>
                  {circles.map(circle => (
-                   <div key={circle.id} className={`flex items-center justify-between p-3 rounded-xl border ${circle.id === activeCircleId ? 'border-pink-300 bg-pink-50' : 'border-gray-100 bg-white'}`}>
+                   <div key={circle.id} className={`flex items-center justify-between p-3 rounded-md border ${circle.id === activeCircleId ? 'border-pink-300 bg-pink-50' : 'border-gray-100 bg-white'}`}>
                      <div>
                        <p className="text-xs font-bold text-gray-700">{circle.name}</p>
                        <p className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[160px]">{circle.id}</p>
@@ -1774,13 +1774,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                        {circle.id !== activeCircleId && (
                          <button
                            onClick={() => setActiveCircle(circle.id)}
-                           className="text-xs bg-pink-500 text-white px-2 py-1 rounded-lg font-bold hover:bg-pink-600 transition-colors"
+                           className="text-xs bg-pink-500 text-white px-2 py-1 rounded-md font-bold hover:bg-pink-600 transition-colors"
                          >
                            Switch
                          </button>
                        )}
                        {circle.id === activeCircleId && (
-                         <span className="text-xs bg-pink-100 text-pink-500 px-2 py-1 rounded-lg font-bold">Active</span>
+                         <span className="text-xs bg-pink-100 text-pink-500 px-2 py-1 rounded-md font-bold">Active</span>
                        )}
                      </div>
                    </div>
@@ -1791,10 +1791,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                </div>
              )}
 
-             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 flex flex-col gap-4">
                 <div className="flex justify-between items-center px-1 mb-2">
                    <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-widest"><i className="fas fa-globe-asia text-emerald-500 mr-2"></i>My Lands</h3>
-                   <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{localConfig.lands?.length || 0} Lands</div>
+                   <div className="bg-emerald-50 text-emerald-500 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">{localConfig.lands?.length || 0} Lands</div>
                 </div>
 
                 <div className="flex gap-2">
@@ -1802,7 +1802,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                      type="text" 
                      id="newLandInput"
                      placeholder="New World Name..."
-                     className="flex-1 border-2 border-gray-50 rounded-2xl p-3 text-xs font-bold outline-none focus:border-emerald-200"
+                     className="flex-1 border-2 border-gray-50 rounded-md p-3 text-xs font-bold outline-none focus:border-emerald-200"
                    />
                    <button 
                      onClick={() => {
@@ -1812,7 +1812,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                          input.value = '';
                        }
                      }}
-                     className="bg-emerald-500 text-white px-4 rounded-2xl font-black text-xs shadow-md hover:bg-emerald-600 transition-colors"
+                     className="bg-emerald-500 text-white px-4 rounded-md font-black text-xs shadow-md hover:bg-emerald-600 transition-colors"
                    >
                      Create
                    </button>
@@ -1820,7 +1820,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
                 <div className="flex flex-col gap-2 mt-2">
                    {(localConfig.lands || []).map(land => (
-                      <div key={land.id} className={`border rounded-xl p-3 flex items-center justify-between gap-2 transition-all ${land.isActive ? 'border-emerald-300 bg-emerald-50 shadow-sm' : 'border-gray-100 bg-white'}`}>
+                      <div key={land.id} className={`border rounded-md p-3 flex items-center justify-between gap-2 transition-all ${land.isActive ? 'border-emerald-300 bg-emerald-50 shadow-sm' : 'border-gray-100 bg-white'}`}>
                          <div className="flex items-center gap-3">
                            <button 
                               onClick={() => toggleLandActive(land.id)}
@@ -1836,7 +1836,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                       </div>
                    ))}
                    {(!localConfig.lands || localConfig.lands.length === 0) && (
-                      <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      <div className="text-center py-6 bg-gray-50 rounded-md border border-dashed border-gray-200">
                          <i className="fas fa-globe-americas text-2xl text-gray-300 mb-2"></i>
                          <p className="text-xs font-bold text-gray-400">No worlds created yet.</p>
                       </div>
@@ -1848,12 +1848,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 
         {activeTab === 'objects' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100 space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
                   <i className="fas fa-cube text-pink-400"></i> Object Library
                 </h3>
-                <label className="cursor-pointer bg-pink-500 text-white hover:bg-pink-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-md">
+                <label className="cursor-pointer bg-pink-500 text-white hover:bg-pink-600 px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shadow-md">
                   <i className="fas fa-upload mr-2"></i> Upload Model
                   <input 
                     type="file" 
@@ -1887,7 +1887,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   <button
                     key={cat.id}
                     onClick={() => setObjectCategoryFilter(cat.id)}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
+                    className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
                       objectCategoryFilter === cat.id
                         ? 'bg-pink-500 text-white border-pink-500 shadow-md'
                         : 'bg-white text-gray-400 border-gray-100 hover:border-pink-200'
@@ -1906,8 +1906,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                   item.type.startsWith(objectCategoryFilter) ||
                   (objectCategoryFilter === 'custom' && item.type === 'custom_3d')
                 ).map((item) => (
-                  <div key={item.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col items-center text-center gap-3 group hover:border-pink-200 transition-all">
-                    <div className="text-3xl bg-white w-12 h-12 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <div key={item.id} className="bg-gray-50 border border-gray-100 rounded-md p-4 flex flex-col items-center text-center gap-3 group hover:border-pink-200 transition-all">
+                    <div className="text-3xl bg-white w-12 h-12 rounded-md flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                       {item.icon}
                     </div>
                     <div>
@@ -1958,20 +1958,20 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
                {previewItem.type === 'image' && (
                  <img 
                    src={getPreviewUrl(previewItem.url)} 
-                   className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                   className="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl"
                    alt="Preview"
                  />
                )}
                {previewItem.type === 'video' && (
                  <video 
                    src={previewItem.url} 
-                   className="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
+                   className="max-w-full max-h-[85vh] rounded-md shadow-2xl"
                    controls
                    autoPlay
                  />
                )}
                {previewItem.type === 'audio' && (
-                 <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-6 min-w-[300px]">
+                 <div className="bg-white p-8 rounded-md shadow-2xl flex flex-col items-center gap-6 min-w-[300px]">
                     <div className="w-20 h-20 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-4xl">
                       <i className="fas fa-microphone"></i>
                     </div>
@@ -2003,3 +2003,4 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, setCon
 };
 
 export default EditDrawer;
+

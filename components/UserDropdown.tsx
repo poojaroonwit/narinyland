@@ -61,7 +61,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-pink-100 overflow-hidden z-[80]"
+            className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80]"
           >
             <div className="p-4 border-b border-pink-50">
               <p className="text-sm font-bold text-gray-800 truncate">{displayUser.name}</p>
@@ -73,7 +73,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
                   setIsOpen(false);
                   if (onEditUserInfo) onEditUserInfo();
                 }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-xl transition-colors flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-md transition-colors flex items-center gap-2"
               >
                 <i className="fas fa-user-edit w-4 text-center"></i>
                 Edit Profile
@@ -83,7 +83,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
                   setIsOpen(false);
                   if (onOpenSettings) onOpenSettings();
                 }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-xl transition-colors flex items-center gap-2 mt-1"
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-md transition-colors flex items-center gap-2 mt-1"
               >
                 <i className="fas fa-cog w-4 text-center"></i>
                 App Settings
@@ -93,7 +93,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
                   setIsOpen(false);
                   onLogout();
                 }}
-                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2 mt-1"
+                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-2 mt-1"
               >
                 <i className="fas fa-sign-out-alt w-4 text-center"></i>
                 Log Out
@@ -105,3 +105,4 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
     </div>
   );
 }
+

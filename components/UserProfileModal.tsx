@@ -55,7 +55,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
            initial={{ opacity: 0, scale: 0.9, y: 20 }}
            animate={{ opacity: 1, scale: 1, y: 0 }}
            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-           className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+           className="bg-white rounded-md shadow-2xl w-full max-w-md overflow-hidden"
         >
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-800">Edit Profile</h2>
@@ -87,7 +87,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                   value={name} 
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700"
+                  className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700"
                 />
               </div>
 
@@ -98,7 +98,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                   value={avatar} 
                   onChange={(e) => setAvatar(e.target.value)}
                   placeholder="https://example.com/photo.jpg"
-                  className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-sm"
                 />
               </div>
 
@@ -114,7 +114,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                         value={attributes.bio || ''} 
                         onChange={(e) => setAttributes({...attributes, bio: e.target.value})}
                         placeholder="Tell us about yourself..."
-                        className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs h-20 resize-none"
+                        className="w-full border-2 border-gray-50 rounded-md p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs h-20 resize-none"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -125,7 +125,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                            value={attributes.location || ''} 
                            onChange={(e) => setAttributes({...attributes, location: e.target.value})}
                            placeholder="Digital World"
-                           className="w-full border-2 border-gray-50 rounded-xl p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
+                           className="w-full border-2 border-gray-50 rounded-md p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
                          />
                        </div>
                        <div>
@@ -135,7 +135,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                            value={attributes.birthday || ''} 
                            onChange={(e) => setAttributes({...attributes, birthday: e.target.value})}
                            placeholder="YYYY-MM-DD"
-                           className="w-full border-2 border-gray-50 rounded-xl p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
+                           className="w-full border-2 border-gray-50 rounded-md p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
                          />
                        </div>
                     </div>
@@ -144,7 +144,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
             </div>
 
             {error && (
-              <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl border border-red-100">
+              <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-md border border-red-100">
                 {error}
               </p>
             )}
@@ -153,14 +153,14 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           <div className="p-6 bg-gray-50 flex gap-3">
             <button 
               onClick={onClose}
-              className="flex-1 py-4 rounded-2xl font-bold text-gray-500 hover:bg-gray-100 transition-all border border-gray-200"
+              className="flex-1 py-4 rounded-md font-bold text-gray-500 hover:bg-gray-100 transition-all border border-gray-200"
             >
               Cancel
             </button>
             <button 
               onClick={handleSave}
               disabled={isSaving}
-              className={`flex-1 py-4 rounded-2xl font-bold text-white transition-all shadow-lg shadow-pink-200 ${isSaving ? 'bg-pink-300' : 'bg-pink-500 hover:bg-pink-600 scale-[1.02] active:scale-[0.98]'}`}
+              className={`flex-1 py-4 rounded-md font-bold text-white transition-all shadow-lg shadow-pink-200 ${isSaving ? 'bg-pink-300' : 'bg-pink-500 hover:bg-pink-600 scale-[1.02] active:scale-[0.98]'}`}
             >
               {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -172,3 +172,4 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 };
 
 export default UserProfileModal;
+

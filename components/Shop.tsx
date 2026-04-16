@@ -109,9 +109,9 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
           <motion.div
             key={item.id}
             whileHover={{ scale: 1.01 }}
-            className="bg-gradient-to-r from-white to-amber-50/50 rounded-xl p-3 border border-amber-100/80 flex items-center gap-3 group cursor-pointer"
+            className="bg-gradient-to-r from-white to-amber-50/50 rounded-md p-3 border border-amber-100/80 flex items-center gap-3 group cursor-pointer"
           >
-            <div className="text-2xl w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">{item.icon}</div>
+            <div className="text-2xl w-10 h-10 bg-amber-50 rounded-md flex items-center justify-center shrink-0">{item.icon}</div>
             <div className="flex-1 min-w-0">
               <h4 className="font-black text-gray-800 text-sm truncate">{item.name}</h4>
               <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
@@ -122,7 +122,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
             <button
               onClick={() => handleBuy(item)}
               disabled={points < item.price || purchasingId === item.id}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
                 purchasingId === item.id
                   ? 'bg-gray-300 text-white cursor-wait'
                   : points >= item.price
@@ -148,7 +148,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
-      <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-xl w-full p-6 md:p-8 flex flex-col">
+      <div className="bg-white/90 backdrop-blur-md rounded-md shadow-xl w-full p-6 md:p-8 flex flex-col">
         <div className="flex justify-between items-center border-b border-amber-100 pb-4 mb-6">
           <div>
             <h2 className="text-2xl font-black text-amber-700 flex items-center gap-2">
@@ -158,7 +158,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
               Buy items for your active world
             </p>
           </div>
-          <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-sm border border-amber-200">
+          <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-md flex items-center gap-2 shadow-sm border border-amber-200">
             <i className="fas fa-coins text-amber-500"></i>
             <span className="font-black">{points}</span>
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">PTS</span>
@@ -170,7 +170,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
             <motion.div 
               key={item.id}
               whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-5 border inline-block border-amber-100 shadow-sm flex flex-col justify-between"
+              className="bg-gradient-to-br from-white to-amber-50 rounded-md p-5 border inline-block border-amber-100 shadow-sm flex flex-col justify-between"
             >
               <div>
                 <div className="text-4xl text-center mb-4">{item.icon}</div>
@@ -187,7 +187,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
                 <button
                   onClick={() => handleBuy(item)}
                   disabled={points < item.price || purchasingId === item.id}
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  className={`px-4 py-2 rounded-md text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
                     purchasingId === item.id
                       ? 'bg-gray-300 text-white cursor-wait'
                       : points >= item.price
@@ -216,4 +216,5 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 };
 
 export default Shop;
+
 

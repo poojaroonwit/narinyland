@@ -901,12 +901,12 @@ const Timeline: React.FC<TimelineProps> = ({
               animate={{ scale: 1, y: 0 }}
               exit={windowWidth < 768 ? { y: "100%" } : { scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={`bg-white w-full ${windowWidth < 768 ? 'rounded-t-3xl h-[85vh]' : 'max-w-md rounded-3xl max-h-[90vh]'} shadow-2xl overflow-hidden flex flex-col`}
+              className={`bg-white w-full ${windowWidth < 768 ? 'rounded-t-md h-[85vh]' : 'max-w-md rounded-md max-h-[90vh]'} shadow-2xl overflow-hidden flex flex-col`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className={`p-6 text-white flex justify-between items-center shrink-0 transition-colors ${
                 isFutureDate ? 'bg-purple-500' : 'bg-pink-500'
-              } ${windowWidth < 768 ? 'rounded-t-3xl' : ''}`}>
+              } ${windowWidth < 768 ? 'rounded-t-md' : ''}`}>
                 <h3 className="font-pacifico text-2xl">
                   {isNew 
                     ? (isFutureDate ? 'New Plan' : 'New Memory') 
@@ -919,8 +919,8 @@ const Timeline: React.FC<TimelineProps> = ({
               </div>
 
               <div className="p-8 space-y-6 overflow-y-auto">
-                 <div className="bg-gray-50/50 rounded-2xl p-6 border-2 border-gray-100 flex items-center gap-5">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${isFutureDate ? 'bg-purple-100 text-purple-600' : 'bg-pink-100 text-pink-600'}`}>
+                 <div className="bg-gray-50/50 rounded-md p-6 border-2 border-gray-100 flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-md flex items-center justify-center text-2xl shadow-sm ${isFutureDate ? 'bg-purple-100 text-purple-600' : 'bg-pink-100 text-pink-600'}`}>
                        <i className="fas fa-calendar-alt"></i>
                     </div>
                     <div className="flex-1">
@@ -970,7 +970,7 @@ const Timeline: React.FC<TimelineProps> = ({
                            <div key={idx} className="relative group shrink-0">
                               <div 
                                 data-image-container
-                                className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden border-2 border-gray-50 shadow-sm relative cursor-pointer hover:border-pink-300 transition-colors"
+                                className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden border-2 border-gray-50 shadow-sm relative cursor-pointer hover:border-pink-300 transition-colors"
                                 onClick={() => m.type === 'image' && handleImageClick(m.url)}
                               >
                                  {m.type === 'image' && <OptimizedImage src={m.url} className="w-full h-full object-cover" alt="Timeline media" />}
@@ -989,7 +989,7 @@ const Timeline: React.FC<TimelineProps> = ({
                         {/* Add Button */}
                         <button
                            onClick={() => setIsAddMediaOpen(true)}
-                           className={`w-20 h-20 shrink-0 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
+                           className={`w-20 h-20 shrink-0 rounded-md border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
                               isFutureDate 
                                  ? 'border-purple-200 bg-purple-50 text-purple-400 hover:bg-purple-100' 
                                  : 'border-pink-200 bg-pink-50 text-pink-400 hover:bg-pink-100'
@@ -1008,7 +1008,7 @@ const Timeline: React.FC<TimelineProps> = ({
                       <textarea 
                         value={activeItem.text || ""} 
                         onChange={(e) => setActiveItem({ ...activeItem!, text: e.target.value })}
-                     className={`w-full h-32 border-2 rounded-xl p-4 text-sm font-bold text-gray-700 outline-none resize-none transition-all bg-gray-50/50 ${
+                     className={`w-full h-32 border-2 rounded-md p-4 text-sm font-bold text-gray-700 outline-none resize-none transition-all bg-gray-50/50 ${
                         isFutureDate ? 'border-purple-50 focus:ring-purple-300' : 'border-pink-50 focus:ring-pink-300'
                      }`}
                      placeholder={isFutureDate ? "What are we planning to do?" : "What happened on this magical day?"}
@@ -1023,7 +1023,7 @@ const Timeline: React.FC<TimelineProps> = ({
                           onDeleteInteraction?.(activeItem.id);
                           setActiveItem(null);
                        }}
-                       className="flex-1 py-4 bg-red-50 text-red-500 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-red-100 transition-colors"
+                       className="flex-1 py-4 bg-red-50 text-red-500 font-black rounded-md text-[10px] uppercase tracking-widest hover:bg-red-100 transition-colors"
                      >
                        Delete
                      </button>
@@ -1031,7 +1031,7 @@ const Timeline: React.FC<TimelineProps> = ({
                    <button 
                      onClick={handleSave}
                      disabled={!activeItem.text.trim()}
-                     className={`flex-[2] py-4 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-lg transition-all disabled:opacity-50 disabled:grayscale ${
+                     className={`flex-[2] py-4 text-white font-black rounded-md text-[10px] uppercase tracking-widest shadow-lg transition-all disabled:opacity-50 disabled:grayscale ${
                         isFutureDate ? 'bg-purple-500 shadow-purple-200 hover:bg-purple-600' : 'bg-pink-500 shadow-pink-200 hover:bg-pink-600'
                      }`}
                    >
@@ -1066,3 +1066,4 @@ const Timeline: React.FC<TimelineProps> = ({
 };
 
 export default Timeline;
+

@@ -27,7 +27,7 @@ const Toast: React.FC<ToastProps> = ({ message, isVisible, onClose, duration = 3
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-xl border-2 border-green-100"
+            className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-6 py-3 rounded-md shadow-xl border-2 border-green-100"
           >
             <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs shadow-sm">
                 <i className="fas fa-check"></i>
@@ -41,3 +41,4 @@ const Toast: React.FC<ToastProps> = ({ message, isVisible, onClose, duration = 3
 };
 
 export default Toast;
+

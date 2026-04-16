@@ -117,7 +117,7 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
               window.dispatchEvent(event);
             }}
           >
-            <div className="relative aspect-square overflow-hidden rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300">
+            <div className="relative aspect-square overflow-hidden rounded-md shadow-lg group-hover:shadow-xl transition-all duration-300">
               {/* Image */}
               <OptimizedImage
                 src={image.url}
@@ -138,7 +138,7 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
               </div>
               
               {/* Hover effect */}
-              <div className="absolute inset-0 border-2 border-pink-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 border-2 border-pink-400 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
           </motion.div>
         ))}
@@ -165,3 +165,4 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
 };
 
 export default TimelineImages;
+

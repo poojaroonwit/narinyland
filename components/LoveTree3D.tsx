@@ -787,7 +787,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             initial={{ opacity: 0, x: -20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -20, scale: 0.95 }}
-            className="fixed bottom-24 left-24 z-[80] w-80 max-h-[60vh] bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50 overflow-hidden flex flex-col"
+            className="fixed bottom-24 left-24 z-[80] w-80 max-h-[60vh] bg-white/95 backdrop-blur-xl rounded-md shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50 overflow-hidden flex flex-col"
           >
             <div className="p-4 border-b border-amber-100 flex justify-between items-center shrink-0">
               <div>
@@ -796,7 +796,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 </h3>
                 <p className="text-[9px] font-bold text-amber-500/80 uppercase tracking-widest">Drag items to your world</p>
               </div>
-              <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-xl flex items-center gap-1.5 text-sm shadow-sm border border-amber-200">
+              <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-md flex items-center gap-1.5 text-sm shadow-sm border border-amber-200">
                 <i className="fas fa-coins text-amber-500 text-xs"></i>
                 <span className="font-black">{points}</span>
               </div>
@@ -828,7 +828,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                  <img 
                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
                    alt="Upload QR" 
-                   className="w-24 h-24 rounded-2xl"
+                   className="w-24 h-24 rounded-md"
                  />
                  <div className="absolute inset-0 bg-pink-500/0 group-hover:bg-pink-500/5 transition-colors flex items-center justify-center">
                     <i className="fas fa-expand text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
@@ -868,16 +868,16 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                     <img 
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
                       alt="Large Upload QR" 
-                      className="w-48 h-48 mx-auto rounded-3xl shadow-sm border border-pink-50"
+                      className="w-48 h-48 mx-auto rounded-md shadow-sm border border-pink-50"
                     />
 
                     {albums.length > 0 && (
-                      <div className="text-left bg-pink-50 rounded-2xl p-4 mt-6">
+                      <div className="text-left bg-pink-50 rounded-md p-4 mt-6">
                         <label className="block text-[10px] uppercase font-black text-pink-500 tracking-widest mb-2 ml-1">Destination Album</label>
                         <select
                           value={selectedAlbumId}
                           onChange={(e) => setSelectedAlbumId(e.target.value)}
-                          className="w-full bg-white border border-pink-100 rounded-xl p-3 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:border-pink-300 transition-colors"
+                          className="w-full bg-white border border-pink-100 rounded-md p-3 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:border-pink-300 transition-colors"
                         >
                           <option value="">No Album (Global Gallery)</option>
                           {albums.map(a => (
@@ -889,7 +889,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
                     <button 
                       onClick={() => setIsQRUploadOpen(false)}
-                      className="w-full bg-gray-100 text-gray-500 font-black py-4 rounded-3xl mt-4 hover:bg-gray-200 transition-all uppercase tracking-widest text-xs"
+                      className="w-full bg-gray-100 text-gray-500 font-black py-4 rounded-md mt-4 hover:bg-gray-200 transition-all uppercase tracking-widest text-xs"
                     >
                        Close
                     </button>

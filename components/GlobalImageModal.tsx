@@ -115,7 +115,7 @@ const GlobalImageModal: React.FC<GlobalImageModalProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             src={allImages[currentIndex]?.url}
-            className="max-w-96 max-h-96 w-96 h-96 object-cover rounded-lg shadow-2xl"
+            className="max-w-96 max-h-96 w-96 h-96 object-cover rounded-md shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
           
@@ -134,3 +134,4 @@ const GlobalImageModal: React.FC<GlobalImageModalProps> = ({
 };
 
 export default GlobalImageModal;
+

@@ -129,7 +129,7 @@ export default function OnboardingPage() {
               {/* Create World */}
               <button
                 onClick={() => setMode('create')}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-pink-300 transition-all duration-200"
+                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-md shadow-md border-2 border-transparent hover:border-pink-300 transition-all duration-200"
               >
                 <div className="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                   🌸
@@ -143,7 +143,7 @@ export default function OnboardingPage() {
               {/* Join World */}
               <button
                 onClick={() => setMode('join')}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-emerald-300 transition-all duration-200"
+                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-md shadow-md border-2 border-transparent hover:border-emerald-300 transition-all duration-200"
               >
                 <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                   🔑
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl shadow-md p-6 flex flex-col gap-4"
+              className="bg-white rounded-md shadow-md p-6 flex flex-col gap-4"
             >
               <div className="flex items-center gap-3">
                 <button
@@ -183,7 +183,7 @@ export default function OnboardingPage() {
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                   placeholder="e.g. Our Love Story"
                   maxLength={50}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-pink-400 text-gray-800 text-sm"
+                  className="w-full px-4 py-3 rounded-md border border-gray-200 focus:outline-none focus:border-pink-400 text-gray-800 text-sm"
                   autoFocus
                 />
               </div>
@@ -193,7 +193,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleCreate}
                 disabled={loading || !worldName.trim()}
-                className="w-full py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors"
+                className="w-full py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-md font-semibold text-sm transition-colors"
               >
                 {loading ? 'Creating…' : 'Create World 🌸'}
               </button>
@@ -206,7 +206,7 @@ export default function OnboardingPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl shadow-md p-6 flex flex-col gap-4"
+              className="bg-white rounded-md shadow-md p-6 flex flex-col gap-4"
             >
               <div className="flex items-center gap-3">
                 <button
@@ -226,7 +226,7 @@ export default function OnboardingPage() {
                   onChange={(e) => setWorldCode(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                   placeholder="Paste the world code here"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-400 text-gray-800 text-sm font-mono"
+                  className="w-full px-4 py-3 rounded-md border border-gray-200 focus:outline-none focus:border-emerald-400 text-gray-800 text-sm font-mono"
                   autoFocus
                 />
                 <p className="text-xs text-gray-400 mt-1">Ask your partner for their world code</p>
@@ -237,7 +237,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleJoin}
                 disabled={loading || !worldCode.trim()}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors"
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-md font-semibold text-sm transition-colors"
               >
                 {loading ? 'Joining…' : 'Join World 🔑'}
               </button>
@@ -248,3 +248,4 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
