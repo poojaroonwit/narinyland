@@ -82,9 +82,10 @@ export default function World2DMap({ timeline, onFlagClick, onZoomOut }: World2D
           const lat = typeof item.latitude === 'string' ? parseFloat(item.latitude) : item.latitude!;
           const lng = typeof item.longitude === 'string' ? parseFloat(item.longitude) : item.longitude!;
           return (
-            <Marker 
-              key={item.id} 
+            <Marker
+              key={item.id}
               position={[lat, lng]}
+              zIndexOffset={1000}
               eventHandlers={{
                 click: () => onFlagClick(item),
               }}
