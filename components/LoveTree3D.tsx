@@ -748,7 +748,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             </motion.button>
           )}
         </AnimatePresence>
-      </div>
+      
 
 
 

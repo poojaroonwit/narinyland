@@ -951,92 +951,94 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                       <span className="font-bold text-gray-700">{partners?.partner2.name}</span>
                    </div>
                 </div>
-              </div>
-              <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
-                * Names and avatars are pulled directly from the Circle members. If you are alone, a placeholder is shown.
-              </p>
-            </div>
-        );
-      case 'proposal':
-        return (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <i className="fas fa-heart text-red-400"></i> Proposal Flow
-                </h3>
-                <button 
-                  onClick={addProposalQuestion}
-                  className="bg-red-50 text-red-500 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
-                >
-                  + Add Step
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                {localConfig.proposal.questions.map((q, idx) => (
-                  <div key={idx} className="relative group">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">
-                      Step {idx + 1}
-                    </label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text"
-                        value={q}
-                        onChange={(e) => updateProposalQuestion(idx, e.target.value)}
-                        className={`flex-1 bg-gray-50 border-2 rounded-md p-3 text-xs font-bold outline-none transition-all ${localConfig.proposal.progress === idx ? 'border-red-200 bg-red-50/30' : 'border-gray-100 focus:border-red-100'}`}
-                        placeholder="Question text..."
-                      />
-                      <button 
-                        onClick={() => setProposalProgress(idx)}
-                        className={`w-10 h-10 rounded-md flex items-center justify-center transition-all ${localConfig.proposal.progress === idx ? 'bg-red-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:text-red-400 hover:bg-red-50'}`}
-                        title="Set as current active step"
-                      >
-                        <i className="fas fa-flag-checkered text-xs"></i>
-                      </button>
-                      <button 
+               </div>
+               <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
+                 * Names and avatars are pulled directly from the Circle members. If you are alone, a placeholder is shown.
+               </p>
+             </div>
+           </motion.div>
+         );
+       case 'proposal':
+         return (
+           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+             <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
+               <div className="flex justify-between items-center mb-4">
+                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                   <i className="fas fa-heart text-red-400"></i> Proposal Flow
+                 </h3>
+                 <button 
+                   onClick={addProposalQuestion}
+                   className="bg-red-50 text-red-500 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
+                 >
+                   + Add Step
+                 </button>
+               </div>
+               
+               <div className="space-y-4">
+                 {localConfig.proposal.questions.map((q, idx) => (
+                   <div key={idx} className="relative group">
+                     <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">
+                       Step {idx + 1}
+                     </label>
+                     <div className="flex gap-2">
+                       <input 
+                         type="text"
+                         value={q}
+                         onChange={(e) => updateProposalQuestion(idx, e.target.value)}
+                         className={`flex-1 bg-gray-50 border-2 rounded-md p-3 text-xs font-bold outline-none transition-all ${localConfig.proposal.progress === idx ? 'border-red-200 bg-red-50/30' : 'border-gray-100 focus:border-red-100'}`}
+                         placeholder="Question text..."
+                       />
+                       <button 
+                         onClick={() => setProposalProgress(idx)}
+                         className={`w-10 h-10 rounded-md flex items-center justify-center transition-all ${localConfig.proposal.progress === idx ? 'bg-red-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:text-red-400 hover:bg-red-50'}`}
+                         title="Set as current active step"
+                       >
+                         <i className="fas fa-flag-checkered text-xs"></i>
+                       </button>
+                       <button 
                          onClick={() => removeProposalQuestion(idx)}
                          className="w-10 h-10 bg-gray-50 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                      >
-                         <i className="fas fa-trash-alt text-xs"></i>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 p-4 bg-red-50 rounded-md border border-red-100">
-                <h4 className="text-[10px] font-black text-red-500 uppercase flex items-center gap-2 mb-2">
-                  <i className="fas fa-info-circle"></i> Final Confirmation
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-1">Wording (e.g. Will you marry me?)</label>
-                    <input 
-                      type="text"
-                      value={localConfig.proposal.finalWording}
-                      onChange={(e) => handleInputChange('proposal', { ...localConfig.proposal, finalWording: e.target.value })}
-                      className="w-full bg-white border border-red-100 rounded-md p-2 text-xs font-bold outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 pt-1">
-                    <label className="text-[8px] font-black text-gray-400 uppercase">Is Accepted?</label>
-                    <button 
-                      onClick={() => handleInputChange('proposal', { ...localConfig.proposal, isAccepted: !localConfig.proposal.isAccepted })}
-                      className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${localConfig.proposal.isAccepted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}
-                    >
-                      {localConfig.proposal.isAccepted ? 'Yes! 🎉' : 'No'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
-                The user can only accept your proposal. Each "Yes" leads to the next question until the final acceptance!
-              </p>
-            </div>
-        );
-      case 'gallery':
-        return (
+                       >
+                          <i className="fas fa-trash-alt text-xs"></i>
+                       </button>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+ 
+               <div className="mt-6 p-4 bg-red-50 rounded-md border border-red-100">
+                 <h4 className="text-[10px] font-black text-red-500 uppercase flex items-center gap-2 mb-2">
+                   <i className="fas fa-info-circle"></i> Final Confirmation
+                 </h4>
+                 <div className="space-y-3">
+                   <div>
+                     <label className="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-1">Wording (e.g. Will you marry me?)</label>
+                     <input 
+                       type="text"
+                       value={localConfig.proposal.finalWording}
+                       onChange={(e) => handleInputChange('proposal', { ...localConfig.proposal, finalWording: e.target.value })}
+                       className="w-full bg-white border border-red-100 rounded-md p-2 text-xs font-bold outline-none"
+                     />
+                   </div>
+                   <div className="flex items-center gap-3 pt-1">
+                     <label className="text-[8px] font-black text-gray-400 uppercase">Is Accepted?</label>
+                     <button 
+                       onClick={() => handleInputChange('proposal', { ...localConfig.proposal, isAccepted: !localConfig.proposal.isAccepted })}
+                       className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${localConfig.proposal.isAccepted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}
+                     >
+                       {localConfig.proposal.isAccepted ? 'Yes! 🎉' : 'No'}
+                     </button>
+                   </div>
+                 </div>
+               </div>
+               <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
+                 The user can only accept your proposal. Each "Yes" leads to the next question until the final acceptance!
+               </p>
+             </div>
+           </motion.div>
+         );
+       case 'gallery':
+         return (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
              <div className="bg-white p-5 rounded-md shadow-sm border border-gray-100">
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Gallery Interaction</label>
@@ -1947,9 +1949,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
       )}
 
       {/* FULLSCREEN PREVIEW OVERLAY */}

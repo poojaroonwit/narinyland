@@ -103,7 +103,8 @@ export default function World2DMap({ timeline, onFlagClick, onZoomOut }: World2D
                </div>
             </Popup>
           </Marker>
-        ))}
+          );
+        })}
       </MapContainer>
       
       <button 
