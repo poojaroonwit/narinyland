@@ -187,7 +187,7 @@ export async function updateCircleViaServer(circleId: string, data: { name?: str
   if (!token) throw new Error('Missing authentication token');
 
   const res = await fetch(
-    ${APPKIT_DOMAIN}/api/v1/ + (effectiveToken ? '' : 'admin/applications/' + APPKIT_CLIENT_ID + '/') + 'circles/' + circleId,
+    `${APPKIT_DOMAIN}/api/v1/${effectiveToken ? '' : `admin/applications/${APPKIT_CLIENT_ID}/`}circles/${circleId}`,
     {
       method: 'PUT',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -211,7 +211,7 @@ export async function deleteCircleViaServer(circleId: string, userToken?: string
   if (!token) throw new Error('Missing authentication token');
 
   const res = await fetch(
-    ${APPKIT_DOMAIN}/api/v1/ + (effectiveToken ? '' : 'admin/applications/' + APPKIT_CLIENT_ID + '/') + 'circles/' + circleId,
+    `${APPKIT_DOMAIN}/api/v1/${effectiveToken ? '' : `admin/applications/${APPKIT_CLIENT_ID}/`}circles/${circleId}`,
     {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + token },

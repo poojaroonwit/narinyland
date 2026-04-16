@@ -803,9 +803,6 @@ const Home: React.FC = () => {
 
             {/* Circle (World) Switcher — only when user has multiple circles */}
             {circles.length > 1 && (
-
-            {/* Circle (World) Switcher — only when user has multiple circles */}
-            {circles.length > 1 && (
               <div className="relative">
                 {/* Dropdown trigger */}
                 <button
