@@ -41,17 +41,26 @@ export async function getAuthSession(req?: Request) {
   if (token && !refreshToken) {
     console.warn('BFF: Access token exists but refresh token is missing. Checking expiry...');
     let isExpired = false;
+    let tokenExp: number | undefined;
+    let tokenSub: string | undefined;
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+        tokenExp = payload.exp;
+        tokenSub = payload.sub;
         const now = Math.floor(Date.now() / 1000);
+        console.log('BFF: Token decode:', { exp: tokenExp, now, sub: tokenSub, isExpired: tokenExp ? tokenExp < now : 'no_exp' });
         if (payload.exp && payload.exp < now) {
           isExpired = true;
         }
+      } else {
+        console.warn('BFF: Token does not have 3 parts, invalid JWT');
+        isExpired = true;
       }
-    } catch {
+    } catch (e) {
       // If we can't decode, assume it might be expired
+      console.warn('BFF: Failed to decode token:', e);
       isExpired = true;
     }
 

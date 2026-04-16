@@ -41,15 +41,11 @@ export async function GET(req: NextRequest) {
             res = await fetchCircles(token);
           }
         } else {
-          // Refresh failed - no refresh token available. Clear auth cookies
-          // to force frontend re-authentication and prevent infinite loops.
-          console.warn('BFF /api/circles: Token refresh failed (no refresh token). Clearing auth state.');
+          // Refresh failed - no refresh token available.
+          // Clear the expired token and fall through to local Prisma fallback.
+          console.warn('BFF /api/circles: Token refresh failed (no refresh token). Falling back to local configs.');
           cookieStore.delete('appkit_access_token');
-          cookieStore.delete('narinyland_is_auth');
-          return NextResponse.json(
-            { error: 'session_expired', error_description: 'Session expired. Please sign in again.' },
-            { status: 401 }
-          );
+          // Don't return 401 - let the code fall through to local fallback below
         }
       }
 
