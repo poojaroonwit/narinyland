@@ -134,10 +134,19 @@ export async function POST(req: NextRequest) {
          }
       }
 
-      circleId = circle.id || circle._id;
+      // Handle different possible response structures (root, .data, or .circle)
+      const data = circle.data || circle.circle || circle;
+      circleId = data.id || data._id;
     } catch (appkitErr: any) {
       console.warn('AppKit circle creation failed, generating local ID:', appkitErr.message);
       circleId = `world_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    // Final safety guard: If AppKit reported SUCCESS but didn't return an ID, 
+    // we must still ensure circleId is defined before Prisma upsert.
+    if (!circleId) {
+       console.warn('AppKit response missing ID, using fallback');
+       circleId = `world_${Date.now()}`;
     }
 
     // 2. Provision local AppConfig for this circle/world
