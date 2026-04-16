@@ -1930,13 +1930,6 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
            </motion.div>
         )}
-400">No worlds created yet.</p>
-                      </div>
-                   )}
-                </div>
-             </div>
-           </motion.div>
-        )}
 
         {activeTab === 'objects' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
