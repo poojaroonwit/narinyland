@@ -36,10 +36,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         await refreshUser();
         onClose();
       } else {
-        setError('TRANSMISSION FAILURE');
+        setError('Failed to update profile. Please try again.');
       }
     } catch (err) {
-      setError('SYSTEM ERROR');
+      console.error('Save profile error:', err);
+      setError('An unexpected error occurred.');
     } finally {
       setIsSaving(false);
     }
@@ -48,89 +49,93 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-3xl font-geist">
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
         <motion.div
-           initial={{ opacity: 0, scale: 0.95, y: 10 }}
+           initial={{ opacity: 0, scale: 0.9, y: 20 }}
            animate={{ opacity: 1, scale: 1, y: 0 }}
-           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-           className="bg-white rounded-none shadow-[0_60px_120px_rgba(0,0,0,0.5)] w-full max-w-lg overflow-hidden border border-black/5"
+           exit={{ opacity: 0, scale: 0.9, y: 20 }}
+           className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
         >
-          <div className="p-8 border-b border-black/5 flex justify-between items-center bg-black/[0.02]">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.5em]">IDENTITY</p>
-              <h2 className="text-xl font-black text-black uppercase tracking-tight">PROFILE UPDATE</h2>
-            </div>
-            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-none bg-black/5 hover:bg-black/10 transition-all">
-              <i className="fas fa-times text-xs text-black/40"></i>
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-800">Edit Profile</h2>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <i className="fas fa-times text-gray-400"></i>
             </button>
           </div>
 
-          <div className="p-10 space-y-10">
+          <div className="p-8 space-y-6">
             {/* Avatar Preview */}
-            <div className="flex items-center gap-8">
-              <div className="w-24 h-24 rounded-none bg-black/5 overflow-hidden flex items-center justify-center grayscale shadow-inner border border-black/5">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-24 h-24 rounded-full border-4 border-pink-100 p-1 bg-white shadow-inner overflow-hidden flex items-center justify-center">
                 {avatar ? (
-                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                 ) : (
-                  <div className="text-3xl font-black text-black/10">{name.charAt(0).toUpperCase() || 'U'}</div>
+                  <div className="w-full h-full bg-pink-50 flex items-center justify-center text-3xl font-bold text-pink-300">
+                    {name.charAt(0) || 'U'}
+                  </div>
                 )}
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.2em]">PREVIEW</p>
-                <p className="text-xs font-black text-black uppercase tracking-tight">{name || 'SYSTEM USER'}</p>
-              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Profile Preview</p>
             </div>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">ASSIGNED NAME</label>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Full Name</label>
                 <input 
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-black/[0.02] border border-black/10 rounded-none p-4 font-black text-xs uppercase tracking-tight focus:bg-white focus:border-black outline-none transition-all"
+                  placeholder="Enter your name"
+                  className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">RESOURCE URL</label>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Avatar URL</label>
                 <input 
                   type="text" 
                   value={avatar} 
                   onChange={(e) => setAvatar(e.target.value)}
-                  placeholder="HTTPS://RESOURCE_LINK..."
-                  className="w-full bg-black/[0.02] border border-black/10 rounded-none p-4 font-black text-xs tracking-tight focus:bg-white focus:border-black outline-none transition-all"
+                  placeholder="https://example.com/photo.jpg"
+                  className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-sm"
                 />
               </div>
 
-              <div className="pt-6 border-t border-black/5">
-                 <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">BIOGRAPHY</label>
+              {/* Attributes Section */}
+              <div className="pt-4 border-t border-gray-50">
+                 <h3 className="text-[10px] font-black text-pink-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i className="fas fa-tags"></i> Attributes & Bio
+                 </h3>
+                 <div className="space-y-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-0.5">Bio</label>
                       <textarea 
                         value={attributes.bio || ''} 
                         onChange={(e) => setAttributes({...attributes, bio: e.target.value})}
-                        className="w-full bg-black/[0.02] border border-black/10 rounded-none p-4 font-black text-[11px] uppercase tracking-widest leading-relaxed focus:bg-white focus:border-black outline-none transition-all h-24 resize-none shadow-inner"
+                        placeholder="Tell us about yourself..."
+                        className="w-full border-2 border-gray-50 rounded-2xl p-4 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs h-20 resize-none"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">COORDINATES</label>
+                    <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-0.5">Location</label>
                          <input 
                            type="text" 
                            value={attributes.location || ''} 
                            onChange={(e) => setAttributes({...attributes, location: e.target.value})}
-                           className="w-full bg-black/[0.02] border border-black/10 rounded-none p-4 font-black text-[10px] uppercase tracking-widest focus:bg-white focus:border-black outline-none transition-all"
+                           placeholder="Digital World"
+                           className="w-full border-2 border-gray-50 rounded-xl p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
                          />
                        </div>
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-black opacity-20 uppercase tracking-[0.4em] ml-1">TIMESTAMP</label>
+                       <div>
+                         <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-0.5">Birthday</label>
                          <input 
                            type="text" 
                            value={attributes.birthday || ''} 
                            onChange={(e) => setAttributes({...attributes, birthday: e.target.value})}
                            placeholder="YYYY-MM-DD"
-                           className="w-full bg-black/[0.02] border border-black/10 rounded-none p-4 font-black text-[10px] uppercase tracking-widest focus:bg-white focus:border-black outline-none transition-all"
+                           className="w-full border-2 border-gray-50 rounded-xl p-3 focus:border-pink-200 outline-none transition-all font-bold text-gray-700 text-xs"
                          />
                        </div>
                     </div>
@@ -139,29 +144,30 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
             </div>
 
             {error && (
-              <p className="text-[10px] font-black text-black text-center bg-black/5 p-4 rounded-none border border-black/5 tracking-widest uppercase">
+              <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl border border-red-100">
                 {error}
               </p>
             )}
           </div>
 
-          <div className="p-8 bg-black/[0.02] border-t border-black/5 flex gap-4">
+          <div className="p-6 bg-gray-50 flex gap-3">
             <button 
               onClick={onClose}
-              className="flex-1 py-5 rounded-none font-black text-[10px] text-black/30 hover:text-black uppercase tracking-[0.4em] transition-all border border-black/5"
+              className="flex-1 py-4 rounded-2xl font-bold text-gray-500 hover:bg-gray-100 transition-all border border-gray-200"
             >
-              CANCEL_SESSION
+              Cancel
             </button>
             <button 
               onClick={handleSave}
               disabled={isSaving}
-              className="flex-1 py-5 rounded-none bg-black text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl hover:bg-neutral-800 transition-all disabled:opacity-20"
+              className={`flex-1 py-4 rounded-2xl font-bold text-white transition-all shadow-lg shadow-pink-200 ${isSaving ? 'bg-pink-300' : 'bg-pink-500 hover:bg-pink-600 scale-[1.02] active:scale-[0.98]'}`}
             >
-              {isSaving ? 'SYNCHRONIZING...' : 'COMMIT_CHANGES'}
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </motion.div>
-    </div>
+      </div>
+    </AnimatePresence>
   );
 };
 

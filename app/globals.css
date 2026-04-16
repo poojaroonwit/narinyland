@@ -2,19 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Digital Archive pure monochromatic palette */
-  --background-start: #ffffff; 
-  --background-end: #f8f8f8;
-  --foreground: #000000;
-  --primary: #000000;
-  --secondary: #121212;
-  --accent: #242424;
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --blur-amount: 12px; /* kriss.ai style blur */
+@layer base {
+  :root {
+    --radius: 9999px;
+    --background: 213 45% 67%;
+    --foreground: 0 0% 100%;
+  }
+}
 
-  /* Z-index management */
+@layer components {
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: none;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.45) 0%,
+      rgba(255, 255, 255, 0.15) 20%,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0) 60%,
+      rgba(255, 255, 255, 0.15) 80%,
+      rgba(255, 255, 255, 0.45) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .liquid-glass-strong {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    border: none;
+    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.05),
+      inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    position: relative;
+    overflow: hidden;
+  }
+  .liquid-glass-strong::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.2) 20%,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0) 60%,
+      rgba(255, 255, 255, 0.2) 80%,
+      rgba(255, 255, 255, 0.5) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Z-index management using CSS custom properties */
+:root {
   --z-index-base: 1;
   --z-index-dropdown: 10;
   --z-index-sticky: 20;
@@ -25,80 +89,18 @@
   --z-index-tooltip: 10001;
 }
 
-@layer components {
-  /* Archive Style Box Utilities */
-  .archive-panel {
-    @apply border border-black/10 bg-white/95 backdrop-blur-kriss shadow-kriss rounded-2xl;
-  }
-  
-  .archive-glass {
-    @apply border border-black/5 bg-white/5 backdrop-blur-kriss shadow-kriss rounded-2xl;
-  }
-
-  .liquid-glass {
-    @apply bg-white/40 backdrop-blur-kriss border border-black/5 rounded-2xl;
-  }
-  
-  .liquid-glass-strong {
-    @apply bg-white/70 backdrop-blur-2xl border border-black/10 shadow-kriss rounded-2xl;
-  }
-
-  /* Glassmorphism utility */
-  .glass-morphism {
-      background: var(--glass-bg);
-      backdrop-filter: blur(var(--blur-amount));
-      -webkit-backdrop-filter: blur(var(--blur-amount));
-      border: 1px solid var(--glass-border);
-  }
-
-  /* Legacy Claymorphism refactored to Archive Grid */
-  .clay-morphism {
-      @apply bg-white/80 border border-black/5 shadow-kriss rounded-3xl backdrop-blur-kriss;
-  }
-
-  .pill-button {
-      @apply px-6 py-3 font-bold transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2 text-sm uppercase tracking-widest;
-  }
-
-  .pill-button-primary {
-      @apply bg-black text-white hover:bg-gray-800 rounded-sm shadow-kriss;
-  }
-
-  .pill-button-glass {
-      @apply archive-glass text-black hover:bg-black/5;
-  }
-}
-
 body {
-    font-family: 'Geist', 'Inter', sans-serif;
-    background: var(--background-start);
-    color: var(--foreground);
-    min-height: 100vh;
+    font-family: 'Outfit', 'Kanit', sans-serif;
+    background-color: #fdf2f8; /* pink-50 */
     overflow-x: hidden;
-    line-height: 1.6;
-    letter-spacing: -0.01em;
 }
 
-@layer utilities {
-  .tracking-extratight {
-    letter-spacing: -0.05em;
-  }
+.font-pacifico {
+    font-family: 'Pacifico', cursive;
 }
 
-@layer components {
-  .premium-label {
-    @apply inline-flex items-center gap-2 border border-black/5 bg-white/40 backdrop-blur-kriss text-black px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm;
-  }
-}
-
-/* Animations */
-@keyframes fade-in-up {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-entrance {
-    animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.font-outfit {
+    font-family: 'Outfit', sans-serif;
 }
 
 @keyframes holographic-sweep {
@@ -129,4 +131,11 @@ body {
   transform: skewX(-15deg);
   animation: holographic-sweep 3s infinite linear;
   pointer-events: none;
+}
+
+.glass-morphism {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }

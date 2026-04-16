@@ -13,60 +13,81 @@ interface LogoProps {
 const Logo: React.FC<LogoProps> = ({ className = "", size = 200, title = "Narinyland" }) => {
   return (
     <motion.div 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className={`flex flex-col items-center justify-center gap-2 ${className}`}
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className={`relative flex items-center justify-center ${className}`}
+      style={{ width: size, height: size * 0.6 }}
     >
-      <div 
-        className="relative flex items-center justify-center"
-        style={{ width: size * 0.4, height: size * 0.4 }}
+      <svg
+        viewBox="0 0 400 200"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full drop-shadow-lg"
       >
-        {/* Geometric Abstract Symbol - Minimalist Clay Shape */}
-        <svg
-          viewBox="0 0 100 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-        >
-          <motion.rect
-            x="20" y="20" width="60" height="60" rx="18"
-            fill="black"
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 1, ease: "easeOut" }}
-          />
-          <motion.circle
-            cx="50" cy="50" r="10"
-            fill="white"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-          />
-          <motion.path
-            d="M50 20C50 20 80 40 80 50C80 60 50 80 50 80"
-            stroke="white"
-            strokeWidth="4"
-            strokeLinecap="round"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ delay: 0.7, duration: 0.8 }}
-          />
-        </svg>
-      </div>
+        {/* Main Heart Background */}
+        <motion.path
+          d="M200 160C140 130 100 90 100 55C100 30 120 10 145 10C165 10 185 25 200 45C215 25 235 10 255 10C280 10 300 30 300 55C300 90 260 130 200 160Z"
+          fill="url(#heartGradient)"
+          animate={{ scale: [1, 1.05, 1] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+        />
+        
+        {/* Cute Puppy Ears */}
+        <path
+          d="M165 40Q150 10 140 35Q130 60 155 55"
+          fill="#FFF"
+          stroke="#FCE7F3"
+          strokeWidth="2"
+        />
+        <path
+          d="M235 40Q250 10 260 35Q270 60 245 55"
+          fill="#FFF"
+          stroke="#FCE7F3"
+          strokeWidth="2"
+        />
 
-      {/* Modern Typographic Logo */}
-      <h1 
-        className="text-black font-extrabold tracking-tighter"
-        style={{ 
-          fontSize: size * 0.15,
-          fontFamily: "'Geist', 'Inter', sans-serif"
-        }}
-      >
-        {title.toUpperCase()}
-      </h1>
-      
-      <div className="h-0.5 w-12 bg-black opacity-20 rounded-full" />
+        {/* Puppy Face */}
+        <circle cx="200" cy="55" r="28" fill="white" />
+        <circle cx="190" cy="50" r="3" fill="#333" />
+        <circle cx="210" cy="50" r="3" fill="#333" />
+        <path d="M195 62Q200 68 205 62" stroke="#333" strokeWidth="2" fill="none" />
+        <circle cx="200" cy="58" r="4" fill="#FF85A2" />
+
+        {/* Sparkles */}
+        <motion.circle
+          cx="120" cy="30" r="3" fill="#FDE047"
+          animate={{ opacity: [0, 1, 0], scale: [0, 1.2, 0] }}
+          transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
+        />
+        <motion.circle
+          cx="280" cy="80" r="4" fill="#FDE047"
+          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0] }}
+          transition={{ repeat: Infinity, duration: 2, delay: 0.8 }}
+        />
+
+        {/* Integrated Text */}
+        <text
+          x="200"
+          y="185"
+          textAnchor="middle"
+          className="font-pacifico"
+          style={{ 
+            fontSize: title.length > 10 ? '40px' : '52px', 
+            fill: '#EF4444', 
+            fontFamily: 'Pacifico, cursive',
+            filter: 'drop-shadow(2px 2px 2px rgba(255,255,255,0.8))'
+          }}
+        >
+          {title}
+        </text>
+
+        <defs>
+          <linearGradient id="heartGradient" x1="100" y1="10" x2="300" y2="160" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#F87171" />
+            <stop offset="1" stopColor="#F472B6" />
+          </linearGradient>
+        </defs>
+      </svg>
     </motion.div>
   );
 };

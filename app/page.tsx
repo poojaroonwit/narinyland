@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { login } from "@/lib/auth";
+import { useAuth } from "@/components/AuthProvider";
 import BlurText from "@/components/BlurText";
 import Logo from "@/components/Logo";
 
@@ -37,6 +39,20 @@ function HeartIcon({ className = "" }: { className?: string }) {
       className={className}
     >
       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
+function LoaderIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg 
+      className={`animate-spin ${className}`} 
+      xmlns="http://www.w3.org/2000/svg" 
+      fill="none" 
+      viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
   );
 }
@@ -121,7 +137,8 @@ const NAV_LINKS = [
 ];
 
 export default function MarketingPage() {
-  const [authError, setAuthError] = useState<string | null>(null);
+  const router = useRouter();
+  const { isLoggedIn, loading: authLoading, refreshUser } = useAuth();
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -129,17 +146,7 @@ export default function MarketingPage() {
 
 
   const handleAppKitLogin = async () => {
-    setAuthError(null);
-    try {
-      await login();
-    } catch (error) {
-      console.error("AppKit login failed:", error);
-      setAuthError(
-        error instanceof Error
-          ? error.message
-          : "We couldn't open sign in right now. Please try again."
-      );
-    }
+    await login();
   };
 
   return (
@@ -209,9 +216,9 @@ export default function MarketingPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center liquid-glass rounded-sm px-1 py-1 mb-6"
+            className="flex items-center liquid-glass rounded-full px-1 py-1 mb-6"
           >
-            <span className="bg-black text-white rounded-sm px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-white text-black rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider">
               NEW
             </span>
             <span className="text-xs font-bold text-white pr-4 pl-3 uppercase tracking-widest font-body">
@@ -231,7 +238,7 @@ export default function MarketingPage() {
             className="mt-6 text-sm md:text-base text-white/80 max-w-xl font-body font-medium leading-relaxed uppercase tracking-widest"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
           >
             Grow a 3D tree together, save memories on an interactive timeline, and exchange digital love letters.
           </motion.p>
@@ -240,43 +247,31 @@ export default function MarketingPage() {
             className="flex items-center gap-6 mt-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
+            transition={{ duration: 0.6, delay: 1 }}
           >
             <button
               onClick={handleAppKitLogin}
-              className="liquid-glass-strong flex items-center gap-3 rounded-sm px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white font-body hover:scale-105 active:scale-95 transition-all shadow-kriss border border-white/20"
+              className="liquid-glass-strong flex items-center gap-3 rounded-full px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white font-body hover:scale-105 active:scale-95 transition-all shadow-2xl"
             >
               Enter Garden
               <ArrowUpRightIcon className="h-5 w-5" />
             </button>
           </motion.div>
-
-          {authError && (
-            <motion.p
-              className="mt-4 max-w-lg rounded-full bg-red-500/20 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {authError}
-            </motion.p>
-          )}
         </div>
-        
+
         {/* Floating elements */}
         <div className="absolute inset-0 pointer-events-none z-[5]">
           <motion.div 
-            className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl text-4xl flex items-center justify-center"
+            className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl"
             animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
             transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          >
-             🌸
-          </motion.div>
+          />
           <motion.div 
             className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl text-4xl flex items-center justify-center"
             animate={{ x: [0, -100, 0], y: [0, -50, 0] }}
             transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
           >
-             ✨
+             🌸
           </motion.div>
         </div>
       </section>
@@ -306,7 +301,7 @@ export default function MarketingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group bg-pink-50/50 rounded-2xl p-10 border border-pink-100/50 hover:bg-white hover:shadow-kriss hover:border-white transition-all duration-300 flex flex-col items-start"
+                className="group bg-pink-50/50 rounded-[2.5rem] p-10 border border-pink-100/50 hover:bg-white hover:shadow-2xl hover:border-white transition-all duration-500 flex flex-col items-start"
               >
                 <div className="text-5xl mb-8 group-hover:scale-125 transition-transform duration-500 origin-left">{f.emoji}</div>
                 <h3 className="text-2xl font-heading italic text-black mb-4">

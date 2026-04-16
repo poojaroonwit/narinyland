@@ -8,49 +8,17 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        background: {
-          start: "#D0C8C8",
-          end: "#E8E0E0",
-        },
-        kriss: {
-          black: "#000000",
-          charcoal: "#222222",
-          glass: "rgba(255, 255, 255, 0.4)",
-        }
-      },
-      fontFamily: {
-        sans: ['Geist', 'Inter', 'sans-serif'],
-        geist: ['Geist', 'sans-serif'],
-        inter: ['Inter', 'sans-serif'],
-        outfit: ['Outfit', 'sans-serif'],
-        pacifico: ['Pacifico', 'cursive'],
-        heading: ["'Instrument Serif'", 'serif'],
-        body: ["'Geist'", 'sans-serif'],
-      },
-      borderRadius: {
-        'xs': '2px',
-        'sm': '4px',
-        'md': '8px',
-        'lg': '12px',
-        'xl': '14px',
-        '2xl': '16px',
-        '3xl': '24px',
-        'pill': '9999px',
-        'clay': '40px',
-      },
-      backdropBlur: {
-        'xs': '2px',
-        'kriss': '12px',
-      },
-      boxShadow: {
-        'clay': '10px 10px 20px rgba(0, 0, 0, 0.05), -10px -10px 20px rgba(255, 255, 255, 0.8), inset 4px 4px 8px rgba(255, 255, 255, 0.5), inset -4px -4px 8px rgba(0, 0, 0, 0.02)',
-        'kriss': '0 4px 12px rgba(0, 0, 0, 0.03)',
-      },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        "kriss-gradient": "linear-gradient(135deg, #D0C8C8 0%, #E8E0E0 100%)",
+      },
+      fontFamily: {
+        outfit: ['Outfit', 'sans-serif'],
+        kanit: ['Kanit', 'sans-serif'],
+        pacifico: ['Pacifico', 'cursive'],
+        inter: ['Inter', 'sans-serif'],
+        heading: ["'Instrument Serif'", 'serif'],
+        body: ["'Barlow'", 'sans-serif'],
       },
     },
   },

@@ -15,13 +15,12 @@ import SimplePlayer from '../../components/SimplePlayer';
 import Toast from '../../components/Toast';
 import TimelineSpreadsheet from '../../components/TimelineSpreadsheet';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../../types';
-import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI, partnersAPI } from '../../services/api';
+import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../../services/api';
 import { useAuth } from '../../components/AuthProvider';
 import UserDropdown from '../../components/UserDropdown';
 import UserProfileModal from '../../components/UserProfileModal';
 import Shop, { ShopItem } from '../../components/Shop';
 import World3D from '../../components/World3D';
-import OptimizedImage from '../../components/OptimizedImage';
 
 const INITIAL_MEMORIES: MemoryItem[] = [];
 const INITIAL_TIMELINE: Interaction[] = [];
@@ -101,7 +100,6 @@ const Home: React.FC = () => {
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
   const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
-  const [isWorldConfigOpen, setIsWorldConfigOpen] = useState(false);
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
   const [landSearch, setLandSearch] = useState('');
@@ -146,11 +144,6 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Sync the logged-in user as a circle partner (fire-and-forget before config fetch)
-        if (user?.sub) {
-          await partnersAPI.sync({ name: user.name }).catch(() => {});
-        }
-
         const [
           serverConfig,
           letters,
@@ -238,13 +231,6 @@ const Home: React.FC = () => {
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCircleId]);
-
-  useEffect(() => {
-    if (activeTab !== 'home') {
-      setIsWorldConfigOpen(false);
-      setLandSearch('');
-    }
-  }, [activeTab]);
 
   // ─── Save config to database when setAppConfig is called ────────────
   const handleSetAppConfig: typeof setAppConfig = (updater) => {
@@ -498,7 +484,7 @@ const Home: React.FC = () => {
        await addXP(20, msg.fromId);
 
        // 6. Add to Timeline
-       const senderName = appConfig.partners[msg.fromId]?.name || msg.fromId;
+       const senderName = msg.fromId === 'partner1' ? appConfig.partners.partner1.name : appConfig.partners.partner2.name;
        
        // Persist timeline event
        const timelineRes = await timelineAPI.create({
@@ -693,49 +679,8 @@ const Home: React.FC = () => {
   const daysTogether = Math.max(0, Math.floor((new Date().getTime() - new Date(appConfig.anniversaryDate).getTime()) / (1000 * 60 * 60 * 24)));
   const flowerCount = Math.floor(daysTogether / appConfig.daysPerFlower);
 
-  const activeCircle = useMemo(
-    () => circles.find(circle => circle.id === activeCircleId) || null,
-    [circles, activeCircleId]
-  );
-
-  const activeLand = useMemo(
-    () => appConfig.lands?.find(land => land.isActive) || appConfig.lands?.[0] || null,
-    [appConfig.lands]
-  );
-
-  const filteredLands = useMemo(() => {
-    const query = landSearch.trim().toLowerCase();
-    if (!appConfig.lands) return [];
-    if (!query) return appConfig.lands;
-    return appConfig.lands.filter(land => land.name.toLowerCase().includes(query));
-  }, [appConfig.lands, landSearch]);
-
-  const handleSelectLand = async (landId: string, landName: string) => {
-    setAppConfig(prev => ({
-      ...prev,
-      lands: prev.lands?.map(land => ({ ...land, isActive: land.id === landId }))
-    }));
-    setIsWorldConfigOpen(false);
-    setLandSearch('');
-    showToast(`Switched to ${landName}!`);
-
-    try {
-      await fetch(`/api/lands/${landId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: true })
-      });
-    } catch (e) {
-      console.error('Failed to persist active land:', e);
-    }
-  };
-
-  const handleWorldFlagClick = React.useCallback((item: Interaction) => {
-    setSelectedFlagItem(item);
-  }, []);
-
   return (
-    <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden bg-transparent">
+    <div className="min-h-screen w-full flex flex-col items-center p-2 md:p-6 relative overflow-x-hidden">
         {/* Fullscreen Background & Tree/Globe */}
         <div className="fixed inset-0 z-0">
            {worldMode === 'tree' ? (
@@ -810,15 +755,119 @@ const Home: React.FC = () => {
            ) : (
              <World3D 
                 timeline={appConfig.timeline} 
-                onFlagClick={handleWorldFlagClick}
-                paused={!!selectedFlagItem}
+                onFlagClick={(item) => setSelectedFlagItem(item)} 
              />
            )}
         </div>
 
-        {/* Land Float Button + Dropdown with Search — legacy, kept for future use */}
-        {false && worldMode === 'tree' && (appConfig.lands?.length || 0) > 1 && (
-          <div className="relative">
+        {/* ── World Controls (Home tab only) ── */}
+        {activeTab === 'home' && (
+          <div className="fixed top-24 right-4 z-50 flex flex-col items-end gap-2">
+
+            {/* 3D / Reality World pill toggle */}
+            <div className="flex items-center bg-white/85 backdrop-blur-md rounded-full border border-pink-100 shadow-lg p-1">
+              <button
+                onClick={() => setWorldMode('tree')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black tracking-wide transition-all flex items-center gap-1 ${
+                  worldMode === 'tree'
+                    ? 'bg-pink-500 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-pink-500'
+                }`}
+              >
+                <i className="fas fa-tree text-[9px]"></i> 3D
+              </button>
+              <button
+                onClick={() => setWorldMode('globe')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black tracking-wide transition-all flex items-center gap-1 ${
+                  worldMode === 'globe'
+                    ? 'bg-pink-500 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-pink-500'
+                }`}
+              >
+                <i className="fas fa-globe-americas text-[9px]"></i> World
+              </button>
+            </div>
+
+            {/* Circle (World) Switcher — only when user has multiple circles */}
+            {circles.length > 1 && (
+              <div className="relative">
+                {/* Dropdown trigger */}
+                <button
+                  onClick={() => setIsCircleDropdownOpen(prev => !prev)}
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
+                >
+                  <span className="text-base leading-none">🌍</span>
+                  <div className="text-left">
+                    <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mb-0.5">World</p>
+                    <p className="text-xs text-pink-600 font-black leading-none truncate max-w-[80px]">
+                      {circles.find(c => c.id === activeCircleId)?.name || 'Select World'}
+                    </p>
+                  </div>
+                  <i className={`fas fa-chevron-${isCircleDropdownOpen ? 'up' : 'down'} text-[9px] text-gray-400`}></i>
+                </button>
+
+                {/* Dropdown Menu */}
+                <AnimatePresence>
+                  {isCircleDropdownOpen && (
+                    <>
+                      {/* Click-outside backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsCircleDropdownOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full left-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-2 min-w-[180px] z-50 flex flex-col gap-1"
+                      >
+                        {circles.map(circle => (
+                          <button
+                            key={circle.id}
+                            onClick={async () => {
+                              if (circle.id === activeCircleId) return;
+                              setIsCircleDropdownOpen(false);
+                              await setActiveCircle(circle.id);
+                              showToast(`Switched to ${circle.name}! 🌍`);
+                            }}
+                            className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                              circle.id === activeCircleId
+                                ? 'bg-pink-500 text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
+                            }`}
+                          >
+                            <span className="flex-1 truncate">{circle.name}</span>
+                            {circle.id === activeCircleId && <i className="fas fa-check-circle text-[10px] opacity-70 flex-shrink-0"></i>}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Land Float Button + Dropdown with Search */}
+            {worldMode === 'tree' && appConfig.lands && appConfig.lands.length > 1 && (
+              <div className="relative">
+                {/* FAB trigger */}
+                <button
+                  onClick={() => { setIsLandDropdownOpen(prev => !prev); setLandSearch(''); }}
+                  className="bg-white/90 backdrop-blur-md border-2 border-pink-100 text-pink-500 shadow-xl rounded-2xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 hover:bg-pink-50 transition-all"
+                >
+                  <span className="text-base leading-none">
+                    {appConfig.lands.find(l => l.isActive)?.icon || '🏞️'}
+                  </span>
+                  <div className="text-left">
+                    <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mb-0.5">Land</p>
+                    <p className="text-xs text-pink-600 font-black leading-none truncate max-w-[80px]">
+                      {appConfig.lands.find(l => l.isActive)?.name || 'Select Land'}
+                    </p>
+                  </div>
+                  <i className={`fas fa-chevron-${isLandDropdownOpen ? 'up' : 'down'} text-[9px] text-gray-400`}></i>
+                </button>
+
                 {/* Dropdown */}
                 <AnimatePresence>
                   {isLandDropdownOpen && (
@@ -833,10 +882,11 @@ const Home: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-black/10 shadow-2xl rounded-none p-3 min-w-[210px] z-50"
+                        className="absolute top-full right-0 mt-2 bg-white/95 backdrop-blur-xl border border-pink-100 shadow-2xl rounded-2xl p-3 min-w-[210px] z-50"
                       >
-                        <div className="flex items-center gap-2 bg-gray-100 rounded-none px-3 py-2 mb-2">
-                          <i className="fas fa-search text-[10px] text-black/60"></i>
+                        {/* Search */}
+                        <div className="flex items-center gap-2 bg-pink-50 rounded-xl px-3 py-2 mb-2">
+                          <i className="fas fa-search text-[10px] text-pink-400"></i>
                           <input
                             type="text"
                             placeholder="Search lands..."
@@ -854,7 +904,7 @@ const Home: React.FC = () => {
 
                         {/* Land list */}
                         <div className="flex flex-col gap-1 max-h-52 overflow-y-auto">
-                          {(appConfig.lands || [])
+                          {appConfig.lands
                             .filter(l => l.name.toLowerCase().includes(landSearch.toLowerCase()))
                             .map(land => (
                               <button
@@ -878,8 +928,8 @@ const Home: React.FC = () => {
                                 }}
                                 className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
                                   land.isActive
-                                    ? 'bg-black text-white shadow-sm'
-                                    : 'text-gray-600 hover:bg-black/5 hover:text-black'
+                                    ? 'bg-pink-500 text-white shadow-sm'
+                                    : 'text-gray-600 hover:bg-pink-50 hover:text-pink-500'
                                 }`}
                               >
                                 <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${land.isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
@@ -889,7 +939,7 @@ const Home: React.FC = () => {
                                 {land.isActive && <i className="fas fa-check-circle text-[10px] opacity-70 flex-shrink-0"></i>}
                               </button>
                             ))}
-                          {(appConfig.lands || []).filter(l => l.name.toLowerCase().includes(landSearch.toLowerCase())).length === 0 && (
+                          {appConfig.lands.filter(l => l.name.toLowerCase().includes(landSearch.toLowerCase())).length === 0 && (
                             <p className="text-xs text-gray-400 text-center py-4">No lands found</p>
                           )}
                         </div>
@@ -899,6 +949,8 @@ const Home: React.FC = () => {
                 </AnimatePresence>
               </div>
             )}
+          </div>
+        )}
 
         {/* Selected Flag Modal */}
         <AnimatePresence>
@@ -919,7 +971,7 @@ const Home: React.FC = () => {
                 >
                    <div className="flex justify-between items-start mb-4">
                       <div>
-                         <h3 className="font-geist font-bold tracking-tight text-2xl text-black">Memory</h3>
+                         <h3 className="font-pacifico text-2xl text-pink-500">Memory</h3>
                          <p className="text-xs font-bold text-gray-400">{new Date(selectedFlagItem.timestamp).toLocaleDateString()}</p>
                       </div>
                       <button onClick={() => setSelectedFlagItem(null)} className="text-gray-400 hover:text-gray-600">
@@ -927,28 +979,11 @@ const Home: React.FC = () => {
                       </button>
                    </div>
                    
-                   {(() => {
-                     const previewImage =
-                       selectedFlagItem.mediaItems?.find((media) => media.type === 'image') ||
-                       (selectedFlagItem.media?.type === 'image' ? selectedFlagItem.media : null);
-
-                     if (!previewImage) return null;
-
-                     return (
-                       <div className="rounded-xl overflow-hidden mb-4 shadow-sm border-2 border-pink-50 max-h-48 bg-gray-50">
-                          <OptimizedImage
-                            src={previewImage.url}
-                            alt={selectedFlagItem.text || 'Memory preview'}
-                            className="w-full h-48 object-cover"
-                            width={512}
-                            height={288}
-                            priority
-                            loading="eager"
-                            sizes="(max-width: 768px) 90vw, 384px"
-                          />
-                       </div>
-                     );
-                   })()}
+                   {selectedFlagItem.mediaItems?.[0] && selectedFlagItem.mediaItems[0].type === 'image' && (
+                     <div className="rounded-xl overflow-hidden mb-4 shadow-sm border-2 border-pink-50 max-h-48">
+                        <img src={selectedFlagItem.mediaItems[0].url} alt="" className="w-full object-cover" />
+                     </div>
+                   )}
                    
                    <p className="text-gray-700 font-medium mb-4">{selectedFlagItem.text}</p>
                    
@@ -965,7 +1000,7 @@ const Home: React.FC = () => {
                        setWorldMode('tree');
                        setActiveTab('timeline');
                      }} 
-                     className="mt-6 w-full py-3 bg-black text-white font-bold rounded-none shadow-md hover:shadow-lg hover:bg-zinc-800 transition-all"
+                     className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
                    >
                       View on Timeline
                    </button>
@@ -1127,349 +1162,367 @@ const Home: React.FC = () => {
              )}
           </div>
 
-          {/* Bottom Navigation Tab Bar - DIGITAL ARCHIVE STYLE */}
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/80 backdrop-blur-xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-none px-12 py-5 flex items-center gap-14 z-[70]">
+          {/* Bottom Navigation Tab Bar */}
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl rounded-full px-6 py-3 flex items-center gap-8 z-[70]">
              <button 
                onClick={() => setActiveTab('home')}
-               className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'home' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'text-pink-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
-               <i className={`fas fa-fingerprint transition-all ${activeTab === 'home' ? 'text-lg' : 'text-sm'}`}></i>
-               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Archive</span>
+               <i className="fas fa-home text-xl"></i>
+               <span className="text-[10px] font-bold uppercase tracking-wide">Home</span>
              </button>
 
              <button 
                onClick={() => setActiveTab('timeline')}
-               className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'timeline' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'text-blue-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
-               <i className={`fas fa-barcode transition-all ${activeTab === 'timeline' ? 'text-lg' : 'text-sm'}`}></i>
-               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Timeline</span>
+               <i className="fas fa-calendar-alt text-xl"></i>
+               <span className="text-[10px] font-bold uppercase tracking-wide">Timeline</span>
              </button>
 
              <button 
                onClick={() => setActiveTab('coupons')}
-               className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'coupons' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'text-purple-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
-               <i className={`fas fa-terminal transition-all ${activeTab === 'coupons' ? 'text-lg' : 'text-sm'}`}></i>
-               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Utility</span>
+               <i className="fas fa-ticket-alt text-xl"></i>
+               <span className="text-[10px] font-bold uppercase tracking-wide">Coupons</span>
              </button>
 
              <button 
                onClick={() => setActiveTab('letters')}
-               className={`flex flex-col items-center gap-2 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-black' : 'text-black/20 hover:text-black/50'}`}
+               className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-rose-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
-               <i className={`fas fa-folder-open transition-all ${activeTab === 'letters' ? 'text-lg' : 'text-sm'}`}></i>
-               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Records</span>
+               <i className="fas fa-envelope text-xl"></i>
+               <span className="text-[10px] font-bold uppercase tracking-wide">Letters</span>
                {loveLetters.filter(l => !l.isRead).length > 0 && (
-                  <span className="absolute -top-1 -right-4 bg-black text-white text-[8px] px-2 py-0.5 font-black shadow-sm">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm animate-pulse">
                     {loveLetters.filter(l => !l.isRead).length}
                   </span>
                )}
              </button>
           </div>
 
-          {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
-          
-          {/* Config & Top Menu - Persistently Visible */}
-          <div className="fixed top-8 right-8 md:right-14 flex items-center gap-4 z-[60]">
+        </motion.div>
+      )}
 
-             {/* World Config button + popover */}
-             <div className="relative">
-               <button
-                 onClick={() => { setIsWorldConfigOpen(prev => !prev); if (isWorldConfigOpen) setLandSearch(''); }}
-                 className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none group ${
-                   isWorldConfigOpen ? 'bg-black text-white' : 'bg-white/50 text-black hover:bg-black hover:text-white'
-                 }`}
-               >
-                 <i className={`fas ${isWorldConfigOpen ? 'fa-times' : 'fa-sliders-h'} text-[10px]`}></i>
-                 <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-black opacity-20 group-hover:opacity-100"></div>
-               </button>
+      {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
+      
+      {/* Config & Top Menu - Persistently Visible */}
+      <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
+         <button 
+           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)} 
+           className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
+             isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
+           }`}
+         >
+           <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
+         </button>
+         <UserDropdown 
+            user={user} 
+            onLogout={logout} 
+            onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
+            onOpenSettings={() => setIsEditDrawerOpen(true)}
+             loading={authLoading}
+          />
+      </div>
 
-               <AnimatePresence>
-                 {isWorldConfigOpen && (
-                   <>
-                     <button
-                       type="button"
-                       aria-label="Close world config"
-                       className="fixed inset-0 z-40 cursor-default"
-                       onClick={() => { setIsWorldConfigOpen(false); setLandSearch(''); }}
-                     />
-                     <motion.div
-                       initial={{ opacity: 0, scale: 0.98 }}
-                       animate={{ opacity: 1, scale: 1 }}
-                       exit={{ opacity: 0, scale: 0.98 }}
-                       transition={{ duration: 0.2 }}
-                       className="absolute top-full right-0 mt-4 z-50 w-64 rounded-none bg-white/90 backdrop-blur-2xl border border-black/10 shadow-[0_30px_60px_rgba(0,0,0,0.15)] p-6 space-y-6 text-black overflow-hidden"
-                     >
-                       {/* View mode toggle */}
-                       <div className="flex gap-1 bg-black/5 rounded-none p-1">
-                         <button
-                           onClick={() => setWorldMode('tree')}
-                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
-                             worldMode === 'tree' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
-                           }`}
-                         >
-                            Garden.exe
-                         </button>
-                         <button
-                           onClick={() => setWorldMode('globe')}
-                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-none text-[9px] font-black uppercase tracking-widest transition-all ${
-                             worldMode === 'globe' ? 'bg-black text-white shadow-xl' : 'text-black/30 hover:text-black/60'
-                           }`}
-                         >
-                            Globe.exe
-                         </button>
-                       </div>
+      <UserProfileModal 
+        isOpen={isUserProfileModalOpen} 
+        onClose={() => setIsUserProfileModalOpen(false)} 
+      />
 
-                       {/* World list */}
-                       {circles.length > 0 && (
-                         <div>
-                           <p className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20 mb-3 ml-1">Archive_Indices</p>
-                           <div className="space-y-1 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                             {circles.map(circle => (
-                               <button
-                                 key={circle.id}
-                                 onClick={async () => {
-                                   if (circle.id !== activeCircleId) {
-                                     await setActiveCircle(circle.id);
-                                     showToast(`Switched to ${circle.name}!`);
-                                   }
-                                   setIsWorldConfigOpen(false);
-                                   setLandSearch('');
-                                 }}
-                                 className={`w-full flex items-center gap-4 px-4 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all text-left group ${
-                                   circle.id === activeCircleId
-                                     ? 'bg-black text-white'
-                                     : 'text-black/40 hover:bg-black/5 hover:text-black'
-                                 }`}
-                               >
-                                 <span className="flex-1 truncate">{circle.name}</span>
-                                 {circle.id === activeCircleId && <div className="w-1.5 h-1.5 bg-white"></div>}
-                               </button>
-                             ))}
-                           </div>
-                         </div>
-                       )}
-                     </motion.div>
-                   </>
-                 )}
-               </AnimatePresence>
+      {/* Music Adjustment Modal */}
+      <AnimatePresence>
+        {isVolumeModalOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className="fixed top-20 right-6 z-[70] bg-white/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-pink-100 flex flex-col items-center gap-4 w-12"
+          >
+             <label className="text-[8px] font-black text-pink-500 uppercase tracking-tighter w-full text-center mb-2">VOL</label>
+             <div className="h-32 w-1.5 bg-gray-100 rounded-full relative overflow-hidden group">
+                <input 
+                   type="range"
+                   min="0"
+                   max="1"
+                   step="0.01"
+                   value={isMusicMuted ? 0 : musicVolume}
+                   onChange={(e) => {
+                     setMusicVolume(parseFloat(e.target.value));
+                     setIsMusicMuted(false);
+                   }}
+                   className="absolute inset-0 w-32 h-1.5 appearance-none bg-transparent cursor-pointer -rotate-90 origin-left translate-y-[128px] translate-x-[-1px] z-10"
+                   style={{ width: '128px' }}
+                />
+                <div 
+                   className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-pink-500 to-rose-400 transition-all duration-150"
+                   style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }}
+                />
              </div>
+             <button 
+               onClick={() => setIsMusicMuted(!isMusicMuted)}
+               className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isMusicMuted ? 'bg-gray-100 text-gray-400' : 'bg-pink-100 text-pink-500'}`}
+             >
+               <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
+             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-             {/* Volume Control */}
-             <div className="relative">
-                <button
-                  onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
-                  className={`w-12 h-12 flex items-center justify-center transition-all border border-black/10 backdrop-blur-3xl rounded-none ${
-                    isMusicMuted ? 'bg-[#EAE6E1] text-black opacity-40' : 'bg-white text-black hover:bg-black hover:text-white'
-                  }`}
-                >
-                  <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-[10px]`}></i>
-                </button>
-                <AnimatePresence>
-                   {isVolumeModalOpen && (
-                     <motion.div
-                       initial={{ opacity: 0, y: -10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: -10 }}
-                       className="absolute top-full right-0 mt-4 bg-white/90 backdrop-blur-xl p-4 rounded-none shadow-2xl border border-black/10 flex flex-col items-center gap-4 w-12"
-                     >
-                        <span className="text-[7px] font-black text-black/30 uppercase tracking-widest">VOL</span>
-                        <div className="h-32 w-[2px] bg-black/5 relative overflow-hidden">
-                           <input 
-                              type="range" min="0" max="1" step="0.01" value={isMusicMuted ? 0 : musicVolume}
-                              onChange={(e) => { setMusicVolume(parseFloat(e.target.value)); setIsMusicMuted(false); }}
-                              className="absolute inset-0 w-32 h-full opacity-0 cursor-pointer -rotate-90 origin-left translate-y-32"
-                           />
-                           <div className="absolute bottom-0 left-0 right-0 bg-black" style={{ height: `${(isMusicMuted ? 0 : musicVolume) * 100}%` }} />
-                        </div>
-                     </motion.div>
-                   )}
-                </AnimatePresence>
-             </div>
-
-             <UserDropdown
-                user={user}
-                onLogout={logout}
-                onEditUserInfo={() => setIsUserProfileModalOpen(true)}
-                onOpenSettings={() => setIsEditDrawerOpen(true)}
-                loading={authLoading}
-              />
-          </div>
-
-          {/* TOP CENTER: System Status */}
+      {hasAcceptedProposal && (
+        <>
+          {/* CENTERED STATUS BAR - HOME ONLY */}
           {activeTab === 'home' && (
             <div 
-              className="fixed top-12 left-1/2 transform -translate-x-1/2 z-[80] flex flex-col items-center pointer-events-auto cursor-pointer group"
+              className="fixed top-24 md:top-8 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center pointer-events-auto cursor-pointer"
               onClick={() => setIsStatsGuideOpen(true)}
             >
-              <div className="flex items-center gap-10 md:gap-24 pb-4 px-12 border-x border-black/5">
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex items-center gap-4 md:gap-16 pb-1.5 md:pb-2"
+              >
+                  {/* Together Stat */}
                   <div className="flex flex-col items-center">
-                    <span className="text-[8px] md:text-[9px] font-black text-black/20 uppercase tracking-[0.6em] mb-2">ALLOCATION_TIME</span>
-                    <span className="text-xl md:text-4xl font-black text-black flex items-center gap-3 tracking-extratight leading-none">
-                        {daysTogether} <span className="text-[9px] md:text-[10px] font-black text-black/30 uppercase tracking-[0.4em]">DAYS</span>
+                    <span className="text-[7px] md:text-[10px] font-black text-pink-500 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Together</span>
+                    <span className="text-sm md:text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-2">
+                       <i className="fas fa-heart text-red-500 animate-pulse text-[10px] md:text-xl"></i> {daysTogether} <span className="text-[10px] md:text-sm font-bold opacity-80">Days</span>
                     </span>
                   </div>
-                  <div className="w-[1px] h-8 md:h-12 bg-black/10"></div>
+
+                  <div className="w-px h-6 md:h-10 bg-white/20 hidden md:block"></div>
+
+                  {/* Garden Stats */}
                   <div className="flex flex-col items-center">
-                    <span className="text-[8px] md:text-[9px] font-black text-black/20 uppercase tracking-[0.6em] mb-2">SYSTEM_RESOURCES</span>
-                    <div className="flex items-center gap-6 md:gap-16">
+                    <span className="text-[7px] md:text-[10px] font-black text-pink-500 uppercase tracking-widest drop-shadow-sm opacity-80 group-hover:opacity-100 transition-opacity">Garden</span>
+                    <div className="flex items-center gap-2 md:gap-8">
                        <div className="flex flex-col items-center">
-                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{flowerCount}</span>
-                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">BLOOMS</span>
+                          <span className="text-xs md:text-2xl font-bold text-white drop-shadow-[0_2px_4_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-sm md:text-2xl">🌸</span> {flowerCount}</span>
+                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Flowers</span>
                        </div>
                        <div className="flex flex-col items-center">
-                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{loveStats.leaves?.toLocaleString()}</span>
-                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">ARTIFACTS</span>
+                          <span className="text-xs md:text-2xl font-bold text-white drop-shadow-[0_2px_4_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-sm md:text-2xl">🍃</span> {loveStats.leaves?.toLocaleString()}</span>
+                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Leaves</span>
                        </div>
                        <div className="flex flex-col items-center">
-                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{loveStats.level}</span>
-                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">INDEX</span>
+                          <span className="text-xs md:text-2xl font-black text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-[10px] md:text-base">⭐</span> {loveStats.level}</span>
+                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Level</span>
                        </div>
                        <div className="flex flex-col items-center">
-                          <span className="text-sm md:text-2xl font-black text-black tracking-extratight leading-none">{loveStats.points?.toLocaleString()}</span>
-                          <span className="text-[7px] md:text-[8px] font-black text-black/30 uppercase tracking-widest mt-1">UNITS</span>
+                          <span className="text-xs md:text-2xl font-bold text-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-1 md:gap-1.5"><span className="text-[10px] md:text-base">🪙</span> {loveStats.points?.toLocaleString()}</span>
+                          <span className="text-[6px] md:text-[8px] font-black text-white/50 uppercase tracking-tighter">Points</span>
                        </div>
                     </div>
                   </div>
-              </div>
-              <div className="w-72 md:w-full h-[1px] bg-black/5 mt-4 relative overflow-hidden">
+              </motion.div>
+
+              {/* Minimal XP Bar Underneath */}
+              <div className="w-24 md:w-96 h-0.5 md:h-1 bg-white/10 rounded-full overflow-hidden mt-0.5 md:mt-1 border border-white/5 isolate relative">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
-                    className="h-full bg-black group-hover:bg-zinc-400 transition-colors"
+                    className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-yellow-400 shadow-[0_0_8px_rgba(244,114,182,0.5)]"
                   />
+                  
+
               </div>
             </div>
           )}
 
-          {/* TOP LEFT: Auth Session Marker */}
-          <div className="fixed top-8 left-8 md:left-14 flex flex-col items-start gap-2 z-[80]">
-            <Logo size={isMobile ? 40 : 50} title={appConfig.appName} className="grayscale opacity-80" />
-            <div className="h-[1px] w-12 bg-black/10"></div>
-            <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">AUTH_SESSION::ACTIVE</span>
+          {/* Logo - Fixed Top Left on Desktop, Centered on Mobile */}
+          <div className="fixed top-4 md:top-6 left-1/2 md:left-6 transform -translate-x-1/2 md:translate-x-0 flex items-center justify-center"
+             style={{ zIndex: 'var(--z-index-fixed)' }}>
+            <Logo 
+              size={isMobile ? 80 : 120} 
+              title={appConfig.appName} 
+              className="" 
+            />
           </div>
 
-          {/* RIGHT CENTER: Quick Actions */}
-          <div className="fixed right-8 top-1/2 -translate-y-1/2 z-[80] flex flex-col gap-6 items-end">
-            <AnimatePresence>
-              {showInstallPrompt && (
-                <motion.button
-                  initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 20, opacity: 0 }}
-                  onClick={handleInstallApp}
-                  className="flex items-center gap-4 bg-white/95 border border-black/10 p-4 rounded-sm shadow-kriss group transition-all"
-                >
-                  <div className="w-10 h-10 bg-black text-white flex items-center justify-center text-lg rounded-sm">
-                    <i className="fas fa-terminal"></i>
-                  </div>
-                  <div className="text-left pr-4">
-                     <p className="text-[9px] font-black text-black/30 uppercase tracking-widest leading-none mb-1">SYNC_DEVICE</p>
-                     <p className="text-[11px] font-black text-black uppercase tracking-widest">DEPLOY_ARCHIVE</p>
-                  </div>
-                </motion.button>
-              )}
+            {/* PWA Install Button & Grow Leaf Button */}
+            <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 items-end">
+              {/* PWA Install Notification */}
+              <AnimatePresence>
+                {showInstallPrompt && (
+                  <motion.button
+                    initial={{ x: 50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 50, opacity: 0 }}
+                    onClick={handleInstallApp}
+                    className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border-2 border-pink-100 group hover:border-pink-300 transition-all"
+                  >
+                    <div className="w-10 h-10 bg-pink-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition-transform">
+                      <i className="fas fa-mobile-alt"></i>
+                    </div>
+                    <div className="text-left">
+                       <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-none mb-1">Install App</p>
+                       <p className="text-sm font-bold text-gray-700 leading-none">Add to Home</p>
+                    </div>
+                  </motion.button>
+                )}
+              </AnimatePresence>
 
-              {loveStats.points >= 100 && activeTab === 'home' && (
-                <motion.button
-                  initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  onClick={handleAddLeaf}
-                  className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl shadow-kriss rounded-sm relative group overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-                  <span className="relative z-10 transition-transform group-hover:rotate-12">🌱</span>
-                  <div className="absolute -top-10 right-0 bg-black text-white text-[8px] font-black px-2 py-1 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    Initialize_Growth
-                  </div>
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
+              {/* Grow Leaf Button (Visible only if points >= 100) */}
+              <AnimatePresence>
+                {loveStats.points >= 100 && activeTab === 'home' && (
+                  <motion.button
+                    initial={{ scale: 0, opacity: 0, x: 20 }}
+                    animate={{ scale: 1, opacity: 1, x: 0 }}
+                    exit={{ scale: 0, opacity: 0, x: 20 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleAddLeaf}
+                    className="group relative flex flex-col items-center"
+                    title="Grow a new leaf (Costs 100 points)"
+                  >
+                    <div className="absolute -top-12 right-0 bg-black/80 text-white text-[10px] font-black px-3 py-1.5 rounded-full whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity animate-bounce">
+                       GROW LEAF! 🌱 -100 🪙
+                    </div>
+                    <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full shadow-[0_20px_50px_rgba(16,185,129,0.4)] flex items-center justify-center text-3xl relative overflow-hidden group">
+                       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                       <motion.span 
+                         animate={{ rotate: [0, 10, -10, 0] }}
+                         transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                       >
+                         🍃
+                       </motion.span>
+                    </div>
+                  </motion.button>
+                )}
+              </AnimatePresence>
 
-          {/* GARDEN GUIDE MODAL - ARCHIVAL DOCUMENT STYLE */}
+           </div>
+
+          {/* STATS GUIDE MODAL/DRAWER */}
           <AnimatePresence>
             {isStatsGuideOpen && (
               <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-kriss flex items-center justify-center p-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6"
                 onClick={() => setIsStatsGuideOpen(false)}
               >
                 <motion.div
-                  initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                  className="bg-white w-full max-w-2xl border border-black/5 shadow-kriss flex flex-col max-h-[90vh] rounded-2xl overflow-hidden"
+                  initial={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0, y: 20 }}
+                  animate={isMobile ? { y: 0 } : { scale: 1, opacity: 1, y: 0 }}
+                  exit={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0, y: 20 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className={`bg-white w-full max-w-2xl overflow-hidden shadow-[0_20px_70px_rgba(0,0,0,0.3)] flex flex-col ${
+                    isMobile ? 'rounded-t-[3rem] max-h-[90vh]' : 'rounded-[3rem] max-h-[85vh]'
+                  }`}
                   onClick={e => e.stopPropagation()}
                 >
-                  <div className="p-10 md:p-14 overflow-y-auto custom-scrollbar">
-                    <div className="flex items-center justify-between mb-12 border-b border-black/5 pb-10">
-                       <div className="flex items-center gap-8">
-                          <div className="w-20 h-20 bg-black flex items-center justify-center text-3xl font-black text-white rounded-sm">
+                  {/* Handle for mobile */}
+                  {isMobile && (
+                    <div className="flex justify-center pt-4 pb-2 shrink-0">
+                      <div className="w-12 h-1.5 bg-gray-200 rounded-full"></div>
+                    </div>
+                  )}
+
+                  <div className="overflow-y-auto custom-scrollbar p-6 md:p-10">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-5">
+                          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 rounded-3xl flex items-center justify-center text-3xl font-black text-white shadow-xl border-4 border-white rotate-3">
                             {loveStats.level}
                           </div>
                           <div>
-                             <h3 className="text-[9px] font-black text-black/30 uppercase tracking-[0.5em] mb-2">SYSTEM_DOCUMENTATION</h3>
-                             <h4 className="text-4xl font-black text-black tracking-extratight uppercase leading-none">GARDEN_MANIFEST</h4>
+                             <h3 className="font-pacifico text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-600">Garden Guide</h3>
+                             <p className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em]">World Status & Progress</p>
                           </div>
                        </div>
-                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-14 h-14 border border-black/5 hover:bg-black hover:text-white transition-all flex items-center justify-center rounded-sm">
-                          <i className="fas fa-times"></i>
+                       <button onClick={() => setIsStatsGuideOpen(false)} className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all">
+                          <i className="fas fa-times text-xl"></i>
                        </button>
                     </div>
 
-                    <div className="space-y-12">
-                       <div className="grid grid-cols-2 gap-10">
-                          <div className="space-y-2">
-                             <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">EXP_BUFFER</span>
-                             <div className="text-4xl font-black text-black flex items-baseline gap-2">
-                                {loveStats.xp} <span className="text-xs text-black/30">/ {loveStats.level * 100}</span>
-                             </div>
-                             <div className="h-[2px] w-full bg-black/5 overflow-hidden">
-                                <motion.div className="h-full bg-black" animate={{ width: `${(loveStats.xp / (loveStats.level * 100)) * 100}%` }} />
+                    {/* XP Progress */}
+                    <div className="bg-pink-50/30 rounded-[2rem] p-6 md:p-8 border border-pink-100 mb-8 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 scale-150 rotate-12 transition-transform group-hover:scale-[1.7]">
+                           <i className="fas fa-chart-line text-pink-500 text-6xl"></i>
+                        </div>
+                        <div className="flex justify-between items-end mb-4 relative z-10">
+                           <div>
+                              <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest block mb-1">Experience Points</span>
+                              <div className="flex items-baseline gap-2">
+                                 <span className="text-4xl font-black text-gray-800">{loveStats.xp}</span>
+                                 <span className="text-sm font-bold text-gray-400">/ {loveStats.level * 100} XP</span>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">World Level</span>
+                              <span className="text-xl font-black text-amber-600">Level {loveStats.level}</span>
+                           </div>
+                        </div>
+                        <div className="w-full h-4 bg-white/50 rounded-full overflow-hidden border border-pink-100 relative shadow-inner p-1">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.min(100, (loveStats.xp / (loveStats.level * 100)) * 100)}%` }}
+                              className="h-full bg-gradient-to-r from-pink-400 via-rose-500 to-yellow-400 rounded-full relative"
+                            >
+                               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+                            </motion.div>
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4 md:gap-6 mb-10">
+                       <div className="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-[2rem] border border-pink-100/50 flex flex-col items-center text-center gap-2 hover:shadow-lg transition-all group">
+                          <span className="text-4xl group-hover:scale-125 transition-transform">🌸</span>
+                          <span className="font-black text-gray-800 text-2xl drop-shadow-sm">{flowerCount}</span>
+                          <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Flowers Bloomed</span>
+                       </div>
+                       <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-[2rem] border border-green-100/50 flex flex-col items-center text-center gap-2 hover:shadow-lg transition-all group">
+                          <span className="text-4xl group-hover:scale-125 transition-transform">🍃</span>
+                          <span className="font-black text-gray-800 text-2xl drop-shadow-sm">{loveStats.leaves?.toLocaleString()}</span>
+                          <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Leaves Grown</span>
+                       </div>
+                    </div>
+
+                    {/* Guide Section */}
+                    <div className="space-y-6">
+                       <h4 className="font-pacifico text-2xl text-gray-800 border-b border-gray-100 pb-4">How to grow our garden?</h4>
+                       
+                       <div className="space-y-4">
+                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                             <div className="w-12 h-12 shrink-0 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl">🌸</div>
+                             <div>
+                                <h5 className="font-black text-gray-800 text-sm">Automated Blooms</h5>
+                                <p className="text-xs text-gray-500 font-medium leading-relaxed">A new flower blooms every <span className="text-pink-500 font-black">{appConfig.daysPerFlower} days</span> automatically to celebrate our journey together.</p>
                              </div>
                           </div>
-                          <div className="space-y-2 text-right">
-                             <span className="text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">SYSTEM_VERSION</span>
-                             <div className="text-4xl font-black text-black">V_{loveStats.level}.0.ARCH</div>
+
+                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                             <div className="w-12 h-12 shrink-0 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">🍃</div>
+                             <div>
+                                <h5 className="font-black text-gray-800 text-sm">Manual Growth</h5>
+                                <p className="text-xs text-gray-500 font-medium leading-relaxed">You can manually grow a leaf by spending <span className="text-green-600 font-black">100 points</span>. Use the button on the right of the home screen!</p>
+                             </div>
                           </div>
-                       </div>
 
-                       <div className="grid grid-cols-3 gap-6">
-                          {[
-                            { label: 'BLOOMS', val: flowerCount, icon: '🌸' },
-                            { label: 'ARTIFACTS', val: loveStats.leaves, icon: '🍃' },
-                            { label: 'UNITS', val: loveStats.points, icon: '🪙' }
-                          ].map(stat => (
-                            <div key={stat.label} className="border border-black/5 p-6 space-y-3 rounded-2xl">
-                               <div className="flex items-center justify-between">
-                                  <span className="text-[8px] font-black text-black/30 uppercase tracking-widest">{stat.label}</span>
-                                  <span className="text-xl grayscale opacity-40">{stat.icon}</span>
-                               </div>
-                               <p className="text-3xl font-black text-black">{stat.val?.toLocaleString()}</p>
-                            </div>
-                          ))}
-                       </div>
-
-                       <div className="space-y-6 pt-10 border-t border-black/5">
-                          <p className="text-[9px] font-black text-black uppercase tracking-[0.5em] mb-6">OPERATIONAL_GUIDELINES</p>
-                          <div className="space-y-6">
-                             {[
-                               { h: 'AUTOMATED_BLOOMS', d: `System automatically initializes a new bloom every ${appConfig.daysPerFlower} cycles.` },
-                               { h: 'MANUAL_GROWTH', d: 'Allocate 100 units to manually initialize a new artifact growth sequence.' },
-                               { h: 'DATA_ACQUISITION', d: 'Sharing memories, logs, or records generates system XP and units.' }
-                             ].map(item => (
-                               <div key={item.h} className="group flex gap-6 items-start">
-                                  <div className="w-1.5 h-1.5 bg-black mt-1.5" />
-                                  <div>
-                                     <h5 className="text-[10px] font-black text-black uppercase tracking-widest mb-1">{item.h}</h5>
-                                     <p className="text-[12px] text-black/40 font-black uppercase tracking-[0.1em] leading-relaxed">{item.d}</p>
-                                  </div>
-                               </div>
-                             ))}
+                          <div className="flex gap-4 items-start bg-gray-50/50 p-4 rounded-3xl hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                             <div className="w-12 h-12 shrink-0 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">⭐</div>
+                             <div>
+                                <h5 className="font-black text-gray-800 text-sm">Earning Points & XP</h5>
+                                <p className="text-xs text-gray-500 font-medium leading-relaxed">Every milestone, memory, or letter shared adds <span className="text-purple-600 font-black">Points and XP</span> to our joint account.</p>
+                             </div>
                           </div>
                        </div>
                     </div>
 
-                    <div className="mt-20 pt-10 border-t border-black/5 flex justify-between items-center text-[8px] font-black text-black/20 uppercase tracking-[0.4em]">
-                        <span>REF_ID::GARDEN_{new Date().getTime().toString(16).toUpperCase()}</span>
-                        <span>NEXT_BLOOM_EST::IN_{appConfig.daysPerFlower - (daysTogether % appConfig.daysPerFlower)}_CYCLES</span>
+                    {/* Footer Stats Info */}
+                    <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-3">
+                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></div>
+                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Relationship Length: {daysTogether} Days</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-pink-50/50 px-4 py-2 rounded-full border border-pink-100">
+                           <i className="fas fa-clock text-pink-400 text-[10px]"></i>
+                           <span className="text-[10px] font-black text-pink-600 uppercase tracking-widest">Next Flower: {appConfig.daysPerFlower - (daysTogether % appConfig.daysPerFlower)} Days</span>
+                        </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1478,38 +1531,45 @@ const Home: React.FC = () => {
           </AnimatePresence>
 
           <LoveLetter 
-            isOpen={isLetterOpen} onClose={() => setIsLetterOpen(false)} 
-            messages={loveLetters} onSendMessage={handleSendMessage} onUpdateMessage={handleUpdateMessage}
-            partners={appConfig.partners} folders={appConfig.mailFolders}
+            isOpen={isLetterOpen} 
+            onClose={() => setIsLetterOpen(false)} 
+            messages={loveLetters}
+            onSendMessage={handleSendMessage}
+            onUpdateMessage={handleUpdateMessage}
+            partners={appConfig.partners}
+            folders={appConfig.mailFolders}
           />
 
           <EditDrawer 
-            isOpen={isEditDrawerOpen} onClose={() => setIsEditDrawerOpen(false)} 
-            config={appConfig} setConfig={handleSetAppConfig} 
-            onSave={() => showToast("SYNC_COMPLETE :: CONFIG_SAVED")}
+            isOpen={isEditDrawerOpen} 
+            onClose={() => setIsEditDrawerOpen(false)} 
+            config={appConfig} 
+            setConfig={handleSetAppConfig} 
+            onSave={() => showToast("Settings saved successfully! ✨")}
           />
-
-          <TimelineSpreadsheet 
-            isOpen={isSpreadsheetOpen} onClose={() => setIsSpreadsheetOpen(false)}
-            interactions={appConfig.timeline} onSave={handleMassTimelineUpdate} onDelete={handleDeleteTimeline}
-          />
-
-          <UserProfileModal 
-            isOpen={isUserProfileModalOpen} onClose={() => setIsUserProfileModalOpen(false)} 
-          />
-
           <Toast 
-            message={toast.message} isVisible={toast.isVisible} 
+            message={toast.message} 
+            isVisible={toast.isVisible} 
             onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
           />
-
           <SimplePlayer 
             playlist={appConfig.musicPlaylist || ["https://www.youtube.com/watch?v=igx8-BdblEI"]} 
-            volume={musicVolume} setVolume={setMusicVolume}
-            playing={isMusicPlaying} setPlaying={setIsMusicPlaying}
-            muted={isMusicMuted} setMuted={setIsMusicMuted}
+            volume={musicVolume}
+            setVolume={setMusicVolume}
+            playing={isMusicPlaying}
+            setPlaying={setIsMusicPlaying}
+            muted={isMusicMuted}
+            setMuted={setIsMusicMuted}
           />
-        </motion.div>
+          
+          <TimelineSpreadsheet 
+            isOpen={isSpreadsheetOpen}
+            onClose={() => setIsSpreadsheetOpen(false)}
+            interactions={appConfig.timeline}
+            onSave={handleMassTimelineUpdate}
+            onDelete={handleDeleteTimeline}
+          />
+        </>
       )}
     </div>
   );
