@@ -28,11 +28,36 @@ export async function getAuthSession(req?: Request) {
     }
   }
 
-  console.log('BFF Session Check:', { 
-    hasAccessToken: !!token, 
+  console.log('BFF Session Check:', {
+    hasAccessToken: !!token,
     hasRefreshToken: !!refreshToken,
     isAuthMetaSet: cookieStore.has('narinyland_is_auth'),
   });
+
+  // Token exists but refresh token is missing - token may be expired and unrefreshable
+  if (token && !refreshToken) {
+    console.warn('BFF: Access token exists but refresh token is missing. Token may be expired. Attempting validation...');
+    // Try to decode token expiry - if expired, clear it and force re-auth
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+          console.warn('BFF: Access token is expired and no refresh token available. Clearing cookies and forcing re-auth.');
+          cookieStore.delete('appkit_access_token');
+          cookieStore.delete('narinyland_is_auth');
+          return { error: 'session_expired', status: 401, reauthRequired: true };
+        }
+      }
+    } catch {
+      // If we can't decode, assume it's expired when no refresh token exists
+      console.warn('BFF: Cannot validate token expiry. Clearing and forcing re-auth.');
+      cookieStore.delete('appkit_access_token');
+      cookieStore.delete('narinyland_is_auth');
+      return { error: 'session_expired', status: 401, reauthRequired: true };
+    }
+  }
 
   if (!token) {
     // 3. Fallback: Check for name-based "soft session" (narinyland_sub)

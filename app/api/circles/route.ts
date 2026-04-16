@@ -28,13 +28,26 @@ export async function GET(req: NextRequest) {
       if (res.status === 401) {
         console.log('BFF /api/circles: 401 from AppKit, attempting refresh...');
         const { refreshSession } = await import('@/lib/auth-server');
-        if (await refreshSession()) {
-          const { cookies } = await import('next/headers');
-          const newToken = (await cookies()).get('appkit_access_token')?.value;
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+
+        const refreshed = await refreshSession();
+        if (refreshed) {
+          const newToken = cookieStore.get('appkit_access_token')?.value;
           if (newToken) {
             token = newToken;
             res = await fetchCircles(token);
           }
+        } else {
+          // Refresh failed - no refresh token available. Clear auth cookies
+          // to force frontend re-authentication and prevent infinite loops.
+          console.warn('BFF /api/circles: Token refresh failed (no refresh token). Clearing auth state.');
+          cookieStore.delete('appkit_access_token');
+          cookieStore.delete('narinyland_is_auth');
+          return NextResponse.json(
+            { error: 'session_expired', error_description: 'Session expired. Please sign in again.' },
+            { status: 401 }
+          );
         }
       }
 
