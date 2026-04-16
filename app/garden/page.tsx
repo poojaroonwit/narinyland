@@ -722,83 +722,102 @@ const Home: React.FC = () => {
         {/* Fullscreen Background & Tree/Globe */}
         <div className="fixed inset-0 z-0">
            {worldMode === 'tree' ? (
-             <LoveTree3D 
-               anniversaryDate={appConfig.anniversaryDate} 
-               treeStyle={appConfig.treeStyle} 
-               petEmotion={petEmotion}
-               petMessage={petMessage}
-               level={loveStats.level}
-               daysPerTree={appConfig.daysPerTree}
-               daysPerFlower={appConfig.daysPerFlower}
-               flowerType={appConfig.flowerType}
-               mixedFlowers={appConfig.mixedFlowers}
-               leaves={loveStats.leaves}
-               points={loveStats.points}
-               skyMode={appConfig.skyMode}
-               showQRCode={appConfig.showQRCode}
-               petType={appConfig.petType}
-               pets={appConfig.pets}
-               albums={appConfig.albums}
-               graphicsQuality={appConfig.graphicsQuality}
-               isEditMode={isEditMode}
-               setIsEditMode={setIsEditMode}
-               onAddLeaf={handleAddLeaf}
-               purchasedItems={appConfig.lands?.find(l => l.isActive)?.items}
-                onUpdateItemPosition={async (itemId: string, x: number, y: number, z: number) => {
-                  try {
-                     setAppConfig(prev => {
-                        if (!prev.lands) return prev;
-                        const newLands = prev.lands.map(l => {
-                           if (!l.isActive) return l;
-                           return {
-                               ...l,
-                               items: l.items?.map(it => it.id === itemId ? { ...it, x, y, z } : it)
-                           };
-                        });
-                        return { ...prev, lands: newLands };
-                     });
-                     
-                     await fetch(`/api/purchased-items/${itemId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ x, y, z })
-                     });
-                  } catch (e) {
-                     console.error("Failed to update item position", e);
-                  }
-               }}
-               activeLandId={appConfig.lands?.find(l => l.isActive)?.id}
-               onPurchase={async (item) => {
-                  try {
-                    const landId = appConfig.lands?.find(l => l.isActive)?.id;
-                    if (!landId) return;
-                    setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
-                    const res = await fetch('/api/purchased-items', {
-                       method: 'POST',
-                       headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify({ type: item.type, landId, modelUrl: item.modelUrl })
-                    });
-                    if (!res.ok) throw new Error("Failed to purchase");
-                    const newItem = await res.json();
-                    setAppConfig(prev => ({
-                      ...prev,
-                      lands: prev.lands?.map(l => l.id === landId ? { ...l, items: [...(l.items || []), newItem] } : l)
-                    }));
-                    showToast(`You bought a ${item.name}! 🛍️`);
-                  } catch (err) {
-                    console.error("Purchase error", err);
-                    setLoveStats(prev => ({ ...prev, points: prev.points + item.price }));
-                    showToast("Purchase failed. Please try again.");
-                  }
-               }}
-             />
+             <>
+               <LoveTree3D
+                 anniversaryDate={appConfig.anniversaryDate}
+                 treeStyle={appConfig.treeStyle}
+                 petEmotion={petEmotion}
+                 petMessage={petMessage}
+                 level={loveStats.level}
+                 daysPerTree={appConfig.daysPerTree}
+                 daysPerFlower={appConfig.daysPerFlower}
+                 flowerType={appConfig.flowerType}
+                 mixedFlowers={appConfig.mixedFlowers}
+                 leaves={loveStats.leaves}
+                 points={loveStats.points}
+                 skyMode={appConfig.skyMode}
+                 showQRCode={appConfig.showQRCode}
+                 petType={appConfig.petType}
+                 pets={appConfig.pets}
+                 albums={appConfig.albums}
+                 graphicsQuality={appConfig.graphicsQuality}
+                 isEditMode={isEditMode}
+                 setIsEditMode={setIsEditMode}
+                 onAddLeaf={handleAddLeaf}
+                 purchasedItems={appConfig.lands?.find(l => l.isActive)?.items}
+                  onUpdateItemPosition={async (itemId: string, x: number, y: number, z: number) => {
+                    try {
+                       setAppConfig(prev => {
+                          if (!prev.lands) return prev;
+                          const newLands = prev.lands.map(l => {
+                             if (!l.isActive) return l;
+                             return {
+                                 ...l,
+                                 items: l.items?.map(it => it.id === itemId ? { ...it, x, y, z } : it)
+                             };
+                          });
+                          return { ...prev, lands: newLands };
+                       });
+
+                       await fetch(`/api/purchased-items/${itemId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ x, y, z })
+                       });
+                    } catch (e) {
+                       console.error("Failed to update item position", e);
+                    }
+                 }}
+                 activeLandId={appConfig.lands?.find(l => l.isActive)?.id}
+                 onPurchase={async (item) => {
+                    try {
+                      const landId = appConfig.lands?.find(l => l.isActive)?.id;
+                      if (!landId) return;
+                      setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
+                      const res = await fetch('/api/purchased-items', {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify({ type: item.type, landId, modelUrl: item.modelUrl })
+                      });
+                      if (!res.ok) throw new Error("Failed to purchase");
+                      const newItem = await res.json();
+                      setAppConfig(prev => ({
+                        ...prev,
+                        lands: prev.lands?.map(l => l.id === landId ? { ...l, items: [...(l.items || []), newItem] } : l)
+                      }));
+                      showToast(`You bought a ${item.name}! 🛍️`);
+                    } catch (err) {
+                      console.error("Purchase error", err);
+                      setLoveStats(prev => ({ ...prev, points: prev.points + item.price }));
+                      showToast("Purchase failed. Please try again.");
+                    }
+                 }}
+               />
+
+               {/* Edit Mode Button for Tree Mode */}
+               <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
+                 <motion.button
+                   whileHover={{ scale: 1.1 }}
+                   whileTap={{ scale: 0.9 }}
+                   onClick={() => setIsEditMode(!isEditMode)}
+                   className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
+                     isEditMode
+                       ? 'bg-pink-500 text-white border-pink-400 shadow-pink-500/40'
+                       : 'bg-white/80 backdrop-blur-md text-gray-600 border-white/50 hover:bg-white'
+                   }`}
+                   title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+                 >
+                   <i className={`fas ${isEditMode ? 'fa-times' : 'fa-pencil-alt'}`}></i>
+                 </motion.button>
+               </div>
+             </>
            ) : (
              <>
-               <World3D 
-                  timeline={appConfig.timeline} 
-                  onFlagClick={(item) => setSelectedFlagItem(item)} 
+               <World3D
+                  timeline={appConfig.timeline}
+                  onFlagClick={(item) => setSelectedFlagItem(item)}
                />
-               
+
                {/* Global Edit Mode Logic for non-tree modes */}
                <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
                 <motion.button
@@ -1090,60 +1109,19 @@ const Home: React.FC = () => {
       )}
 
       {/* Fixed UI Overlays - Always Visible (Outside the scrollable content flow) */}
-      
+
       {/* Config & Top Menu - Persistently Visible */}
       <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
-         <button 
-           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)} 
+         <button
+           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
              isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
            }`}
          >
            <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`}></i>
          </button>
-           {/* Land Switcher */}
-           {appConfig.lands && appConfig.lands.length > 1 && (
-             <div className="relative">
-                <button
-                  onClick={() => setIsLandDropdownOpen(!isLandDropdownOpen)}
-                  className="h-10 px-4 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-gray-700 shadow-lg flex items-center gap-2 hover:bg-white/60 transition-all transform hover:scale-105"
-                >
-                  <i className="fas fa-map-marked-alt text-amber-500 text-xs"></i>
-                  <span className="text-xs font-bold truncate max-w-[80px] md:max-w-[120px]">
-                    {appConfig.lands.find(l => l.isActive)?.name || 'Select Land'}
-                  </span>
-                  <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`}></i>
-                </button>
 
-                <AnimatePresence>
-                  {isLandDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80] p-1.5"
-                    >
-                      {appConfig.lands?.map(land => (
-                        <button
-                          key={land.id}
-                          onClick={() => handleSelectLand(land.id)}
-                          className={`w-full text-left px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between group ${
-                            land.isActive 
-                            ? 'bg-amber-500 text-white shadow-md' 
-                            : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'
-                          }`}
-                        >
-                          <span className="truncate">{land.name}</span>
-                          {land.isActive && <i className="fas fa-check text-[10px]"></i>}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-             </div>
-           )}
-
-           {/* World Selection (Circle Switcher) */}
+           {/* World Selection (Circle Switcher) - Left side */}
            <div className="relative">
               <button
                 onClick={() => setIsCircleDropdownOpen(!isCircleDropdownOpen)}
@@ -1191,8 +1169,8 @@ const Home: React.FC = () => {
                                 setIsCircleDropdownOpen(false);
                               }}
                               className={`w-full text-left px-6 py-4 md:px-4 md:py-2.5 rounded-full md:rounded-md text-sm md:text-xs font-bold transition-all flex items-center justify-between group ${
-                                circle.id === activeCircleId 
-                                ? 'bg-pink-500 text-white shadow-md' 
+                                circle.id === activeCircleId
+                                ? 'bg-pink-500 text-white shadow-md'
                                 : 'text-gray-600 hover:bg-pink-50 hover:text-pink-600'
                               }`}
                             >
@@ -1211,11 +1189,52 @@ const Home: React.FC = () => {
               </AnimatePresence>
            </div>
 
+           {/* Land Switcher - Right of World Selection */}
+           {appConfig.lands && appConfig.lands.length >= 1 && (
+             <div className="relative">
+                <button
+                  onClick={() => setIsLandDropdownOpen(!isLandDropdownOpen)}
+                  className="h-10 px-4 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-gray-700 shadow-lg flex items-center gap-2 hover:bg-white/60 transition-all transform hover:scale-105"
+                >
+                  <i className="fas fa-map-marked-alt text-amber-500 text-xs"></i>
+                  <span className="text-xs font-bold truncate max-w-[80px] md:max-w-[120px]">
+                    {appConfig.lands.find(l => l.isActive)?.name || 'Select Land'}
+                  </span>
+                  <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`}></i>
+                </button>
 
-          <UserDropdown 
-            user={user} 
-            onLogout={logout} 
-            onEditUserInfo={() => setIsUserProfileModalOpen(true)} 
+                <AnimatePresence>
+                  {isLandDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80] p-1.5"
+                    >
+                      {appConfig.lands?.map(land => (
+                        <button
+                          key={land.id}
+                          onClick={() => handleSelectLand(land.id)}
+                          className={`w-full text-left px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between group ${
+                            land.isActive
+                            ? 'bg-amber-500 text-white shadow-md'
+                            : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'
+                          }`}
+                        >
+                          <span className="truncate">{land.name}</span>
+                          {land.isActive && <i className="fas fa-check text-[10px]"></i>}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+             </div>
+           )}
+
+          <UserDropdown
+            user={user}
+            onLogout={logout}
+            onEditUserInfo={() => setIsUserProfileModalOpen(true)}
             onOpenSettings={() => setIsEditDrawerOpen(true)}
              loading={authLoading}
              isMobile={isMobile}

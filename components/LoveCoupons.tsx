@@ -290,19 +290,25 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       <div className="flex justify-center mb-6 bg-white/50 p-1 rounded-full max-w-xs mx-auto backdrop-blur-sm">
         <button
           onClick={() => setActiveTab('partner1')}
-          className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${
+          className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 ${
             activeTab === 'partner1' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-500 hover:text-pink-400'
           }`}
         >
-          {partners?.partner1.avatar} {p1Name}
+          {partners?.partner1.avatar && (
+            <img src={partners.partner1.avatar} alt={p1Name} className="w-5 h-5 rounded-full object-cover" />
+          )}
+          {p1Name}
         </button>
         <button
           onClick={() => setActiveTab('partner2')}
-          className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${
+          className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 ${
             activeTab === 'partner2' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500 hover:text-blue-400'
           }`}
         >
-           {partners?.partner2.avatar} {p2Name}
+          {partners?.partner2.avatar && (
+            <img src={partners.partner2.avatar} alt={p2Name} className="w-5 h-5 rounded-full object-cover" />
+          )}
+          {p2Name}
         </button>
       </div>
 
