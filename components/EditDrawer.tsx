@@ -22,7 +22,7 @@ interface EditDrawerProps {
 }
 
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave }) => {
-  const { circles, activeCircleId, setActiveCircle } = useAuth();
+  const { circles, activeCircleId, setActiveCircle, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'land' | 'objects'>('general');
   const [isMobile, setIsMobile] = useState(false);
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>('general');
@@ -1615,9 +1615,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                </div>
 
                <div className="flex flex-col gap-3">
-                 {circles.map(circle => (
-                    <div 
-                      key={circle.id} 
+                 {circles.filter(c => c.id && c.id !== 'undefined').map(circle => (
+                    <div
+                      key={circle.id}
                       className={`bg-white rounded-md shadow-sm border transition-all duration-300 ${circle.id === activeCircleId ? 'border-pink-300 ring-4 ring-pink-50' : 'border-gray-100 hover:shadow-md'}`}
                     >
                       <div className="p-4 flex items-center justify-between">

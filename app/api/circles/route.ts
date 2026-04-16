@@ -148,8 +148,19 @@ export async function GET(req: NextRequest) {
       console.warn('BFF /api/circles: No userId available for local fallback');
     }
 
+    // Filter out any configs without valid IDs and log for debugging
+    const validConfigs = configs.filter(config => {
+      if (!config.id || config.id === 'undefined') {
+        console.warn('BFF /api/circles: Filtering out config with invalid ID:', config);
+        return false;
+      }
+      return true;
+    });
+
+    console.log('BFF /api/circles: Returning', validConfigs.length, 'valid circles');
+
     return NextResponse.json(
-      configs.map((config) => ({
+      validConfigs.map((config) => ({
         id: config.id,
         name: config.appName,
         description: config.appName,

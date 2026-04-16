@@ -496,24 +496,46 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                </h3>
 
                <div className="space-y-4">
-                  <div className="flex gap-4">
-                     <div className="flex flex-col gap-1">
+                  <div className="flex gap-3">
+                     <div className="w-20 shrink-0 flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Emoji</label>
-                        <input 
-                           type="text" 
-                           value={newCoupon.emoji} 
+                        <select
+                           value={newCoupon.emoji}
                            onChange={e => setNewCoupon(prev => ({ ...prev, emoji: e.target.value }))}
-                           className="w-full text-center border-2 border-pink-50 rounded-md p-3 text-2xl focus:border-pink-200 outline-none"
-                        />
+                           className="w-full border-2 border-pink-50 rounded-md p-3 text-xl font-black focus:border-pink-200 outline-none bg-white cursor-pointer"
+                        >
+                           <option value="🎁">🎁</option>
+                           <option value="💝">💝</option>
+                           <option value="🌹">🌹</option>
+                           <option value="🍽️">🍽️</option>
+                           <option value="🎬">🎬</option>
+                           <option value="🍕">🍕</option>
+                           <option value="☕">☕</option>
+                           <option value="🍰">🍰</option>
+                           <option value="🍦">🍦</option>
+                           <option value="🧋">🧋</option>
+                           <option value="🍷">🍷</option>
+                           <option value="🎮">🎮</option>
+                           <option value="🎵">🎵</option>
+                           <option value="💆">💆</option>
+                           <option value="💅">💅</option>
+                           <option value="🏖️">🏖️</option>
+                           <option value="🛍️">🛍️</option>
+                           <option value="🎟️">🎟️</option>
+                           <option value="🤗">🤗</option>
+                           <option value="💋">💋</option>
+                           <option value="🌟">🌟</option>
+                           <option value="❤️">❤️</option>
+                        </select>
                      </div>
-                     <div className="flex-1 flex flex-col gap-1">
+                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Title</label>
-                        <input 
-                           type="text" 
+                        <input
+                           type="text"
                            placeholder="Unlimited Hugs"
-                           value={newCoupon.title} 
+                           value={newCoupon.title}
                            onChange={e => setNewCoupon(prev => ({ ...prev, title: e.target.value }))}
-                           className="w-full border-2 border-pink-50 rounded-md p-4 text-base font-black focus:border-pink-200 outline-none placeholder:text-gray-300 transition-all"
+                           className="w-full border-2 border-pink-50 rounded-md p-3 text-base font-black focus:border-pink-200 outline-none placeholder:text-gray-300 transition-all"
                         />
                      </div>
                   </div>
