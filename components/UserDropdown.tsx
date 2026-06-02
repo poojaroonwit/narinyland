@@ -11,6 +11,7 @@ interface UserDropdownProps {
   onEditUserInfo?: () => void;
   onOpenSettings?: () => void;
   loading?: boolean;
+  isMobile?: boolean;
 }
 
 export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSettings, loading }: UserDropdownProps) {

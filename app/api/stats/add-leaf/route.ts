@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: number; xpForNextLevel: number } {
   const level = Math.min(50, Math.floor(totalXP / 100) + 1);
@@ -39,9 +39,12 @@ async function getPartnerPoints(configId: string): Promise<{ partner1: number; p
 
 // POST /api/stats/add-leaf
 export async function POST(request: Request) {
-  const configId = getConfigId(request);
-  const cacheKey = `app_stats:${configId}`;
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = `app_stats:${configId}`;
     const COST_PER_LEAF = 100;
 
     const stats = await prisma.loveStats.findUnique({ where: { id: configId } });

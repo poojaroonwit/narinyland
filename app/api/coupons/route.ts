@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getConfigId } from '@/lib/get-config-id';
+import { redis } from '@/lib/redis';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 // GET /api/coupons
 export async function GET(request: Request) {
-  const configId = getConfigId(request);
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
     const coupons = await prisma.coupon.findMany({
       where: { configId },
       orderBy: { createdAt: 'asc' },
@@ -32,8 +36,11 @@ export async function GET(request: Request) {
 
 // POST /api/coupons
 export async function POST(request: Request) {
-  const configId = getConfigId(request);
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
     const body = await request.json();
     const { title, emoji, desc, color, forPartner, points } = body;
 
@@ -48,6 +55,8 @@ export async function POST(request: Request) {
         configId,
       },
     });
+
+    await redis.del(`app_config:${configId}`);
 
     return NextResponse.json({
       id: coupon.id,

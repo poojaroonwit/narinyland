@@ -10,8 +10,8 @@ const ENV_BG_COLOR = process.env.PWA_BG_COLOR || '#ffffff';
 const ENV_ICON_URL = process.env.PWA_ICON_URL || null;
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  // Fetch branding from AppKit (cached for 5 min via next.revalidate)
-  const branding = await getAppBranding();
+  const isProductionBuild = process.env.NEXT_PHASE === 'phase-production-build';
+  const branding = isProductionBuild ? null : await getAppBranding();
 
   // Priority: AppKit branding → env vars → hardcoded defaults
   const name = branding?.appName || ENV_APP_NAME;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getConfigId } from '@/lib/get-config-id';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 async function getTotalSpendablePoints(configId: string): Promise<number> {
   const partners = await prisma.partner.findMany({
@@ -14,12 +14,17 @@ import { redis } from '@/lib/redis';
 
 // POST /api/stats/add-points
 export async function POST(request: Request) {
-    const configId = getConfigId(request);
-    const cacheKey = `app_stats:${configId}`;
     try {
+        const access = await requireConfigAccess(request);
+        if (isConfigAccessDenied(access)) return access.response;
+
+        const { configId } = access;
+        const cacheKey = `app_stats:${configId}`;
         const body = await request.json();
         const { amount } = body;
-        if (!amount || typeof amount !== 'number') return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+        }
 
         // Add to partner1 by default
         await prisma.partner.updateMany({

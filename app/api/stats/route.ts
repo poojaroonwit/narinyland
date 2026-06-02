@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getConfigId } from '@/lib/get-config-id';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 // ─── Helper: Calculate level from total XP (1 exp = 1 point) ────────
 function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: number; xpForNextLevel: number } {
@@ -43,9 +43,13 @@ import { redis } from '@/lib/redis';
 
 // GET /api/stats
 export async function GET(request: Request) {
-  const configId = getConfigId(request);
-  const cacheKey = `app_stats:${configId}`;
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = `app_stats:${configId}`;
+
     // Check Cache
     const cached = await redis.get(cacheKey);
     if (cached) return NextResponse.json(JSON.parse(cached));

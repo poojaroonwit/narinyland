@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { requireAdminRequest } from '@/lib/security';
 
 // Helper function to validate image URL
 async function validateImageUrl(url: string | null | undefined): Promise<boolean> {
@@ -49,7 +50,10 @@ function validateS3Url(url: string | null | undefined): boolean {
 }
 
 // GET /api/cleanup - Analyze broken images
-export async function GET() {
+export async function GET(request: Request) {
+  const adminRejection = requireAdminRequest(request);
+  if (adminRejection) return adminRejection;
+
   try {
     console.log('🔍 Starting broken image analysis...\n');
 
@@ -61,6 +65,7 @@ export async function GET() {
         s3Key: true,
         privacy: true,
         caption: true,
+        configId: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'asc' }
@@ -70,6 +75,7 @@ export async function GET() {
     const timelineEvents = await prisma.timelineEvent.findMany({
       select: {
         id: true,
+        configId: true,
         mediaUrl: true,
         mediaS3Key: true,
         mediaUrls: true,
@@ -194,6 +200,9 @@ export async function GET() {
 
 // DELETE /api/cleanup - Clean broken images
 export async function DELETE(request: Request) {
+  const adminRejection = requireAdminRequest(request);
+  if (adminRejection) return adminRejection;
+
   try {
     console.log('🧹 Starting broken image cleanup...\n');
 
@@ -205,11 +214,12 @@ export async function DELETE(request: Request) {
     let deletedMemories = 0;
     let deletedEvents = 0;
     let errors: string[] = [];
+    const affectedConfigIds = new Set<string>();
 
     // Clean memories
     if (targetTable === 'all' || targetTable === 'memories') {
       const memories = await prisma.memory.findMany({
-        select: { id: true, url: true, s3Key: true, privacy: true, caption: true, createdAt: true }
+        select: { id: true, url: true, s3Key: true, privacy: true, caption: true, configId: true, createdAt: true }
       });
 
       for (const memory of memories) {
@@ -222,6 +232,7 @@ export async function DELETE(request: Request) {
           if (!dryRun) {
             try {
               await prisma.memory.delete({ where: { id: memory.id } });
+              affectedConfigIds.add(memory.configId);
               deletedMemories++;
             } catch (error) {
               errors.push(`Failed to delete memory ${memory.id}: ${error}`);
@@ -236,7 +247,7 @@ export async function DELETE(request: Request) {
     // Clean timeline events
     if (targetTable === 'all' || targetTable === 'timeline') {
       const events = await prisma.timelineEvent.findMany({
-        select: { id: true, mediaUrl: true, mediaS3Key: true, mediaUrls: true, mediaS3Keys: true, text: true }
+        select: { id: true, configId: true, mediaUrl: true, mediaS3Key: true, mediaUrls: true, mediaS3Keys: true, text: true }
       });
 
       for (const event of events) {
@@ -273,6 +284,7 @@ export async function DELETE(request: Request) {
           if (!dryRun) {
             try {
               await prisma.timelineEvent.delete({ where: { id: event.id } });
+              affectedConfigIds.add(event.configId);
               deletedEvents++;
             } catch (error) {
               errors.push(`Failed to delete timeline event ${event.id}: ${error}`);
@@ -287,10 +299,15 @@ export async function DELETE(request: Request) {
     // Clear cache after cleanup
     if (!dryRun && (deletedMemories > 0 || deletedEvents > 0)) {
       console.log('🗑️ Clearing cache...\n');
-      await redis.del('memories_all');
-      await redis.del('memories_public');
-      await redis.del('memories_private');
-      await redis.del('timeline_events');
+      await Promise.all(
+        [...affectedConfigIds].flatMap((configId) => [
+          redis.del(`app_config:${configId}`),
+          redis.del(`timeline_events:${configId}`),
+          redis.del(`memories:${configId}:all`),
+          redis.del(`memories:${configId}:public`),
+          redis.del(`memories:${configId}:private`),
+        ])
+      );
     }
 
     const result = {

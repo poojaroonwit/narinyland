@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 function calculateLevel(totalXP: number): { level: number; xpInCurrentLevel: number; xpForNextLevel: number } {
   const level = Math.min(50, Math.floor(totalXP / 100) + 1);
@@ -39,13 +39,20 @@ async function getPartnerPoints(configId: string): Promise<{ partner1: number; p
 
 // PUT /api/stats/add-xp
 export async function PUT(request: Request) {
-  const configId = getConfigId(request);
-  const cacheKey = `app_stats:${configId}`;
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = `app_stats:${configId}`;
     const body = await request.json();
     const { amount, partnerId } = body;
 
-    let targetPartnerId = partnerId || 'partner1';
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    const targetPartnerId = partnerId || 'partner1';
 
     // Increment BOTH spendable points and lifetime points
     await prisma.partner.updateMany({

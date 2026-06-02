@@ -3,13 +3,33 @@ import prisma from '@/lib/prisma';
 import { deleteFile } from '@/lib/s3';
 
 import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+function getMemoryCacheKey(configId: string, privacy: string | null): string {
+  return `memories:${configId}:${privacy || 'all'}`;
+}
+
+async function invalidateConfigCaches(configId: string, configCacheKey: string) {
+  await Promise.all([
+    redis.del(configCacheKey),
+    redis.del(`timeline_events:${configId}`),
+    redis.del(`love_letters:${configId}`),
+    redis.del(`app_stats:${configId}`),
+    redis.del(getMemoryCacheKey(configId, null)),
+    redis.del(getMemoryCacheKey(configId, 'public')),
+    redis.del(getMemoryCacheKey(configId, 'private')),
+  ]);
+}
 
 // GET /api/config
 export async function GET(request: Request) {
-  const configId = getConfigId(request);
-  const cacheKey = `app_config:${configId}`;
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = `app_config:${configId}`;
+
     // Check cache
     const cached = await redis.get(cacheKey);
     if (cached) return NextResponse.json(JSON.parse(cached));
@@ -115,9 +135,12 @@ export async function GET(request: Request) {
 
 // PUT /api/config
 export async function PUT(request: Request) {
-  const configId = getConfigId(request);
-  const cacheKey = `app_config:${configId}`;
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = `app_config:${configId}`;
     const body = await request.json();
     const {
       appName,
@@ -266,8 +289,13 @@ export async function PUT(request: Request) {
 
     // Sync Gallery (Memories) if provided
     if (body.gallery && Array.isArray(body.gallery)) {
-      const existingMemories = await prisma.memory.findMany({});
+      const existingMemories = await prisma.memory.findMany({ where: { configId } });
       const incomingUrls = new Set(body.gallery.map((m: any) => m.url));
+      const albums = await prisma.album.findMany({
+        where: { configId },
+        select: { id: true },
+      });
+      const albumIds = new Set(albums.map((album) => album.id));
 
       // Delete removed memories
       const toDelete = existingMemories.filter(m => !incomingUrls.has(m.url));
@@ -301,7 +329,8 @@ export async function PUT(request: Request) {
                privacy: item.privacy,
                sortOrder: i,
                caption: item.caption,
-               albumId: item.albumId || null
+               albumId: item.albumId && albumIds.has(item.albumId) ? item.albumId : null,
+               configId
              }
            });
         }
@@ -357,8 +386,7 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Invalidate cache
-    await redis.del(cacheKey);
+    await invalidateConfigCaches(configId, cacheKey);
 
     return NextResponse.json({ success: true, config });
   } catch (error) {

@@ -4,20 +4,35 @@ import prisma from '@/lib/prisma';
 import { updateCircleViaServer, deleteCircleViaServer } from '@/lib/appkit-server';
 import { redis } from '@/lib/redis';
 
+async function userCanAccessCircle(circleId: string, userId: string): Promise<boolean> {
+  const membership = await prisma.partner.findFirst({
+    where: {
+      configId: circleId,
+      OR: [{ id: userId }, { userId }, { partnerId: userId }],
+    },
+    select: { id: true },
+  });
+  return !!membership;
+}
+
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { circleId: string } }
+  { params }: { params: Promise<{ circleId: string }> }
 ) {
+  const { circleId } = await params;
   try {
-    const { circleId } = await params;
     if (circleId === 'undefined') {
        return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
     const { name, description } = await req.json();
 
-    let { token, userId, error, status, isSoft } = await getAuthSession(req);
-    if (error || !token) {
+    const { token, userId, error, status } = await getAuthSession(req);
+    if (error || !token || !userId) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
+    }
+
+    if (!(await userCanAccessCircle(circleId, userId))) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
     // 1. Update in AppKit
@@ -35,24 +50,28 @@ export async function PUT(
 
     return NextResponse.json({ success: true, circleId, name, config });
   } catch (err: any) {
-    console.error(`PUT /api/circles/${params.circleId} error:`, err);
+    console.error(`PUT /api/circles/${circleId} error:`, err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { circleId: string } }
+  { params }: { params: Promise<{ circleId: string }> }
 ) {
+  const { circleId } = await params;
   try {
-    const { circleId } = await params;
     if (circleId === 'undefined') {
        return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
-    let { token, userId, error, status, isSoft } = await getAuthSession(req);
-    if (error || !token) {
+    const { token, userId, error, status } = await getAuthSession(req);
+    if (error || !token || !userId) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
+    }
+
+    if (!(await userCanAccessCircle(circleId, userId))) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
     // 1. Delete in AppKit
@@ -72,7 +91,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'World deleted and data cleaned up' });
   } catch (err: any) {
-    console.error(`DELETE /api/circles/${params.circleId} error:`, err);
+    console.error(`DELETE /api/circles/${circleId} error:`, err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

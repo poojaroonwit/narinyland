@@ -49,7 +49,7 @@ No test framework is configured. Use `npm run lint` for code quality checks.
 | `services/api.ts` | Frontend wrapper for all API calls |
 | `prisma/schema.prisma` | Database schema (10 models) |
 | `types.ts` | Shared TypeScript types |
-| `middleware.ts` | Bot-blocking middleware |
+| `proxy.ts` | Bot/API auth guard for Next.js Proxy |
 
 ### Database models
 

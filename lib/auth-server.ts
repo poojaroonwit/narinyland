@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { rejectCrossOrigin } from '@/lib/security';
 
 /**
  * BFF Auth Helper for Server Components and Route Handlers.
@@ -7,12 +8,8 @@ import { cookies } from 'next/headers';
 export async function getAuthSession(req?: Request) {
   // 1. CSRF Protection (if request is provided)
   if (req) {
-    const origin = req.headers.get('origin');
-    const host = req.headers.get('host');
-    if (origin && !origin.includes(host || '')) {
-      console.error('BFF: CSRF rejection:', { origin, host });
-      return { error: 'forbidden', status: 403 };
-    }
+    const csrfRejection = rejectCrossOrigin(req);
+    if (csrfRejection) return { error: 'forbidden', status: 403 };
   }
 
   const cookieStore = await cookies();

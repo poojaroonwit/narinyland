@@ -1,21 +1,15 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { motion } from "framer-motion";
-
-interface Point {
-  x: number;
-  y: number;
-}
 
 export default function Whiteboard() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(5);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,7 +31,7 @@ export default function Whiteboard() {
         if (ctx) {
           ctx.lineJoin = "round";
           ctx.lineCap = "round";
-          setContext(ctx);
+          contextRef.current = ctx;
           
           // Restore content if exists
           if (currentContent && currentContent !== 'data:,') {
@@ -78,12 +72,14 @@ export default function Whiteboard() {
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    const context = contextRef.current;
     if (context) {
       context.beginPath(); // Reset path so next dot isn't connected
     }
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    const context = contextRef.current;
     if (!isDrawing || !context || !canvasRef.current) return;
 
     let clientX, clientY;
@@ -111,6 +107,7 @@ export default function Whiteboard() {
   };
 
   const clearCanvas = () => {
+    const context = contextRef.current;
     if (!context || !canvasRef.current) return;
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -118,6 +115,7 @@ export default function Whiteboard() {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    const context = contextRef.current;
     if (!file || !context || !canvasRef.current) return;
 
     const reader = new FileReader();

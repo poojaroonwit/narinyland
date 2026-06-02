@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 const DEFAULT_AVATARS = ['👩', '👨', '🧑', '👧', '👦', '🧒'];
 
@@ -13,16 +12,11 @@ const DEFAULT_AVATARS = ['👩', '👨', '🧑', '👧', '👦', '🧒'];
  * Automatically assigns the user to an unclaimed partner slot, or creates a new one.
  */
 export async function POST(request: Request) {
-  const configId = getConfigId(request);
-
   try {
-    // 1. Get the current user's sub from the non-HttpOnly narinyland_sub cookie
-    const cookieStore = await cookies();
-    const sub = cookieStore.get('narinyland_sub')?.value;
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
 
-    if (!sub) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+    const { configId, userId: sub } = access;
 
     // 2. Look up user info from Redis session cache
     const sessionRaw = await redis.get(`user_session:${sub}`);
@@ -42,12 +36,15 @@ export async function POST(request: Request) {
 
     // 3. Check if this user already has a partner slot in this circle
     const existing = await prisma.partner.findFirst({
-      where: { configId, userId: sub },
+      where: {
+        configId,
+        OR: [{ userId: sub }, { partnerId: sub }, { id: sub }],
+      },
     });
 
     if (existing) {
       // Update name if it changed (don't override avatar unless provided)
-      const updateData: any = { name: userName };
+      const updateData: any = { name: userName, userId: existing.userId || sub };
       if (userAvatar) updateData.avatar = userAvatar;
 
       const updated = await prisma.partner.update({

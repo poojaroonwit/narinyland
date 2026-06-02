@@ -206,8 +206,8 @@ export default function MarketingPage() {
           loop
           muted
           playsInline
-          preload="auto"
-          poster="/images/hero_bg.jpeg"
+          preload="metadata"
+          poster="/images/showcase/nari.png"
           src={VIDEO_URL}
         />
         <div className="absolute inset-0 bg-black/20 z-[1]" />

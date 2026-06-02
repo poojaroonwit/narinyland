@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Interaction, MediaContent } from '../types';
 import DatePicker from 'react-datepicker';
@@ -24,6 +24,7 @@ const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: {
   <div className="bg-white p-5 rounded-md shadow-sm border border-pink-100 flex flex-col gap-4 relative">
     <button 
       onClick={() => onRemove(item.id)}
+      aria-label="Delete memory"
       className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full"
     >
       <i className="fas fa-trash-alt text-xs"></i>
@@ -67,14 +68,15 @@ const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: {
 
     {/* Media Scroll */}
     <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        <label className="w-16 h-16 rounded-md border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 shrink-0">
+        <label className="w-16 h-16 rounded-md border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 shrink-0" aria-label="Add memory images">
            <i className="fas fa-camera text-gray-300"></i>
            <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => onFileChange(item.id, e)} />
         </label>
         {(item.mediaItems || (item.media ? [item.media] : [])).map((m, idx) => (
           <div key={idx} className="w-16 h-16 rounded-md overflow-hidden relative shrink-0 group cursor-pointer" onClick={() => onViewImage(m.url)}>
-             <img src={m.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+             <img src={m.url} alt={`Memory media ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
              <button 
+                aria-label={`Remove memory media ${idx + 1}`}
                 onClick={() => {
                    const next = (item.mediaItems || []).filter((_, i) => i !== idx);
                    onUpdate(item.id, 'mediaItems', next);
@@ -171,6 +173,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
             <div className="flex items-center gap-6">
               <button 
                 onClick={onClose} 
+                aria-label="Close spreadsheet"
                 className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-md transition-colors text-gray-500"
               >
                  <i className="fas fa-arrow-left text-lg"></i>
@@ -297,9 +300,10 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                           <div className="flex items-center gap-3 overflow-x-auto max-w-[220px] scrollbar-hide py-1">
                             {(item.mediaItems || (item.media ? [item.media] : [])).map((m, idx) => (
                               <div key={idx} className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 border-2 border-white shadow-sm shrink-0 relative group/img cursor-pointer" onClick={() => setViewingImage(m.url)}>
-                                {m.type === 'image' && <img src={m.url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform" />}
+                                {m.type === 'image' && <img src={m.url} alt={`Memory media ${idx + 1}`} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform" />}
                                 {m.type === 'video' && <div className="w-full h-full flex items-center justify-center text-xs">🎥</div>}
                                 <button 
+                                  aria-label={`Remove memory media ${idx + 1}`}
                                   className="absolute inset-0 bg-red-500/80 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition-opacity z-10"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -311,7 +315,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                                 </button>
                               </div>
                             ))}
-                            <label className="w-12 h-12 rounded-md border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-pink-300 transition-all shrink-0 hover:shadow-md">
+                            <label className="w-12 h-12 rounded-md border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-pink-300 transition-all shrink-0 hover:shadow-md" aria-label="Add memory images">
                                <i className="fas fa-plus text-[10px] text-gray-300"></i>
                                <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleFileChange(item.id, e)} />
                             </label>
@@ -320,6 +324,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                         <td className="p-4 w-20 text-center pr-10">
                           <button 
                             onClick={() => handleRemoveRow(item.id)}
+                            aria-label="Delete memory"
                             className="w-10 h-10 flex items-center justify-center rounded-md bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 active:scale-95"
                           >
                             <i className="fas fa-trash-alt text-sm"></i>
@@ -346,6 +351,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
         >
           <button
             onClick={() => setViewingImage(null)}
+            aria-label="Close image viewer"
             className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all"
           >
             <i className="fas fa-times text-xl"></i>
@@ -355,6 +361,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             src={viewingImage}
+            alt="Selected memory"
             className="max-w-[95vw] max-h-[90vh] object-contain rounded-md shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />

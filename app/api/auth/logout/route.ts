@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import redis from '@/lib/redis';
+import { rejectCrossOrigin } from '@/lib/security';
 
 function extractSub(token: string): string | null {
   try {
@@ -13,12 +14,8 @@ function extractSub(token: string): string | null {
 }
 
 export async function POST(req: Request) {
-  const origin = req.headers.get('origin');
-  const host = req.headers.get('host');
-
-  if (origin && !origin.includes(host || '')) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  }
+  const csrfRejection = rejectCrossOrigin(req);
+  if (csrfRejection) return csrfRejection;
 
   const cookieStore = await cookies();
 

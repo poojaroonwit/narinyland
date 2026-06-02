@@ -5,5 +5,11 @@
  */
 export function getConfigId(request: Request): string {
   const circleId = request.headers.get('X-Circle-Id');
-  return circleId?.trim() || 'default';
+  const normalized = circleId?.trim();
+
+  if (!normalized) return 'default';
+  if (normalized.length > 128) return 'default';
+  if (!/^[A-Za-z0-9_.-]+$/.test(normalized)) return 'default';
+
+  return normalized;
 }

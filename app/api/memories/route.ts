@@ -2,22 +2,45 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { uploadMemoryImage } from '@/lib/s3';
 import { redis } from '@/lib/redis';
+import { validateUploadFile } from '@/lib/upload-validation';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { createHash } from 'crypto';
 
 // Generate ETag for cache validation
 function generateETag(data: any): string {
   const dataString = JSON.stringify(data);
-  const hash = require('crypto').createHash('md5').update(dataString).digest('hex');
+  const hash = createHash('md5').update(dataString).digest('hex');
   return `"${hash}"`;
+}
+
+function getMemoryCacheKey(configId: string, privacy: string | null): string {
+  return `memories:${configId}:${privacy || 'all'}`;
+}
+
+async function invalidateMemoryCache(configId: string) {
+  await Promise.all([
+    redis.del(getMemoryCacheKey(configId, null)),
+    redis.del(getMemoryCacheKey(configId, 'public')),
+    redis.del(getMemoryCacheKey(configId, 'private')),
+  ]);
 }
 
 // GET /api/memories
 export async function GET(request: Request) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const { searchParams } = new URL(request.url);
     const privacy = searchParams.get('privacy');
+    const { configId } = access;
+
+    if (privacy && !['all', 'public', 'private'].includes(privacy)) {
+      return NextResponse.json({ error: 'Invalid privacy filter' }, { status: 400 });
+    }
 
     // Create cache key based on privacy filter
-    const cacheKey = `memories_${privacy || 'all'}`;
+    const cacheKey = getMemoryCacheKey(configId, privacy);
     
     // Check cache first
     const cached = await redis.get(cacheKey);
@@ -25,13 +48,13 @@ export async function GET(request: Request) {
       const parsedData = JSON.parse(cached);
       return NextResponse.json(parsedData, {
         headers: {
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+          'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
           'ETag': generateETag(parsedData),
         }
       });
     }
 
-    const where: any = {};
+    const where: any = { configId };
     if (privacy && privacy !== 'all') {
       where.privacy = privacy;
     }
@@ -46,7 +69,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(memories, {
       headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
         'ETag': generateETag(memories),
       }
     });
@@ -62,6 +85,10 @@ export async function GET(request: Request) {
 // POST /api/memories
 export async function POST(request: Request) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
     const contentType = request.headers.get('content-type') || '';
     
     let file: File | null = null;
@@ -82,9 +109,18 @@ export async function POST(request: Request) {
       caption = (formData.get('caption') as string) || null;
     }
 
+    if (!['public', 'private'].includes(privacy)) {
+      return NextResponse.json({ error: 'Invalid privacy value' }, { status: 400 });
+    }
+
     let s3Key: string | null = null;
 
     if (file) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
+      }
+
       const buffer = Buffer.from(await file.arrayBuffer());
       const result = await uploadMemoryImage(
         buffer,
@@ -99,7 +135,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Either a file or URL is required' }, { status: 400 });
     }
 
-    const maxOrder = await prisma.memory.aggregate({ _max: { sortOrder: true } });
+    const maxOrder = await prisma.memory.aggregate({
+      where: { configId },
+      _max: { sortOrder: true },
+    });
     const newOrder = (maxOrder._max.sortOrder || 0) + 1;
 
     const memory = await prisma.memory.create({
@@ -109,13 +148,11 @@ export async function POST(request: Request) {
         privacy,
         caption,
         sortOrder: newOrder,
+        configId,
       },
     });
 
-    // Invalidate cache for all privacy levels
-    await redis.del('memories_all');
-    await redis.del('memories_public');
-    await redis.del('memories_private');
+    await invalidateMemoryCache(configId);
 
     return NextResponse.json(memory, { status: 201 });
   } catch (error) {

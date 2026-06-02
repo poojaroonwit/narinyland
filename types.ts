@@ -106,6 +106,8 @@ export interface AppConfig {
   timelineThumbnailHeight?: number;
   showTimelineImagesOnHomepage?: boolean;
   includeTimelineInGallery?: boolean;
+  galleryPhysicsEnabled?: boolean;
+  galleryInterval?: number;
   pwaName?: string;
   pwaShortName?: string;
   pwaDescription?: string;
@@ -117,6 +119,7 @@ export interface AppConfig {
     questions: string[];
     progress?: number;
     isAccepted?: boolean;
+    finalWording?: string;
   };
   gallery: MemoryItem[];
   timeline: Interaction[];

@@ -3,27 +3,33 @@ import prisma from '@/lib/prisma';
 import { uploadTimelineMedia } from '@/lib/s3';
 
 import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
+import { validateUploadFile } from '@/lib/upload-validation';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { createHash } from 'crypto';
 
 // Generate ETag for cache validation
 function generateETag(data: any): string {
   const dataString = JSON.stringify(data);
-  const hash = require('crypto').createHash('md5').update(dataString).digest('hex');
+  const hash = createHash('md5').update(dataString).digest('hex');
   return `"${hash}"`;
 }
 
 // GET /api/timeline
 export async function GET(request: Request) {
-  const configId = getConfigId(request);
-  const cacheKey = `timeline_events:${configId}`;
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = `timeline_events:${configId}`;
+
     // Check cache first
     const cached = await redis.get(cacheKey);
     if (cached) {
       const parsedData = JSON.parse(cached);
       return NextResponse.json(parsedData, {
         headers: {
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+          'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
           'ETag': generateETag(parsedData),
         }
       });
@@ -58,7 +64,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(response, {
       headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
         'ETag': generateETag(response),
       }
     });
@@ -70,8 +76,11 @@ export async function GET(request: Request) {
 
 // POST /api/timeline
 export async function POST(request: Request) {
-  const configId = getConfigId(request);
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
     const contentType = request.headers.get('content-type') || '';
     
     let text: string;
@@ -115,6 +124,11 @@ export async function POST(request: Request) {
       for (const file of files) {
         // Skip if not a File object
         if (!(file instanceof File)) continue;
+
+        const validationError = validateUploadFile(file);
+        if (validationError) {
+          return NextResponse.json({ error: validationError, file: file.name }, { status: 400 });
+        }
 
         const buffer = Buffer.from(await file.arrayBuffer());
         const result = await uploadTimelineMedia(buffer, file.name, file.type);

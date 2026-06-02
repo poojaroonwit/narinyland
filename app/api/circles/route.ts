@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
-    const circleId = req.headers.get('x-circle-id');
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
 
     // Helper to check if token is valid (this GET route primarily uses Prisma, 
@@ -74,6 +73,7 @@ export async function GET(req: NextRequest) {
             await prisma.partner.create({
               data: {
                 partnerId: userId,
+                userId,
                 name: circle.name || 'Partner',
                 avatar: '',
                 configId: id,
@@ -114,7 +114,11 @@ export async function GET(req: NextRequest) {
       console.log('BFF /api/circles: Querying Prisma for userId:', userId);
       configs = await prisma.appConfig.findMany({
         where: {
-          partners: { some: { partnerId: userId } }
+          partners: {
+            some: {
+              OR: [{ partnerId: userId }, { userId }],
+            },
+          }
         },
         include: { lands: { orderBy: { createdAt: 'asc' } } },
         orderBy: { createdAt: 'asc' },
@@ -133,6 +137,7 @@ export async function GET(req: NextRequest) {
             await prisma.partner.create({
               data: {
                 partnerId: userId,
+                userId,
                 name: 'Partner',
                 avatar: '',
                 configId: orphanedConfig.id,
@@ -263,11 +268,12 @@ export async function POST(req: NextRequest) {
           },
           create: {
             partnerId: sessionUserId,
+            userId: sessionUserId,
             name: userName,
             avatar: userAvatar,
             configId: circleId,
           },
-          update: {},
+          update: { userId: sessionUserId },
         });
         console.log('BFF /api/circles: Created Partner record for user:', sessionUserId, 'in config:', circleId);
       } catch (partnerErr) {

@@ -27,8 +27,51 @@ const UNDESIRABLE_BOTS = [
   'scrapy',
 ];
 
-export function middleware(request: NextRequest) {
+const PUBLIC_API_PREFIXES = [
+  '/api/auth',
+  '/api/config/appkit',
+  '/api/health',
+];
+
+function isSameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin');
+  const host = request.headers.get('host');
+
+  if (!origin || !host) return true;
+
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+function isUnsafeMethod(method: string): boolean {
+  return !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
+}
+
+function hasServerSessionCookie(request: NextRequest): boolean {
+  return Boolean(
+    request.cookies.get('appkit_access_token')?.value ||
+    request.cookies.get('appkit_refresh_token')?.value ||
+    request.cookies.get('narinyland_sub')?.value
+  );
+}
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const ua = (request.headers.get('user-agent') || '').toLowerCase();
+
+  if (pathname === '/api/health') {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/api') && isUnsafeMethod(request.method) && !isSameOrigin(request)) {
+    return NextResponse.json(
+      { error: 'forbidden', error_description: 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
   
   // 1. Check for Legitimate Search Engines (Allow List)
   // Note: Strict DNS verification is not easily possible in Edge Runtime middleware without external APIs.
@@ -52,10 +95,17 @@ export function middleware(request: NextRequest) {
       // return new NextResponse(JSON.stringify({ error: 'Invalid User-Agent' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   }
 
+  if (
+    pathname.startsWith('/api') &&
+    !PUBLIC_API_PREFIXES.some(prefix => pathname.startsWith(prefix)) &&
+    !hasServerSessionCookie(request)
+  ) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  // Exclude upload routes so large file bodies are not truncated by the middleware layer
-  matcher: '/api/((?!upload|api/upload).*)',
+  matcher: '/api/:path*',
 };

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getConfigId } from '@/lib/get-config-id';
+import { redis } from '@/lib/redis';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 // PUT /api/coupons/[id]/redeem
 export async function PUT(
@@ -8,8 +9,20 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
+
+    const existingCoupon = await prisma.coupon.findFirst({
+      where: { id, configId },
+      select: { id: true },
+    });
+    if (!existingCoupon) {
+      return NextResponse.json({ error: 'Coupon not found' }, { status: 404 });
+    }
 
     const coupon = await prisma.coupon.update({
       where: { id },
@@ -21,7 +34,6 @@ export async function PUT(
 
     // Add points to the partner who owns this coupon
     if (coupon.points > 0) {
-      const configId = getConfigId(request);
       await prisma.partner.updateMany({
         where: { configId, partnerId: coupon.forPartner },
         data: {
@@ -30,6 +42,11 @@ export async function PUT(
         }
       });
     }
+
+    await Promise.all([
+      redis.del(`app_config:${configId}`),
+      redis.del(`app_stats:${configId}`),
+    ]);
 
     return NextResponse.json({ success: true, coupon });
   } catch (error) {

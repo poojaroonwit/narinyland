@@ -3,16 +3,28 @@ import prisma from '@/lib/prisma';
 import { uploadLetterMedia } from '@/lib/s3';
 
 import { redis } from '@/lib/redis';
-import { getConfigId } from '@/lib/get-config-id';
+import { validateUploadFile } from '@/lib/upload-validation';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+function getLettersCacheKey(configId: string): string {
+  return `love_letters:${configId}`;
+}
 
 // GET /api/letters
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
+    const cacheKey = getLettersCacheKey(configId);
+
     // Check cache
-    const cached = await redis.get('love_letters');
+    const cached = await redis.get(cacheKey);
     if (cached) return NextResponse.json(JSON.parse(cached));
 
     const letters = await prisma.loveLetter.findMany({
+      where: { from: { configId } },
       include: { from: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -30,7 +42,7 @@ export async function GET() {
     }));
 
     // Cache for 60s
-    await redis.setex('love_letters', 60, JSON.stringify(response));
+    await redis.setex(cacheKey, 60, JSON.stringify(response));
 
     return NextResponse.json(response);
   } catch (error) {
@@ -42,6 +54,10 @@ export async function GET() {
 // POST /api/letters
 export async function POST(request: Request) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
     const contentType = request.headers.get('content-type') || '';
 
     let fromId: string;
@@ -69,9 +85,8 @@ export async function POST(request: Request) {
     }
 
     // Find the partner record
-    const configId = getConfigId(request);
     const partner = await prisma.partner.findFirst({
-      where: { partnerId: fromId, configId },
+      where: { configId, OR: [{ partnerId: fromId }, { id: fromId }] },
     });
 
     if (!partner) {
@@ -81,6 +96,11 @@ export async function POST(request: Request) {
     let mediaS3Key: string | null = null;
 
     if (file && file instanceof File) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
+      }
+
       const buffer = Buffer.from(await file.arrayBuffer());
       const result = await uploadLetterMedia(
         buffer,
@@ -108,7 +128,7 @@ export async function POST(request: Request) {
     });
 
     // Invalidate cache
-    await redis.del('love_letters');
+    await redis.del(getLettersCacheKey(configId));
 
     return NextResponse.json({
       id: letter.id,

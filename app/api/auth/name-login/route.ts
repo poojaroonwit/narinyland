@@ -2,20 +2,20 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
+import { rejectCrossOrigin } from '@/lib/security';
 
 export async function POST(req: Request) {
   try {
-    const origin = req.headers.get('origin');
-    const host = req.headers.get('host');
+    const csrfRejection = rejectCrossOrigin(req);
+    if (csrfRejection) return csrfRejection;
 
-    // Basic CSRF Protection: Ensure request is from our own domain
-    if (origin && !origin.includes(host || '')) {
-      return NextResponse.json({ error: 'forbidden', error_description: 'CSRF validation failed' }, { status: 403 });
+    if (process.env.NODE_ENV === 'production' && process.env.ENABLE_NAME_LOGIN !== 'true') {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
 
     const { firstname } = await req.json();
 
-    if (!firstname || typeof firstname !== 'string') {
+    if (!firstname || typeof firstname !== 'string' || firstname.trim().length > 80) {
       return NextResponse.json({ error: 'Firstname is required' }, { status: 400 });
     }
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     const cookieStore = await cookies();
 
     cookieStore.set('narinyland_sub', sub, {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: SESSION_TTL,

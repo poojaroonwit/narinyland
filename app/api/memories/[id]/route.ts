@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { deleteFile, uploadMemoryImage } from '@/lib/s3';
+import { validateUploadFile } from '@/lib/upload-validation';
+import { redis } from '@/lib/redis';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+function getMemoryCacheKey(configId: string, privacy: string | null): string {
+  return `memories:${configId}:${privacy || 'all'}`;
+}
+
+async function invalidateMemoryCache(configId: string) {
+  await Promise.all([
+    redis.del(getMemoryCacheKey(configId, null)),
+    redis.del(getMemoryCacheKey(configId, 'public')),
+    redis.del(getMemoryCacheKey(configId, 'private')),
+  ]);
+}
 
 // POST /api/memories/[id] - for FormData uploads (image updates)
 export async function POST(
@@ -8,14 +23,29 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
+
+    const existingMemory = await prisma.memory.findFirst({
+      where: { id, configId },
+    });
+    if (!existingMemory) {
+      return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+    }
     
     const formData = await request.formData();
     const file = formData.get('image') as File | null;
     const url = formData.get('url') as string | null;
     const privacy = (formData.get('privacy') as string) || 'public';
     const caption = formData.get('caption') as string | null;
+
+    if (!['public', 'private'].includes(privacy)) {
+      return NextResponse.json({ error: 'Invalid privacy value' }, { status: 400 });
+    }
 
     const updateData: any = {};
     if (privacy !== undefined) updateData.privacy = privacy;
@@ -24,6 +54,11 @@ export async function POST(
 
     // Handle file upload
     if (file) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
+      }
+
       console.log('📸 Uploading new image for memory update');
       const buffer = Buffer.from(await file.arrayBuffer());
       const result = await uploadMemoryImage(
@@ -34,10 +69,8 @@ export async function POST(
       updateData.url = result.url;
       updateData.s3Key = result.key;
       
-      // Delete old S3 file if exists
-      const oldMemory = await prisma.memory.findUnique({ where: { id } });
-      if (oldMemory?.s3Key) {
-        await deleteFile(oldMemory.s3Key).catch(e => console.error('Failed to delete old S3 file:', e));
+      if (existingMemory.s3Key) {
+        await deleteFile(existingMemory.s3Key).catch(e => console.error('Failed to delete old S3 file:', e));
       }
     }
 
@@ -45,6 +78,8 @@ export async function POST(
       where: { id },
       data: updateData,
     });
+
+    await invalidateMemoryCache(configId);
 
     return NextResponse.json(memory);
   } catch (error) {
@@ -59,10 +94,26 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
     const body = await request.json();
     const { privacy, caption, sortOrder, url } = body;
+
+    const existingMemory = await prisma.memory.findFirst({
+      where: { id, configId },
+      select: { id: true },
+    });
+    if (!existingMemory) {
+      return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+    }
+
+    if (privacy !== undefined && !['public', 'private'].includes(privacy)) {
+      return NextResponse.json({ error: 'Invalid privacy value' }, { status: 400 });
+    }
 
     const updateData: any = {};
     if (privacy !== undefined) updateData.privacy = privacy;
@@ -74,6 +125,8 @@ export async function PUT(
       where: { id },
       data: updateData,
     });
+
+    await invalidateMemoryCache(configId);
 
     return NextResponse.json(memory);
   } catch (error) {
@@ -88,10 +141,14 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
     
-    const memory = await prisma.memory.findUnique({ where: { id } });
+    const memory = await prisma.memory.findFirst({ where: { id, configId } });
     if (!memory) {
       return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
     }
@@ -102,6 +159,8 @@ export async function DELETE(
     }
 
     await prisma.memory.delete({ where: { id } });
+
+    await invalidateMemoryCache(configId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

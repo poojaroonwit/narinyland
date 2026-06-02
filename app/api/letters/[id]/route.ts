@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { deleteFile, uploadMemoryImage } from '@/lib/s3';
+import { deleteFile, uploadLetterMedia } from '@/lib/s3';
+import { validateUploadFile } from '@/lib/upload-validation';
+import { redis } from '@/lib/redis';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+function getLettersCacheKey(configId: string): string {
+  return `love_letters:${configId}`;
+}
 
 // POST /api/letters/[id] - for FormData uploads (media updates)
 export async function POST(
@@ -8,8 +15,19 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
+
+    const existingLetter = await prisma.loveLetter.findFirst({
+      where: { id, from: { configId } },
+    });
+    if (!existingLetter) {
+      return NextResponse.json({ error: 'Letter not found' }, { status: 404 });
+    }
     
     const formData = await request.formData();
     const file = formData.get('media') as File | null;
@@ -18,26 +36,41 @@ export async function POST(
     const unlockDate = formData.get('unlockDate') as string | null;
 
     const updateData: any = {};
-    if (fromId !== undefined) updateData.fromId = fromId;
-    if (content !== undefined) updateData.content = content;
+    if (fromId) {
+      const partner = await prisma.partner.findFirst({
+        where: { configId, OR: [{ id: fromId }, { partnerId: fromId }] },
+        select: { id: true },
+      });
+      if (!partner) {
+        return NextResponse.json({ error: `Partner not found: ${fromId}` }, { status: 400 });
+      }
+      updateData.fromId = partner.id;
+    }
+    if (content !== null) updateData.content = content;
     if (unlockDate !== undefined && unlockDate !== null) updateData.unlockDate = new Date(unlockDate);
 
     // Handle file upload
     if (file) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
+      }
+
       console.log('📸 Uploading new media for letter update');
       const buffer = Buffer.from(await file.arrayBuffer());
-      const result = await uploadMemoryImage(
+      const result = await uploadLetterMedia(
         buffer,
         file.name,
         file.type
       );
       updateData.mediaUrl = result.url;
       updateData.mediaS3Key = result.key;
+      if (file.type.startsWith('image/')) updateData.mediaType = 'image';
+      else if (file.type.startsWith('video/')) updateData.mediaType = 'video';
+      else if (file.type.startsWith('audio/')) updateData.mediaType = 'audio';
       
-      // Delete old S3 file if exists
-      const oldLetter = await prisma.loveLetter.findUnique({ where: { id } });
-      if (oldLetter?.mediaS3Key) {
-        await deleteFile(oldLetter.mediaS3Key).catch(e => console.error('Failed to delete old S3 file:', e));
+      if (existingLetter.mediaS3Key) {
+        await deleteFile(existingLetter.mediaS3Key).catch(e => console.error('Failed to delete old S3 file:', e));
       }
     }
 
@@ -45,6 +78,8 @@ export async function POST(
       where: { id },
       data: updateData,
     });
+
+    await redis.del(getLettersCacheKey(configId));
 
     return NextResponse.json(letter);
   } catch (error) {
@@ -59,10 +94,16 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
 
-    const letter = await prisma.loveLetter.findUnique({ where: { id } });
+    const letter = await prisma.loveLetter.findFirst({
+      where: { id, from: { configId } },
+    });
     if (!letter) {
       return NextResponse.json({ error: 'Letter not found' }, { status: 404 });
     }
@@ -72,6 +113,8 @@ export async function DELETE(
     }
 
     await prisma.loveLetter.delete({ where: { id } });
+
+    await redis.del(getLettersCacheKey(configId));
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -86,9 +129,21 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
     const body = await request.json();
+
+    const existingLetter = await prisma.loveLetter.findFirst({
+      where: { id, from: { configId } },
+      select: { id: true },
+    });
+    if (!existingLetter) {
+      return NextResponse.json({ error: 'Letter not found' }, { status: 404 });
+    }
 
     const letter = await prisma.loveLetter.update({
       where: { id },
@@ -98,6 +153,8 @@ export async function PUT(
         readAt: body.readAt ? new Date(body.readAt) : undefined,
       } as any
     });
+
+    await redis.del(getLettersCacheKey(configId));
 
     return NextResponse.json(letter);
   } catch (error) {

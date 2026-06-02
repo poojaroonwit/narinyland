@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { redis } from '@/lib/redis';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 /**
  * GET /api/lands
@@ -7,10 +9,13 @@ import prisma from '@/lib/prisma';
  */
 export async function GET(req: NextRequest) {
   try {
-    const circleId = req.headers.get('x-circle-id') || 'default';
+    const access = await requireConfigAccess(req);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
 
     const lands = await prisma.land.findMany({
-      where: { configId: circleId },
+      where: { configId },
       include: { items: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -28,7 +33,10 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const circleId = req.headers.get('x-circle-id') || 'default';
+    const access = await requireConfigAccess(req);
+    if (isConfigAccessDenied(access)) return access.response;
+
+    const { configId } = access;
     const { name } = await req.json();
 
     if (!name?.trim()) {
@@ -37,8 +45,8 @@ export async function POST(req: NextRequest) {
 
     // Ensure the AppConfig exists
     await prisma.appConfig.upsert({
-      where: { id: circleId },
-      create: { id: circleId },
+      where: { id: configId },
+      create: { id: configId },
       update: {},
     });
 
@@ -46,9 +54,11 @@ export async function POST(req: NextRequest) {
       data: {
         name: name.trim(),
         isActive: false,
-        configId: circleId,
+        configId,
       },
     });
+
+    await redis.del(`app_config:${configId}`);
 
     return NextResponse.json(land);
   } catch (err: any) {

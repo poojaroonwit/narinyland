@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { uploadTimelineMedia, deleteFile } from '@/lib/s3';
-import { getConfigId } from '@/lib/get-config-id';
+import { getMaxUploadBytes, validateUploadFile } from '@/lib/upload-validation';
+import { redis } from '@/lib/redis';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 // GET /api/timeline/[id]
 export async function GET(
@@ -9,11 +11,15 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
 
-    const event = await prisma.timelineEvent.findUnique({
-      where: { id: String(id) }
+    const event = await prisma.timelineEvent.findFirst({
+      where: { id: String(id), configId }
     });
 
     if (!event) {
@@ -46,8 +52,27 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
+
+    // Check ownership before parsing/uploading files.
+    const existingEvent = await prisma.timelineEvent.findFirst({
+      where: { id: String(id), configId }
+    });
+
+    if (!existingEvent) {
+      const idInUse = await prisma.timelineEvent.findUnique({
+        where: { id: String(id) },
+        select: { id: true },
+      });
+      if (idInUse) {
+        return NextResponse.json({ error: 'Timeline event not found' }, { status: 404 });
+      }
+    }
     
     let formData: FormData;
     let text: string | null;
@@ -88,7 +113,7 @@ export async function POST(
       
       // Check total file size
       const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      const maxSize = 50 * 1024 * 1024; // 50MB
+      const maxSize = getMaxUploadBytes();
       
       if (totalSize > maxSize) {
         return NextResponse.json({ 
@@ -100,11 +125,12 @@ export async function POST(
       
       // Check individual file sizes
       for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) { // 10MB per file
+        const validationError = validateUploadFile(file);
+        if (validationError) {
           return NextResponse.json({ 
-            error: 'File too large', 
-            details: `File ${file.name} is ${(file.size / 1024 / 1024).toFixed(2)}MB, but maximum allowed per file is 10MB.`,
-            suggestion: 'Please compress this image or use a smaller file.'
+            error: validationError,
+            file: file.name,
+            suggestion: 'Please compress this file or upload a supported media type.'
           }, { status: 400 });
         }
       }
@@ -141,17 +167,12 @@ export async function POST(
       updateData.mediaS3Key = mediaS3Keys[0];
     }
 
-    // Check if the timeline event exists first
-    const existingEvent = await prisma.timelineEvent.findUnique({
-      where: { id: String(id) }
-    });
-    
     if (!existingEvent) {
       
       // Create the timeline event if it doesn't exist
       const createData = {
         id: String(id),
-        configId: getConfigId(request),
+        configId,
         ...updateData
       };
       
@@ -169,6 +190,8 @@ export async function POST(
         url
       })) || [];
 
+      await redis.del(`timeline_events:${configId}`);
+
       return NextResponse.json({
         id: event.id,
         text: event.text,
@@ -185,10 +208,24 @@ export async function POST(
       data: updateData,
     });
 
+    if (updateData.mediaS3Keys && existingEvent) {
+      const oldKeys = [...(existingEvent.mediaS3Keys || [])];
+      if (existingEvent.mediaS3Key && !oldKeys.includes(existingEvent.mediaS3Key)) {
+        oldKeys.push(existingEvent.mediaS3Key);
+      }
+      await Promise.all(
+        oldKeys
+          .filter((key) => !updateData.mediaS3Keys.includes(key))
+          .map((key) => deleteFile(key).catch((e) => console.error(`Failed to delete old S3 key ${key}:`, e)))
+      );
+    }
+
     const mediaItems = event.mediaUrls?.map((url: string, i: number) => ({
       type: event.mediaTypes?.[i] || 'image',
       url
     })) || [];
+
+    await redis.del(`timeline_events:${configId}`);
 
     return NextResponse.json({
       id: event.id,
@@ -212,8 +249,12 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
     const contentType = request.headers.get('content-type') || '';
     
     let text: string | null = null;
@@ -241,6 +282,14 @@ export async function PUT(
     if (longitude !== null) updateData.longitude = longitude;
     if (timestampStr !== null && timestampStr !== '') updateData.timestamp = new Date(timestampStr);
 
+    const existingEvent = await prisma.timelineEvent.findFirst({
+      where: { id: String(id), configId },
+      select: { id: true },
+    });
+    if (!existingEvent) {
+      return NextResponse.json({ error: 'Timeline event not found' }, { status: 404 });
+    }
+
     const event = await prisma.timelineEvent.update({
       where: { id: String(id) },
       data: updateData,
@@ -250,6 +299,8 @@ export async function PUT(
       type: event.mediaTypes?.[i] || 'image',
       url
     })) || [];
+
+    await redis.del(`timeline_events:${configId}`);
 
     return NextResponse.json({
       id: event.id,
@@ -272,10 +323,14 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const params = await props.params;
     const id = params.id;
+    const { configId } = access;
 
-    const event = await prisma.timelineEvent.findUnique({ where: { id } });
+    const event = await prisma.timelineEvent.findFirst({ where: { id, configId } });
     if (!event) {
         return NextResponse.json({ error: 'Timeline event not found' }, { status: 404 });
     }
@@ -291,6 +346,7 @@ export async function DELETE(
     }
 
     await prisma.timelineEvent.delete({ where: { id } });
+    await redis.del(`timeline_events:${configId}`);
 
     return NextResponse.json({ success: true });
     } catch (error: any) {

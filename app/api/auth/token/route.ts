@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import redis from '@/lib/redis';
+import { rejectCrossOrigin } from '@/lib/security';
 
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const origin = req.headers.get('origin');
-    const host = req.headers.get('host');
-
-    // Basic CSRF Protection: Ensure request is from our own domain
-    if (origin && !origin.includes(host || '')) {
-      return NextResponse.json({ error: 'forbidden', error_description: 'CSRF validation failed' }, { status: 403 });
-    }
+    const csrfRejection = rejectCrossOrigin(req);
+    if (csrfRejection) return csrfRejection;
 
     let domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || process.env.APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     if (domain.endsWith('/')) domain = domain.slice(0, -1);
@@ -133,10 +129,10 @@ export async function POST(req: Request) {
           await redis.setex(`user_session:${sub}`, SESSION_TTL, JSON.stringify(userInfo));
           console.log('BFF: User session cached from ID token for sub:', sub, '(TTL: 7d)');
 
-          // Non-HttpOnly so the server can read it independently of the access token.
-          // This lets /api/auth/me serve from Redis even after the access token expires.
+          // Server-only soft-session marker. This lets /api/auth/me serve from
+          // Redis even after the access token expires.
           cookieStore.set('narinyland_sub', sub, {
-            httpOnly: false,
+            httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: SESSION_TTL,

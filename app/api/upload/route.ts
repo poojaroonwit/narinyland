@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { uploadFile, deleteFile } from '@/lib/s3';
+import { isSafeS3Key, normalizeUploadFolder, validateUploadFile } from '@/lib/upload-validation';
+import { requireAdminRequest } from '@/lib/security';
 
 // POST /api/upload
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const folder = (formData.get('folder') as string) || 'uploads';
+    const folder = normalizeUploadFolder(formData.get('folder') as string | null);
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    const validationError = validateUploadFile(file);
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -44,11 +51,14 @@ export async function POST(request: Request) {
 
 // DELETE /api/upload
 export async function DELETE(request: Request) {
+  const adminRejection = requireAdminRequest(request);
+  if (adminRejection) return adminRejection;
+
   try {
     const body = await request.json();
     const { key } = body;
 
-    if (!key) {
+    if (!isSafeS3Key(key)) {
       return NextResponse.json({ error: 'S3 key is required' }, { status: 400 });
     }
 

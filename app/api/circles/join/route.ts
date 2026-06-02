@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { addCircleMemberViaServer } from '@/lib/appkit-server';
+import { getAuthSession } from '@/lib/auth-server';
 
 /**
  * POST /api/circles/join
@@ -11,17 +12,30 @@ export async function POST(req: NextRequest) {
   try {
     const { circleId, userId } = await req.json();
 
-    if (!circleId || !userId) {
+    if (!circleId || typeof circleId !== 'string') {
       return NextResponse.json(
-        { error: 'circleId and userId are required' },
+        { error: 'circleId is required' },
         { status: 400 }
       );
+    }
+
+    if (circleId.length > 128 || !/^[A-Za-z0-9_.-]+$/.test(circleId)) {
+      return NextResponse.json({ error: 'Invalid circleId' }, { status: 400 });
+    }
+
+    const session = await getAuthSession(req);
+    if (session.error || !session.userId) {
+      return NextResponse.json({ error: session.error || 'unauthorized' }, { status: session.status || 401 });
+    }
+
+    if (userId && userId !== session.userId) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
     // 1. Add member in AppKit (skip for local fallback IDs)
     if (!circleId.startsWith('world_')) {
       try {
-        await addCircleMemberViaServer(circleId, userId);
+        await addCircleMemberViaServer(circleId, session.userId);
       } catch (err: any) {
         console.warn('AppKit addMember failed:', err.message);
         // Continue anyway — the user may already be a member
@@ -49,6 +63,23 @@ export async function POST(req: NextRequest) {
         },
       });
     }
+
+    await prisma.partner.upsert({
+      where: {
+        configId_partnerId: {
+          configId: circleId,
+          partnerId: session.userId,
+        },
+      },
+      create: {
+        partnerId: session.userId,
+        userId: session.userId,
+        name: 'Partner',
+        avatar: '',
+        configId: circleId,
+      },
+      update: { userId: session.userId },
+    });
 
     return NextResponse.json({ success: true, circleId });
   } catch (err: any) {

@@ -298,7 +298,7 @@ export const FloatingText = ({ text, position, color = "#22c55e", onComplete }: 
     );
 };
 
-export const Fireflies = ({ count = 20, quality = 'medium' }: { count?: number, quality?: string }) => {
+export const Fireflies = ({ count = 20, quality = 'medium', color = '#fef08a' }: { count?: number, quality?: string, color?: string }) => {
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
     
@@ -337,8 +337,8 @@ export const Fireflies = ({ count = 20, quality = 'medium' }: { count?: number, 
         <instancedMesh ref={meshRef} args={[undefined, undefined, effectiveCount]}>
             <sphereGeometry args={[0.04, 4, 4]} />
             <meshStandardMaterial 
-                color="#fef08a" 
-                emissive="#fef08a" 
+                color={color}
+                emissive={color}
                 emissiveIntensity={2} 
                 transparent 
                 opacity={0.8} 
