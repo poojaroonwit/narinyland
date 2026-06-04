@@ -1,5 +1,9 @@
-INSERT INTO "AppConfig" ("id") VALUES ('default')
-ON CONFLICT ("id") DO NOTHING;
+INSERT INTO "AppConfig" ("id", "createdAt", "updatedAt")
+VALUES ('default', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO UPDATE
+SET
+  "createdAt" = COALESCE("AppConfig"."createdAt", EXCLUDED."createdAt"),
+  "updatedAt" = COALESCE("AppConfig"."updatedAt", EXCLUDED."updatedAt");
 
 ALTER TABLE "Memory"
 ADD COLUMN IF NOT EXISTS "configId" TEXT NOT NULL DEFAULT 'default';

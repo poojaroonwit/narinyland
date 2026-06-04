@@ -36,9 +36,18 @@ async function cleanup() {
     await client.query('DROP TABLE IF EXISTS "Land" CASCADE;');
     await client.query('DROP TABLE IF EXISTS "Album" CASCADE;');
 
-    // 4. Reset migration state for the specific failed/drifted migration
-    console.log('Resetting migration state for 20260307151302_init in _prisma_migrations...');
-    const deleteRes = await client.query('DELETE FROM "_prisma_migrations" WHERE "migration_name" = \'20260307151302_init\';');
+    // 4. Reset migration state for migrations affected by this cleanup script.
+    // 20260307151302_init recreates Album/Land/PurchasedItem after they are dropped.
+    // 20260602000000_scope_memories_to_config is idempotent and must not remain failed.
+    const migrationsToReset = [
+      '20260307151302_init',
+      '20260602000000_scope_memories_to_config',
+    ];
+    console.log(`Resetting migration state for ${migrationsToReset.join(', ')} in _prisma_migrations...`);
+    const deleteRes = await client.query(
+      'DELETE FROM "_prisma_migrations" WHERE "migration_name" = ANY($1::text[]);',
+      [migrationsToReset],
+    );
     console.log(`Deleted ${deleteRes.rowCount} rows from _prisma_migrations.`);
 
     // 5. Check migrations state
