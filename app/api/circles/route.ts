@@ -18,6 +18,23 @@ type CircleCreateBody = {
   description?: string;
 };
 
+function extractCircleList(payload: unknown): AppKitCircle[] {
+  const candidates = [
+    payload,
+    payload && typeof payload === 'object' ? (payload as { circles?: unknown }).circles : undefined,
+    payload && typeof payload === 'object' ? (payload as { data?: unknown }).data : undefined,
+    payload && typeof payload === 'object' && (payload as { data?: unknown }).data && typeof (payload as { data?: unknown }).data === 'object'
+      ? ((payload as { data: { circles?: unknown } }).data).circles
+      : undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate as AppKitCircle[];
+  }
+
+  return [];
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
@@ -40,10 +57,15 @@ export async function GET(req: NextRequest) {
         cache: 'no-store',
       });
 
-      let res = await fetchCircles(token);
+      let res: Response | null = null;
+      try {
+        res = await fetchCircles(token);
+      } catch (fetchErr: unknown) {
+        console.warn('GET /api/circles AppKit fetch failed, falling back to local configs:', getErrorMessage(fetchErr));
+      }
 
       // --- 401 RETRY LOGIC ---
-      if (res.status === 401) {
+      if (res?.status === 401) {
         console.log('BFF /api/circles: 401 from AppKit, attempting refresh...');
         const { refreshSession } = await import('@/lib/auth-server');
         const { cookies } = await import('next/headers');
@@ -54,7 +76,12 @@ export async function GET(req: NextRequest) {
           const newToken = cookieStore.get('appkit_access_token')?.value;
           if (newToken) {
             token = newToken;
-            res = await fetchCircles(token);
+            try {
+              res = await fetchCircles(token);
+            } catch (fetchErr: unknown) {
+              console.warn('GET /api/circles AppKit retry failed, falling back to local configs:', getErrorMessage(fetchErr));
+              res = null;
+            }
           }
         } else {
           // Refresh failed - no refresh token available.
@@ -65,9 +92,9 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      if (res.ok) {
+      if (res?.ok) {
         const data = await res.json();
-        const circles = (Array.isArray(data) ? data : (data.circles || data.data || [])) as AppKitCircle[];
+        const circles = extractCircleList(data);
 
         // Ensure local AppConfig and Partner records exist for circles from AppKit
         for (const circle of circles) {
@@ -120,8 +147,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(mergedCircles);
       }
 
-      const appkitError = await res.json().catch(() => ({}));
-      console.warn('GET /api/circles AppKit fallback to local configs:', { status: res.status, appkitError });
+      if (res) {
+        const appkitError = await res.json().catch(() => ({}));
+        console.warn('GET /api/circles AppKit fallback to local configs:', { status: res.status, appkitError });
+      }
     }
 
     // 2. Local Fallback (Prisma)
