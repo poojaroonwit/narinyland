@@ -1,8 +1,26 @@
-import { NextResponse } from 'next/server';
-
 const APPKIT_DOMAIN = process.env.NEXT_PUBLIC_APPKIT_DOMAIN || process.env.APPKIT_DOMAIN || 'https://appkits.up.railway.app';
 const APPKIT_CLIENT_ID = process.env.APPKIT_CLIENT_ID || process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || '';
 const APPKIT_CLIENT_SECRET = process.env.APPKIT_CLIENT_SECRET || '';
+const APPKIT_APPLICATION_ID =
+  process.env.APPKIT_APPLICATION_ID ||
+  process.env.NEXT_PUBLIC_APPKIT_APPLICATION_ID ||
+  process.env.UNIBOX_APP_ID ||
+  APPKIT_CLIENT_ID;
+
+let lastSsoLaunchUrlSync: { url: string; syncedAt: number } | null = null;
+
+function getNormalizedAppKitDomain() {
+  return APPKIT_DOMAIN.trim().replace(/\/+$/, '');
+}
+
+function isLocalLaunchUrl(ssoLaunchUrl: string) {
+  try {
+    const hostname = new URL(ssoLaunchUrl).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Get a service-level accessToken using client_credentials grant.
@@ -56,6 +74,70 @@ export function getAppKitClientId() {
   return APPKIT_CLIENT_ID;
 }
 
+/**
+ * Get the AppKit Application ID used by Boundary launch exchanges.
+ */
+export function getAppKitApplicationId() {
+  return APPKIT_APPLICATION_ID;
+}
+
+/**
+ * Best-effort sync for Boundary's SSO launch target in AppKit/CMS.
+ * A sync failure should never prevent a valid launch code from logging in.
+ */
+export async function ensureSsoLaunchUrlConfigured(ssoLaunchUrl: string): Promise<boolean> {
+  const normalizedUrl = ssoLaunchUrl.trim();
+  if (!normalizedUrl || !APPKIT_APPLICATION_ID) return false;
+
+  if (isLocalLaunchUrl(normalizedUrl) && process.env.ALLOW_LOCAL_SSO_LAUNCH_URL_SYNC !== 'true') {
+    return false;
+  }
+
+  const now = Date.now();
+  if (
+    lastSsoLaunchUrlSync?.url === normalizedUrl &&
+    now - lastSsoLaunchUrlSync.syncedAt < 10 * 60 * 1000
+  ) {
+    return true;
+  }
+
+  const token = await getServiceToken();
+  if (!token) return false;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const res = await fetch(
+      `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${APPKIT_APPLICATION_ID}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ ssoLaunchUrl: normalizedUrl }),
+        signal: controller.signal,
+      }
+    );
+
+    if (!res.ok) {
+      const details = await res.text().catch(() => '');
+      console.warn('AppKit ssoLaunchUrl sync failed:', { status: res.status, details });
+      return false;
+    }
+
+    lastSsoLaunchUrlSync = { url: normalizedUrl, syncedAt: now };
+    return true;
+  } catch (err) {
+    console.warn('AppKit ssoLaunchUrl sync error:', err);
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Branding (used by PWA manifest) ────────────────────────────────
 
 export interface AppBranding {
@@ -68,6 +150,21 @@ export interface AppBranding {
   };
   social?: Record<string, string>;
 }
+
+type AppKitCircleMember = {
+  userId?: string;
+  id?: string;
+  name?: string;
+  avatar?: string;
+  role?: string;
+  user?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+    picture?: string;
+  };
+};
 
 /**
  * Fetch the branding configuration from AppKit admin API.
@@ -143,8 +240,8 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
     if (!res.ok) return [];
     const data = await res.json();
     const members = Array.isArray(data) ? data : (data.members || data.data || []);
-    return members.map((m: any) => ({
-      userId: m.userId || m.user?.id || m.id,
+    return (members as AppKitCircleMember[]).map((m) => ({
+      userId: m.userId || m.user?.id || m.id || '',
       name: m.user?.name || m.name || m.user?.email || 'Member',
       avatar: m.user?.avatar || m.user?.picture || m.avatar || '',
       role: m.role || 'member',

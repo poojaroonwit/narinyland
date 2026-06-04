@@ -30,6 +30,13 @@ export interface PurchasedItem {
   landId: string;
 }
 
+export interface ItemTransformUpdate {
+  x: number;
+  y: number;
+  z: number;
+  rotation?: number;
+}
+
 export interface MemoryItem {
   id?: string;
   url: string;
@@ -125,7 +132,14 @@ export interface AppConfig {
   timeline: Interaction[];
   albums?: Album[];
   lands?: Land[];
-  partners: Record<string, { name: string; avatar: string }>;
+  partners: Record<string, {
+    id?: string;
+    partnerId?: string;
+    name: string;
+    avatar: string;
+    points?: number;
+    lifetimePoints?: number;
+  }>;
   coupons: {
     id: string;
     title: string;

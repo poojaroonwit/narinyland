@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import React from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { login } from "@/lib/auth";
-import { useAuth } from "@/components/AuthProvider";
 import BlurText from "@/components/BlurText";
 import Logo from "@/components/Logo";
 
@@ -39,20 +38,6 @@ function HeartIcon({ className = "" }: { className?: string }) {
       className={className}
     >
       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-    </svg>
-  );
-}
-
-function LoaderIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg 
-      className={`animate-spin ${className}`} 
-      xmlns="http://www.w3.org/2000/svg" 
-      fill="none" 
-      viewBox="0 0 24 24"
-    >
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
   );
 }
@@ -137,9 +122,6 @@ const NAV_LINKS = [
 ];
 
 export default function MarketingPage() {
-  const router = useRouter();
-  const { isLoggedIn, loading: authLoading, refreshUser } = useAuth();
-
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -260,7 +242,7 @@ export default function MarketingPage() {
         </div>
 
         {/* Floating elements */}
-        <div className="absolute inset-0 pointer-events-none z-[5]">
+        <div className="hidden absolute inset-0 pointer-events-none z-[5]" aria-hidden="true">
           <motion.div 
             className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl"
             animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
@@ -357,9 +339,11 @@ export default function MarketingPage() {
                   className="w-full md:w-1/2"
                 >
                   <div className={`relative rounded-[3rem] overflow-hidden shadow-2xl ${item.accent} aspect-square p-2 group`}>
-                    <img 
-                      src={item.image} 
-                      alt={item.title} 
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      sizes="(min-width: 768px) 50vw, 100vw"
                       className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

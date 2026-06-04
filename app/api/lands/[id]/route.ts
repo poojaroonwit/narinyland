@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { getErrorMessage } from '@/lib/errors';
 
 /**
  * PUT /api/lands/:id
@@ -48,9 +49,9 @@ export async function PUT(
     await redis.del(`app_config:${configId}`);
 
     return NextResponse.json(updated);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('PUT /api/lands/:id error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -81,8 +82,8 @@ export async function DELETE(
     await redis.del(`app_config:${configId}`);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('DELETE /api/lands/:id error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

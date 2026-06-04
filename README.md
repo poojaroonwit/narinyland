@@ -29,7 +29,7 @@ A romantic, AI-powered virtual companion for couples that reacts to your presenc
 - Progressive Web App (PWA) support
 - Responsive design for mobile and desktop
 - Real-time updates with WebSocket connections
-- Cloud storage with AWS S3 integration
+- Cloud storage through UniBox for media files
 
 ### 🎮 **Gamification**
 - Points and experience system
@@ -43,7 +43,7 @@ A romantic, AI-powered virtual companion for couples that reacts to your presenc
 - **Styling**: Tailwind CSS, Framer Motion
 - **3D Graphics**: React Three Fiber, Three.js
 - **Database**: PostgreSQL with Prisma ORM
-- **Storage**: AWS S3 for media files
+- **Storage**: UniBox file storage for media files
 - **Cache**: Redis for session management
 - **AI**: Google Gemini API for pet interactions
 - **Deployment**: Railway, Vercel ready
@@ -69,11 +69,18 @@ DIRECT_URL="postgresql://username:password@localhost:5432/narinyland"
 # AI
 GEMINI_API_KEY="your-gemini-api-key"
 
-# AWS S3 (optional)
-S3_ACCESS_KEY_ID="your-access-key"
-S3_SECRET_ACCESS_KEY="your-secret-key"
-S3_BUCKET="your-bucket-name"
-S3_ENDPOINT="https://s3.amazonaws.com"
+# UniBox storage
+UNIBOX_BASE_URL="https://unibox.up.railway.app"
+UNIBOX_APP_ID="your-unibox-application-id"
+UNIBOX_SESSION_COOKIE="next-auth.session-token=your-unibox-session-cookie"
+# Optional: put uploads into a specific UniBox folder
+UNIBOX_FOLDER_ID="your-unibox-folder-id"
+# Optional: map Narinyland folder names to UniBox folder IDs
+UNIBOX_FOLDER_IDS="gallery=folder_id,timeline=folder_id,letters=folder_id"
+
+# Legacy media compatibility
+# Production denies unscoped legacy media unless this is explicitly enabled.
+ALLOW_LEGACY_UNSCOPED_MEDIA="false"
 
 # Redis (optional)
 REDIS_URL="redis://localhost:6379"
@@ -89,6 +96,12 @@ npm run db:push
 
 # (Optional) Seed with sample data
 npm run db:seed
+
+# (Optional) Dry-run legacy UniBox key scoping before disabling compatibility
+npm run db:scope-legacy-media
+
+# Apply legacy UniBox key scoping after reviewing the dry-run output
+npm run db:scope-legacy-media -- --write
 ```
 
 ### 4. Run the App
@@ -172,7 +185,7 @@ For detailed technical architecture, system design, and data flow information, s
 - **API**: RESTful routes with TypeScript validation
 - **Services**: Business logic and external integrations
 - **Data**: PostgreSQL database with Prisma ORM
-- **Storage**: AWS S3 for media files
+- **Storage**: UniBox for media files
 - **AI**: Google Gemini API for pet interactions
 
 ## 🚀 Deployment

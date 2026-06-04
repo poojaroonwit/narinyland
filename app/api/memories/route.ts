@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { uploadMemoryImage } from '@/lib/s3';
+import { uploadMemoryImage } from '@/lib/storage';
 import { redis } from '@/lib/redis';
 import { validateUploadFile } from '@/lib/upload-validation';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 import { createHash } from 'crypto';
 
 // Generate ETag for cache validation
-function generateETag(data: any): string {
+type MemoryCreateBody = {
+  url?: string | null;
+  privacy?: string;
+  caption?: string | null;
+};
+
+function generateETag(data: unknown): string {
   const dataString = JSON.stringify(data);
   const hash = createHash('md5').update(dataString).digest('hex');
   return `"${hash}"`;
@@ -54,7 +61,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const where: any = { configId };
+    const where: Prisma.MemoryWhereInput = { configId };
     if (privacy && privacy !== 'all') {
       where.privacy = privacy;
     }
@@ -97,7 +104,7 @@ export async function POST(request: Request) {
     let caption: string | null = null;
 
     if (contentType.includes('application/json')) {
-      const body = await request.json();
+      const body = (await request.json()) as MemoryCreateBody;
       url = body.url || null;
       privacy = body.privacy || 'public';
       caption = body.caption || null;
@@ -125,7 +132,8 @@ export async function POST(request: Request) {
       const result = await uploadMemoryImage(
         buffer,
         file.name,
-        file.type
+        file.type,
+        configId
       );
       url = result.url;
       s3Key = result.key;

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Html } from '@react-three/drei';
+import { OrbitControls, Stars, Html, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { Interaction } from '../types';
 import dynamic from 'next/dynamic';
@@ -39,7 +39,6 @@ const Globe: React.FC<{ timeline: Interaction[], onFlagClick: (item: Interaction
   const atmosphereRef = useRef<THREE.Mesh>(null);
   const R = 5; // Radius of globe
 
-  const { useTexture } = require('@react-three/drei');
   // High quality earth texture
   const [colorMap, bumpMap, specularMap] = useTexture([
     'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',

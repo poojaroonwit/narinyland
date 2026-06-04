@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { deleteFile, uploadMemoryImage } from '@/lib/s3';
+import { deleteFile, uploadMemoryImage } from '@/lib/storage';
 import { validateUploadFile } from '@/lib/upload-validation';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+type MemoryUpdateBody = {
+  privacy?: string;
+  caption?: string | null;
+  sortOrder?: number;
+  url?: string;
+};
 
 function getMemoryCacheKey(configId: string, privacy: string | null): string {
   return `memories:${configId}:${privacy || 'all'}`;
@@ -47,10 +55,10 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid privacy value' }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.MemoryUpdateInput = {};
     if (privacy !== undefined) updateData.privacy = privacy;
     if (caption !== undefined) updateData.caption = caption;
-    if (url !== undefined) updateData.url = url;
+    if (url) updateData.url = url;
 
     // Handle file upload
     if (file) {
@@ -64,13 +72,14 @@ export async function POST(
       const result = await uploadMemoryImage(
         buffer,
         file.name,
-        file.type
+        file.type,
+        configId
       );
       updateData.url = result.url;
       updateData.s3Key = result.key;
       
       if (existingMemory.s3Key) {
-        await deleteFile(existingMemory.s3Key).catch(e => console.error('Failed to delete old S3 file:', e));
+        await deleteFile(existingMemory.s3Key).catch(e => console.error('Failed to delete old storage file:', e));
       }
     }
 
@@ -100,7 +109,7 @@ export async function PUT(
     const params = await props.params;
     const id = params.id;
     const { configId } = access;
-    const body = await request.json();
+    const body = (await request.json()) as MemoryUpdateBody;
     const { privacy, caption, sortOrder, url } = body;
 
     const existingMemory = await prisma.memory.findFirst({
@@ -115,7 +124,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid privacy value' }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.MemoryUpdateInput = {};
     if (privacy !== undefined) updateData.privacy = privacy;
     if (caption !== undefined) updateData.caption = caption;
     if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
@@ -153,7 +162,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
     }
 
-    // Delete from S3 if it was uploaded
+    // Delete uploaded media if it exists in managed storage.
     if (memory.s3Key) {
       await deleteFile(memory.s3Key);
     }

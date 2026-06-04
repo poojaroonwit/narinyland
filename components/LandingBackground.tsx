@@ -5,6 +5,11 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 
+const seededRatio = (seed: number) => {
+  const value = Math.sin(seed * 9301 + 49297) * 233280;
+  return value - Math.floor(value);
+};
+
 // Rolling hill / ground plane
 const Ground: React.FC = () => (
   <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.5, 0]} receiveShadow>
@@ -79,13 +84,13 @@ const FloatingHeart: React.FC<{ position: [number, number, number]; delay: numbe
 export default function LandingBackground() {
   const petals = useMemo(() =>
     Array.from({ length: 18 }).map((_, i) => ({
-      position: [(Math.random() - 0.5) * 14, 1 + Math.random() * 5, (Math.random() - 0.5) * 8 - 2] as [number, number, number],
+      position: [(seededRatio(i + 1) - 0.5) * 14, 1 + seededRatio(i + 2) * 5, (seededRatio(i + 3) - 0.5) * 8 - 2] as [number, number, number],
       delay: i * 0.7
     })), []);
 
   const hearts = useMemo(() =>
     Array.from({ length: 6 }).map((_, i) => ({
-      position: [(Math.random() - 0.5) * 12, 2 + Math.random() * 4, (Math.random() - 0.5) * 6 - 2] as [number, number, number],
+      position: [(seededRatio(i + 21) - 0.5) * 12, 2 + seededRatio(i + 22) * 4, (seededRatio(i + 23) - 0.5) * 6 - 2] as [number, number, number],
       delay: i * 0.5
     })), []);
 

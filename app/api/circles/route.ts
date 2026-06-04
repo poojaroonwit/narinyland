@@ -2,10 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { createCircleViaServer } from '@/lib/appkit-server';
+import { getErrorMessage } from '@/lib/errors';
+
+type AppKitCircle = {
+  id?: string;
+  _id?: string;
+  name?: string;
+  data?: AppKitCircle;
+  circle?: AppKitCircle;
+  [key: string]: unknown;
+};
+
+type CircleCreateBody = {
+  name?: string;
+  description?: string;
+};
 
 export async function GET(req: NextRequest) {
   try {
-    let { token, userId, error, status, isSoft } = await getAuthSession(req);
+    const session = await getAuthSession(req);
+    let token = session.token;
+    const { userId, error, status, isSoft } = session;
     console.log('BFF /api/circles: Session resolved:', { hasToken: !!token, userId, isSoft, error });
 
     if (error || !token) {
@@ -50,7 +67,7 @@ export async function GET(req: NextRequest) {
 
       if (res.ok) {
         const data = await res.json();
-        const circles = Array.isArray(data) ? data : (data.circles || data.data || []);
+        const circles = (Array.isArray(data) ? data : (data.circles || data.data || [])) as AppKitCircle[];
 
         // Ensure local AppConfig and Partner records exist for circles from AppKit
         for (const circle of circles) {
@@ -88,7 +105,7 @@ export async function GET(req: NextRequest) {
         });
         const localConfigMap = new Map(localConfigs.map((c) => [c.id, c]));
 
-        const mergedCircles = circles.map((circle: any) => {
+        const mergedCircles = circles.map((circle) => {
           const id = circle.id || circle._id;
           if (!id) return null;
 
@@ -109,7 +126,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Local Fallback (Prisma)
     // IMPORTANT: Filter by userId (partnerId) to avoid leaking other users' data!
-    let configs: any[] = [];
+    let configs: Awaited<ReturnType<typeof prisma.appConfig.findMany>> = [];
     if (userId) {
       console.log('BFF /api/circles: Querying Prisma for userId:', userId);
       configs = await prisma.appConfig.findMany({
@@ -174,9 +191,9 @@ export async function GET(req: NextRequest) {
         createdAt: config.createdAt,
       }))
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('GET /api/circles error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -187,7 +204,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { name, description, userId } = await req.json();
+    const { name, description } = (await req.json()) as CircleCreateBody;
 
     if (!name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -196,14 +213,16 @@ export async function POST(req: NextRequest) {
     // 1. Create circle in AppKit
     let circleId: string;
     const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
-    let { token, userId: sessionUserId, error, status, isSoft } = await getAuthSession(req);
+    const session = await getAuthSession(req);
+    let token = session.token;
+    const { userId: sessionUserId, error, status } = session;
 
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
     try {
-      let circle = await createCircleViaServer(name, description, token);
+      let circle = await createCircleViaServer(name, description, token) as AppKitCircle;
       
       // Proactive retry on 401 for creation too
       if (!circle.id && !circle._id) {
@@ -213,16 +232,16 @@ export async function POST(req: NextRequest) {
            const { cookies } = await import('next/headers');
            token = (await cookies()).get('appkit_access_token')?.value || '';
            if (token) {
-              circle = await createCircleViaServer(name, description, token);
+              circle = await createCircleViaServer(name, description, token) as AppKitCircle;
            }
          }
       }
 
       // Handle different possible response structures (root, .data, or .circle)
       const data = circle.data || circle.circle || circle;
-      circleId = data.id || data._id;
-    } catch (appkitErr: any) {
-      console.warn('AppKit circle creation failed, generating local ID:', appkitErr.message);
+      circleId = data.id || data._id || '';
+    } catch (appkitErr: unknown) {
+      console.warn('AppKit circle creation failed, generating local ID:', getErrorMessage(appkitErr));
       circleId = `world_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     }
 
@@ -254,7 +273,7 @@ export async function POST(req: NextRequest) {
         let userName = 'Partner';
         let userAvatar = '';
         if (userRes.ok) {
-          const userData = await userRes.json();
+          const userData = await userRes.json() as { name?: string; given_name?: string; picture?: string; avatar?: string };
           userName = userData.name || userData.given_name || 'Partner';
           userAvatar = userData.picture || userData.avatar || '';
         }
@@ -298,8 +317,8 @@ export async function POST(req: NextRequest) {
       config,
       defaultLand: land,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('POST /api/circles error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

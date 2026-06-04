@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { isAuthenticated, getUser, logout as authLogout, getAccessToken, initAppKit, getUserCircles, AuthRequiredError } from '@/lib/auth';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { isAuthenticated, getUser, logout as authLogout, initAppKit, getUserCircles, AuthRequiredError } from '@/lib/auth';
 import { setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -9,7 +9,7 @@ type Circle = { id: string; name: string; description?: string; role: string; me
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  user: { sub: string; name: string; email: string; picture: string; attributes: Record<string, any> } | null;
+  user: { sub: string; name: string; email: string; picture: string; attributes: Record<string, unknown> } | null;
   token: string | null;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -35,8 +35,6 @@ export const useAuth = () => useContext(AuthContext);
 
 // Routes that don't require auth
 const PUBLIC_ROUTES = ['/', '/auth/callback'];
-const AUTH_ONLY_ROUTES = ['/garden', '/onboarding'];
-
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -48,7 +46,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
 
-  const checkAuth = async () => {
+  const handleLogout = useCallback(() => {
+    authLogout();
+  }, []);
+
+  const checkAuth = useCallback(async () => {
     // Prevent concurrent runs (e.g. rapid route changes)
     if (checkingRef.current) return;
     checkingRef.current = true;
@@ -201,7 +203,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     if (!authenticated && !isPublicRoute) {
       router.replace('/');
     }
-  };
+  }, [pathname, router]);
 
   const setActiveCircle = async (id: string) => {
     setActiveCircleIdState(id);
@@ -238,19 +240,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (timeoutId) clearTimeout(timeoutId);
       events.forEach(event => window.removeEventListener(event, resetTimer));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, pathname]);
+  }, [isLoggedIn, pathname, handleLogout]);
 
   // Re-run auth check when pathname changes (e.g. after callback navigates to /).
   // This ensures the auth state is always up-to-date on client-side route changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkAuth();
-  }, [pathname]);
-
-  const handleLogout = () => {
-    authLogout();
-  };
+  }, [checkAuth]);
 
   // Show loading spinner while checking auth
   if (loading) {

@@ -5,8 +5,19 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+type GardenTheme = {
+    ground: string;
+    patch: string;
+    bg?: string;
+};
+
+const seededRatio = (seed: number) => {
+    const value = Math.sin(seed * 9301 + 49297) * 233280;
+    return value - Math.floor(value);
+};
+
 // Procedural Terrain with vertex coloring
-export const Terrain = ({ theme, quality = 'medium' }: { theme: any, quality?: string }) => {
+export const Terrain = ({ theme, quality = 'medium' }: { theme: GardenTheme, quality?: string }) => {
     const segments = quality === 'high' ? 64 : (quality === 'medium' ? 32 : 16);
     const size = 30;
     
@@ -41,7 +52,7 @@ export const Terrain = ({ theme, quality = 'medium' }: { theme: any, quality?: s
         g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         g.computeVertexNormals();
         return g;
-    }, [theme.ground, segments]);
+    }, [theme.ground, theme.patch, segments]);
 
     return (
         <mesh 
@@ -51,17 +62,17 @@ export const Terrain = ({ theme, quality = 'medium' }: { theme: any, quality?: s
         >
             <meshStandardMaterial 
                 vertexColors 
-                roughness={0.8} 
-                metalness={0.1} 
+                roughness={0.95} 
+                metalness={0} 
                 flatShading={quality === 'low'}
             />
         </mesh>
     );
 };
 
-export const Grass = ({ theme, position, windFactor, quality = 'medium' }: { theme: any, position: { x: number, z: number }, windFactor: number, quality?: string }) => {
+export const Grass = ({ theme, position, windFactor, quality = 'medium' }: { theme: GardenTheme, position: { x: number, z: number }, windFactor: number, quality?: string }) => {
     const ref = useRef<THREE.Group>(null);
-    const seed = useMemo(() => Math.random() * 100, []);
+    const seed = useMemo(() => position.x * 17.17 + position.z * 31.31, [position.x, position.z]);
     
     useFrame((state) => {
         if (ref.current && quality !== 'low') {
@@ -80,6 +91,78 @@ export const Grass = ({ theme, position, windFactor, quality = 'medium' }: { the
                     <cylinderGeometry args={[0.01, 0.02, 0.3, 3]} />
                     <meshStandardMaterial color={theme.bg === '#fee2e2' ? '#a3e635' : '#3f6212'} />
                 </mesh>
+            ))}
+        </group>
+    );
+};
+
+export const MeadowLayer = ({ theme, windFactor, quality = 'medium' }: { theme: GardenTheme, windFactor: number, quality?: string }) => {
+    const ref = useRef<THREE.Group>(null);
+    const clumpCount = quality === 'high' ? 90 : quality === 'medium' ? 44 : 0;
+    const flowerCount = quality === 'high' ? 32 : quality === 'medium' ? 14 : 0;
+
+    const clumps = useMemo(() => {
+        return Array.from({ length: clumpCount }).map((_, i) => {
+            const radius = 4 + seededRatio(i + 300) * 11.5;
+            const angle = seededRatio(i + 410) * Math.PI * 2;
+            return {
+                x: Math.cos(angle) * radius,
+                z: Math.sin(angle) * radius,
+                scale: 0.6 + seededRatio(i + 510) * 0.9,
+                rotation: seededRatio(i + 610) * Math.PI * 2,
+                colorMix: seededRatio(i + 710),
+            };
+        });
+    }, [clumpCount]);
+
+    const flowers = useMemo(() => {
+        return Array.from({ length: flowerCount }).map((_, i) => {
+            const radius = 4.5 + seededRatio(i + 820) * 10;
+            const angle = seededRatio(i + 920) * Math.PI * 2;
+            return {
+                x: Math.cos(angle) * radius,
+                z: Math.sin(angle) * radius,
+                color: ['#f9a8d4', '#fde68a', '#fbcfe8', '#fecaca'][i % 4],
+                scale: 0.55 + seededRatio(i + 1020) * 0.4,
+            };
+        });
+    }, [flowerCount]);
+
+    useFrame((state) => {
+        if (!ref.current || quality === 'low') return;
+        const t = state.clock.getElapsedTime();
+        ref.current.rotation.z = Math.sin(t * 0.28) * 0.01 * windFactor;
+    });
+
+    if (quality === 'low') return null;
+
+    return (
+        <group ref={ref}>
+            {clumps.map((clump, i) => {
+                const bladeColor = clump.colorMix > 0.65 ? theme.patch : '#5f8a3a';
+                return (
+                    <group key={`clump-${i}`} position={[clump.x, 0.03, clump.z]} rotation={[0, clump.rotation, 0]} scale={clump.scale}>
+                        {[0, 1, 2].map((blade) => (
+                            <mesh key={blade} position={[(blade - 1) * 0.05, 0.12, 0]} rotation={[0.18, blade * 0.55, (blade - 1) * 0.18]}>
+                                <boxGeometry args={[0.035, 0.35 + blade * 0.08, 0.018]} />
+                                <meshStandardMaterial color={bladeColor} roughness={1} />
+                            </mesh>
+                        ))}
+                    </group>
+                );
+            })}
+
+            {flowers.map((flower, i) => (
+                <group key={`meadow-flower-${i}`} position={[flower.x, 0.05, flower.z]} scale={flower.scale}>
+                    <mesh position={[0, 0.18, 0]}>
+                        <cylinderGeometry args={[0.01, 0.015, 0.32, 4]} />
+                        <meshStandardMaterial color="#4d7c2f" roughness={1} />
+                    </mesh>
+                    <mesh position={[0, 0.36, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                        <circleGeometry args={[0.09, 8]} />
+                        <meshStandardMaterial color={flower.color} roughness={0.9} />
+                    </mesh>
+                </group>
             ))}
         </group>
     );
@@ -198,10 +281,10 @@ export const StonePath = ({ quality = 'medium' }: { quality?: string }) => {
                 <mesh 
                     key={i} 
                     position={[p.x, -0.08, p.z]} 
-                    rotation={[-Math.PI / 2, 0, Math.random()]}
+                    rotation={[-Math.PI / 2, 0, seededRatio(i + 1) * Math.PI * 2]}
                     receiveShadow={quality === 'high'}
                 >
-                    <circleGeometry args={[0.3 + Math.random() * 0.1, quality === 'low' ? 6 : 8]} />
+                    <circleGeometry args={[0.3 + seededRatio(i + 11) * 0.1, quality === 'low' ? 6 : 8]} />
                     <meshStandardMaterial color="#94a3b8" roughness={1} />
                 </mesh>
             ))}

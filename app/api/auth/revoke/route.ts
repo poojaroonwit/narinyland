@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     if (text) {
         try {
             data = JSON.parse(text);
-        } catch(e) { /* ignore */ }
+        } catch { /* ignore */ }
     }
 
     if (!response.ok) {

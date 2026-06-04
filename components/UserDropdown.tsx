@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserDropdownProps {
@@ -60,6 +61,8 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
       <button 
         onClick={() => setIsOpen(!isOpen)}
         disabled={loading}
+        aria-label={isOpen ? 'Close account menu' : 'Open account menu'}
+        aria-expanded={isOpen}
         className={`w-10 h-10 rounded-full shadow-lg overflow-hidden border-2 border-white/50 hover:border-pink-300 transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-400 ${loading ? 'animate-pulse bg-gray-200' : ''}`}
       >
         {loading ? (
@@ -67,7 +70,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
             <i className="fas fa-circle-notch animate-spin text-pink-300"></i>
           </div>
         ) : displayUser.picture ? (
-          <img src={displayUser.picture} alt={displayUser.name} className="w-full h-full object-cover" />
+          <Image src={displayUser.picture} alt={displayUser.name} width={40} height={40} unoptimized className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white font-bold text-lg">
             {displayUser.name ? displayUser.name.charAt(0).toUpperCase() : 'U'}
@@ -103,7 +106,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
               <div className="p-6 md:p-4 border-b border-pink-50 text-center md:text-left">
                 <div className="w-16 h-16 rounded-full mx-auto mb-3 md:hidden overflow-hidden border-2 border-pink-100">
                   {displayUser.picture ? (
-                    <img src={displayUser.picture} alt={displayUser.name} className="w-full h-full object-cover" />
+                    <Image src={displayUser.picture} alt={displayUser.name} width={64} height={64} unoptimized className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-pink-100 flex items-center justify-center text-pink-500 text-2xl font-black">
                       {displayUser.name.charAt(0)}

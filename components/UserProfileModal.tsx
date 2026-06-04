@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { updateProfile } from '@/lib/auth';
 import { useAuth } from './AuthProvider';
@@ -10,11 +11,13 @@ interface UserProfileModalProps {
   onClose: () => void;
 }
 
+type ProfileAttributes = Record<string, string | undefined>;
+
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const { user, refreshUser } = useAuth();
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
-  const [attributes, setAttributes] = useState<Record<string, any>>({});
+  const [attributes, setAttributes] = useState<ProfileAttributes>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +25,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     if (isOpen && user) {
       setName(user.name || '');
       setAvatar(user.picture || '');
-      setAttributes(user.attributes || {});
+      setAttributes((user.attributes || {}) as ProfileAttributes);
       setError(null);
     }
   }, [isOpen, user]);
@@ -59,7 +62,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         >
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-800">Edit Profile</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <button onClick={onClose} aria-label="Close profile editor" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
               <i className="fas fa-times text-gray-400"></i>
             </button>
           </div>
@@ -69,7 +72,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
             <div className="flex flex-col items-center gap-4">
               <div className="w-24 h-24 rounded-full border-4 border-pink-100 p-1 bg-white shadow-inner overflow-hidden flex items-center justify-center">
                 {avatar ? (
-                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                  <Image src={avatar} alt="Avatar" width={96} height={96} unoptimized className="w-full h-full object-cover rounded-full" />
                 ) : (
                   <div className="w-full h-full bg-pink-50 flex items-center justify-center text-3xl font-bold text-pink-300">
                     {name.charAt(0) || 'U'}

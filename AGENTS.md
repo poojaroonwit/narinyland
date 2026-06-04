@@ -16,6 +16,7 @@ npm run db:generate   # Generate Prisma client
 npm run db:push       # Push schema changes (no migration history)
 npm run db:migrate    # Create and run migration (dev only)
 npm run db:seed       # Seed database
+npm run db:scope-legacy-media # Dry-run scoped UniBox media key migration; add -- --write to apply
 npm run db:studio     # Open Prisma Studio GUI
 ```
 
@@ -30,7 +31,7 @@ No test framework is configured. Use `npm run lint` for code quality checks.
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
 - **Prisma 5** → **PostgreSQL** (primary data store)
 - **Redis** (ioredis) — caches config and timeline responses
-- **AWS S3** — media storage via presigned URLs
+- **UniBox** — media storage via the local UniBox SDK adapter
 - **Google Gemini** — AI pet responses
 - **AlphaYard AppKit** — OAuth authentication
 - **React Three Fiber / Three.js** — 3D scenes
@@ -45,7 +46,7 @@ No test framework is configured. Use `npm run lint` for code quality checks.
 | `app/api/` | All backend API routes (Next.js serverless) |
 | `components/` | All React UI components |
 | `components/3d/` | Three.js scene objects (Environment, Tree, Flower, Pet) |
-| `lib/` | Singletons: `prisma.ts`, `redis.ts`, `s3.ts`, `auth.ts` |
+| `lib/` | Singletons/adapters: `prisma.ts`, `redis.ts`, `storage.ts`, `unibox-sdk.ts`, `auth.ts` |
 | `services/api.ts` | Frontend wrapper for all API calls |
 | `prisma/schema.prisma` | Database schema (10 models) |
 | `types.ts` | Shared TypeScript types |
@@ -56,7 +57,7 @@ No test framework is configured. Use `npm run lint` for code quality checks.
 - **AppConfig** — singleton record (`id: 'default'`); stores all app settings, tree/flower/pet config, PWA metadata, playlist, proposal state
 - **Partner** — two user profiles linked to AppConfig; tracks points/gamification
 - **TimelineEvent** — relationship milestones with location (lat/lng), media, and ordering
-- **Memory** — individual photos/videos with S3 key, caption, sort order, album assignment
+- **Memory** — individual photos/videos with storage key, caption, sort order, album assignment
 - **Album** — named collection of Memories
 - **Land** — a 3D world scene (active/inactive)
 - **PurchasedItem** — 3D decoration object placed in a Land with position/rotation
@@ -79,7 +80,7 @@ No test framework is configured. Use `npm run lint` for code quality checks.
 
 ### File uploads
 
-All media uploads go through `/api/upload/presign` which returns an S3 presigned URL. The frontend uploads directly to S3, then saves the resulting URL + S3 key to the database. Image serving uses `/api/serve-image` for optimization.
+All media uploads go through Narinyland API routes and the `lib/storage.ts` adapter. New uploads are stored in UniBox through `lib/unibox-sdk.ts`, then saved using the existing `s3Key`/`mediaS3Key` database columns as provider-neutral storage keys. Image serving uses `/api/serve-image` for access-controlled proxying. Legacy S3-compatible reads/deletes remain in the adapter for old records.
 
 ### 3D system
 
@@ -103,10 +104,12 @@ Required in `.env.local`:
 ```
 DATABASE_URL           # PostgreSQL connection string
 REDIS_URL              # Redis connection string
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_REGION
-AWS_S3_BUCKET_NAME
+UNIBOX_BASE_URL          # Defaults to https://unibox.up.railway.app
+UNIBOX_APP_ID            # UniBox/AppKit application UUID
+UNIBOX_SESSION_COOKIE    # UniBox next-auth session cookie or full Cookie header
+UNIBOX_FOLDER_ID         # Optional target folder in UniBox
+UNIBOX_FOLDER_IDS        # Optional folder-name mapping, e.g. gallery=folder_id
+ALLOW_LEGACY_UNSCOPED_MEDIA # Optional production compatibility gate for old unscoped media keys
 GEMINI_API_KEY         # Google Gemini for AI pet
 APPKIT_CLIENT_ID       # AlphaYard OAuth
 APPKIT_DOMAIN

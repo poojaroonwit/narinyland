@@ -22,6 +22,13 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
   const noButtonRef = useRef<HTMLButtonElement>(null);
 
   const [distance, setDistance] = useState(1000);
+  const [floatingHearts] = useState(() => Array.from({ length: 25 }, () => ({
+    x: (Math.random() - 0.5) * 600,
+    duration: 4 + Math.random() * 6,
+    delay: Math.random() * 5,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+  })));
 
   const moveButton = useCallback(() => {
     // Determine bounds for the random jump. 
@@ -108,7 +115,7 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
     >
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(25)].map((_, i) => (
+        {floatingHearts.map((heart, i) => (
           <motion.div
             key={i}
             initial={{ scale: 0, opacity: 0 }}
@@ -116,17 +123,17 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
               scale: [0, 1.2, 0.8, 1], 
               opacity: [0, 0.6, 0.3, 0],
               y: -600,
-              x: (Math.random() - 0.5) * 600
+              x: heart.x
             }}
             transition={{ 
-              duration: 4 + Math.random() * 6, 
+              duration: heart.duration, 
               repeat: Infinity, 
-              delay: Math.random() * 5 
+              delay: heart.delay
             }}
             className="absolute text-pink-300/60 text-4xl filter drop-shadow-lg"
             style={{ 
-              left: `${Math.random() * 100}%`, 
-              top: `${Math.random() * 100}%` 
+              left: heart.left, 
+              top: heart.top 
             }}
           >❤️</motion.div>
         ))}
@@ -183,8 +190,8 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, onStepChange,
               animate={{ 
                 x: noButtonPos.x, 
                 y: noButtonPos.y,
-                rotate: noButtonPos.rotate + (distance < 220 ? (Math.random() - 0.5) * 10 : 0),
-                scale: distance < 220 ? 0.9 + (Math.random() * 0.1) : 1,
+                rotate: noButtonPos.rotate + (distance < 220 ? ((220 - distance) / 220) * 6 : 0),
+                scale: distance < 220 ? 0.94 : 1,
                 opacity: distance < 300 ? 0.4 + (distance / 300) * 0.6 : 1
               }}
               transition={{ 

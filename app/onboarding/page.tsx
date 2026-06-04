@@ -9,6 +9,14 @@ import { getAccessToken } from '@/lib/auth';
 
 type Mode = 'select' | 'create' | 'join';
 
+type ApiErrorBody = {
+  error?: string;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong';
+}
+
 export default function OnboardingPage() {
   const { user, refreshUser, setActiveCircle } = useAuth();
   const router = useRouter();
@@ -38,7 +46,7 @@ export default function OnboardingPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as ApiErrorBody;
         throw new Error(data.error || 'Failed to create world');
       }
 
@@ -59,8 +67,8 @@ export default function OnboardingPage() {
       
       await refreshUser();
       router.replace('/');
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -83,7 +91,7 @@ export default function OnboardingPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as ApiErrorBody;
         throw new Error(data.error || 'Failed to join world. Check the code and try again.');
       }
 
@@ -92,8 +100,8 @@ export default function OnboardingPage() {
       
       await refreshUser();
       router.replace('/');
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

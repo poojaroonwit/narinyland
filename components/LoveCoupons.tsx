@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
 
 interface Coupon {
@@ -20,12 +21,21 @@ interface Partners {
   partner2: { name: string; avatar: string };
 }
 
+type CouponDraft = {
+  title: string;
+  emoji: string;
+  desc: string;
+  color: string;
+  forPartner: 'partner1' | 'partner2';
+  points: number;
+};
+
 interface LoveCouponsProps {
   coupons: Coupon[];
   partners?: Partners;
   onRedeem?: (id: string) => void; // Parent confirmation function
   onDelete?: (id: string) => void;
-  onAdd?: (data: any) => void;
+  onAdd?: (data: CouponDraft) => void;
 }
 
 // ─── Sub-Components ──────────────────────────────────────────────────
@@ -34,10 +44,9 @@ const CouponCard: React.FC<{
   coupon: Coupon; 
   idx: number; 
   isRedeemed: boolean; 
-  partners?: Partners;
   onCardClick: (id: string, currentlyRedeemed: boolean) => void;
   isAnimating?: boolean;
-}> = ({ coupon, idx, isRedeemed, partners, onCardClick, isAnimating }) => {
+}> = ({ coupon, idx, isRedeemed, onCardClick, isAnimating }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -45,6 +54,15 @@ const CouponCard: React.FC<{
   const rotateY = useSpring(useTransform(x, [-100, 100], [-15, 15]), { stiffness: 300, damping: 30 });
   const shineX = useTransform(x, [-100, 100], [-200, 200]);
   const shineOpacity = useTransform(x, [-100, 100], [0.2, 0.5]);
+  const foilOpacity = useTransform(x, [-100, 100], [0.1, 0.3]);
+  const foilBackground = useTransform(
+    x,
+    [-100, 100],
+    [
+      "linear-gradient(135deg, rgba(255,0,0,0.1) 0%, rgba(0,255,255,0.1) 50%, rgba(255,0,255,0.1) 100%)",
+      "linear-gradient(135deg, rgba(255,0,255,0.1) 0%, rgba(255,255,0,0.1) 50%, rgba(0,255,255,0.1) 100%)"
+    ]
+  );
 
   const stampScale = useSpring(isAnimating ? 0.9 : 1, { stiffness: 400, damping: 15 });
   const stampRotate = useSpring(isAnimating ? -5 : 0, { stiffness: 400, damping: 15 });
@@ -188,15 +206,8 @@ const CouponCard: React.FC<{
               {/* Holographic Rainbow Foil */}
               <motion.div
                 style={{
-                  opacity: useTransform(x, [-100, 100], [0.1, 0.3]),
-                  background: useTransform(
-                    x, 
-                    [-100, 100], 
-                    [
-                      "linear-gradient(135deg, rgba(255,0,0,0.1) 0%, rgba(0,255,255,0.1) 50%, rgba(255,0,255,0.1) 100%)",
-                      "linear-gradient(135deg, rgba(255,0,255,0.1) 0%, rgba(255,255,0,0.1) 50%, rgba(0,255,255,0.1) 100%)"
-                    ]
-                  )
+                  opacity: foilOpacity,
+                  background: foilBackground
                 }}
                 className="absolute inset-0 pointer-events-none mix-blend-color-dodge transition-none"
               />
@@ -219,6 +230,34 @@ const AddButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
       <i className="fas fa-plus"></i>
       Add New Coupon
     </motion.button>
+  );
+};
+
+const isAvatarImageSrc = (avatar: string) => (
+  avatar.startsWith('http://') ||
+  avatar.startsWith('https://') ||
+  avatar.startsWith('/') ||
+  avatar.startsWith('data:image/')
+);
+
+const PartnerAvatar: React.FC<{ avatar: string; name: string }> = ({ avatar, name }) => {
+  if (isAvatarImageSrc(avatar)) {
+    return (
+      <Image
+        src={avatar}
+        alt={name}
+        width={20}
+        height={20}
+        unoptimized
+        className="w-5 h-5 rounded-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <span className="w-5 h-5 rounded-full bg-white/40 flex items-center justify-center text-xs leading-none">
+      {avatar}
+    </span>
   );
 };
 
@@ -295,7 +334,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
           }`}
         >
           {partners?.partner1.avatar && (
-            <img src={partners.partner1.avatar} alt={p1Name} className="w-5 h-5 rounded-full object-cover" />
+            <PartnerAvatar avatar={partners.partner1.avatar} name={p1Name} />
           )}
           {p1Name}
         </button>
@@ -306,7 +345,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
           }`}
         >
           {partners?.partner2.avatar && (
-            <img src={partners.partner2.avatar} alt={p2Name} className="w-5 h-5 rounded-full object-cover" />
+            <PartnerAvatar avatar={partners.partner2.avatar} name={p2Name} />
           )}
           {p2Name}
         </button>
@@ -346,7 +385,6 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                 coupon={coupon}
                 idx={idx}
                 isRedeemed={!!coupon.isRedeemed}
-                partners={partners}
                 onCardClick={handleCardClick}
                 isAnimating={animatingRedeemId === coupon.id}
               />
@@ -411,7 +449,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                 </div>
 
                 <p className="text-gray-500 text-sm font-medium leading-relaxed italic">
-                  "{selectedCoupon.desc}"
+                  &quot;{selectedCoupon.desc}&quot;
                 </p>
 
                 {selectedCoupon.expiry && (
@@ -564,7 +602,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                         <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">For</label>
                         <select 
                            value={newCoupon.forPartner} 
-                           onChange={e => setNewCoupon(prev => ({ ...prev, forPartner: e.target.value as any }))}
+                           onChange={e => setNewCoupon(prev => ({ ...prev, forPartner: e.target.value as CouponDraft['forPartner'] }))}
                            className="w-full border-2 border-pink-50 rounded-md p-4 text-sm font-black uppercase tracking-widest focus:border-pink-200 outline-none bg-white transition-all"
                         >
                            <option value="partner1">{p1Name}</option>

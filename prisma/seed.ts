@@ -7,7 +7,7 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // ─── Create App Config ───────────────────────────────────────────
-  const config = await prisma.appConfig.upsert({
+  await prisma.appConfig.upsert({
     where: { id: 'default' },
     update: {},
     create: {
@@ -25,7 +25,7 @@ async function main() {
   console.log('  ✅ AppConfig created');
 
   // ─── Create Partners ─────────────────────────────────────────────
-  const partner1 = await prisma.partner.upsert({
+  await prisma.partner.upsert({
     where: { configId_partnerId: { configId: 'default', partnerId: 'partner1' } },
     update: {},
     create: {
@@ -36,7 +36,7 @@ async function main() {
     },
   });
 
-  const partner2 = await prisma.partner.upsert({
+  await prisma.partner.upsert({
     where: { configId_partnerId: { configId: 'default', partnerId: 'partner2' } },
     update: {},
     create: {

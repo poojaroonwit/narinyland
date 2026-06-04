@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { uploadTimelineMedia, deleteFile } from '@/lib/s3';
+import { deleteFile, uploadTimelineMedia } from '@/lib/storage';
 import { getMaxUploadBytes, validateUploadFile } from '@/lib/upload-validation';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+type TimelinePatchBody = {
+  text?: string | null;
+  type?: string | null;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  timestamp?: string | null;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 // GET /api/timeline/[id]
 export async function GET(
@@ -101,7 +115,7 @@ export async function POST(
       }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.TimelineEventUncheckedUpdateInput = {};
     if (text !== null && text !== '') updateData.text = text;
     if (type !== null && type !== '') updateData.type = type;
     if (location !== null && location !== '') updateData.location = location;
@@ -135,16 +149,16 @@ export async function POST(
         }
       }
       
-      let mediaUrls: string[] = [];
-      let mediaTypes: string[] = [];
-      let mediaS3Keys: string[] = [];
+      const mediaUrls: string[] = [];
+      const mediaTypes: string[] = [];
+      const mediaS3Keys: string[] = [];
 
       for (const file of files) {
         if (!(file instanceof File)) continue;
         
         try {
           const buffer = Buffer.from(await file.arrayBuffer());
-          const result = await uploadTimelineMedia(buffer, file.name, file.type);
+          const result = await uploadTimelineMedia(buffer, file.name, file.type, configId);
           mediaUrls.push(result.url);
           mediaS3Keys.push(result.key);
           
@@ -170,16 +184,22 @@ export async function POST(
     if (!existingEvent) {
       
       // Create the timeline event if it doesn't exist
-      const createData = {
+      const createData: Prisma.TimelineEventUncheckedCreateInput = {
         id: String(id),
         configId,
-        ...updateData
+        text: text || '',
+        type: type || 'system',
+        location: location || undefined,
+        latitude: latitude !== null && !isNaN(parseFloat(latitude)) ? parseFloat(latitude) : undefined,
+        longitude: longitude !== null && !isNaN(parseFloat(longitude)) ? parseFloat(longitude) : undefined,
+        timestamp: timestampStr ? new Date(timestampStr) : new Date(),
+        mediaUrls: Array.isArray(updateData.mediaUrls) ? updateData.mediaUrls : [],
+        mediaTypes: Array.isArray(updateData.mediaTypes) ? updateData.mediaTypes : [],
+        mediaS3Keys: Array.isArray(updateData.mediaS3Keys) ? updateData.mediaS3Keys : [],
+        mediaUrl: typeof updateData.mediaUrl === 'string' ? updateData.mediaUrl : undefined,
+        mediaType: typeof updateData.mediaType === 'string' ? updateData.mediaType : undefined,
+        mediaS3Key: typeof updateData.mediaS3Key === 'string' ? updateData.mediaS3Key : undefined,
       };
-      
-      // Ensure timestamp is provided
-      if (!createData.timestamp) {
-        createData.timestamp = new Date();
-      }
       
       const event = await prisma.timelineEvent.create({
         data: createData
@@ -208,15 +228,16 @@ export async function POST(
       data: updateData,
     });
 
-    if (updateData.mediaS3Keys && existingEvent) {
+    const nextMediaS3Keys = Array.isArray(updateData.mediaS3Keys) ? updateData.mediaS3Keys : [];
+    if (nextMediaS3Keys.length > 0 && existingEvent) {
       const oldKeys = [...(existingEvent.mediaS3Keys || [])];
       if (existingEvent.mediaS3Key && !oldKeys.includes(existingEvent.mediaS3Key)) {
         oldKeys.push(existingEvent.mediaS3Key);
       }
       await Promise.all(
         oldKeys
-          .filter((key) => !updateData.mediaS3Keys.includes(key))
-          .map((key) => deleteFile(key).catch((e) => console.error(`Failed to delete old S3 key ${key}:`, e)))
+          .filter((key) => !nextMediaS3Keys.includes(key))
+          .map((key) => deleteFile(key).catch((e) => console.error(`Failed to delete old storage key ${key}:`, e)))
       );
     }
 
@@ -236,10 +257,10 @@ export async function POST(
       media: mediaItems[0],
       mediaItems: mediaItems
     });
-  } catch (error: any) {
-    console.error('❌ Error updating timeline event:', error);
-    console.error('❌ Full error details:', error.stack);
-    return NextResponse.json({ error: 'Failed to update timeline event', details: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('Error updating timeline event:', error);
+    console.error('Full error details:', error instanceof Error ? error.stack : undefined);
+    return NextResponse.json({ error: 'Failed to update timeline event', details: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -265,7 +286,7 @@ export async function PUT(
     let timestampStr: string | null = null;
 
     if (contentType.includes('application/json')) {
-      const body = await request.json();
+      const body = (await request.json()) as TimelinePatchBody;
       text = body.text ?? null;
       type = body.type ?? null;
       location = body.location ?? null;
@@ -274,7 +295,7 @@ export async function PUT(
       timestampStr = body.timestamp ?? null;
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.TimelineEventUncheckedUpdateInput = {};
     if (text !== null && text !== '') updateData.text = text;
     if (type !== null && type !== '') updateData.type = type;
     if (location !== null && location !== '') updateData.location = location;
@@ -335,23 +356,23 @@ export async function DELETE(
         return NextResponse.json({ error: 'Timeline event not found' }, { status: 404 });
     }
 
-    // Delete all files from S3
+    // Delete all uploaded files from managed storage.
     const keysToDelete = [...(event.mediaS3Keys || [])];
     if (event.mediaS3Key && !keysToDelete.includes(event.mediaS3Key)) {
       keysToDelete.push(event.mediaS3Key);
     }
 
     for (const key of keysToDelete) {
-      await deleteFile(key).catch(e => console.error(`Failed to delete S3 key ${key}:`, e));
+      await deleteFile(key).catch(e => console.error(`Failed to delete storage key ${key}:`, e));
     }
 
     await prisma.timelineEvent.delete({ where: { id } });
     await redis.del(`timeline_events:${configId}`);
 
     return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting interaction:', error);
       return NextResponse.json(
-        { error: 'Failed to delete interaction', details: error.message }, { status: 500 });
+        { error: 'Failed to delete interaction', details: getErrorMessage(error) }, { status: 500 });
   }
 }

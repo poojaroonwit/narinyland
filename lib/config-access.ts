@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-server';
-import { getConfigId } from '@/lib/get-config-id';
+import { getConfigId, getExplicitConfigId } from '@/lib/get-config-id';
 import prisma from '@/lib/prisma';
 
 type GrantedConfigAccess = {
@@ -17,6 +17,10 @@ export type ConfigAccess = GrantedConfigAccess | DeniedConfigAccess;
 
 export function isConfigAccessDenied(access: ConfigAccess): access is DeniedConfigAccess {
   return 'response' in access;
+}
+
+function allowsLegacyDefaultAccess(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.ALLOW_LEGACY_DEFAULT_CONFIG === 'true';
 }
 
 /**
@@ -37,9 +41,9 @@ export async function requireConfigAccess(request: Request): Promise<ConfigAcces
   }
 
   const configId = getConfigId(request);
-  const rawCircleId = request.headers.get('X-Circle-Id')?.trim();
+  const explicitConfigId = getExplicitConfigId(request);
 
-  if (configId === 'default' && !rawCircleId) {
+  if (configId === 'default' && !explicitConfigId && allowsLegacyDefaultAccess()) {
     return { configId, userId: session.userId, isSoft: !!session.isSoft };
   }
 

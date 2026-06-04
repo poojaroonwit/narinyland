@@ -2,12 +2,32 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { requireAdminRequest } from '@/lib/security';
+import { isSafeStorageKey } from '@/lib/upload-validation';
+
+type BrokenMediaItem = {
+  id: string;
+  url?: string | null;
+  s3Key?: string | null;
+  mediaUrl?: string | null;
+  mediaUrls?: string[];
+  mediaS3Key?: string | null;
+  mediaS3Keys?: string[];
+  privacy?: string;
+  caption?: string | null;
+  text?: string;
+  issue: string;
+  createdAt: Date;
+};
 
 // Helper function to validate image URL
 async function validateImageUrl(url: string | null | undefined): Promise<boolean> {
   try {
     if (!url || typeof url !== 'string' || url.trim().length === 0) {
       return false;
+    }
+
+    if (url.startsWith('/api/serve-image')) {
+      return true;
     }
 
     // Check URL format
@@ -27,17 +47,17 @@ async function validateImageUrl(url: string | null | undefined): Promise<boolean
     clearTimeout(timeoutId);
 
     return response.ok;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
 
-// Helper function to validate S3 URL
-function validateS3Url(url: string | null | undefined): boolean {
-  if (!url || typeof url !== 'string') return false;
+// Helper function to validate managed storage references.
+function validateStorageReference(value: string | null | undefined): boolean {
+  if (!value || typeof value !== 'string') return false;
+  if (isSafeStorageKey(value)) return true;
   
-  // Basic S3 URL pattern check
-  const s3Patterns = [
+  const legacyCloudPatterns = [
     /s3\.amazonaws\.com/,
     /\.s3\.amazonaws\.com/,
     /s3-[^/]+\.amazonaws\.com/,
@@ -46,7 +66,7 @@ function validateS3Url(url: string | null | undefined): boolean {
     /storage\.googleapis\.com/
   ];
   
-  return s3Patterns.some(pattern => pattern.test(url));
+  return legacyCloudPatterns.some(pattern => pattern.test(value));
 }
 
 // GET /api/cleanup - Analyze broken images
@@ -93,14 +113,14 @@ export async function GET(request: Request) {
       total: memories.length,
       valid: 0,
       broken: 0,
-      brokenItems: [] as any[]
+      brokenItems: [] as BrokenMediaItem[]
     };
 
     for (const memory of memories) {
       const isUrlValid = await validateImageUrl(memory.url);
-      const isS3Valid = memory.s3Key ? validateS3Url(memory.s3Key) : true;
+      const isStorageKeyValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
       
-      if (memory.url && isUrlValid && isS3Valid) {
+      if (memory.url && isUrlValid && isStorageKeyValid) {
         memoryAnalysis.valid++;
       } else {
         memoryAnalysis.broken++;
@@ -110,7 +130,7 @@ export async function GET(request: Request) {
           s3Key: memory.s3Key,
           privacy: memory.privacy,
           caption: memory.caption,
-          issue: !memory.url ? 'Empty URL' : (!isUrlValid ? 'Invalid URL' : (!isS3Valid ? 'Invalid S3 URL' : 'Unknown')),
+          issue: !memory.url ? 'Empty URL' : (!isUrlValid ? 'Invalid URL' : (!isStorageKeyValid ? 'Invalid storage reference' : 'Unknown')),
           createdAt: memory.createdAt
         });
       }
@@ -121,12 +141,12 @@ export async function GET(request: Request) {
       total: timelineEvents.length,
       valid: 0,
       broken: 0,
-      brokenItems: [] as any[]
+      brokenItems: [] as BrokenMediaItem[]
     };
 
     for (const event of timelineEvents) {
-      const allMediaUrls = [event.mediaUrl, ...(event.mediaUrls || [])].filter(Boolean);
-      const allS3Keys = [event.mediaS3Key, ...(event.mediaS3Keys || [])].filter(Boolean);
+      const allMediaUrls = [event.mediaUrl, ...(event.mediaUrls || [])].filter((url): url is string => Boolean(url));
+      const allStorageKeys = [event.mediaS3Key, ...(event.mediaS3Keys || [])].filter((key): key is string => Boolean(key));
       
       let hasValidMedia = false;
       let hasBrokenMedia = false;
@@ -141,8 +161,8 @@ export async function GET(request: Request) {
         }
       }
       
-      for (const s3Key of allS3Keys) {
-        const isValid = validateS3Url(s3Key);
+      for (const storageKey of allStorageKeys) {
+        const isValid = validateStorageReference(storageKey);
         if (!isValid) {
           hasBrokenMedia = true;
           break;
@@ -161,7 +181,7 @@ export async function GET(request: Request) {
           mediaUrl: event.mediaUrl,
           mediaS3Key: event.mediaS3Key,
           mediaUrls: allMediaUrls,
-          mediaS3Keys: allS3Keys,
+          mediaS3Keys: allStorageKeys,
           text: event.text,
           issue: allMediaUrls.length === 0 ? 'No media' : (hasBrokenMedia ? 'Broken media found' : 'Unknown'),
           createdAt: event.createdAt
@@ -213,7 +233,7 @@ export async function DELETE(request: Request) {
 
     let deletedMemories = 0;
     let deletedEvents = 0;
-    let errors: string[] = [];
+    const errors: string[] = [];
     const affectedConfigIds = new Set<string>();
 
     // Clean memories
@@ -224,9 +244,9 @@ export async function DELETE(request: Request) {
 
       for (const memory of memories) {
         const isUrlValid = await validateImageUrl(memory.url);
-        const isS3Valid = memory.s3Key ? validateS3Url(memory.s3Key) : true;
+        const isStorageKeyValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
         
-        if (memory.url && (!isUrlValid || !isS3Valid)) {
+        if (memory.url && (!isUrlValid || !isStorageKeyValid)) {
           console.log(`   🗑️ Deleting memory: ${memory.id.substring(0, 8)}... (${memory.url?.substring(0, 50)}...)`);
           
           if (!dryRun) {
@@ -252,7 +272,7 @@ export async function DELETE(request: Request) {
 
       for (const event of events) {
         const allMediaUrls = [event.mediaUrl, ...(event.mediaUrls || [])].filter(Boolean);
-        const allS3Keys = [event.mediaS3Key, ...(event.mediaS3Keys || [])].filter(Boolean);
+        const allStorageKeys = [event.mediaS3Key, ...(event.mediaS3Keys || [])].filter((key): key is string => Boolean(key));
         
         let hasValidMedia = false;
         let hasBrokenMedia = false;
@@ -268,9 +288,9 @@ export async function DELETE(request: Request) {
           }
         }
         
-        // Check all S3 keys
-        for (const s3Key of allS3Keys) {
-          const isValid = validateS3Url(s3Key);
+        // Check all managed storage keys.
+        for (const storageKey of allStorageKeys) {
+          const isValid = validateStorageReference(storageKey);
           if (!isValid) {
             hasBrokenMedia = true;
             break;
@@ -278,7 +298,7 @@ export async function DELETE(request: Request) {
         }
         
         // Delete if no valid media or has broken media
-        if ((allMediaUrls.length > 0 || allS3Keys.length > 0) && (!hasValidMedia || hasBrokenMedia)) {
+        if ((allMediaUrls.length > 0 || allStorageKeys.length > 0) && (!hasValidMedia || hasBrokenMedia)) {
           console.log(`   🗑️ Deleting timeline event: ${event.id.substring(0, 8)}... (${event.text?.substring(0, 50)}...)`);
           
           if (!dryRun) {

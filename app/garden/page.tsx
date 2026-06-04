@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import Timeline from '../../components/Timeline';
 import MemoryFrame from '../../components/MemoryFrame';
@@ -19,13 +20,26 @@ import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI, 
 import { useAuth } from '../../components/AuthProvider';
 import UserDropdown from '../../components/UserDropdown';
 import UserProfileModal from '../../components/UserProfileModal';
-import Shop, { ShopItem } from '../../components/Shop';
+import Shop from '../../components/Shop';
 import World3D from '../../components/World3D';
+import { getErrorMessage } from '../../lib/errors';
 
 const INITIAL_MEMORIES: MemoryItem[] = [];
 const INITIAL_TIMELINE: Interaction[] = [];
+const INITIAL_COUPONS: AppConfig['coupons'] = [];
 
-const INITIAL_COUPONS: any[] = [];
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform?: string }>;
+};
+
+type CircleMemberProfile = {
+  id?: string;
+  userId?: string;
+  name?: string;
+  avatar?: string;
+  role?: string;
+};
 
 const Home: React.FC = () => {
   const { user, logout, loading: authLoading, circles, activeCircleId, setActiveCircle } = useAuth();
@@ -33,14 +47,13 @@ const Home: React.FC = () => {
   const [isLetterOpen, setIsLetterOpen] = useState(false); 
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isSpreadsheetOpen, setIsSpreadsheetOpen] = useState(false);
-  const [isMobileStatsOpen, setIsMobileStatsOpen] = useState(false);
   const [isStatsGuideOpen, setIsStatsGuideOpen] = useState(false);
   const [isVolumeModalOpen, setIsVolumeModalOpen] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.5);
   const [isMusicPlaying, setIsMusicPlaying] = useState(true);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [toast, setToast] = useState({ message: '', isVisible: false });
@@ -62,8 +75,6 @@ const Home: React.FC = () => {
     }
   });
   const [loveLetters, setLoveLetters] = useState<LoveLetterMessage[]>([]);
-  const [timeline, setTimeline] = useState<Interaction[]>([]); // New local timeline state if we separate it
-  // Note: currently timeline is in appConfig.timeline. We should populate that.
 
   const [appConfig, setAppConfig] = useState<AppConfig>({
     appName: "Our Story",
@@ -97,7 +108,7 @@ const Home: React.FC = () => {
     showProposal: true,
   });
 
-  const [circleMembers, setCircleMembers] = useState<any[]>([]);
+  const [circleMembers, setCircleMembers] = useState<CircleMemberProfile[]>([]);
 
   // Compute activePartners from circle members with placeholder support
   const activePartners = useMemo(() => {
@@ -122,7 +133,6 @@ const Home: React.FC = () => {
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
-  const [landSearch, setLandSearch] = useState('');
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -133,9 +143,10 @@ const Home: React.FC = () => {
     window.addEventListener('resize', handleResize);
 
     // PWA Install Prompt Logic
-    const handleBeforeInstallPrompt = (e: any) => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      const promptEvent = e as BeforeInstallPromptEvent;
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(promptEvent);
       setShowInstallPrompt(true);
     };
 
@@ -166,8 +177,8 @@ const Home: React.FC = () => {
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    await deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
     setDeferredPrompt(null);
     setShowInstallPrompt(false);
   };
@@ -197,7 +208,7 @@ const Home: React.FC = () => {
         }
 
         // Transform Timeline Data
-        const mappedTimeline = timelineData.map((t: any) => ({
+        const mappedTimeline = timelineData.map((t) => ({
            id: t.id,
            text: t.text,
            type: t.type,
@@ -230,7 +241,7 @@ const Home: React.FC = () => {
           musicPlaylist: serverConfig.musicPlaylist || prev.musicPlaylist,
           proposal: serverConfig.proposal || prev.proposal,
           partners: serverConfig.partners || prev.partners,
-          gallery: memories.length ? memories.map((m: any) => ({ id: m.id, url: m.url, privacy: m.privacy, caption: m.caption, albumId: m.albumId })) : prev.gallery,
+          gallery: memories.length ? memories.map((m) => ({ id: m.id, url: m.url, privacy: m.privacy, caption: m.caption, albumId: m.albumId })) : prev.gallery,
           timeline: mappedTimeline,
           coupons: serverConfig.coupons?.length ? serverConfig.coupons : prev.coupons,
           albums: serverConfig.albums || prev.albums,
@@ -239,16 +250,16 @@ const Home: React.FC = () => {
         }));
 
         // Transform Letters
-        setLoveLetters(letters.map((l: any) => ({
+        setLoveLetters(letters.map((l) => ({
           id: l.id,
           fromId: l.fromId === serverConfig.partners?.partner1?.partnerId ? 'partner1' : 'partner2', // Simplified assumption, logic might need adjustment if schema differs
           content: l.content,
           folder: l.folder,
-          timestamp: new Date(l.createdAt),
+          timestamp: new Date(l.timestamp),
           unlockDate: new Date(l.unlockDate),
           isRead: l.isRead,
           readAt: l.readAt ? new Date(l.readAt) : undefined,
-          media: l.mediaUrl ? { type: l.mediaType, url: l.mediaUrl } : undefined
+          media: l.media
         })));
 
         // Set Proposal State
@@ -260,14 +271,13 @@ const Home: React.FC = () => {
         setLoveStats(stats);
         
         setConfigLoaded(true);
-      } catch (err: any) {
-        console.warn('⚠️ Could not load data from API, using defaults:', err.message);
+      } catch (err: unknown) {
+        console.warn('⚠️ Could not load data from API, using defaults:', getErrorMessage(err));
         setConfigLoaded(true);
       }
     };
 
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCircleId]);
 
   // ─── Save config to database when setAppConfig is called ────────────
@@ -301,7 +311,7 @@ const Home: React.FC = () => {
         gallery: next.gallery,
         showProposal: next.showProposal,
       }).then(() => {})
-        .catch((err: any) => console.error('❌ Failed to save config:', err.message));
+        .catch((err: unknown) => console.error('❌ Failed to save config:', getErrorMessage(err)));
       return next;
     });
   };
@@ -511,11 +521,11 @@ const Home: React.FC = () => {
          file: file
        });
 
-       // 4. Update local state with real ID and S3 URL
+        // 4. Update local state with real ID and storage URL
        setLoveLetters(prev => prev.map(l => l.id === msg.id ? { 
          ...l, 
          id: savedLetter.id, 
-         media: savedLetter.media ? { type: savedLetter.media.type as any, url: savedLetter.media.url } : l.media 
+         media: savedLetter.media ? { type: savedLetter.media.type, url: savedLetter.media.url } : l.media 
        } : l));
 
        // 5. Update XP
@@ -561,9 +571,9 @@ const Home: React.FC = () => {
       });
       // Optimistic update
       setLoveLetters(prev => prev.map(m => m.id === msg.id ? msg : m));
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("Failed to update message", err);
-        alert(err.message || 'Failed to update message');
+        alert(getErrorMessage(err) || 'Failed to update message');
     }
   };
 
@@ -673,10 +683,11 @@ const Home: React.FC = () => {
           ...prev,
           timeline: prev.timeline.filter(t => t.id !== id)
         }));
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to delete timeline event:", err);
         // If it's already gone from server (404), still remove it from local state to stay in sync
-        if (err.message?.includes('404') || err.message?.includes('not found')) {
+        const message = getErrorMessage(err);
+        if (message.includes('404') || message.includes('not found')) {
           setAppConfig(prev => ({
             ...prev,
             timeline: prev.timeline.filter(t => t.id !== id)
@@ -745,7 +756,8 @@ const Home: React.FC = () => {
                  setIsEditMode={setIsEditMode}
                  onAddLeaf={handleAddLeaf}
                  purchasedItems={appConfig.lands?.find(l => l.isActive)?.items}
-                  onUpdateItemPosition={async (itemId: string, x: number, y: number, z: number) => {
+                  onUpdateItemPosition={async (itemId, update) => {
+                    const { x, y, z, rotation } = update;
                     try {
                        setAppConfig(prev => {
                           if (!prev.lands) return prev;
@@ -753,7 +765,13 @@ const Home: React.FC = () => {
                              if (!l.isActive) return l;
                              return {
                                  ...l,
-                                 items: l.items?.map(it => it.id === itemId ? { ...it, x, y, z } : it)
+                                 items: l.items?.map(it => it.id === itemId ? {
+                                   ...it,
+                                   x,
+                                   y,
+                                   z,
+                                   ...(rotation !== undefined ? { rotation } : {}),
+                                 } : it)
                              };
                           });
                           return { ...prev, lands: newLands };
@@ -762,7 +780,7 @@ const Home: React.FC = () => {
                        await fetch(`/api/purchased-items/${itemId}`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ x, y, z })
+                          body: JSON.stringify({ x, y, z, ...(rotation !== undefined ? { rotation } : {}) })
                        });
                     } catch (e) {
                        console.error("Failed to update item position", e);
@@ -883,8 +901,15 @@ const Home: React.FC = () => {
                    </div>
                    
                    {selectedFlagItem.mediaItems?.[0] && selectedFlagItem.mediaItems[0].type === 'image' && (
-                     <div className="rounded-md overflow-hidden mb-4 shadow-sm border-2 border-pink-50 max-h-48">
-                        <img src={selectedFlagItem.mediaItems[0].url} alt="" className="w-full object-cover" />
+                     <div className="relative rounded-md overflow-hidden mb-4 shadow-sm border-2 border-pink-50 h-48">
+                        <Image
+                          src={selectedFlagItem.mediaItems[0].url}
+                          alt="Memory media"
+                          fill
+                          unoptimized
+                          sizes="(min-width: 640px) 384px, calc(100vw - 2rem)"
+                          className="object-cover"
+                        />
                      </div>
                    )}
                    

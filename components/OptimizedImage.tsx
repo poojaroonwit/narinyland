@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import NextImage from 'next/image';
 import { motion } from 'framer-motion';
+
+const MotionImage = motion(NextImage);
 
 interface OptimizedImageProps {
   src: string;
@@ -13,10 +16,10 @@ interface OptimizedImageProps {
   placeholder?: string;
   fallback?: string;
   onError?: (e: React.SyntheticEvent<HTMLImageElement>) => void;
-  onLoad?: (e: React.SyntheticEvent<HTMLImageElement>) => void;
   style?: React.CSSProperties;
   sizes?: string;
   loading?: 'lazy' | 'eager';
+  onClick?: React.MouseEventHandler<HTMLImageElement>;
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -29,17 +32,16 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   placeholder,
   fallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='16'%3EImage not available%3C/text%3E%3C/svg%3E",
   onError,
-  onLoad,
   style,
   sizes = '100vw',
-  loading = 'lazy'
+  loading = 'lazy',
+  onClick
 }) => {
   const [imageState, setImageState] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [currentSrc, setCurrentSrc] = useState<string>(placeholder || fallback);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isIntersecting, setIsIntersecting] = useState(priority);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const [retryKey, setRetryKey] = useState(0); // Force re-render for retry
 
   // Generate optimized display URL
   const displayUrl = useMemo(() => {
@@ -52,6 +54,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     
     // If it's a relative API URL, convert to full URL
     if (src.startsWith('/api/')) {
+      if (typeof window === 'undefined') return src;
       return `${window.location.origin}${src}`;
     }
     
@@ -60,7 +63,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // Intersection Observer for lazy loading
   useEffect(() => {
-    if (!priority && imgRef.current) {
+    if (!priority && containerRef.current) {
       observerRef.current = new IntersectionObserver(
         (entries) => {
           const [entry] = entries;
@@ -75,7 +78,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         }
       );
       
-      observerRef.current.observe(imgRef.current);
+      const imageNode = containerRef.current;
+      observerRef.current.observe(imageNode);
     }
 
     return () => {
@@ -115,36 +119,40 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }, [placeholder, width, height]);
 
   return (
-    <div className="relative overflow-hidden" style={style}>
+    <div ref={containerRef} className="relative overflow-hidden w-full h-full" style={style}>
       {/* Placeholder */}
       <div 
         className={`absolute inset-0 bg-gray-100 ${imageState === 'loaded' ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
       >
-        <img 
+        <NextImage
           src={placeholderSvg}
           alt={alt}
+          width={width || 400}
+          height={height || 300}
+          unoptimized
           className={`w-full h-full object-cover ${className}`}
         />
       </div>
       
       {/* Main image */}
-      <motion.img
-        ref={imgRef}
+      <MotionImage
         src={currentSrc}
         alt={alt}
+        width={width || 400}
+        height={height || 300}
+        unoptimized
         className={`w-full h-full object-cover transition-opacity duration-300 ${className}`}
         style={{
           opacity: imageState === 'loaded' ? 1 : 0,
         }}
         loading={loading}
         sizes={sizes}
-        width={width}
-        height={height}
         onError={(e) => {
           setImageState('error');
           setCurrentSrc(fallback);
           onError?.(e);
         }}
+        onClick={onClick}
         initial={{ opacity: 0 }}
         animate={{ opacity: imageState === 'loaded' ? 1 : 0 }}
         transition={{ duration: 0.3 }}

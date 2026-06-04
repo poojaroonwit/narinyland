@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { uploadTimelineMedia } from '@/lib/s3';
+import { uploadTimelineMedia } from '@/lib/storage';
 
 import { redis } from '@/lib/redis';
 import { validateUploadFile } from '@/lib/upload-validation';
@@ -8,7 +8,16 @@ import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 import { createHash } from 'crypto';
 
 // Generate ETag for cache validation
-function generateETag(data: any): string {
+type TimelineCreateBody = {
+  text?: string;
+  type?: string;
+  location?: string;
+  timestamp?: string;
+  mediaUrls?: string[];
+  mediaUrl?: string;
+};
+
+function generateETag(data: unknown): string {
   const dataString = JSON.stringify(data);
   const hash = createHash('md5').update(dataString).digest('hex');
   return `"${hash}"`;
@@ -91,11 +100,11 @@ export async function POST(request: Request) {
     let externalUrls: string[] = [];
 
     if (contentType.includes('application/json')) {
-      const body = await request.json();
-      text = body.text;
+      const body = (await request.json()) as TimelineCreateBody;
+      text = body.text || '';
       type = body.type || 'system';
       location = body.location;
-      timestampStr = body.timestamp;
+      timestampStr = body.timestamp || '';
       // Handle array of media URLs if sent in JSON
       if (Array.isArray(body.mediaUrls)) {
           externalUrls = body.mediaUrls;
@@ -118,7 +127,7 @@ export async function POST(request: Request) {
     
     let mediaUrls: string[] = [];
     let mediaTypes: string[] = [];
-    let mediaS3Keys: string[] = [];
+    const mediaS3Keys: string[] = [];
 
     if (files && files.length > 0) {
       for (const file of files) {
@@ -131,7 +140,7 @@ export async function POST(request: Request) {
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const result = await uploadTimelineMedia(buffer, file.name, file.type);
+        const result = await uploadTimelineMedia(buffer, file.name, file.type, configId);
         mediaUrls.push(result.url);
         mediaS3Keys.push(result.key);
         

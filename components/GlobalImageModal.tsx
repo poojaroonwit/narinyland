@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Interaction } from '../types';
+import { Interaction, MediaContent } from '../types';
 
 interface GlobalImageModalProps {
   show: boolean;
@@ -25,19 +25,16 @@ const GlobalImageModal: React.FC<GlobalImageModalProps> = ({
   const getAllImages = () => {
     const allImages: { url: string; interactionId: string; interactionTitle: string }[] = [];
     interactions.forEach(interaction => {
-      if (interaction.media) {
-        // Handle single media or media array
-        const mediaItems = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
-        mediaItems.forEach((media: any) => {
-          if (media.type === 'image') {
-            allImages.push({
-              url: media.url,
-              interactionId: interaction.id,
-              interactionTitle: (interaction as any).message || 'Untitled'
-            });
-          }
-        });
-      }
+      const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
+      mediaItems.forEach((media: MediaContent) => {
+        if (media.type === 'image') {
+          allImages.push({
+            url: media.url,
+            interactionId: interaction.id,
+            interactionTitle: interaction.text || 'Untitled'
+          });
+        }
+      });
     });
     return allImages;
   };
@@ -60,7 +57,7 @@ const GlobalImageModal: React.FC<GlobalImageModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [show, currentIndex]);
+  }, [show, currentIndex, onClose, onNext, onPrevious]);
 
   if (!show || allImages.length === 0) return null;
 

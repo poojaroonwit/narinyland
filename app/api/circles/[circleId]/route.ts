@@ -3,6 +3,7 @@ import { getAuthSession } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { updateCircleViaServer, deleteCircleViaServer } from '@/lib/appkit-server';
 import { redis } from '@/lib/redis';
+import { getErrorMessage } from '@/lib/errors';
 
 async function userCanAccessCircle(circleId: string, userId: string): Promise<boolean> {
   const membership = await prisma.partner.findFirst({
@@ -49,9 +50,9 @@ export async function PUT(
     await redis.del(cacheKey).catch(() => {});
 
     return NextResponse.json({ success: true, circleId, name, config });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`PUT /api/circles/${circleId} error:`, err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -81,8 +82,8 @@ export async function DELETE(
     // Deleting AppConfig will cascade delete partners, lands, coupons, timeline, etc.
     await prisma.appConfig.delete({
       where: { id: circleId },
-    }).catch((e) => {
-      console.warn(`Local AppConfig cleanup skip: ${e.message}`);
+    }).catch((e: unknown) => {
+      console.warn(`Local AppConfig cleanup skip: ${getErrorMessage(e)}`);
     });
 
     // 3. Invalidate cache
@@ -90,8 +91,8 @@ export async function DELETE(
     await redis.del(cacheKey).catch(() => {});
 
     return NextResponse.json({ success: true, message: 'World deleted and data cleaned up' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`DELETE /api/circles/${circleId} error:`, err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

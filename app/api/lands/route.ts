@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { getErrorMessage } from '@/lib/errors';
 
 /**
  * GET /api/lands
@@ -21,9 +22,9 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(lands);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('GET /api/lands error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -61,8 +62,8 @@ export async function POST(req: NextRequest) {
     await redis.del(`app_config:${configId}`);
 
     return NextResponse.json(land);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('POST /api/lands error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

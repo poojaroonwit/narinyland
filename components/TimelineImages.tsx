@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Interaction } from '../types';
+import { Interaction, MediaContent } from '../types';
 import OptimizedImage from './OptimizedImage';
 
 interface TimelineImagesProps {
@@ -28,11 +28,11 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
   interactions.forEach(interaction => {
     // Handle both single media and media arrays
     const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
-    const imageMediaItems = mediaItems.filter((media: any) => media.type === 'image');
+    const imageMediaItems = mediaItems.filter((media: MediaContent) => media.type === 'image');
     
     if (imageMediaItems.length > 0) {
       // Add all images from this interaction
-      imageMediaItems.forEach((media: any, index) => {
+      imageMediaItems.forEach((media: MediaContent, index) => {
         allTimelineImages.push({
           url: media.url,
           title: interaction.text || `Memory ${allTimelineImages.length + 1}`,
@@ -44,10 +44,11 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
     }
   });
 
+  const pageSize = Math.max(20, maxImages);
+
   // Pagination state
-  const [displayedImages, setDisplayedImages] = useState(20); // Start with 20 images
+  const [displayedImages, setDisplayedImages] = useState(pageSize);
   const [isLoading, setIsLoading] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Load more images function
@@ -57,10 +58,10 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
     setIsLoading(true);
     // Simulate loading delay for better UX
     setTimeout(() => {
-      setDisplayedImages(prev => Math.min(prev + 20, allTimelineImages.length));
+      setDisplayedImages(prev => Math.min(prev + pageSize, allTimelineImages.length));
       setIsLoading(false);
     }, 300);
-  }, [isLoading, displayedImages, allTimelineImages.length]);
+  }, [isLoading, displayedImages, allTimelineImages.length, pageSize]);
 
   // Setup intersection observer for infinite scroll
   useEffect(() => {
@@ -77,13 +78,14 @@ const TimelineImages: React.FC<TimelineImagesProps> = ({
       }
     );
 
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
+    const loadMoreNode = loadMoreRef.current;
+    if (loadMoreNode) {
+      observer.observe(loadMoreNode);
     }
 
     return () => {
-      if (loadMoreRef.current) {
-        observer.unobserve(loadMoreRef.current);
+      if (loadMoreNode) {
+        observer.unobserve(loadMoreNode);
       }
     };
   }, [loadMoreImages, isLoading]);

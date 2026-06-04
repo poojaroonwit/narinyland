@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { addCircleMemberViaServer } from '@/lib/appkit-server';
 import { getAuthSession } from '@/lib/auth-server';
+import { getErrorMessage } from '@/lib/errors';
 
 /**
  * POST /api/circles/join
@@ -36,8 +37,8 @@ export async function POST(req: NextRequest) {
     if (!circleId.startsWith('world_')) {
       try {
         await addCircleMemberViaServer(circleId, session.userId);
-      } catch (err: any) {
-        console.warn('AppKit addMember failed:', err.message);
+      } catch (err: unknown) {
+        console.warn('AppKit addMember failed:', getErrorMessage(err));
         // Continue anyway — the user may already be a member
       }
     }
@@ -82,8 +83,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, circleId });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('POST /api/circles/join error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

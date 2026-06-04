@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { deleteFile, uploadLetterMedia } from '@/lib/s3';
+import { deleteFile, uploadLetterMedia } from '@/lib/storage';
 import { validateUploadFile } from '@/lib/upload-validation';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+type LetterPatchBody = {
+  folder?: string;
+  isRead?: boolean;
+  readAt?: string | Date | null;
+};
 
 function getLettersCacheKey(configId: string): string {
   return `love_letters:${configId}`;
@@ -35,7 +42,7 @@ export async function POST(
     const content = formData.get('content') as string | null;
     const unlockDate = formData.get('unlockDate') as string | null;
 
-    const updateData: any = {};
+    const updateData: Prisma.LoveLetterUncheckedUpdateInput = {};
     if (fromId) {
       const partner = await prisma.partner.findFirst({
         where: { configId, OR: [{ id: fromId }, { partnerId: fromId }] },
@@ -61,7 +68,8 @@ export async function POST(
       const result = await uploadLetterMedia(
         buffer,
         file.name,
-        file.type
+        file.type,
+        configId
       );
       updateData.mediaUrl = result.url;
       updateData.mediaS3Key = result.key;
@@ -70,7 +78,7 @@ export async function POST(
       else if (file.type.startsWith('audio/')) updateData.mediaType = 'audio';
       
       if (existingLetter.mediaS3Key) {
-        await deleteFile(existingLetter.mediaS3Key).catch(e => console.error('Failed to delete old S3 file:', e));
+        await deleteFile(existingLetter.mediaS3Key).catch(e => console.error('Failed to delete old storage file:', e));
       }
     }
 
@@ -135,7 +143,7 @@ export async function PUT(
     const params = await props.params;
     const id = params.id;
     const { configId } = access;
-    const body = await request.json();
+    const body = (await request.json()) as LetterPatchBody;
 
     const existingLetter = await prisma.loveLetter.findFirst({
       where: { id, from: { configId } },
@@ -151,7 +159,7 @@ export async function PUT(
         folder: body.folder,
         isRead: body.isRead,
         readAt: body.readAt ? new Date(body.readAt) : undefined,
-      } as any
+      } satisfies Prisma.LoveLetterUpdateInput
     });
 
     await redis.del(getLettersCacheKey(configId));

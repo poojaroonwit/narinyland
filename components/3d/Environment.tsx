@@ -6,22 +6,45 @@ import { useFrame } from '@react-three/fiber';
 import { Sparkles, Float, Text } from '@react-three/drei';
 import * as THREE from 'three';
 
+type EnvironmentTheme = {
+    leaves: string[];
+};
+
+type FlowerPosition = {
+    x: number;
+    z: number;
+};
+
+const hashString = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) {
+        hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+    }
+    return hash;
+};
+
+const seededRatio = (seed: number) => {
+    const value = Math.sin(seed * 9301 + 49297) * 233280;
+    return value - Math.floor(value);
+};
+
 // Ambient Falling Leaf
-export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: any, quality?: string }) => {
+export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: EnvironmentTheme, quality?: string }) => {
     const ref = useRef<THREE.Group>(null);
+    const instanceSeed = hashString(React.useId());
     const { position, rotation, speed, color, drift } = useMemo(() => {
         return {
             position: [
-                (Math.random() - 0.5) * 6,
-                4 + Math.random() * 6,
-                (Math.random() - 0.5) * 6
+                (seededRatio(instanceSeed) - 0.5) * 6,
+                4 + seededRatio(instanceSeed + 1) * 6,
+                (seededRatio(instanceSeed + 2) - 0.5) * 6
             ] as [number, number, number],
-            rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI] as [number, number, number],
-            speed: 0.015 + Math.random() * 0.025,
-            drift: 0.01 + Math.random() * 0.02,
-            color: theme.leaves[Math.floor(Math.random() * theme.leaves.length)]
+            rotation: [seededRatio(instanceSeed + 3) * Math.PI, seededRatio(instanceSeed + 4) * Math.PI, seededRatio(instanceSeed + 5) * Math.PI] as [number, number, number],
+            speed: 0.015 + seededRatio(instanceSeed + 6) * 0.025,
+            drift: 0.01 + seededRatio(instanceSeed + 7) * 0.02,
+            color: theme.leaves[Math.floor(seededRatio(instanceSeed + 8) * theme.leaves.length)] || theme.leaves[0]
         };
-    }, [theme]);
+    }, [instanceSeed, theme]);
 
     useFrame((state) => {
         if (!ref.current || quality === 'low') return;
@@ -60,34 +83,41 @@ export const LeafExplosion = ({ count = 20, color = "#4ade80" }) => {
   
   useFrame((state, delta) => {
     if (group.current) {
-        group.current.children.forEach((child: any) => {
-            child.position.add(child.userData.velocity);
-            child.userData.velocity.y -= delta * 0.5; // Gravity
+        group.current.children.forEach((child) => {
+            const velocity = child.userData.velocity as THREE.Vector3 | undefined;
+            const spin = child.userData.spin as { x: number; y: number; z: number } | undefined;
+            if (!velocity || !spin) return;
+            child.position.add(velocity);
+            velocity.y -= delta * 0.5; // Gravity
             child.scale.multiplyScalar(0.95); // Shrink
-            child.rotation.x += child.userData.spin.x;
-            child.rotation.y += child.userData.spin.y;
-            child.rotation.z += child.userData.spin.z;
+            child.rotation.x += spin.x;
+            child.rotation.y += spin.y;
+            child.rotation.z += spin.z;
         });
     }
   });
 
+  const instanceSeed = hashString(React.useId());
   const particles = useMemo(() => {
-      return Array.from({ length: count }).map(() => ({
+      return Array.from({ length: count }).map((_, index) => {
+          const seed = instanceSeed + index * 11;
+          return {
           position: [0, 2, 0] as [number, number, number],
           velocity: [
-              (Math.random() - 0.5) * 0.2,
-              Math.random() * 0.2 + 0.1,
-              (Math.random() - 0.5) * 0.2
+              (seededRatio(seed) - 0.5) * 0.2,
+              seededRatio(seed + 1) * 0.2 + 0.1,
+              (seededRatio(seed + 2) - 0.5) * 0.2
           ] as [number, number, number],
           spin: {
-            x: (Math.random() - 0.5) * 0.2,
-            y: (Math.random() - 0.5) * 0.2,
-            z: (Math.random() - 0.5) * 0.2
+            x: (seededRatio(seed + 3) - 0.5) * 0.2,
+            y: (seededRatio(seed + 4) - 0.5) * 0.2,
+            z: (seededRatio(seed + 5) - 0.5) * 0.2
           },
-          scale: Math.random() * 0.3 + 0.1,
+          scale: seededRatio(seed + 6) * 0.3 + 0.1,
           color: color
-      }));
-  }, [count, color]);
+          };
+      });
+  }, [count, color, instanceSeed]);
 
   return (
     <group ref={group}>
@@ -103,10 +133,11 @@ export const LeafExplosion = ({ count = 20, color = "#4ade80" }) => {
 
 export const Bird = () => {
     const ref = useRef<THREE.Group>(null);
-    const speed = useMemo(() => 0.4 + Math.random() * 0.4, []);
-    const radius = useMemo(() => 6 + Math.random() * 4, []);
-    const yOffset = useMemo(() => 6 + Math.random() * 2, []);
-    const startPhase = useMemo(() => Math.random() * Math.PI * 2, []);
+    const instanceSeed = hashString(React.useId());
+    const speed = useMemo(() => 0.4 + seededRatio(instanceSeed) * 0.4, [instanceSeed]);
+    const radius = useMemo(() => 6 + seededRatio(instanceSeed + 1) * 4, [instanceSeed]);
+    const yOffset = useMemo(() => 6 + seededRatio(instanceSeed + 2) * 2, [instanceSeed]);
+    const startPhase = useMemo(() => seededRatio(instanceSeed + 3) * Math.PI * 2, [instanceSeed]);
 
     useFrame(({ clock }) => {
         if (!ref.current) return;
@@ -150,13 +181,14 @@ export const Bird = () => {
     );
 };
 
-export const Butterfly = ({ flowers }: { flowers: any[] }) => {
+export const Butterfly = ({ flowers }: { flowers: FlowerPosition[] }) => {
     const ref = useRef<THREE.Group>(null);
     const [activity, setActivity] = useState<'flutter' | 'hover' | 'zip' | 'land'>('flutter');
     const timer = useRef(0);
     const targetPos = useRef(new THREE.Vector3());
-    const color = useMemo(() => ['#f472b6', '#60a5fa', '#fbbf24', '#a78bfa', '#2dd4bf'][Math.floor(Math.random() * 5)], []);
-    const basePos = useMemo(() => [(Math.random() - 0.5) * 10, 2 + Math.random() * 2, (Math.random() - 0.5) * 10], []);
+    const instanceSeed = hashString(React.useId());
+    const color = useMemo(() => ['#f472b6', '#60a5fa', '#fbbf24', '#a78bfa', '#2dd4bf'][Math.floor(seededRatio(instanceSeed) * 5)], [instanceSeed]);
+    const basePos = useMemo(() => [(seededRatio(instanceSeed + 1) - 0.5) * 10, 2 + seededRatio(instanceSeed + 2) * 2, (seededRatio(instanceSeed + 3) - 0.5) * 10], [instanceSeed]);
 
     useFrame((state, delta) => {
         if (!ref.current) return;
@@ -301,19 +333,21 @@ export const FloatingText = ({ text, position, color = "#22c55e", onComplete }: 
 export const Fireflies = ({ count = 20, quality = 'medium', color = '#fef08a' }: { count?: number, quality?: string, color?: string }) => {
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
-    
-    if (quality === 'low') return null;
+    const instanceSeed = hashString(React.useId());
     const effectiveCount = quality === 'medium' ? Math.floor(count / 2) : count;
 
     const particles = useMemo(() => {
-        return Array.from({ length: effectiveCount }, () => ({
-            speed: 0.2 + Math.random() * 0.3,
-            radius: 4 + Math.random() * 6,
-            yBase: 1 + Math.random() * 3,
-            seed: Math.random() * Math.PI * 2,
-            floatSpeed: 0.5 + Math.random() * 0.5
-        }));
-    }, [effectiveCount]);
+        return Array.from({ length: effectiveCount }, (_, index) => {
+            const seed = instanceSeed + index * 13;
+            return {
+                speed: 0.2 + seededRatio(seed) * 0.3,
+                radius: 4 + seededRatio(seed + 1) * 6,
+                yBase: 1 + seededRatio(seed + 2) * 3,
+                seed: seededRatio(seed + 3) * Math.PI * 2,
+                floatSpeed: 0.5 + seededRatio(seed + 4) * 0.5
+            };
+        });
+    }, [effectiveCount, instanceSeed]);
 
     useFrame((state) => {
         if (!meshRef.current) return;
@@ -333,6 +367,8 @@ export const Fireflies = ({ count = 20, quality = 'medium', color = '#fef08a' }:
         meshRef.current.instanceMatrix.needsUpdate = true;
     });
 
+    if (quality === 'low') return null;
+
     return (
         <instancedMesh ref={meshRef} args={[undefined, undefined, effectiveCount]}>
             <sphereGeometry args={[0.04, 4, 4]} />
@@ -347,26 +383,30 @@ export const Fireflies = ({ count = 20, quality = 'medium', color = '#fef08a' }:
     );
 };
 
-export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count?: number, theme: any, quality?: string }) => {
+export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count?: number, theme: EnvironmentTheme, quality?: string }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const instanceSeed = hashString(React.useId());
   
   const effectiveCount = quality === 'low' ? 0 : quality === 'medium' ? Math.floor(count / 2) : count;
 
   const particles = useMemo(() => {
     if (effectiveCount === 0) return [];
-    return Array.from({ length: effectiveCount }, () => ({
+    return Array.from({ length: effectiveCount }, (_, index) => {
+      const seed = instanceSeed + index * 17;
+      return {
       position: [
-        (Math.random() - 0.5) * 20,
-        Math.random() * 10 + 5,
-        (Math.random() - 0.5) * 20
+        (seededRatio(seed) - 0.5) * 20,
+        seededRatio(seed + 1) * 10 + 5,
+        (seededRatio(seed + 2) - 0.5) * 20
       ] as [number, number, number],
-      rotation: [Math.random() * Math.PI, Math.random() * Math.PI, 0] as [number, number, number],
-      speed: Math.random() * 0.02 + 0.01,
-      wobble: Math.random() * 0.1,
-      wobblePhase: Math.random() * Math.PI * 2
-    }));
-  }, [effectiveCount]);
+      rotation: [seededRatio(seed + 3) * Math.PI, seededRatio(seed + 4) * Math.PI, 0] as [number, number, number],
+      speed: seededRatio(seed + 5) * 0.02 + 0.01,
+      wobble: seededRatio(seed + 6) * 0.1,
+      wobblePhase: seededRatio(seed + 7) * Math.PI * 2
+      };
+    });
+  }, [effectiveCount, instanceSeed]);
 
   useFrame((state) => {
     if (!meshRef.current || effectiveCount === 0) return;
@@ -404,8 +444,10 @@ export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count
   );
 };
 // Procedural Drifting Clouds — enhanced with richer shapes and color gradients
-export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, theme: any, quality?: string }) => {
+export const Clouds = ({ hour, theme: _theme, quality = 'medium' }: { hour: number, theme: EnvironmentTheme, quality?: string }) => {
     const group = useRef<THREE.Group>(null);
+    const instanceSeed = hashString(React.useId());
+    void _theme;
     const count = quality === 'high' ? 12 : (quality === 'medium' ? 6 : 0);
     
     const cloudColor = useMemo(() => {
@@ -424,18 +466,21 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
     }, [hour, cloudColor]);
 
     const clouds = useMemo(() => {
-        return Array.from({ length: count }).map((_, i) => ({
+        return Array.from({ length: count }).map((_, i) => {
+            const seed = instanceSeed + i * 19;
+            return {
             position: [
-                (Math.random() - 0.5) * 50,
-                13 + Math.random() * 8,
-                -10 + (Math.random() - 0.5) * 40
+                (seededRatio(seed) - 0.5) * 50,
+                13 + seededRatio(seed + 1) * 8,
+                -10 + (seededRatio(seed + 2) - 0.5) * 40
             ] as [number, number, number],
-            scale: 1.5 + Math.random() * 3.5,
-            speed: 0.003 + Math.random() * 0.006,
-            seed: Math.random() * 100,
-            puffCount: 3 + Math.floor(Math.random() * 4)
-        }));
-    }, [count]);
+            scale: 1.5 + seededRatio(seed + 3) * 3.5,
+            speed: 0.003 + seededRatio(seed + 4) * 0.006,
+            seed: seededRatio(seed + 5) * 100,
+            puffCount: 3 + Math.floor(seededRatio(seed + 6) * 4)
+            };
+        });
+    }, [count, instanceSeed]);
 
     // Generate puff offsets per cloud
     const cloudPuffs = useMemo(() => {
@@ -444,11 +489,12 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
             // Central puff
             puffs.push({ pos: [0, 0, 0] as [number, number, number], s: 1.0 });
             for (let j = 1; j < c.puffCount; j++) {
-                const angle = (j / c.puffCount) * Math.PI * 2 + Math.random() * 0.5;
-                const dist = 0.5 + Math.random() * 0.6;
+                const puffSeed = c.seed + j * 23;
+                const angle = (j / c.puffCount) * Math.PI * 2 + seededRatio(puffSeed) * 0.5;
+                const dist = 0.5 + seededRatio(puffSeed + 1) * 0.6;
                 puffs.push({
-                    pos: [Math.cos(angle) * dist, (Math.random() - 0.5) * 0.3, Math.sin(angle) * dist] as [number, number, number],
-                    s: 0.5 + Math.random() * 0.5
+                    pos: [Math.cos(angle) * dist, (seededRatio(puffSeed + 2) - 0.5) * 0.3, Math.sin(angle) * dist] as [number, number, number],
+                    s: 0.5 + seededRatio(puffSeed + 3) * 0.5
                 });
             }
             return puffs;
@@ -458,7 +504,7 @@ export const Clouds = ({ hour, theme, quality = 'medium' }: { hour: number, them
     useFrame((state) => {
         if (!group.current) return;
         const t = state.clock.elapsedTime;
-        group.current.children.forEach((cloud: any, i) => {
+        group.current.children.forEach((cloud, i) => {
             if (!clouds[i]) return;
             cloud.position.x += clouds[i].speed;
             cloud.position.y += Math.sin(t * 0.3 + clouds[i].seed) * 0.003;
@@ -554,6 +600,7 @@ export const ShootingStar = ({ quality = 'medium' }: { quality?: string }) => {
 // God Rays / Light Shafts
 export const GodRays = ({ sunPosition, hour, quality = 'medium' }: { sunPosition: [number, number, number], hour: number, quality?: string }) => {
     const group = useRef<THREE.Group>(null);
+    const instanceSeed = hashString(React.useId());
     const count = quality === 'high' ? 12 : (quality === 'medium' ? 6 : 0);
     
     // Only visible during golden hour/day
@@ -564,18 +611,21 @@ export const GodRays = ({ sunPosition, hour, quality = 'medium' }: { sunPosition
     }, [hour]);
 
     const rays = useMemo(() => {
-        return Array.from({ length: count }).map((_, i) => ({
+        return Array.from({ length: count }).map((_, i) => {
+            const seed = instanceSeed + i * 29;
+            return {
             rotation: [
-                (Math.random() - 0.5) * 0.4,
-                (Math.random() - 0.5) * 0.4,
-                Math.random() * Math.PI * 2
+                (seededRatio(seed) - 0.5) * 0.4,
+                (seededRatio(seed + 1) - 0.5) * 0.4,
+                seededRatio(seed + 2) * Math.PI * 2
             ] as [number, number, number],
-            scale: [0.5 + Math.random() * 1.5, 15 + Math.random() * 15, 1] as [number, number, number],
-            speed: 0.1 + Math.random() * 0.2
-        }));
-    }, [count]);
+            scale: [0.5 + seededRatio(seed + 3) * 1.5, 15 + seededRatio(seed + 4) * 15, 1] as [number, number, number],
+            speed: 0.1 + seededRatio(seed + 5) * 0.2
+            };
+        });
+    }, [count, instanceSeed]);
 
-    useFrame((state) => {
+    useFrame(() => {
         if (!group.current || opacity <= 0) return;
         group.current.rotation.z += 0.001;
     });
@@ -626,7 +676,7 @@ export const Aurora = ({ hour, quality = 'medium' }: { hour: number, quality?: s
         const t = state.clock.elapsedTime;
         
         // Animate each band with wave motion
-        groupRef.current.children.forEach((band: any, i) => {
+        groupRef.current.children.forEach((band, i) => {
             if (!bands[i]) return;
             band.position.y = bands[i].yOffset + Math.sin(t * bands[i].speed + bands[i].seed) * 2.0;
             band.rotation.z = Math.sin(t * 0.08 + bands[i].seed) * 0.06;
@@ -673,7 +723,7 @@ export const Aurora = ({ hour, quality = 'medium' }: { hour: number, quality?: s
 };
 
 // Sky gradient dome — realistic 3-zone atmospheric gradient (zenith / mid-sky / horizon)
-export const SkyDome = ({ skyColor, hour, quality = 'medium' }: { skyColor: string, hour: number, quality?: string }) => {
+export const SkyDome = ({ hour }: { skyColor: string, hour: number, quality?: string }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     
     // 3-color gradient: zenith (top), mid (middle band), horizon (bottom)
@@ -890,9 +940,9 @@ export const CirrusClouds = ({ hour, quality = 'medium' }: { hour: number, quali
         });
     }, [count, isNight]);
 
-    useFrame((state) => {
+    useFrame(() => {
         if (!groupRef.current) return;
-        groupRef.current.children.forEach((wisp: any, i) => {
+        groupRef.current.children.forEach((wisp, i) => {
             if (!wisps[i]) return;
             wisp.position.x += wisps[i].speed;
             if (wisp.position.x > 60) wisp.position.x = -60;
@@ -997,7 +1047,7 @@ export const Nebula = ({ treeStyle, hour, quality = 'medium' }: { treeStyle: str
     const isSpecial = ['neon', 'midnight'].includes(treeStyle);
     const isNight = hour >= 19 || hour < 6;
 
-    useFrame((state) => {
+    useFrame(() => {
         if (ref.current) {
             ref.current.rotation.z += 0.0005;
             ref.current.rotation.x += 0.0002;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-server';
 import { getCircleMembersViaServer } from '@/lib/appkit-server';
 import prisma from '@/lib/prisma';
+import { getErrorMessage } from '@/lib/errors';
 
 async function userCanAccessCircle(circleId: string, userId: string): Promise<boolean> {
   const membership = await prisma.partner.findFirst({
@@ -33,8 +34,8 @@ export async function GET(
     const members = await getCircleMembersViaServer(circleId);
 
     return NextResponse.json({ success: true, members });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`GET /api/circles/${circleId}/members error:`, err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

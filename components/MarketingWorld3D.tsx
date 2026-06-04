@@ -1,23 +1,18 @@
 "use client";
 
 import * as React from 'react';
-import { useRef, useMemo } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { 
   ScrollControls, 
   Scroll, 
   useScroll, 
-  Float, 
-  Stars, 
-  Sky, 
   PerspectiveCamera, 
-  Environment as DreiEnvironment,
-  PresentationControls
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { Tree } from './3d/Tree';
 import { Pet3D } from './3d/Pet';
-import { Clouds, Fireflies, SkyDome } from './3d/Environment';
+import { Fireflies } from './3d/Environment';
 
 // Monochrome Theme for the Archive look
 const ARCHIVE_THEME = {

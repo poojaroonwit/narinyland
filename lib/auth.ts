@@ -216,7 +216,7 @@ export async function handleCallback(): Promise<boolean> {
     const client = getAppKit();
     await client.handleCallback();
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // If handleCallback fails because of stripped tokens, check our metadata cookie
     if (isAuthenticated()) {
       console.log('AppKit SDK reported callback error (likely due to stripped tokens), but session cookie is present. Considering success.');
@@ -224,7 +224,7 @@ export async function handleCallback(): Promise<boolean> {
     }
     console.error('AppKit handleCallback error:', err);
     // Surface transient server errors with a clear, retryable message
-    const msg: string = err?.message || String(err);
+    const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('503') || msg.includes('502') || msg.includes('504')) {
       throw new Error('Authentication server is temporarily unavailable. Please try again in a moment.');
     }
@@ -253,7 +253,19 @@ export function isAuthenticated(): boolean {
 /**
  * Get stored user info (Async)
  */
-export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string; attributes: Record<string, any> } | null> {
+type AuthUserResponse = {
+  id?: string;
+  sub?: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  picture?: string;
+  profile_image?: string;
+  image?: string;
+  attributes?: Record<string, unknown>;
+};
+
+export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string; attributes: Record<string, unknown> } | null> {
   if (typeof window === 'undefined') return null;
 
   try {
@@ -263,9 +275,12 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
     const res = await fetch('/api/auth/me', { credentials: 'include' });
     if (!res.ok) return null;
 
-    const user = await res.json();
+    const user = (await res.json()) as AuthUserResponse;
+    const sub = user.id || user.sub;
+    if (!sub) return null;
+
     return {
-      sub: user.id || user.sub,
+      sub,
       name: user.name || '',
       email: user.email || '',
       picture: user.avatar || user.picture || user.profile_image || user.image || '',
@@ -344,7 +359,7 @@ export async function getUserCircles(): Promise<Array<{ id: string; name: string
 /**
  * Update the current user's profile
  */
-export async function updateProfile(data: { name?: string; avatar?: string; attributes?: Record<string, any> }): Promise<boolean> {
+export async function updateProfile(data: { name?: string; avatar?: string; attributes?: Record<string, unknown> }): Promise<boolean> {
   try {
     await initAppKit();
     const client = getAppKit();

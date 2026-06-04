@@ -38,7 +38,7 @@ export function validateUploadFile(file: File): string | null {
   return null;
 }
 
-export function isSafeS3Key(key: string | null | undefined): key is string {
+export function isSafeStorageKey(key: string | null | undefined): key is string {
   if (!key) return false;
   if (key.length > 512) return false;
   if (key.startsWith('/') || key.includes('\\') || key.includes('..')) return false;

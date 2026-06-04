@@ -1,102 +1,97 @@
 # Narinyland Codebase Audit Report
 
-Date: 2026-06-02
+Date: 2026-06-04
 
 Scope: architecture/code quality, missing features, UX/UI leaks, security, speed, and resource use across the current working tree.
 
 ## Executive Summary
 
-Narinyland is now in a generally shippable technical state: TypeScript passes, production build passes, `npm audit` reports zero vulnerabilities, API auth/data-isolation work is already present, and this pass fixed several remaining security and accessibility issues.
+Narinyland is in a shippable baseline state after this fix pass: production build passes, TypeScript passes, focused security helper tests pass, and the highest-risk media and default-world access issues are now hardened for new uploads and production traffic.
 
-The biggest remaining risks are not single-line bugs. They are systemic debt: 471 lint warnings, broad `any` typing in API/client contracts, no automated tests, raw image usage, heavy 3D/media surfaces, and a legacy default-world access path that keeps backward compatibility but weakens strict multi-tenant isolation.
+The remaining work is mostly systemic verification and refactor debt rather than a single blocking bug: legacy UniBox keys now have a migration path and production gate, but the local database needs pending schema updates before the dry-run can inspect live data, and there is still no full browser/a11y/E2E test suite.
 
 ## Audit Health Score
 
 | Dimension | Score | Key finding |
 |---|---:|---|
-| Architecture / codebase | 3.0/4 | Build and TypeScript pass, but large components and broad `any` usage make changes risky. |
-| Feature completeness | 2.7/4 | Core romantic garden features are broad, but tests, rate limits, observability, and robust media ownership are missing. |
-| UX / UI | 2.8/4 | Strong personality, but dense modals, raw images, icon-only controls, decorative blur/glass patterns, and mobile pressure remain. |
-| Security | 3.2/4 | Major API auth is present; this pass hardened CSRF, media proxying, generic S3 tools, and name-login exposure. |
-| Speed / resource use | 2.8/4 | Build is healthy, but external font/icon CSS, remote hero video, raw images, and always-rich 3D scenes need deeper optimization. |
-| Total | 15.5/20 | Good, with important P1/P2 hardening and maintainability work remaining. |
+| Architecture / codebase | 3.4/4 | Build and TypeScript pass; API client and more route payloads are typed, but large components and a few broad payload types remain. |
+| Feature completeness | 3.0/4 | Core app flows are broad; focused tests were added and a broken timeline media-add control was fixed. |
+| UX / UI | 3.0/4 | Reduced-motion support, avatar fallbacks, media wrappers, and image labels improved; dense modal/drawer UX still needs a full pass. |
+| Security | 3.7/4 | CSRF, upload tooling, config membership, scoped media serving, and legacy-media production gating are materially stronger. Live legacy data migration still needs the database schema brought current. |
+| Speed / resource use | 3.3/4 | Build is clean, decorative paint was reduced, media loading is more consistent, layout DB reads are narrower, and more animation seeds are stable. 3D/font/icon optimization remains. |
+| Total | 17.6/20 | Good baseline with clear remaining P1/P2 migration and refactor items. |
 
 ## Fixed In This Pass
 
-- Added central same-origin protection for unsafe API methods in `proxy.ts`.
-- Replaced the weaker logout origin check with shared exact-origin CSRF validation.
-- Disabled `/api/auth/name-login` in production unless `ENABLE_NAME_LOGIN=true`.
-- Restricted generic S3 delete, presign, and list endpoints to admin-token requests in production.
-- Hardened `/api/instagram/image` to parse HTTPS URLs, allow only Instagram post/CDN hosts, reject non-image responses, cap declared response size, validate cached CDN URLs, and clear fetch timeout timers.
-- Restored browser zoom by removing `maximumScale: 1` and `userScalable: false`.
-- Added preconnect hints for external font/icon hosts.
-- Replaced layout `any` casts with a narrow runtime config type.
-- Added missing alt text and ARIA labels in the timeline spreadsheet media controls.
-- Moved the whiteboard canvas context from React state to a ref, removing React compiler immutability warnings.
+- Added config-aware media serving: new S3 uploads are stored under `configs/{configId}/...`, `/api/serve-image` checks membership for scoped keys, and the active circle is mirrored into a same-site cookie for browser image requests.
+- Tightened default config access: production no longer silently grants implicit `default` access unless `ALLOW_LEGACY_DEFAULT_CONFIG=true`; explicit circle/config membership is enforced.
+- Added focused node tests for config ID parsing, active-circle cookie fallback, scoped media key parsing, exact same-origin checks, upload folder validation, and S3 key validation.
+- Added a shared error helper and removed unsafe catch typing from upload, album, land, and selected client/server helpers.
+- Added typed API client contracts in `services/api.ts` and removed `any` from that API wrapper.
+- Fixed a broken timeline editor feature: the media add control now opens a real file picker and infers image/video/audio from MIME type.
+- Hardened the custom image wrapper against server render `window` access and standardized more media thumbnails through it.
+- Added reduced-motion CSS for users who prefer less animation.
+- Replaced selected direct image tags with `next/image` or the local media wrapper where safe, and added avatar fallback handling for emoji avatars.
+- Removed dead imports/state from the marketing page, garden page, timeline, and player.
+- Fixed build-time Prisma schema drift in `app/layout.tsx` by selecting only the metadata field actually needed from `AppConfig`.
+- Switched `World3D` from a runtime `require()` to an ES import.
+- Typed and hardened circle/config cleanup, coupon update, memory create/update, and timeline create payloads; this also fixed a null URL write edge case in memory form updates.
+- Replaced render-time `Math.random()` usage in `MemoryFrame`, `PetVisual`, and several `Environment` particle systems with deterministic seeded values, reducing React purity warning debt and improving render stability.
+- Typed and hardened Instagram profile scraping, letter updates, partner sync, onboarding error handling, auth callback errors, and most timeline detail update/create payloads.
+- Replaced render-time random cloud generation with deterministic seeded cloud and puff placement.
+- Replaced more render-time randomness in god rays, flowers, garden grass/stone paths, the login background, and LoveTree grass placement with deterministic seeded values.
+- Removed stale imports/unused props in marketing world, location picker, coupon cards, garden constants, and related small components.
+- Removed the remaining explicit lint suppressions from auth callback handling, the auth provider, media/player effects, Prisma helper scripts, timeline detail updates, `EditDrawer`, `Tree`, and `Pet`; all now pass lint without inline exceptions.
+- Added a production gate for unscoped legacy media keys. Production now denies them unless `ALLOW_LEGACY_UNSCOPED_MEDIA=true` is explicitly set.
+- Added `npm run db:scope-legacy-media` for dry-run legacy UniBox key scoping and `npm run db:scope-legacy-media -- --write` to rewrite DB references after review.
+- Added tests for legacy UniBox key scoping and the production legacy-media access gate.
 
 ## Remaining Findings
 
-### P1: Legacy default-world access weakens strict multi-tenant isolation
+### P1: Live legacy media migration is ready but blocked by local DB drift
 
-Location: `lib/config-access.ts`
+New uploads are config-scoped and membership-checked. Production denies unscoped legacy keys unless `ALLOW_LEGACY_UNSCOPED_MEDIA=true` is set. The migration script can scope legacy UniBox keys in DB records and reports older S3-style keys that require object copying.
 
-Impact: If a request has no `X-Circle-Id`, the `default` config remains allowed for any authenticated legacy session. This preserves old data behavior, but it is not strict tenant isolation.
+Action: run the pending Prisma migration/deploy step so `Memory.configId` exists in the live DB, then run `npm run db:scope-legacy-media` and apply with `-- --write` after reviewing unsupported S3-style keys.
 
-Action: Finish migrating all users into explicit circles, then remove the no-header default fallback. Treat all world-scoped routes as requiring membership.
+### P1: Test coverage is focused but still thin
 
-### P1: Media ownership is not fully enforced at S3 key level
+The new tests cover important security helpers, but route-level auth, Prisma/Redis behavior, uploads, and browser UX are not covered.
 
-Location: `app/api/serve-image/route.ts`, `lib/s3.ts`, upload routes
+Action: add route tests for circle membership, config mutation, upload create/delete, media serving, and CSRF rejection. Add one Playwright smoke test for login-gated app rendering.
 
-Impact: Auth is required, and generic S3 tooling is now admin-restricted, but `/api/serve-image?key=...` still serves any safe key to an authenticated session. Image tags also cannot send `X-Circle-Id`, so route-level membership is hard to enforce with the current URL shape.
+### P2: Lint debt is cleared; component size debt remains
 
-Action: Prefix uploaded keys with config/circle ID, store media ownership metadata, and serve media through signed opaque IDs or short-lived signed URLs rather than raw S3 keys.
+`npm run lint` passes with 0 warnings and no `eslint-disable` comments remain under `app`, `components`, `lib`, or `prisma`. The remaining maintainability debt is structural: `EditDrawer`, `app/page.tsx`, and rich 3D components are still large and should be split into smaller owned modules.
 
-### P1: No automated test framework
+Action: extract settings panels, 3D scene helpers, and media controls into smaller typed components so future feature work stays low-risk.
 
-Location: project-wide
+### P2: UX/accessibility needs full browser verification
 
-Impact: Security and data isolation changes rely on manual build/lint checks. This is risky for a multi-route app with auth, Redis, Prisma, and S3 behavior.
+Several controls improved, but large drawer/modal flows still need keyboard, focus, touch target, and screen-reader checks.
 
-Action: Add focused route tests first: config access, circle membership, upload validation, CSRF rejection, and media proxy URL rejection.
+Action: run a browser/a11y pass on `app/garden`, `EditDrawer`, `Timeline`, `LoveLetter`, and onboarding. Add tooltips/labels where icon-only controls remain.
 
-### P2: Lint warning debt remains high
+### P2: Performance work remains for rich media and 3D
 
-Location: project-wide, especially `services/api.ts`, `app/api/config/route.ts`, `app/garden/page.tsx`, large UI components
+The app still relies on external font/icon CSS, remote hero video, and rich 3D scenes. Reduced motion exists, but 3D quality/lazy-loading needs deeper profiling.
 
-Impact: `npm run lint` passes but reports 471 warnings. The biggest groups are broad `any`, unused variables, raw `<img>`, and React hook/compiler warnings in procedural code.
-
-Action: Type API response contracts in `services/api.ts`, extract large route payload types, and split large UI surfaces before tightening lint rules.
-
-### P2: UX/UI accessibility still needs a complete pass
-
-Location: `components/EditDrawer.tsx`, `components/Timeline.tsx`, `components/LoveLetter.tsx`, `app/page.tsx`
-
-Impact: The interface has charm, but repeated modal/drawer surfaces, icon-heavy controls, dense mobile layouts, and raw images can hurt keyboard, screen-reader, and touch users.
-
-Action: Add labels/tooltips to all icon-only controls, verify focus order, make touch targets consistently 44px+, and replace decorative text-heavy controls with familiar icon controls where appropriate.
-
-### P2: Performance and resource use need profiling
-
-Location: `app/page.tsx`, `components/LoveTree3D.tsx`, `components/World3D.tsx`, `components/3d/Environment.tsx`, image-heavy components
-
-Impact: The app uses a remote hero video, external font/icon CSS, raw image tags, and rich 3D scenes. These can increase LCP, memory, bandwidth, and mobile battery cost.
-
-Action: Use `next/image` or a vetted image component strategy, lazy-load non-critical 3D views, honor reduced motion, and replace Font Awesome CDN with bundled icons.
+Action: bundle icons, evaluate self-hosted fonts, lazy-load non-critical 3D views, and profile mobile memory/frame rate.
 
 ## Action Item Plan
 
-1. P1 security: remove default-world fallback after data migration and add route tests for membership enforcement.
-2. P1 security: redesign media serving around config-scoped keys or opaque media IDs.
-3. P1 quality: add a minimal test framework and cover auth/config/upload/media proxy routes first.
-4. P2 maintainability: type `services/api.ts` and the highest-traffic API route payloads.
-5. P2 UX/accessibility: audit the large modal/drawer surfaces with keyboard and screen-reader checks.
-6. P2 performance: replace raw images, bundle icons, lazy-load 3D, and add reduced-motion behavior.
-7. P3 polish: normalize typography/color tokens and reduce decorative glass/blur/orb patterns where they do not carry product meaning.
+1. Bring the live database schema current, run `npm run db:scope-legacy-media`, then apply `-- --write` for scoped UniBox keys after reviewing unsupported S3-style keys.
+2. Add route-level auth/security tests around config, upload, media serving, and circle membership.
+3. Split `EditDrawer`, `app/page.tsx`, and large 3D components into smaller typed modules.
+4. Continue stabilizing random animation state in the remaining 3D/media components.
+5. Run browser-based responsive, accessibility, and focus-order verification.
+6. Profile and lazy-load 3D/media-heavy views, then replace external icon/font dependencies where practical.
 
 ## Verification
 
-- `.\node_modules\.bin\tsc.cmd --noEmit`: passed.
-- `cmd /c npm run lint`: passed with 471 warnings.
-- `cmd /c npm audit --json`: 0 vulnerabilities.
-- `cmd /c npm run build`: passed.
+- `cmd /c npm test`: passed, 10 tests.
+- `.\node_modules\.bin\tsc.cmd --noEmit`: passed after build regenerated `.next/types`.
+- `cmd /c npm run lint`: passed with 0 warnings.
+- `rg -n "eslint-disable" app components lib prisma`: no matches.
+- `cmd /c npm run build`: passed cleanly.
+- `cmd /c npm run db:scope-legacy-media`: blocked by local DB schema drift (`Memory.configId` missing); script now reports this as an actionable migration prerequisite.

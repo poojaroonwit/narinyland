@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Interaction, MediaContent } from '../types';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import OptimizedImage from './OptimizedImage';
 
 interface TimelineSpreadsheetProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ interface TimelineSpreadsheetProps {
 
 const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: { 
   item: Interaction, 
-  onUpdate: (id: string, field: keyof Interaction, value: any) => void,
+  onUpdate: <K extends keyof Interaction>(id: string, field: K, value: Interaction[K]) => void,
   onFileChange: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void,
   onRemove: (id: string) => void,
   onViewImage: (url: string) => void
@@ -74,7 +75,7 @@ const MobileCard = ({ item, onUpdate, onFileChange, onRemove, onViewImage }: {
         </label>
         {(item.mediaItems || (item.media ? [item.media] : [])).map((m, idx) => (
           <div key={idx} className="w-16 h-16 rounded-md overflow-hidden relative shrink-0 group cursor-pointer" onClick={() => onViewImage(m.url)}>
-             <img src={m.url} alt={`Memory media ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+             <OptimizedImage src={m.url} alt={`Memory media ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
              <button 
                 aria-label={`Remove memory media ${idx + 1}`}
                 onClick={() => {
@@ -109,7 +110,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
     }
   }, [isOpen, interactions]);
 
-  const handleUpdate = (id: string, field: keyof Interaction, value: any) => {
+  const handleUpdate = <K extends keyof Interaction>(id: string, field: K, value: Interaction[K]) => {
     setLocalItems(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
@@ -261,7 +262,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                         <td className="p-4 w-32">
                           <select 
                             value={item.type}
-                            onChange={(e) => handleUpdate(item.id, 'type', e.target.value)}
+                            onChange={(e) => handleUpdate(item.id, 'type', e.target.value as Interaction['type'])}
                             className="w-full bg-pink-50/50 border-none font-black text-[10px] uppercase tracking-wider text-pink-500 cursor-pointer p-3 rounded-md focus:ring-2 ring-pink-100"
                           >
                             <option value="pet">Pet</option>
@@ -300,7 +301,7 @@ const TimelineSpreadsheet: React.FC<TimelineSpreadsheetProps> = ({
                           <div className="flex items-center gap-3 overflow-x-auto max-w-[220px] scrollbar-hide py-1">
                             {(item.mediaItems || (item.media ? [item.media] : [])).map((m, idx) => (
                               <div key={idx} className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 border-2 border-white shadow-sm shrink-0 relative group/img cursor-pointer" onClick={() => setViewingImage(m.url)}>
-                                {m.type === 'image' && <img src={m.url} alt={`Memory media ${idx + 1}`} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform" />}
+                                {m.type === 'image' && <OptimizedImage src={m.url} alt={`Memory media ${idx + 1}`} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform" />}
                                 {m.type === 'video' && <div className="w-full h-full flex items-center justify-center text-xs">🎥</div>}
                                 <button 
                                   aria-label={`Remove memory media ${idx + 1}`}

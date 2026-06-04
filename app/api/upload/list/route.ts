@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listFiles } from '@/lib/s3';
+import { listFiles } from '@/lib/storage';
 import { normalizeUploadFolder } from '@/lib/upload-validation';
 import { requireAdminRequest } from '@/lib/security';
 

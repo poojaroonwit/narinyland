@@ -1,13 +1,39 @@
 "use client";
 
 import * as React from 'react';
-import { useRef, useState, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Text, Float, Detailed, Sparkles } from '@react-three/drei';
+import { useRef, useState, useMemo } from 'react';
+import { ThreeEvent, useFrame } from '@react-three/fiber';
+import { Text, Float, Detailed } from '@react-three/drei';
 import * as THREE from 'three';
 import { Emotion } from '../../types';
 
-export const PetVisuals = ({ petType, colors, emotion, active, quality, detail = 'high', coreRef, headRef, tailRef, legRefs }: any) => {
+type PetColors = { primary: string; secondary: string; nose: string };
+type PetDetail = 'high' | 'medium' | 'low';
+type GroupRef = React.RefObject<THREE.Group | null>;
+
+type PetVisualsProps = {
+  petType: string;
+  colors: PetColors;
+  emotion: Emotion;
+  active: boolean;
+  quality: string;
+  detail?: PetDetail;
+  coreRef: GroupRef;
+  headRef: GroupRef;
+  tailRef: GroupRef;
+  legRefs: [GroupRef, GroupRef, GroupRef, GroupRef];
+};
+
+type Pet3DProps = {
+  emotion: Emotion;
+  theme?: unknown;
+  petType?: string;
+  startPos?: [number, number, number];
+  otherPets?: Array<{ ref: GroupRef; type: string }>;
+  quality?: string;
+};
+
+export const PetVisuals = ({ petType, colors, emotion, active, quality, detail = 'high', coreRef, headRef, tailRef, legRefs }: PetVisualsProps) => {
   const isLow = detail === 'low' || quality === 'low';
   const isMid = detail === 'medium';
 
@@ -150,12 +176,12 @@ export const PetVisuals = ({ petType, colors, emotion, active, quality, detail =
         </group>
 
         {/* Legs */}
-        {[
+        {([
             { p: [0.15, 0.25, 0.2], r: legRefs[0] }, 
             { p: [-0.15, 0.25, 0.2], r: legRefs[1] }, 
             { p: [0.15, 0.25, -0.2], r: legRefs[2] }, 
             { p: [-0.15, 0.25, -0.2], r: legRefs[3] }  
-        ].map((leg: any, i) => (
+        ] satisfies Array<{ p: [number, number, number]; r: GroupRef }>).map((leg, i) => (
             <group key={i} position={leg.p} ref={leg.r} scale={petType === 'panda' ? [1.2, 1, 1.2] : [1, 1, 1]}>
                 <mesh position={[0, -0.15, 0]} castShadow={detail === 'high'}>
                     <boxGeometry args={[0.08, 0.3, 0.08]} />
@@ -191,14 +217,19 @@ export const PetVisuals = ({ petType, colors, emotion, active, quality, detail =
   );
 };
 
-export const Pet3D = React.forwardRef<THREE.Group, { emotion: Emotion; theme: any; petType?: string; startPos?: [number, number, number]; otherPets?: Array<{ ref: React.RefObject<THREE.Group | null>, type: string }>; quality?: string }>(({ emotion, theme, petType = 'cat', startPos = [2, 0, 2], otherPets = [], quality = 'medium' }, externalRef) => {
+export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petType = 'cat', startPos = [2, 0, 2], otherPets = [], quality = 'medium' }, externalRef) => {
   const innerRef = useRef<THREE.Group>(null);
   const ref = (externalRef as React.RefObject<THREE.Group>) || innerRef;
   
   const coreRef = useRef<THREE.Group>(null);
   const tailRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
-  const legRefs = [useRef<THREE.Group>(null), useRef<THREE.Group>(null), useRef<THREE.Group>(null), useRef<THREE.Group>(null)];
+  const legRefs: [GroupRef, GroupRef, GroupRef, GroupRef] = [
+    useRef<THREE.Group>(null),
+    useRef<THREE.Group>(null),
+    useRef<THREE.Group>(null),
+    useRef<THREE.Group>(null),
+  ];
   
   const [active, setActive] = useState(false);
   
@@ -252,7 +283,7 @@ export const Pet3D = React.forwardRef<THREE.Group, { emotion: Emotion; theme: an
                 const angle = Math.random() * Math.PI * 2;
                 const dist = activity === 'play' ? 1.0 + Math.random() * 2.0 : 1.5 + Math.random() * 4.5;
                 
-                let finalTarget = new THREE.Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+                const finalTarget = new THREE.Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
                 if (activity === 'play' && otherPets.length > 0) {
                     const companion = otherPets[Math.floor(Math.random() * otherPets.length)];
                     if (companion.ref.current) {
@@ -270,7 +301,7 @@ export const Pet3D = React.forwardRef<THREE.Group, { emotion: Emotion; theme: an
         let targetY = 0;
         let targetBodyRot = 0;
         let legRotX = [0, 0, 0, 0]; 
-        let legRotZ = [0, 0, 0, 0];
+        const legRotZ = [0, 0, 0, 0];
 
         switch(activity) {
             case 'walk':
@@ -388,7 +419,7 @@ export const Pet3D = React.forwardRef<THREE.Group, { emotion: Emotion; theme: an
     }
   });
 
-  const handlePetClick = (e: any) => {
+  const handlePetClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     if (!isJumping.current) {
         isJumping.current = true;

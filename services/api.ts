@@ -4,6 +4,74 @@
  */
 
 import { getActiveCircleId } from '@/lib/circle-store';
+import type {
+  AppConfig,
+  Interaction,
+  Land,
+  LoveLetterMessage,
+  LoveStats,
+  MemoryItem,
+} from '@/types';
+
+type ApiResult = Record<string, unknown>;
+type ApiMutationResult = ApiResult & { success?: boolean };
+type MemoryRecord = MemoryItem & {
+  id: string;
+  s3Key?: string | null;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+type TimelineRecord = Omit<Interaction, 'timestamp'> & { timestamp: string };
+type LetterRecord = Omit<LoveLetterMessage, 'timestamp' | 'unlockDate' | 'readAt'> & {
+  timestamp: string;
+  unlockDate: string;
+  readAt?: string;
+};
+type CouponRecord = AppConfig['coupons'][number] & {
+  forPartner?: string;
+};
+type UploadResult = {
+  key: string;
+  url: string;
+  originalName: string;
+  size: number;
+  contentType: string;
+};
+type CircleRecord = {
+  id: string;
+  name: string;
+  description?: string;
+  role: string;
+  memberCount?: number;
+  createdAt?: string;
+};
+type CircleMember = {
+  id?: string;
+  userId?: string;
+  name?: string;
+  avatar?: string;
+  role?: string;
+};
+type CircleCreateResult = ApiMutationResult & {
+  circleId?: string;
+  config?: AppConfig;
+  defaultLand?: Land;
+};
+type ConfigUpdatePayload = Partial<AppConfig> & Record<string, unknown>;
+type PartnerSyncResult = ApiMutationResult & {
+  partnerId?: string;
+  name?: string;
+  avatar?: string;
+};
+type StatsResult = LoveStats & {
+  leaves: number;
+  points: number;
+  xpForNextLevel?: number;
+  totalXP?: number;
+  success?: boolean;
+  leveledUp?: boolean;
+};
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
 // This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
@@ -71,10 +139,10 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
 // ─── Config API ──────────────────────────────────────────────────────
 
 export const configAPI = {
-  get: () => fetchAPI<any>('/config'),
+  get: () => fetchAPI<AppConfig>('/config'),
   
-  update: (data: any) =>
-    fetchAPI<any>('/config', {
+  update: (data: ConfigUpdatePayload) =>
+    fetchAPI<AppConfig>('/config', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -84,7 +152,7 @@ export const configAPI = {
 
 export const memoriesAPI = {
   list: (privacy?: string) =>
-    fetchAPI<any[]>(`/memories${privacy && privacy !== 'all' ? `?privacy=${privacy}` : ''}`),
+    fetchAPI<MemoryRecord[]>(`/memories${privacy && privacy !== 'all' ? `?privacy=${privacy}` : ''}`),
 
   create: (data: { url?: string; privacy?: string; caption?: string; file?: File }) => {
     if (data.file) {
@@ -92,9 +160,9 @@ export const memoriesAPI = {
       formData.append('image', data.file);
       if (data.privacy) formData.append('privacy', data.privacy);
       if (data.caption) formData.append('caption', data.caption);
-      return fetchFormData<any>('/memories', formData);
+      return fetchFormData<MemoryRecord>('/memories', formData);
     }
-    return fetchAPI<any>('/memories', {
+    return fetchAPI<MemoryRecord>('/memories', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -107,19 +175,19 @@ export const memoriesAPI = {
       if (data.url) formData.append('url', data.url);
       if (data.privacy) formData.append('privacy', data.privacy);
       if (data.caption) formData.append('caption', data.caption);
-      return fetchFormData<any>(`/memories/${id}`, formData);
+      return fetchFormData<MemoryRecord>(`/memories/${id}`, formData);
     }
-    return fetchAPI<any>(`/memories/${id}`, {
+    return fetchAPI<MemoryRecord>(`/memories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
   delete: (id: string) =>
-    fetchAPI<any>(`/memories/${id}`, { method: 'DELETE' }),
+    fetchAPI<ApiMutationResult>(`/memories/${id}`, { method: 'DELETE' }),
 
   reorder: (orderedIds: string[]) =>
-    fetchAPI<any>('/memories/reorder', {
+    fetchAPI<ApiMutationResult>('/memories/reorder', {
       method: 'PUT',
       body: JSON.stringify({ orderedIds }),
     }),
@@ -128,7 +196,7 @@ export const memoriesAPI = {
 // ─── Timeline API ────────────────────────────────────────────────────
 
 export const timelineAPI = {
-  list: () => fetchAPI<any[]>('/timeline'),
+  list: () => fetchAPI<TimelineRecord[]>('/timeline'),
 
   create: (data: { text: string; type?: string; location?: string; latitude?: number; longitude?: number; timestamp?: string; files?: File[] }) => {
     if (data.files && data.files.length > 0) {
@@ -142,9 +210,9 @@ export const timelineAPI = {
       if (data.latitude !== undefined) formData.append('latitude', data.latitude.toString());
       if (data.longitude !== undefined) formData.append('longitude', data.longitude.toString());
       if (data.timestamp) formData.append('timestamp', data.timestamp);
-      return fetchFormData<any>('/timeline', formData);
+      return fetchFormData<TimelineRecord>('/timeline', formData);
     }
-    return fetchAPI<any>('/timeline', {
+    return fetchAPI<TimelineRecord>('/timeline', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -162,22 +230,22 @@ export const timelineAPI = {
       if (data.latitude !== undefined) formData.append('latitude', data.latitude.toString());
       if (data.longitude !== undefined) formData.append('longitude', data.longitude.toString());
       if (data.timestamp !== undefined) formData.append('timestamp', data.timestamp);
-      return fetchFormData<any>(`/timeline/${id}`, formData);
+      return fetchFormData<TimelineRecord>(`/timeline/${id}`, formData);
     }
-    return fetchAPI<any>(`/timeline/${id}`, {
+    return fetchAPI<TimelineRecord>(`/timeline/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
   delete: (id: string) =>
-    fetchAPI<any>(`/timeline/${id}`, { method: 'DELETE' }),
+    fetchAPI<ApiMutationResult>(`/timeline/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Letters API ─────────────────────────────────────────────────────
 
 export const lettersAPI = {
-  list: () => fetchAPI<any[]>('/letters'),
+  list: () => fetchAPI<LetterRecord[]>('/letters'),
 
   create: (data: { fromId: string; content: string; unlockDate: string; file?: File }) => {
     if (data.file) {
@@ -186,9 +254,9 @@ export const lettersAPI = {
       formData.append('fromId', data.fromId);
       formData.append('content', data.content);
       formData.append('unlockDate', data.unlockDate);
-      return fetchFormData<any>('/letters', formData);
+      return fetchFormData<LetterRecord>('/letters', formData);
     }
-    return fetchAPI<any>('/letters', {
+    return fetchAPI<LetterRecord>('/letters', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -201,19 +269,19 @@ export const lettersAPI = {
       if (data.fromId) formData.append('fromId', data.fromId);
       if (data.content) formData.append('content', data.content);
       if (data.unlockDate) formData.append('unlockDate', data.unlockDate);
-      return fetchFormData<any>(`/letters/${id}`, formData);
+      return fetchFormData<LetterRecord>(`/letters/${id}`, formData);
     }
-    return fetchAPI<any>(`/letters/${id}`, {
+    return fetchAPI<LetterRecord>(`/letters/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
   markAsRead: (id: string) =>
-    fetchAPI<any>(`/letters/${id}/read`, { method: 'PUT' }),
+    fetchAPI<ApiMutationResult>(`/letters/${id}/read`, { method: 'PUT' }),
 
   delete: (id: string) =>
-    fetchAPI<any>(`/letters/${id}`, { method: 'DELETE' }),
+    fetchAPI<ApiMutationResult>(`/letters/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Partners API ────────────────────────────────────────────────────
@@ -224,7 +292,7 @@ export const partnersAPI = {
    * The server reads the user's identity from the session cookie.
    */
   sync: (data?: { name?: string; avatar?: string }) =>
-    fetchAPI<any>('/partners/sync', {
+    fetchAPI<PartnerSyncResult>('/partners/sync', {
       method: 'POST',
       body: JSON.stringify(data || {}),
     }),
@@ -233,35 +301,35 @@ export const partnersAPI = {
 // ─── Coupons API ─────────────────────────────────────────────────────
 
 export const couponsAPI = {
-  list: () => fetchAPI<any[]>('/coupons'),
+  list: () => fetchAPI<CouponRecord[]>('/coupons'),
 
   create: (data: { title: string; emoji: string; desc: string; color: string; forPartner: string; points: number }) => {
-    return fetchAPI<any>('/coupons', {
+    return fetchAPI<CouponRecord>('/coupons', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  redeem: (id: string) => fetchAPI<any>(`/coupons/${id}/redeem`, { method: 'PUT' }),
+  redeem: (id: string) => fetchAPI<CouponRecord>(`/coupons/${id}/redeem`, { method: 'PUT' }),
 
-  delete: (id: string) => fetchAPI<any>(`/coupons/${id}`, { method: 'DELETE' }),
+  delete: (id: string) => fetchAPI<ApiMutationResult>(`/coupons/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Stats API ───────────────────────────────────────────────────────
 
 export const statsAPI = {
-  get: () => fetchAPI<any>('/stats'),
+  get: () => fetchAPI<StatsResult>('/stats'),
 
   addXP: (amount: number, partnerId?: string) =>
-    fetchAPI<any>('/stats/add-xp', {
+    fetchAPI<StatsResult>('/stats/add-xp', {
       method: 'PUT',
       body: JSON.stringify({ amount, partnerId }),
     }),
 
-  addLeaf: () => fetchAPI<any>('/stats/add-leaf', { method: 'POST' }),
+  addLeaf: () => fetchAPI<StatsResult>('/stats/add-leaf', { method: 'POST' }),
 
   addPoints: (amount: number) => 
-    fetchAPI<any>('/stats/add-points', { 
+    fetchAPI<StatsResult>('/stats/add-points', { 
         method: 'POST', 
         body: JSON.stringify({ amount }) 
     }),
@@ -274,11 +342,11 @@ export const uploadAPI = {
     const formData = new FormData();
     formData.append('file', file);
     if (folder) formData.append('folder', folder);
-    return fetchFormData<any>('/upload', formData);
+    return fetchFormData<UploadResult>('/upload', formData);
   },
 
   delete: (key: string) =>
-    fetchAPI<any>('/upload', {
+    fetchAPI<ApiMutationResult>('/upload', {
       method: 'DELETE',
       body: JSON.stringify({ key }),
     }),
@@ -293,25 +361,25 @@ export const uploadAPI = {
 // ─── Lands API ───────────────────────────────────────────────────────
 
 export const landsAPI = {
-  list: () => fetchAPI<any[]>('/lands'),
+  list: () => fetchAPI<Land[]>('/lands'),
 
   create: (name: string) =>
-    fetchAPI<any>('/lands', {
+    fetchAPI<Land>('/lands', {
       method: 'POST',
       body: JSON.stringify({ name }),
     }),
 
   update: (id: string, data: { name?: string; isActive?: boolean }) =>
-    fetchAPI<any>(`/lands/${id}`, {
+    fetchAPI<Land>(`/lands/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   delete: (id: string) =>
-    fetchAPI<any>(`/lands/${id}`, { method: 'DELETE' }),
+    fetchAPI<ApiMutationResult>(`/lands/${id}`, { method: 'DELETE' }),
 
   setActive: (id: string) =>
-    fetchAPI<any>(`/lands/${id}`, {
+    fetchAPI<Land>(`/lands/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ isActive: true }),
     }),
@@ -320,17 +388,17 @@ export const landsAPI = {
 // ─── Circles API ──────────────────────────────────────────────────────────
 
 export const circlesAPI = {
-  list: () => fetchAPI<any[]>('/circles'),
+  list: () => fetchAPI<CircleRecord[]>('/circles'),
 
   create: (data: { name: string; description?: string }) =>
-    fetchAPI<any>('/circles', {
+    fetchAPI<CircleCreateResult>('/circles', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (id: string, data: { name?: string; description?: string }) => {
     if (!id || id === 'undefined') throw new Error('Invalid World ID');
-    return fetchAPI<any>(`/circles/${id}`, {
+    return fetchAPI<CircleCreateResult>(`/circles/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -338,12 +406,12 @@ export const circlesAPI = {
 
   delete: (id: string) => {
     if (!id || id === 'undefined') throw new Error('Invalid World ID');
-    return fetchAPI<any>(`/circles/${id}`, { method: 'DELETE' });
+    return fetchAPI<ApiMutationResult>(`/circles/${id}`, { method: 'DELETE' });
   },
 
   listMembers: (id: string) => {
     if (!id || id === 'undefined') throw new Error('Invalid World ID');
-    return fetchAPI<{ members: any[] }>(`/circles/${id}/members`);
+    return fetchAPI<{ members: CircleMember[] }>(`/circles/${id}/members`);
   },
 };
 

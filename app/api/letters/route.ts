@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { uploadLetterMedia } from '@/lib/s3';
+import { uploadLetterMedia } from '@/lib/storage';
 
 import { redis } from '@/lib/redis';
 import { validateUploadFile } from '@/lib/upload-validation';
@@ -105,7 +105,8 @@ export async function POST(request: Request) {
       const result = await uploadLetterMedia(
         buffer,
         file.name,
-        file.type
+        file.type,
+        configId
       );
       mediaUrl = result.url;
       mediaS3Key = result.key;

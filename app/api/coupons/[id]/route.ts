@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+type CouponUpdateBody = {
+  title?: string;
+  emoji?: string;
+  desc?: string;
+  color?: string;
+  forPartner?: string;
+  points?: number;
+  redeemedAt?: string | Date | null;
+};
 
 // PUT /api/coupons/[id]
 export async function PUT(
@@ -15,7 +26,7 @@ export async function PUT(
     const params = await props.params;
     const id = params.id;
     const { configId } = access;
-    const body = await request.json();
+    const body = (await request.json()) as CouponUpdateBody;
 
     const existingCoupon = await prisma.coupon.findFirst({
       where: { id, configId },
@@ -35,7 +46,7 @@ export async function PUT(
         forPartner: body.forPartner,
         points: body.points,
         redeemedAt: body.redeemedAt ? new Date(body.redeemedAt) : undefined,
-      } as any
+      } satisfies Prisma.CouponUpdateInput
     });
 
     await redis.del(`app_config:${configId}`);

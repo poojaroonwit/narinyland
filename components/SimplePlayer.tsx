@@ -15,14 +15,13 @@ interface SimplePlayerProps {
 const SimplePlayer: React.FC<SimplePlayerProps> = ({ 
   playlist = [], 
   volume: controlledVolume, 
-  setVolume: controlledSetVolume,
   playing: controlledPlaying,
   setPlaying: controlledSetPlaying,
   muted: controlledMuted,
   setMuted: controlledSetMuted
 }) => {
   const [internalPlaying, setInternalPlaying] = useState(false);
-  const [internalVolume, setInternalVolume] = useState(1.0);
+  const [internalVolume] = useState(1.0);
   const [internalMuted, setInternalMuted] = useState(true);
   
   // Track current song index
@@ -32,11 +31,10 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
   const playing = controlledPlaying ?? internalPlaying;
   const setPlaying = controlledSetPlaying ?? setInternalPlaying;
   const volume = controlledVolume ?? internalVolume;
-  const setVolume = controlledSetVolume ?? setInternalVolume;
   const muted = controlledMuted ?? internalMuted;
   const setMuted = controlledSetMuted ?? setInternalMuted;
 
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
   // Helper to extract YouTube ID
@@ -52,10 +50,10 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
     try {
       const saved = localStorage.getItem('nari_music_state');
       if (saved) {
-        const { index, timestamp } = JSON.parse(saved);
+        const { index } = JSON.parse(saved) as { index?: number };
         // Only restore if valid index
-        if (index >= 0 && index < playlist.length) {
-          setCurrentTrackIndex(index);
+        if (typeof index === 'number' && index >= 0 && index < playlist.length) {
+          queueMicrotask(() => setCurrentTrackIndex(index));
         }
       }
     } catch (e) {
@@ -73,6 +71,11 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
     }
   }, [currentTrackIndex, playlist]);
 
+  const nextTrack = React.useCallback(() => {
+    if (playlist.length === 0) return;
+    setCurrentTrackIndex(prev => (prev + 1) % playlist.length);
+  }, [playlist.length]);
+
   const videoId = useMemo(() => {
      if (!playlist || playlist.length === 0) return null;
      const url = playlist[currentTrackIndex] || playlist[0];
@@ -80,14 +83,14 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
   }, [playlist, currentTrackIndex]);
 
   // Send commands to YouTube IFrame
-  const sendCommand = (func: string, args: any[] = []) => {
+  const sendCommand = React.useCallback((func: string, args: Array<string | number | boolean> = []) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func, args }),
         '*'
       );
     }
-  };
+  }, []);
 
   // Listen for YouTube API events (specifically ENDED state to auto-advance)
   useEffect(() => {
@@ -100,17 +103,13 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
            if (data.event === 'onStateChange' && data.info === 0) {
               nextTrack();
            }
-         } catch (e) { /* ignore */ }
+         } catch { /* ignore */ }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [currentTrackIndex, playlist.length]);
-
-  const nextTrack = () => {
-    setCurrentTrackIndex(prev => (prev + 1) % playlist.length);
-  };
+  }, [nextTrack]);
 
   // Sync state with YouTube via postMessage
   useEffect(() => {
@@ -119,7 +118,7 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
     } else {
       sendCommand('pauseVideo');
     }
-  }, [playing, videoId]); // Re-send play when videoId changes
+  }, [playing, videoId, sendCommand]); // Re-send play when videoId changes
 
   useEffect(() => {
     if (muted) {
@@ -128,7 +127,7 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
       sendCommand('unMute');
       sendCommand('setVolume', [volume * 100]);
     }
-  }, [muted, volume, videoId]);
+  }, [muted, volume, videoId, sendCommand]);
 
   // Initial interaction handler for autoplay compliance
   useEffect(() => {
@@ -154,7 +153,7 @@ const SimplePlayer: React.FC<SimplePlayerProps> = ({
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
     };
-  }, [volume]);
+  }, [sendCommand, setMuted, setPlaying, volume]);
 
   if (!videoId) return null;
 

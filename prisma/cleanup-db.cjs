@@ -1,6 +1,5 @@
-const { Client } = require('pg');
-
 async function cleanup() {
+  const { Client } = await import('pg');
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
   });
@@ -15,7 +14,7 @@ async function cleanup() {
     for (const col of legacyCols) {
       try {
         await client.query(`ALTER TABLE "AppConfig" ADD COLUMN IF NOT EXISTS "${col}" TEXT;`);
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -48,7 +47,8 @@ async function cleanup() {
 
     console.log('Cleanup and state reset completed successfully.');
   } catch (err) {
-    console.error('Error during cleanup:', err.message);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error during cleanup:', message);
   } finally {
     await client.end();
   }

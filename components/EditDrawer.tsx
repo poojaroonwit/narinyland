@@ -1,13 +1,26 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Interaction, MemoryItem, AppConfig, Emotion } from '../types';
+import { Interaction, AppConfig, MediaContent } from '../types';
 import { uploadAPI, circlesAPI } from '../services/api';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { SHOP_ITEMS, ShopItem } from './Shop';
+import { SHOP_ITEMS } from './Shop';
 import { useAuth } from './AuthProvider';
+
+type EditTab = 'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'land' | 'objects';
+type InstagramPost = { thumbnail?: string; url?: string };
+type InstagramProfileResponse = { error?: string; posts?: InstagramPost[]; postCount?: number; displayName?: string };
+type InstagramFeedItem = { media_url?: string; permalink?: string };
+type InstagramFeedResponse = { error?: { message?: string }; data?: InstagramFeedItem[] };
+
+const EDIT_TABS: EditTab[] = ['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'land', 'objects'];
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 interface EditDrawerProps {
   isOpen: boolean;
@@ -23,7 +36,7 @@ interface EditDrawerProps {
 
 const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave }) => {
   const { circles, activeCircleId, setActiveCircle, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'land' | 'objects'>('general');
+  const [activeTab, setActiveTab] = useState<EditTab>('general');
   const [isMobile, setIsMobile] = useState(false);
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>('general');
 
@@ -47,7 +60,6 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   const [igProfileResult, setIgProfileResult] = useState<string | null>(null);
 
   // File Upload State
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState<number | null>(null); // index of item being uploaded
   const [previewItem, setPreviewItem] = useState<{ url: string; type: 'image' | 'video' | 'audio' } | null>(null);
   const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
@@ -70,7 +82,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     setIgProfileResult(null);
     try {
       const res = await fetch(`/api/instagram/profile/${encodeURIComponent(username)}`);
-      const data = await res.json();
+      const data = await res.json() as InstagramProfileResponse;
       
       if (!res.ok) {
         setIgProfileResult(`❌ ${data.error || 'Failed to fetch profile'}`);
@@ -83,10 +95,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       }
 
       // Add the found posts to the gallery (avoid duplicates)
-      const existingUrls = new Set(localConfig.gallery.map((g: any) => g.url));
-      const newItems = data.posts
-        .filter((p: any) => !existingUrls.has(p.thumbnail || p.url))
-        .map((p: any) => ({ url: p.thumbnail || p.url, privacy: 'public' as const }));
+      const existingUrls = new Set(localConfig.gallery.map((g) => g.url));
+      const newItems = (data.posts || [])
+        .flatMap((p) => {
+          const url = p.thumbnail || p.url;
+          return url && !existingUrls.has(url) ? [{ url, privacy: 'public' as const }] : [];
+        });
 
       if (newItems.length === 0) {
         setIgProfileResult(`✅ All ${data.postCount} posts from @${username} are already in gallery`);
@@ -99,8 +113,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       }));
 
       setIgProfileResult(`✅ Added ${newItems.length} posts from @${data.displayName || username}`);
-    } catch (err: any) {
-      setIgProfileResult(`❌ ${err.message}`);
+    } catch (err: unknown) {
+      setIgProfileResult(`❌ ${getErrorMessage(err)}`);
     } finally {
       setIsFetchingIG(false);
     }
@@ -112,10 +126,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     setIsFetchingIG(true);
     try {
       const res = await fetch(`https://graph.instagram.com/me/media?fields=id,media_url,permalink,caption,timestamp&access_token=${igToken}`);
-      const data = await res.json();
+      const data = await res.json() as InstagramFeedResponse;
 
       if (data.error) {
-        alert(`Instagram API Error: ${data.error.message}`);
+        alert(`Instagram API Error: ${data.error.message || 'Unknown Instagram API error'}`);
         return;
       }
 
@@ -124,13 +138,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
         return;
       }
 
-      const existingUrls = new Set(localConfig.gallery.map((g: any) => g.url));
-      const newItems = data.data
-        .filter((m: any) => m.media_url && !existingUrls.has(m.permalink))
-        .map((m: any) => ({
-          url: m.permalink || m.media_url,
-          privacy: 'public' as const,
-        }));
+      const existingUrls = new Set(localConfig.gallery.map((g) => g.url));
+      const newItems = (data.data || [])
+        .flatMap((m) => {
+          const url = m.permalink || m.media_url;
+          return m.media_url && url && !existingUrls.has(url)
+            ? [{ url, privacy: 'public' as const }]
+            : [];
+        });
 
       updateLocal(prev => ({
         ...prev,
@@ -138,8 +153,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       }));
 
       alert(`Added ${newItems.length} photos from Instagram!`);
-    } catch (err: any) {
-      alert(`Failed to fetch: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to fetch: ${getErrorMessage(err)}`);
     } finally {
       setIsFetchingIG(false);
     }
@@ -148,10 +163,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   // Re-sync local state when drawer opens
   useEffect(() => {
     if (isOpen) {
-      const cloned = JSON.parse(JSON.stringify(config));
+      const cloned = JSON.parse(JSON.stringify(config)) as AppConfig;
       // Re-hydrate Date objects that were serialized to strings
       if (cloned.timeline) {
-        cloned.timeline = cloned.timeline.map((item: any) => ({
+        cloned.timeline = cloned.timeline.map((item) => ({
           ...item,
           timestamp: new Date(item.timestamp),
         }));
@@ -175,26 +190,20 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     setHasChanges(true);
   };
 
-  const handleInputChange = (field: string, value: any, nested?: string) => {
+  const handleInputChange = (field: keyof AppConfig, value: unknown, nested?: string) => {
     updateLocal(prev => {
       const next = { ...prev };
       if (nested) {
-        (next as any)[field] = { ...(next as any)[field], [nested]: value };
+        const current = next[field];
+        (next as Record<string, unknown>)[field] = {
+          ...(typeof current === 'object' && current !== null ? current : {}),
+          [nested]: value,
+        };
       } else {
-        (next as any)[field] = value;
+        (next as Record<string, unknown>)[field] = value;
       }
       return next;
     });
-  };
-
-  const handlePartnerChange = (partnerId: 'partner1' | 'partner2', field: 'name' | 'avatar', value: string) => {
-    updateLocal(prev => ({
-      ...prev,
-      partners: {
-        ...prev.partners,
-        [partnerId]: { ...prev.partners[partnerId], [field]: value }
-      }
-    }));
   };
 
   const handleGalleryUrlChange = (index: number, value: string) => {
@@ -230,7 +239,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     }));
   };
 
-  const handleTimelineChange = (id: string, field: keyof Interaction, value: any) => {
+  const handleTimelineChange = (id: string, field: keyof Interaction, value: Interaction[keyof Interaction]) => {
     updateLocal(prev => ({
       ...prev,
       timeline: prev.timeline.map(item => item.id === id ? { ...item, [field]: value } : item)
@@ -242,8 +251,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       setIsUploading(index);
       const result = await uploadAPI.upload(file, 'gallery');
       handleGalleryUrlChange(index, result.url);
-    } catch (err: any) {
-      alert(`Upload failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Upload failed: ${getErrorMessage(err)}`);
     } finally {
       setIsUploading(null);
     }
@@ -265,8 +274,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
         ...prev,
         gallery: [...prev.gallery, ...newItems]
       }));
-    } catch (err: any) {
-      alert(`Some uploads failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Some uploads failed: ${getErrorMessage(err)}`);
     } finally {
       setIsFetchingIG(false);
     }
@@ -292,14 +301,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
   const handleTimelineFileUpload = async (id: string, file: File) => {
     try {
-      const type = file.type.startsWith('audio') ? 'audio' : file.type.startsWith('video') ? 'video' : 'image';
+      const type: MediaContent['type'] = file.type.startsWith('audio') ? 'audio' : file.type.startsWith('video') ? 'video' : 'image';
       const result = await uploadAPI.upload(file, 'timeline');
       updateLocal(prev => ({
         ...prev,
-        timeline: prev.timeline.map(item => item.id === id ? { ...item, media: { type: type as any, url: result.url } } : item)
+        timeline: prev.timeline.map(item => item.id === id ? { ...item, media: { type, url: result.url } } : item)
       }));
-    } catch (err: any) {
-      alert(`Upload failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Upload failed: ${getErrorMessage(err)}`);
     }
   };
 
@@ -308,14 +317,13 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       setIsUploading(999);
       const result = await uploadAPI.upload(file, 'pwa-icon');
       handleInputChange('pwaIconUrl', result.url);
-    } catch (err: any) {
-      alert(`Icon Upload failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Icon Upload failed: ${getErrorMessage(err)}`);
     } finally {
       setIsUploading(null);
     }
   };
 
-  const isAudio = (url: string) => /\.(mp3|wav|ogg|m4a)$/i.test(url) || url.includes('audio');
   const isVideo = (url: string) => /\.(mp4|webm|mov)$/i.test(url) || url.includes('video');
 
   const addTimelineEvent = () => {
@@ -430,7 +438,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     });
   };
 
-  const handleCouponChange = (id: string, field: string, value: any) => {
+  const handleCouponChange = (id: string, field: keyof AppConfig['coupons'][number], value: unknown) => {
     updateLocal(prev => ({
       ...prev,
       coupons: prev.coupons.map(c => c.id === id ? { ...c, [field]: value } : c)
@@ -454,12 +462,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     if (!newWorldName.trim()) return;
     setIsCircleUpdating(true);
     try {
-      const res = await circlesAPI.create({ name: newWorldName.trim() });
+      await circlesAPI.create({ name: newWorldName.trim() });
       setNewWorldName('');
       await refreshUser();
       alert('World created successfully!');
-    } catch (err: any) {
-      alert(`Failed to create world: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to create world: ${getErrorMessage(err)}`);
     } finally {
       setIsCircleUpdating(false);
     }
@@ -476,8 +484,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       await circlesAPI.update(id, { name: editingCircleName.trim() });
       setEditingCircleId(null);
       await refreshUser();
-    } catch (err: any) {
-      alert(`Failed to update world: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to update world: ${getErrorMessage(err)}`);
     } finally {
       setIsCircleUpdating(false);
     }
@@ -498,14 +506,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
         // We'll be redirected or switched by refreshUser logic if remaining circles exist
         window.location.reload(); 
       }
-    } catch (err: any) {
-      alert(`Failed to delete world: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to delete world: ${getErrorMessage(err)}`);
     } finally {
       setIsCircleUpdating(false);
     }
   };
 
-  const handlePetChange = (id: string, field: string, value: any) => {
+  const handlePetChange = (id: string, field: keyof NonNullable<AppConfig['pets']>[number], value: unknown) => {
     updateLocal(prev => ({
       ...prev,
       pets: (prev.pets || []).map(p => p.id === id ? { ...p, [field]: value } : p)
@@ -708,7 +716,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                     <div className="flex items-center gap-4">
                        <div className="w-16 h-16 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
                           {localConfig.pwaIconUrl ? (
-                            <img src={localConfig.pwaIconUrl} alt="App Icon" className="w-full h-full object-cover" />
+                            <Image src={localConfig.pwaIconUrl} alt="App Icon" width={64} height={64} unoptimized className="w-full h-full object-cover" />
                           ) : (
                             <i className="fas fa-mobile text-2xl text-gray-300"></i>
                           )}
@@ -793,7 +801,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                       )}
 
                       {/* Render Multiple Pets */}
-                      {(localConfig.pets || []).map((pet, idx) => (
+                      {(localConfig.pets || []).map((pet) => (
                         <motion.div 
                           key={pet.id}
                           initial={{ opacity: 0, x: -10 }}
@@ -1040,7 +1048,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                  </div>
                </div>
                <p className="text-[9px] text-gray-400 mt-4 leading-relaxed italic">
-                 The user can only accept your proposal. Each "Yes" leads to the next question until the final acceptance!
+                 The user can only accept your proposal. Each &quot;Yes&quot; leads to the next question until the final acceptance!
                </p>
              </div>
            </motion.div>
@@ -1209,9 +1217,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                              <p className="text-[8px] font-black text-blue-400 uppercase mt-1">Video File</p>
                           </div>
                         ) : (
-                          <img 
+                          <Image 
                             src={getPreviewUrl(item.url)} 
                             alt={`Gallery ${idx}`} 
+                            width={320}
+                            height={320}
+                            unoptimized
                             className="w-full h-full object-cover transition-transform group-hover:scale-110 cursor-zoom-in" 
                             onClick={() => setPreviewItem({ url: getPreviewUrl(item.url), type: 'image' })}
                           />
@@ -1368,7 +1379,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                        className="bg-white p-2 rounded-md shadow-sm border border-gray-100 flex items-center gap-3 hover:shadow-md transition-all group"
                     >
                        <div className="w-10 h-10 shrink-0 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center border border-gray-200 relative">
-                           {item.media?.type === 'image' && <img src={item.media.url} className="w-full h-full object-cover" />}
+                           {item.media?.type === 'image' && <Image src={item.media.url} alt={item.text || 'Timeline media'} width={40} height={40} unoptimized className="w-full h-full object-cover" />}
                            {item.media?.type === 'video' && <i className="fas fa-video text-blue-400"></i>}
                            {item.media?.type === 'audio' && <i className="fas fa-microphone text-orange-400"></i>}
                            {!item.media && <i className="fas fa-sticky-note text-gray-300"></i>}
@@ -1390,7 +1401,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                        <div className="flex-1 min-w-0 grid grid-cols-1 gap-1">
                           <div className="flex gap-2">
                              <DatePicker
-                                selected={item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp as any)}
+                                selected={item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp)}
                                 onChange={(date: Date | null) => date && handleTimelineChange(item.id, 'timestamp', date)}
                                 showTimeSelect
                                 dateFormat="MM/dd/yy"
@@ -1558,7 +1569,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                                     </label>
 
                                     <button 
-                                       onClick={(e) => {
+                                       onClick={() => {
                                           if (window.confirm("Delete this coupon?")) {
                                              updateLocal(prev => ({ ...prev, coupons: prev.coupons.filter(c => c.id !== coupon.id) }));
                                           }
@@ -1712,7 +1723,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
              <div className="bg-emerald-50/50 p-4 rounded-md border border-emerald-100 flex items-start gap-3">
                <i className="fas fa-info-circle text-emerald-500 mt-0.5"></i>
                <p className="text-[10px] text-emerald-700 leading-relaxed">
-                 Invite your partner by sharing the <strong>World Code</strong>. When they enter the code in the "Join World" section, both of you will share all the magic across Narinyland.
+                 Invite your partner by sharing the <strong>World Code</strong>. When they enter the code in the &quot;Join World&quot; section, both of you will share all the magic across Narinyland.
                </p>
              </div>
 
@@ -1829,10 +1840,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                       if (!file) return;
                       
                       try {
-                        const url = await uploadAPI.upload(file);
+                        await uploadAPI.upload(file);
                         // Add to a "Custom Models" inventory or similar logic
                         alert(`Successfully uploaded ${file.name}! It is now available in your Custom models.`);
-                      } catch (err) {
+                      } catch {
                         alert('Upload failed. Please try again.');
                       }
                     }} 
@@ -1941,10 +1952,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
                 {/* Tab Buttons */}
                 <div className="flex-1 overflow-y-auto py-2">
-                  {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'land', 'objects'].map((tab) => (
+                  {EDIT_TABS.map((tab) => (
                     <button
                       key={tab}
-                      onClick={() => setActiveTab(tab as any)}
+                      onClick={() => setActiveTab(tab)}
                       className={`w-full text-left px-5 py-3 flex items-center gap-3 text-sm font-bold capitalize transition-all ${
                         activeTab === tab 
                           ? 'bg-pink-50 text-pink-600 border-l-4 border-pink-500' 
@@ -1994,7 +2005,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                 {isMobile ? (
                   /* Mobile Accordion Layout */
                   <div className="space-y-3 mt-4">
-                    {['general', 'proposal', 'gallery', 'timeline', 'coupons', 'world', 'land', 'objects'].map((tab) => (
+                    {EDIT_TABS.map((tab) => (
                       <div key={tab} className="bg-white rounded-md border border-gray-100 overflow-hidden shadow-sm">
                         <button
                           onClick={() => setExpandedAccordion(expandedAccordion === tab ? null : tab)}
@@ -2014,7 +2025,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
                               exit={{ height: 0, opacity: 0 }}
                               className="border-t border-gray-50"
                             >
-                               {renderTabContent(tab as any)}
+                               {renderTabContent(tab)}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -2083,8 +2094,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
               onClick={(e) => e.stopPropagation()}
             >
                {previewItem.type === 'image' && (
-                 <img 
+                 <Image 
                    src={getPreviewUrl(previewItem.url)} 
+                   width={1200}
+                   height={900}
+                   unoptimized
                    className="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl"
                    alt="Preview"
                  />

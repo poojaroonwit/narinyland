@@ -17,8 +17,10 @@ export function setActiveCircleId(id: string | null): void {
   if (typeof window !== 'undefined') {
     if (id) {
       localStorage.setItem('narinyland_circle_id', id);
+      document.cookie = `narinyland_circle_id=${encodeURIComponent(id)}; Max-Age=${60 * 60 * 24 * 30}; Path=/; SameSite=Lax`;
     } else {
       localStorage.removeItem('narinyland_circle_id');
+      document.cookie = 'narinyland_circle_id=; Max-Age=0; Path=/; SameSite=Lax';
     }
   }
 }

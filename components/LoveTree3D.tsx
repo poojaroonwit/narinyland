@@ -2,18 +2,19 @@
 
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, SoftShadows, DragControls, Grid } from '@react-three/drei';
+import Image from 'next/image';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, DragControls, Grid, useGLTF } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 import Shop, { ShopItem } from './Shop';
 
-import { Emotion, PurchasedItem } from '../types';
+import { Emotion, ItemTransformUpdate, PurchasedItem } from '../types';
 import { THEMES } from './3d/GardenConstants';
 import { Pet3D } from './3d/Pet';
 import { Tree } from './3d/Tree';
 import { Flower } from './3d/Flower';
-import { Terrain, Grass, Pond, StonePath, GardenProp } from './3d/GardenProps';
+import { Terrain, Grass, MeadowLayer, Pond, StonePath, GardenProp } from './3d/GardenProps';
 import { Butterfly, Bird, FallingLeaf, FloatingText, Fireflies, FallingPetals, LeafExplosion, Clouds, ShootingStar, GodRays, Nebula, Aurora, SkyDome, HorizonGlow, CirrusClouds, MilkyWay, SkyColorBands } from './3d/Environment';
 
 interface LoveTree3DProps {
@@ -36,17 +37,105 @@ interface LoveTree3DProps {
   albums?: Array<{ id: string; name: string }>;
   graphicsQuality?: 'low' | 'medium' | 'high';
   purchasedItems?: PurchasedItem[];
-  onUpdateItemPosition?: (id: string, x: number, y: number, z: number) => void;
+  onUpdateItemPosition?: (id: string, update: ItemTransformUpdate) => void;
   activeLandId?: string;
   onPurchase?: (item: ShopItem) => Promise<void>;
   isEditMode?: boolean;
   setIsEditMode?: (val: boolean) => void;
 }
 
-const DraggableItem = ({ item, onUpdate, children }: { item: PurchasedItem, onUpdate?: (id: string, x: number, y: number, z: number) => void, children: React.ReactNode }) => {
+type MovementInput = {
+  forward: boolean;
+  back: boolean;
+  left: boolean;
+  right: boolean;
+};
+
+const snapPosition = (value: number) => Math.round(value * 2) / 2;
+
+const GameCameraController = ({ enabled, movement }: { enabled: boolean; movement: MovementInput }) => {
+  const { camera } = useThree();
+  const playerPos = useRef(new THREE.Vector3(0, 0, 6));
+  const velocity = useRef(new THREE.Vector3());
+  const lookAtTarget = useRef(new THREE.Vector3(0, 1.15, 0));
+
+  useFrame((_, delta) => {
+    if (!enabled) return;
+
+    const desired = new THREE.Vector3(
+      (movement.right ? 1 : 0) - (movement.left ? 1 : 0),
+      0,
+      (movement.back ? 1 : 0) - (movement.forward ? 1 : 0)
+    );
+
+    if (desired.lengthSq() > 0) {
+      desired.normalize().multiplyScalar(4.2);
+    }
+
+    velocity.current.lerp(desired, 1 - Math.exp(-delta * 8));
+    playerPos.current.addScaledVector(velocity.current, delta);
+    playerPos.current.x = THREE.MathUtils.clamp(playerPos.current.x, -13, 13);
+    playerPos.current.z = THREE.MathUtils.clamp(playerPos.current.z, -13, 13);
+
+    const cameraTarget = new THREE.Vector3(playerPos.current.x, 3.6, playerPos.current.z + 8.5);
+    camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 4.5));
+
+    lookAtTarget.current.lerp(
+      new THREE.Vector3(playerPos.current.x, 1.2, playerPos.current.z - 1.5),
+      1 - Math.exp(-delta * 6)
+    );
+    camera.lookAt(lookAtTarget.current);
+  });
+
+  return null;
+};
+
+const DraggableItem = ({
+  item,
+  onUpdate,
+  onSelect,
+  isSelected,
+  snapToGrid,
+  enabled = true,
+  children
+}: {
+  item: PurchasedItem,
+  onUpdate?: (id: string, update: ItemTransformUpdate) => void,
+  onSelect?: (id: string) => void,
+  isSelected?: boolean,
+  snapToGrid?: boolean,
+  enabled?: boolean,
+  children: React.ReactNode
+}) => {
   const [position, setPosition] = useState<[number, number, number]>([item.x || 0, item.y || 0, item.z || 0]);
   const groupRef = useRef<THREE.Group>(null);
-  
+
+  React.useEffect(() => {
+    setPosition([item.x || 0, item.y || 0, item.z || 0]);
+  }, [item.x, item.y, item.z]);
+
+  const content = (
+    <group
+      ref={groupRef}
+      position={position}
+      rotation={[0, item.rotation ?? 0, 0]}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (enabled) onSelect?.(item.id);
+      }}
+    >
+      {isSelected && (
+        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.95, 1.08, 48]} />
+          <meshBasicMaterial color="#f59e0b" transparent opacity={0.72} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {children}
+    </group>
+  );
+
+  if (!enabled) return content;
+
   return (
     <DragControls 
       autoTransform={true} 
@@ -54,20 +143,25 @@ const DraggableItem = ({ item, onUpdate, children }: { item: PurchasedItem, onUp
       onDragEnd={() => {
         if (groupRef.current) {
            const p = groupRef.current.position;
-           setPosition([p.x, 0, p.z]); // restrict to floor
-           if (onUpdate) onUpdate(item.id, p.x, 0, p.z);
+           const x = snapToGrid ? snapPosition(p.x) : p.x;
+           const z = snapToGrid ? snapPosition(p.z) : p.z;
+           groupRef.current.position.set(x, 0, z);
+           setPosition([x, 0, z]); // restrict to floor
+           if (onUpdate) onUpdate(item.id, { x, y: 0, z, rotation: item.rotation ?? 0 });
         }
       }}
     >
-      <group ref={groupRef} position={position}>
-        {children}
-      </group>
+      {content}
     </DragControls>
   );
 };
 
+const seededRatio = (seed: number) => {
+  const value = Math.sin(seed * 9301 + 49297) * 233280;
+  return value - Math.floor(value);
+};
+
 const CustomGLTFModel = ({ url, scale = 1 }: { url: string, scale?: number }) => {
-  const { useGLTF } = require('@react-three/drei');
   const { scene } = useGLTF(url);
   // Clone the scene so multiple of the same model can be rendered
   const clone = useMemo(() => scene.clone(), [scene]);
@@ -134,7 +228,15 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
      activeLandId, onPurchase,
      isEditMode = false, setIsEditMode
  }) => {
+   void petMessage;
+   void level;
+   void onAddLeaf;
+   void setIsEditMode;
    const [isShopPopoverOpen, setIsShopPopoverOpen] = useState(false);
+   const [cameraMode, setCameraMode] = useState<'orbit' | 'explore'>('orbit');
+   const [movement, setMovement] = useState<MovementInput>({ forward: false, back: false, left: false, right: false });
+   const [snapToGrid, setSnapToGrid] = useState(true);
+   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
    const theme = THEMES[treeStyle] || THEMES['oak'];
    const [isQRUploadOpen, setIsQRUploadOpen] = useState(false);
    const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
@@ -142,6 +244,74 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
    const [shakeTree, setShakeTree] = useState(false);
    const [floatingTexts, setFloatingTexts] = useState<Array<{ id: number; text: string; position: [number, number, number]; color: string }>>([]);
    const prevLeafCount = useRef(leaves);
+
+   const selectedItem = useMemo(
+     () => purchasedItems?.find(item => item.id === selectedItemId) ?? null,
+     [purchasedItems, selectedItemId]
+   );
+
+   React.useEffect(() => {
+     if (!selectedItemId) return;
+     if (!purchasedItems?.some(item => item.id === selectedItemId)) {
+       setSelectedItemId(null);
+     }
+   }, [purchasedItems, selectedItemId]);
+
+   React.useEffect(() => {
+     const keyMap: Record<string, keyof MovementInput> = {
+       w: 'forward',
+       arrowup: 'forward',
+       s: 'back',
+       arrowdown: 'back',
+       a: 'left',
+       arrowleft: 'left',
+       d: 'right',
+       arrowright: 'right',
+     };
+
+     const setKey = (event: KeyboardEvent, pressed: boolean) => {
+       const movementKey = keyMap[event.key.toLowerCase()];
+       if (!movementKey || cameraMode !== 'explore') return;
+       event.preventDefault();
+       setMovement(prev => ({ ...prev, [movementKey]: pressed }));
+     };
+
+     const onKeyDown = (event: KeyboardEvent) => setKey(event, true);
+     const onKeyUp = (event: KeyboardEvent) => setKey(event, false);
+
+     window.addEventListener('keydown', onKeyDown);
+     window.addEventListener('keyup', onKeyUp);
+     return () => {
+       window.removeEventListener('keydown', onKeyDown);
+       window.removeEventListener('keyup', onKeyUp);
+     };
+   }, [cameraMode]);
+
+   React.useEffect(() => {
+     if (cameraMode !== 'explore') {
+       setMovement({ forward: false, back: false, left: false, right: false });
+     }
+   }, [cameraMode]);
+
+   React.useEffect(() => {
+     if (isEditMode && cameraMode === 'explore') {
+       setCameraMode('orbit');
+     }
+   }, [cameraMode, isEditMode]);
+
+   const pressMovement = (key: keyof MovementInput, pressed: boolean) => {
+     setMovement(prev => ({ ...prev, [key]: pressed }));
+   };
+
+   const rotateSelectedItem = (delta: number) => {
+     if (!selectedItem || !onUpdateItemPosition) return;
+     onUpdateItemPosition(selectedItem.id, {
+       x: selectedItem.x,
+       y: selectedItem.y,
+       z: selectedItem.z,
+       rotation: (selectedItem.rotation ?? 0) + delta,
+     });
+   };
 
    // Trigger explosion and floating text logic
    React.useEffect(() => {
@@ -241,8 +411,8 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
   const grassPositions = useMemo(() => {
     const pos = [];
     for(let i=0; i<30; i++) {
-        const radius = 3 + Math.random() * 10;
-        const angle = Math.random() * Math.PI * 2;
+        const radius = 3 + seededRatio(i + 1) * 10;
+        const angle = seededRatio(i + 31) * Math.PI * 2;
         pos.push({ 
             x: Math.cos(angle) * radius, 
             z: Math.sin(angle) * radius 
@@ -376,18 +546,19 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
   }, [graphicsQuality]);
 
    if (!isMounted) return (
-     <div className="fixed inset-0 -z-10 bg-slate-900 flex items-center justify-center">
+     <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin" />
      </div>
    );
 
    return (
-    <div className="fixed inset-0 -z-10 bg-black">
+    <div className="absolute inset-0 bg-black">
       <Canvas 
         shadows={graphicsQuality === 'high'}
         dpr={dpr}
         performance={{ min: 0.5 }}
         camera={{ position: [0, 6, 14], fov: 50 }}
+        onPointerMissed={() => setSelectedItemId(null)}
     >
         <color attach="background" args={[skyColor]} />
         
@@ -514,8 +685,11 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             <Sparkles count={graphicsQuality === 'high' ? 100 : 50} scale={8} size={6} speed={2} color="#fcd34d" noise={1} />
         )}
 
+        <GameCameraController enabled={cameraMode === 'explore' && !isEditMode} movement={movement} />
+
         <OrbitControls 
             makeDefault
+            enabled={cameraMode === 'orbit'}
             enablePan={graphicsQuality !== 'low'} 
             enableDamping={true}
             dampingFactor={0.05}
@@ -536,20 +710,23 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
           if (isEditMode) {
             const fakeItem: PurchasedItem = mainTreeItem ?? { id: 'main_tree', type: 'main_tree', x: 0, y: 0, z: 0, rotation: 0, landId: activeLandId ?? '' };
             return (
-              <SpawnIn key="tree-edit" delay={0.6} position={treeInitialPos}>
+              <SpawnIn key="tree-edit" delay={0.6}>
                 <DraggableItem
-                  item={{ ...fakeItem, x: 0, y: 0, z: 0 }}
-                  onUpdate={async (id, x, y, z) => {
-                    if (onUpdateItemPosition) onUpdateItemPosition(id, x, y, z);
+                  item={fakeItem}
+                  snapToGrid={snapToGrid}
+                  onSelect={() => setSelectedItemId(null)}
+                  onUpdate={async (id, update) => {
                     // If this is the placeholder fake item, create a real DB record first
                     if (!mainTreeItem && activeLandId) {
                       try {
                         await fetch('/api/purchased-items', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ type: 'main_tree', landId: activeLandId, x, y: 0, z })
+                          body: JSON.stringify({ type: 'main_tree', landId: activeLandId, x: update.x, y: 0, z: update.z })
                         });
                       } catch (e) { console.error('Failed to create main_tree item', e); }
+                    } else if (onUpdateItemPosition) {
+                      onUpdateItemPosition(id, update);
                     }
                   }}
                 >
@@ -608,6 +785,22 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
          {purchasedItems?.map((item, idx) => {
             if (item.type === 'dog' || item.type === 'cat') {
+               if (isEditMode) {
+                 return (
+                   <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
+                     <DraggableItem
+                       item={item}
+                       onUpdate={onUpdateItemPosition}
+                       onSelect={setSelectedItemId}
+                       isSelected={selectedItemId === item.id}
+                       snapToGrid={snapToGrid}
+                       enabled={isEditMode}
+                     >
+                       <Pet3D emotion={petEmotion} theme={theme} petType={item.type} startPos={[0, 0, 0]} quality={graphicsQuality} />
+                     </DraggableItem>
+                   </SpawnIn>
+                 );
+               }
                return (
                  <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
                    <Pet3D emotion={petEmotion} theme={theme} petType={item.type} startPos={[item.x || 0, 0, item.z || 0]} quality={graphicsQuality} />
@@ -617,7 +810,14 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
             return (
                <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
-                 <DraggableItem item={item} onUpdate={onUpdateItemPosition}>
+                 <DraggableItem
+                   item={item}
+                   onUpdate={onUpdateItemPosition}
+                   onSelect={setSelectedItemId}
+                   isSelected={selectedItemId === item.id}
+                   snapToGrid={snapToGrid}
+                   enabled={isEditMode}
+                 >
                    {item.type === 'custom_3d' && item.modelUrl && <CustomGLTFModel url={item.modelUrl} scale={1} />}
                    {item.type === 'flower1' && <Flower type="sunflower" position={[0, 0, 0]} scale={1.5} windFactor={windFactor} />}
                    {item.type === 'rock1' && <GardenProp type="rock" position={[0, 0, 0]} />}
@@ -659,6 +859,10 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                    <Grass key={i} theme={theme} position={pos} windFactor={windFactor} quality={graphicsQuality} />
                  ))}
                </group>
+             </SpawnIn>
+
+             <SpawnIn delay={1.22}>
+               <MeadowLayer theme={theme} windFactor={windFactor} quality={graphicsQuality} />
              </SpawnIn>
 
              {graphicsQuality !== 'low' && (
@@ -725,7 +929,153 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
          )}
 
       </Canvas>
-      
+
+      <div className="fixed top-20 left-4 md:left-6 z-[70] flex items-center gap-2 rounded-md border border-white/60 bg-white/80 p-1.5 shadow-2xl backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={() => setCameraMode('orbit')}
+          className={`h-10 px-3 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+            cameraMode === 'orbit'
+              ? 'bg-stone-800 text-white shadow-sm'
+              : 'text-stone-600 hover:bg-white/80'
+          }`}
+          title="Orbit camera"
+        >
+          <i className="fas fa-street-view mr-2"></i>
+          Orbit
+        </button>
+        <button
+          type="button"
+          onClick={() => setCameraMode('explore')}
+          disabled={isEditMode}
+          className={`h-10 px-3 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+            cameraMode === 'explore'
+              ? 'bg-emerald-700 text-white shadow-sm'
+              : isEditMode
+                ? 'text-stone-300 cursor-not-allowed'
+                : 'text-stone-600 hover:bg-white/80'
+          }`}
+          title="Explore land"
+        >
+          <i className="fas fa-shoe-prints mr-2"></i>
+          Explore
+        </button>
+        {isEditMode && (
+          <button
+            type="button"
+            onClick={() => setSnapToGrid(prev => !prev)}
+            className={`h-10 px-3 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+              snapToGrid
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'text-stone-600 hover:bg-white/80'
+            }`}
+            title="Snap to grid"
+          >
+            <i className="fas fa-border-all mr-2"></i>
+            Snap
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {cameraMode === 'explore' && !isEditMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            className="fixed bottom-8 right-4 md:right-6 z-[70] grid grid-cols-3 gap-2 rounded-md border border-white/60 bg-white/75 p-2 shadow-2xl backdrop-blur-xl"
+          >
+            <span />
+            <button
+              type="button"
+              onPointerDown={() => pressMovement('forward', true)}
+              onPointerUp={() => pressMovement('forward', false)}
+              onPointerLeave={() => pressMovement('forward', false)}
+              className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
+              title="Move forward"
+            >
+              <i className="fas fa-chevron-up"></i>
+            </button>
+            <span />
+            <button
+              type="button"
+              onPointerDown={() => pressMovement('left', true)}
+              onPointerUp={() => pressMovement('left', false)}
+              onPointerLeave={() => pressMovement('left', false)}
+              className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
+              title="Move left"
+            >
+              <i className="fas fa-chevron-left"></i>
+            </button>
+            <button
+              type="button"
+              onPointerDown={() => pressMovement('back', true)}
+              onPointerUp={() => pressMovement('back', false)}
+              onPointerLeave={() => pressMovement('back', false)}
+              className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
+              title="Move back"
+            >
+              <i className="fas fa-chevron-down"></i>
+            </button>
+            <button
+              type="button"
+              onPointerDown={() => pressMovement('right', true)}
+              onPointerUp={() => pressMovement('right', false)}
+              onPointerLeave={() => pressMovement('right', false)}
+              className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
+              title="Move right"
+            >
+              <i className="fas fa-chevron-right"></i>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isEditMode && selectedItem && (
+          <motion.div
+            initial={{ opacity: 0, x: 20, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.96 }}
+            className="fixed bottom-24 right-4 md:right-6 z-[80] w-[min(92vw,320px)] rounded-md border border-white/60 bg-white/90 p-4 shadow-2xl backdrop-blur-xl"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-black uppercase tracking-widest text-stone-500">Selected</p>
+                <h3 className="truncate text-base font-black capitalize text-stone-800">{selectedItem.type.replace(/_/g, ' ')}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedItemId(null)}
+                className="h-9 w-9 shrink-0 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                title="Clear selection"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => rotateSelectedItem(-Math.PI / 12)}
+                className="h-11 rounded-md bg-stone-800 text-sm font-black text-white shadow-sm transition hover:bg-stone-700 active:scale-[0.98]"
+                title="Rotate left"
+              >
+                <i className="fas fa-undo mr-2"></i>
+                Rotate
+              </button>
+              <button
+                type="button"
+                onClick={() => rotateSelectedItem(Math.PI / 12)}
+                className="h-11 rounded-md bg-stone-800 text-sm font-black text-white shadow-sm transition hover:bg-stone-700 active:scale-[0.98]"
+                title="Rotate right"
+              >
+                <i className="fas fa-redo mr-2"></i>
+                Rotate
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
 
         <AnimatePresence>
@@ -737,7 +1087,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsShopPopoverOpen(!isShopPopoverOpen)}
-              className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
+              className={`fixed bottom-24 left-24 z-[80] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
                 isShopPopoverOpen
                   ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
                   : 'bg-white/80 backdrop-blur-md text-amber-600 border-white/50 hover:bg-white'
@@ -797,9 +1147,12 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 className="bg-white/80 backdrop-blur-xl p-3 rounded-md shadow-2xl border border-white/50 cursor-pointer hover:scale-105 transition-transform relative overflow-hidden active:scale-95"
                 onClick={() => setIsQRUploadOpen(true)}
               >
-                 <img 
+                 <Image 
                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
                    alt="Upload QR" 
+                   width={96}
+                   height={96}
+                   unoptimized
                    className="w-24 h-24 rounded-md"
                  />
                  <div className="absolute inset-0 bg-pink-500/0 group-hover:bg-pink-500/5 transition-colors flex items-center justify-center">
@@ -837,9 +1190,12 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                     <h2 className="text-2xl font-black text-gray-800 tracking-tight">Upload via Phone</h2>
                     <p className="text-sm text-gray-400 font-medium pb-2">Scan this QR code with your phone camera to open the uploader.</p>
                     
-                    <img 
+                    <Image 
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
                       alt="Large Upload QR" 
+                      width={192}
+                      height={192}
+                      unoptimized
                       className="w-48 h-48 mx-auto rounded-md shadow-sm border border-pink-50"
                     />
 

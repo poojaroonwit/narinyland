@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+type PartnerSyncBody = {
+  name?: string;
+  avatar?: string;
+};
+
+type SessionUser = {
+  name?: string;
+};
 
 const DEFAULT_AVATARS = ['👩', '👨', '🧑', '👧', '👦', '🧒'];
 
@@ -20,13 +30,13 @@ export async function POST(request: Request) {
 
     // 2. Look up user info from Redis session cache
     const sessionRaw = await redis.get(`user_session:${sub}`);
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
+    const session = sessionRaw ? (JSON.parse(sessionRaw) as SessionUser) : null;
 
     // Allow body fallback for name/avatar in case Redis cache is cold
     let bodyName: string | undefined;
     let bodyAvatar: string | undefined;
     try {
-      const body = await request.json().catch(() => ({}));
+      const body = (await request.json().catch(() => ({}))) as PartnerSyncBody;
       bodyName = body.name;
       bodyAvatar = body.avatar;
     } catch {}
@@ -44,7 +54,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       // Update name if it changed (don't override avatar unless provided)
-      const updateData: any = { name: userName, userId: existing.userId || sub };
+      const updateData: Prisma.PartnerUpdateInput = { name: userName, userId: existing.userId || sub };
       if (userAvatar) updateData.avatar = userAvatar;
 
       const updated = await prisma.partner.update({

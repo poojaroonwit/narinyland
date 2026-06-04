@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { handleCallback } from '@/lib/auth';
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Authentication failed. Please try again.';
+}
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
-  const [retrying, setRetrying] = useState(false);
+  const retryingRef = useRef(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -44,13 +48,13 @@ export default function AuthCallbackPage() {
         // change and decide whether to stay on / or redirect to /onboarding
         // based on the user's circle membership.
         router.replace('/');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Auth callback error:', err);
-        const message: string = err?.message || 'Authentication failed. Please try again.';
+        const message = getErrorMessage(err);
 
         // Auto-retry once for transient server errors
-        if (message.includes('temporarily unavailable') && !retrying) {
-          setRetrying(true);
+        if (message.includes('temporarily unavailable') && !retryingRef.current) {
+          retryingRef.current = true;
           setTimeout(() => router.replace('/'), 3000);
           setError('Authentication server is starting up, redirecting you back to the home page...');
           setProcessing(false);
@@ -63,7 +67,6 @@ export default function AuthCallbackPage() {
     };
 
     processCallback();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router]);
 
   return (

@@ -10,10 +10,16 @@ interface LocationPickerProps {
   isFutureDate?: boolean;
 }
 
+type LocationSuggestion = {
+  lat: string;
+  lon: string;
+  display_name: string;
+};
+
 export default function LocationPicker({ location, latitude, longitude, onChange, isFutureDate }: LocationPickerProps) {
   const [searchText, setSearchText] = useState(location);
   const [isSearching, setIsSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,7 +43,7 @@ export default function LocationPicker({ location, latitude, longitude, onChange
         setIsSearching(true);
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchText)}`);
-          const data = await res.json();
+          const data = (await res.json()) as LocationSuggestion[];
           setSuggestions(data || []);
           setShowDropdown(true);
         } catch (e) {
@@ -54,7 +60,7 @@ export default function LocationPicker({ location, latitude, longitude, onChange
     return () => clearTimeout(delayDebounceFn);
   }, [searchText, isTyping]);
 
-  const handleSelectLocation = (suggestion: any) => {
+  const handleSelectLocation = (suggestion: LocationSuggestion) => {
     const newLat = parseFloat(suggestion.lat);
     const newLng = parseFloat(suggestion.lon);
     setIsTyping(false); // don't search again when selecting

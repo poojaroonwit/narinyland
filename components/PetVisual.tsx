@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 // Added Variants to imports for proper typing
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Emotion } from '../types';
 
 interface PetVisualProps {
@@ -12,6 +12,11 @@ interface PetVisualProps {
   className?: string;
   onPetClick?: () => void;
 }
+
+const seededRatio = (seed: number) => {
+  const value = Math.sin(seed * 9301 + 49297) * 233280;
+  return value - Math.floor(value);
+};
 
 const Box3D: React.FC<{ 
   width: number; 
@@ -226,7 +231,7 @@ const BoxPuppy: React.FC<{ emotion: Emotion; isClicked: boolean; level: number }
   );
 };
 
-const PetVisual: React.FC<PetVisualProps> = ({ emotion, message, level = 1, className = "", onPetClick }) => {
+const PetVisual: React.FC<PetVisualProps> = ({ emotion, level = 1, className = "", onPetClick }) => {
   const isPlaying = emotion === 'playing';
   const [isClicked, setIsClicked] = useState(false);
   const [clickCount, setClickCount] = useState(0);
@@ -316,8 +321,8 @@ const PetVisual: React.FC<PetVisualProps> = ({ emotion, message, level = 1, clas
                key={`${clickCount}-${i}`}
                initial={{ opacity: 0 }}
                animate={{ 
-                 x: [0, (Math.random() - 0.5) * 600], 
-                 y: [0, (Math.random() - 0.3) * -400],
+                 x: [0, (seededRatio(clickCount * 37 + i) - 0.5) * 600], 
+                 y: [0, (seededRatio(clickCount * 37 + i + 1) - 0.3) * -400],
                  opacity: [0, 1, 0],
                  scale: [0, 2.5, 0]
                }}

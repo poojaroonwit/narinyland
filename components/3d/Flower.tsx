@@ -6,8 +6,28 @@ import { useFrame } from '@react-three/fiber';
 import { Detailed } from '@react-three/drei';
 import * as THREE from 'three';
 
+type FlowerContentProps = {
+    type: string;
+    scale: number | [number, number, number];
+    windFactor: number;
+    quality: string;
+    detail?: 'low' | 'medium' | 'high';
+    seed: number;
+};
+
+const seededRatio = (seed: number) => {
+    const value = Math.sin(seed * 9301 + 49297) * 233280;
+    return value - Math.floor(value);
+};
+
+const seededRotation = (seed: number, xRange: number, yRange: number, zRange: number): [number, number, number] => [
+    seededRatio(seed) * xRange,
+    seededRatio(seed + 1) * yRange,
+    seededRatio(seed + 2) * zRange,
+];
+
 // Simplified Flower Content for LOD
-export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high', seed }: any) => {
+export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high', seed }: FlowerContentProps) => {
     const groupRef = useRef<THREE.Group>(null);
     const stemColor = "#15803d";
     
@@ -169,7 +189,7 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                 { pos: [-0.07, -0.08, -0.06], s: 0.7, c: "#e11d48" }
                             ])
                         ].map((rData, k) => (
-                            <group key={k} position={rData.pos as [number, number, number]} scale={rData.s} rotation={[Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.5]}>
+                            <group key={k} position={rData.pos as [number, number, number]} scale={rData.s} rotation={seededRotation(seed + k * 17, 0.5, Math.PI, 0.5)}>
                                 <mesh castShadow={detail === 'high'} position={[0, 0.1, 0]}>
                                     {isLow ? (
                                         <sphereGeometry args={[0.12, 6, 6]} />
@@ -220,7 +240,7 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
                                 { x: -0.05, z: -0.05, h: 0.75 }
                             ])
                         ].map((pos, k) => (
-                            <group key={k} position={[pos.x, 0, pos.z]} scale={[1, pos.h, 1]} rotation={[Math.random()*0.2, 0, Math.random()*0.2]}>
+                            <group key={k} position={[pos.x, 0, pos.z]} scale={[1, pos.h, 1]} rotation={seededRotation(seed + k * 23, 0.2, 0, 0.2)}>
                                 {/* Stem */}
                                 <mesh position={[0, 0, 0]}>
                                     <cylinderGeometry args={[0.005, 0.005, 0.4, 3]} />
@@ -271,7 +291,9 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
 
 // Flower Wrapper with LOD
 export const Flower = ({ type, position, scale = 1, windFactor = 1, quality = 'medium' }: { type: string, position: [number, number, number], scale?: number, windFactor?: number, quality?: string }) => {
-    const seed = useMemo(() => Math.random() * Math.PI * 2, []);
+    const seed = useMemo(() => (
+        position[0] * 17.17 + position[1] * 23.23 + position[2] * 31.31 + type.length
+    ), [position, type]);
     
     return (
         <group position={position}>

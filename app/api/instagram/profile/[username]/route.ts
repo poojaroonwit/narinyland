@@ -1,6 +1,55 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
 
+type InstagramMediaEdge = {
+  node?: {
+    shortcode?: string;
+    display_url?: string;
+    thumbnail_src?: string;
+  };
+};
+
+type InstagramApiResponse = {
+  data?: {
+    user?: {
+      full_name?: string;
+      profile_pic_url?: string;
+      edge_owner_to_timeline_media?: {
+        edges?: InstagramMediaEdge[];
+      };
+    };
+  };
+};
+
+type InstagramSharedData = {
+  entry_data?: {
+    ProfilePage?: Array<{
+      graphql?: {
+        user?: {
+          edge_owner_to_timeline_media?: {
+            edges?: InstagramMediaEdge[];
+          };
+          edge_web_feed_timeline?: {
+            edges?: InstagramMediaEdge[];
+          };
+        };
+      };
+      user?: {
+        edge_owner_to_timeline_media?: {
+          edges?: InstagramMediaEdge[];
+        };
+        edge_web_feed_timeline?: {
+          edges?: InstagramMediaEdge[];
+        };
+      };
+    }>;
+  };
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 // GET /api/instagram/profile/[username]
 export async function GET(
   request: Request,
@@ -41,15 +90,18 @@ export async function GET(
       });
 
       if (apiResponse.ok) {
-        const apiData = await apiResponse.json();
+        const apiData = (await apiResponse.json()) as InstagramApiResponse;
         const user = apiData.data?.user;
         if (user) {
           const edges = user.edge_owner_to_timeline_media?.edges || [];
-          const posts = edges.map((edge: any) => ({
-            url: `https://www.instagram.com/p/${edge.node.shortcode}/`,
-            shortcode: edge.node.shortcode,
-            thumbnail: edge.node.display_url || edge.node.thumbnail_src || `https://www.instagram.com/p/${edge.node.shortcode}/media/?size=l`,
-          }));
+          const posts = edges
+            .map((edge) => edge.node)
+            .filter((node): node is NonNullable<InstagramMediaEdge['node']> & { shortcode: string } => Boolean(node?.shortcode))
+            .map((node) => ({
+              url: `https://www.instagram.com/p/${node.shortcode}/`,
+              shortcode: node.shortcode,
+              thumbnail: node.display_url || node.thumbnail_src || `https://www.instagram.com/p/${node.shortcode}/media/?size=l`,
+            }));
 
           const result = {
             username: cleanUsername,
@@ -66,8 +118,8 @@ export async function GET(
           return NextResponse.json(result);
         }
       } 
-    } catch (apiErr: any) {
-      console.error(`[Instagram Scraper] v1 API error for @${cleanUsername}:`, apiErr.message);
+    } catch (apiErr: unknown) {
+      console.error(`[Instagram Scraper] v1 API error for @${cleanUsername}:`, getErrorMessage(apiErr));
     }
 
     // --- Method B: Fallback to HTML Scraping (Legacy) ---
@@ -105,7 +157,7 @@ export async function GET(
 
     // Method 1: Look for /p/SHORTCODE/ links in the HTML
     const postLinkRegex = /\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)\//g;
-    let match;
+    let match: RegExpExecArray | null;
     while ((match = postLinkRegex.exec(html)) !== null) {
       shortcodes.add(match[1]);
     }
@@ -120,16 +172,16 @@ export async function GET(
     const sharedDataMatch = html.match(/window\._sharedData\s*=\s*({[\s\S]*?});/);
     if (sharedDataMatch) {
       try {
-        const sharedData = JSON.parse(sharedDataMatch[1]);
+        const sharedData = JSON.parse(sharedDataMatch[1]) as InstagramSharedData;
         const user = sharedData.entry_data?.ProfilePage?.[0]?.graphql?.user || sharedData.entry_data?.ProfilePage?.[0]?.user;
         const edges = user?.edge_owner_to_timeline_media?.edges || user?.edge_web_feed_timeline?.edges;
         if (edges) {
-          edges.forEach((edge: any) => {
+          edges.forEach((edge) => {
             const code = edge.node?.shortcode;
             if (code) shortcodes.add(code);
           });
         }
-      } catch (e) {
+      } catch {
         // Silently fail if JSON is malformed
       }
     }
@@ -167,8 +219,8 @@ export async function GET(
 
     return NextResponse.json(result);
 
-  } catch (error: any) {
-    console.error('Instagram profile scrape error:', error.message);
+  } catch (error: unknown) {
+    console.error('Instagram profile scrape error:', getErrorMessage(error));
     return NextResponse.json({ error: 'Failed to fetch Instagram profile.' }, { status: 500 });
   }
 }

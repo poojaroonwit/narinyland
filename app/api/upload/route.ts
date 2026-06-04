@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
-import { uploadFile, deleteFile } from '@/lib/s3';
-import { isSafeS3Key, normalizeUploadFolder, validateUploadFile } from '@/lib/upload-validation';
+import { deleteFile, uploadFile } from '@/lib/storage';
+import { isSafeStorageKey, normalizeUploadFolder, validateUploadFile } from '@/lib/upload-validation';
 import { requireAdminRequest } from '@/lib/security';
+import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { getErrorField, getErrorMessage } from '@/lib/errors';
 
 // POST /api/upload
 export async function POST(request: Request) {
   try {
+    const access = await requireConfigAccess(request);
+    if (isConfigAccessDenied(access)) return access.response;
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const folder = normalizeUploadFolder(formData.get('folder') as string | null);
@@ -24,7 +29,8 @@ export async function POST(request: Request) {
       buffer,
       file.name,
       file.type,
-      folder
+      folder,
+      access.configId
     );
 
     return NextResponse.json({
@@ -35,16 +41,16 @@ export async function POST(request: Request) {
       contentType: file.type,
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Upload error:', {
-      message: error?.message,
-      name: error?.name,
-      code: error?.Code || error?.code,
-      s3Status: error?.$metadata?.httpStatusCode,
+      message: getErrorMessage(error),
+      name: getErrorField(error, 'name'),
+      code: getErrorField(error, 'Code') || getErrorField(error, 'code'),
+      providerStatus: (getErrorField(error, '$metadata') as { httpStatusCode?: number } | undefined)?.httpStatusCode,
     });
     return NextResponse.json({
       error: 'Failed to upload file',
-      detail: error?.message || String(error),
+      detail: getErrorMessage(error),
     }, { status: 500 });
   }
 }
@@ -58,14 +64,14 @@ export async function DELETE(request: Request) {
     const body = await request.json();
     const { key } = body;
 
-    if (!isSafeS3Key(key)) {
-      return NextResponse.json({ error: 'S3 key is required' }, { status: 400 });
+    if (!isSafeStorageKey(key)) {
+      return NextResponse.json({ error: 'Storage key is required' }, { status: 400 });
     }
 
     await deleteFile(key);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Delete error:', error?.message || error);
+  } catch (error: unknown) {
+    console.error('Delete error:', getErrorMessage(error));
     return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
   }
 }

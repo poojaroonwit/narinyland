@@ -3,6 +3,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function enableRLS() {
   console.log('🔒 Enabling Row Level Security on all tables...\n');
 
@@ -24,17 +28,17 @@ async function enableRLS() {
       // Enable RLS
       await prisma.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;`);
       console.log(`  ✅ RLS enabled on "${table}"`);
-    } catch (error: any) {
-      console.error(`  ❌ Failed to enable RLS on "${table}":`, error.message);
+    } catch (error: unknown) {
+      console.error(`  ❌ Failed to enable RLS on "${table}":`, getErrorMessage(error));
     }
 
     try {
       // Revoke access from anon and authenticated roles
       await prisma.$executeRawUnsafe(`REVOKE ALL ON "${table}" FROM anon, authenticated;`);
       console.log(`  🚫 Revoked anon/authenticated access on "${table}"`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Roles might not exist if not on Supabase standard setup
-      console.warn(`  ⚠️  Could not revoke on "${table}" (roles may not exist):`, error.message);
+      console.warn(`  ⚠️  Could not revoke on "${table}" (roles may not exist):`, getErrorMessage(error));
     }
   }
 

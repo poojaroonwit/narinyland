@@ -2,13 +2,8 @@
 
 import * as React from 'react';
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Interaction, MediaContent } from '../types';
-import TimelineSpreadsheet from './TimelineSpreadsheet';
-import { timelineAPI } from '../services/api';
-import DatePicker from 'react-datepicker';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
-import "react-datepicker/dist/react-datepicker.css";
 import OptimizedImage from './OptimizedImage';
 import LocationPicker from './LocationPicker';
 import TimelineImages from './TimelineImages';
@@ -41,7 +36,6 @@ interface TimelineProps {
 const Timeline: React.FC<TimelineProps> = ({ 
   interactions, 
   anniversaryDate,
-  defaultRows = 5,
   onAddInteraction, 
   onUpdateInteraction, 
   onDeleteInteraction,
@@ -65,7 +59,6 @@ const Timeline: React.FC<TimelineProps> = ({
 
   // Touch gesture state for pinch-to-zoom
   const [touchStartDistance, setTouchStartDistance] = useState(0);
-  const [touchStartZoom, setTouchStartZoom] = useState(0);
 
   // Calculate distance between two touch points
   const getTouchDistance = (touches: React.TouchList) => {
@@ -80,7 +73,6 @@ const Timeline: React.FC<TimelineProps> = ({
     if (e.touches.length === 2) {
       const distance = getTouchDistance(e.touches);
       setTouchStartDistance(distance);
-      setTouchStartZoom(effectiveZoom);
     }
   };
 
@@ -111,7 +103,6 @@ const Timeline: React.FC<TimelineProps> = ({
   // Handle touch end
   const handleTouchEnd = () => {
     setTouchStartDistance(0);
-    setTouchStartZoom(0);
   };
 
   useEffect(() => {
@@ -135,8 +126,12 @@ const Timeline: React.FC<TimelineProps> = ({
     onUpdateConfig?.({ zoomLevel: newZoom });
   };
 
-  useEffect(() => setLayoutMode(initialLayoutMode), [initialLayoutMode]);
-  useEffect(() => setZoomLevel(initialZoomLevel), [initialZoomLevel]);
+  useEffect(() => {
+    setLayoutMode(initialLayoutMode);
+  }, [initialLayoutMode]);
+  useEffect(() => {
+    setZoomLevel(initialZoomLevel);
+  }, [initialZoomLevel]);
 
   const ZOOM_LEVELS = [1, 5, 10, 30, 60, 100, 200, 500];
   const effectiveZoom = ZOOM_LEVELS[zoomLevel] || 1;
@@ -148,6 +143,7 @@ const Timeline: React.FC<TimelineProps> = ({
   const [internalShowModal, setInternalShowModal] = useState(false);
   const [internalModalIndex, setInternalModalIndex] = useState(0);
   const [internalInteractionId, setInternalInteractionId] = useState<string | null>(null);
+  const [timelineNow] = useState(() => Date.now());
 
   const showImageModal = externalShowImageModal ?? internalShowModal;
   const setShowImageModal = externalSetShowImageModal ?? setInternalShowModal;
@@ -156,44 +152,6 @@ const Timeline: React.FC<TimelineProps> = ({
   const modalInteractionId = externalModalInteractionId ?? internalInteractionId;
   const setModalInteractionId = externalSetModalInteractionId ?? setInternalInteractionId;
   
-  // Add keyboard navigation for image carousel and modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (showImageModal) {
-        if (e.key === 'ArrowLeft') {
-          handleModalPreviousImage();
-        } else if (e.key === 'ArrowRight') {
-          handleModalNextImage();
-        } else if (e.key === 'Escape') {
-          setShowImageModal(false);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showImageModal, modalImageIndex, modalInteractionId]);
-
-  // Handle custom events from homepage
-  useEffect(() => {
-    const handleOpenCarouselFromHome = (event: any) => {
-      const { imageUrl } = event.detail;
-      handleImageClick(imageUrl);
-    };
-
-    window.addEventListener('openTimelineCarouselFromHome', handleOpenCarouselFromHome);
-
-    return () => {
-      window.removeEventListener('openTimelineCarouselFromHome', handleOpenCarouselFromHome);
-    };
-  }, []);
-  const [isAddMediaOpen, setIsAddMediaOpen] = useState(false);
-  
-  // Media & Recording State
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
@@ -210,16 +168,6 @@ const Timeline: React.FC<TimelineProps> = ({
     return date.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
   };
 
-  const getMonthColor = (date: Date) => {
-    const month = date.getMonth();
-    const colors = [
-      'bg-blue-400', 'bg-blue-300', 'bg-green-400', 'bg-green-500', 
-      'bg-yellow-400', 'bg-orange-400', 'bg-orange-500', 'bg-red-400', 
-      'bg-purple-400', 'bg-purple-500', 'bg-pink-400', 'bg-pink-300'
-    ];
-    return colors[month] || 'bg-gray-400';
-  };
-  
   const allInteractions = useMemo(() => {
     // Normalize existing interactions to ensure timestamps are Date objects
     const combined = interactions.map(i => ({
@@ -275,7 +223,7 @@ const Timeline: React.FC<TimelineProps> = ({
                 x: centerX,
                 y: 100 + index * rowHeight,
                 isRightSide, 
-                isFuture: item.timestamp.getTime() > Date.now(),
+                isFuture: item.timestamp.getTime() > timelineNow,
                 rotation: 0
              };
         });
@@ -353,7 +301,7 @@ const Timeline: React.FC<TimelineProps> = ({
     });
 
     return { items: itemsWithPos, height: totalHeight, path: pathData, centerX, nowY };
-  }, [allInteractions, effectiveZoom, containerWidth, layoutMode]);
+  }, [allInteractions, effectiveZoom, containerWidth, layoutMode, timelineNow, windowWidth]);
 
 
   const handleEditClick = (item: Interaction) => {
@@ -367,22 +315,22 @@ const Timeline: React.FC<TimelineProps> = ({
   };
 
   // Get all images from a specific interaction
-  const getImagesForInteraction = (interactionId?: string | null) => {
+  const getImagesForInteraction = React.useCallback((interactionId?: string | null) => {
     const allImages: { url: string; interactionId: string; interactionTitle: string }[] = [];
     interactions
       .filter(i => !interactionId || i.id === interactionId)
       .forEach(interaction => {
-        const title = (interaction as any).message || interaction.text || 'Untitled';
+        const title = interaction.text || 'Untitled';
         // Prefer mediaItems array (multi-media format) over legacy single media
         if (interaction.mediaItems && interaction.mediaItems.length > 0) {
-          interaction.mediaItems.forEach((media: any) => {
+          interaction.mediaItems.forEach((media: MediaContent) => {
             if (media.type === 'image') {
               allImages.push({ url: media.url, interactionId: interaction.id, interactionTitle: title });
             }
           });
         } else if (interaction.media) {
-          const items = Array.isArray(interaction.media) ? interaction.media : [interaction.media];
-          items.forEach((media: any) => {
+          const items = [interaction.media];
+          items.forEach((media: MediaContent) => {
             if (media.type === 'image') {
               allImages.push({ url: media.url, interactionId: interaction.id, interactionTitle: title });
             }
@@ -390,14 +338,14 @@ const Timeline: React.FC<TimelineProps> = ({
         }
       });
     return allImages;
-  };
+  }, [interactions]);
 
   // Handle image click to open carousel
-  const handleImageClick = (imageUrl: string) => {
+  const handleImageClick = React.useCallback((imageUrl: string) => {
     // Find interaction id first
     const interaction = interactions.find(i => {
       const mediaItems = Array.isArray(i.mediaItems) ? i.mediaItems : (i.media ? [i.media] : []);
-      return mediaItems.some((m: any) => m.url === imageUrl);
+      return mediaItems.some((m: MediaContent) => m.url === imageUrl);
     });
 
     const targetInteractionId = interaction?.id || null;
@@ -408,25 +356,57 @@ const Timeline: React.FC<TimelineProps> = ({
     
     setModalImageIndex(imageIndex >= 0 ? imageIndex : 0);
     setShowImageModal(true);
-  };
+  }, [getImagesForInteraction, interactions, setModalImageIndex, setModalInteractionId, setShowImageModal]);
+
+  // Handle custom events from homepage
+  useEffect(() => {
+    const handleOpenCarouselFromHome = (event: Event) => {
+      const { imageUrl } = (event as CustomEvent<{ imageUrl?: string }>).detail || {};
+      if (imageUrl) handleImageClick(imageUrl);
+    };
+
+    window.addEventListener('openTimelineCarouselFromHome', handleOpenCarouselFromHome);
+
+    return () => {
+      window.removeEventListener('openTimelineCarouselFromHome', handleOpenCarouselFromHome);
+    };
+  }, [handleImageClick]);
 
   // Navigate to previous image in modal
-  const handleModalPreviousImage = () => {
+  const handleModalPreviousImage = React.useCallback(() => {
     const images = getImagesForInteraction(modalInteractionId);
     if (images.length === 0) return;
     
     const newIndex = modalImageIndex === 0 ? images.length - 1 : modalImageIndex - 1;
     setModalImageIndex(newIndex);
-  };
+  }, [getImagesForInteraction, modalImageIndex, modalInteractionId, setModalImageIndex]);
 
   // Navigate to next image in modal
-  const handleModalNextImage = () => {
+  const handleModalNextImage = React.useCallback(() => {
     const images = getImagesForInteraction(modalInteractionId);
     if (images.length === 0) return;
     
     const newIndex = modalImageIndex === images.length - 1 ? 0 : modalImageIndex + 1;
     setModalImageIndex(newIndex);
-  };
+  }, [getImagesForInteraction, modalImageIndex, modalInteractionId, setModalImageIndex]);
+
+  // Add keyboard navigation for image carousel and modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showImageModal) return;
+
+      if (e.key === 'ArrowLeft') {
+        handleModalPreviousImage();
+      } else if (e.key === 'ArrowRight') {
+        handleModalNextImage();
+      } else if (e.key === 'Escape') {
+        setShowImageModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleModalNextImage, handleModalPreviousImage, setShowImageModal, showImageModal]);
 
   const handleAddNew = () => {
     const newItem: Interaction = {
@@ -439,21 +419,6 @@ const Timeline: React.FC<TimelineProps> = ({
     setIsNew(true);
   };
 
-  const handleMassUpdate = async (updatedItems: Interaction[]) => {
-    for (const item of updatedItems) {
-      if (item.id.startsWith('temp-')) {
-        // This is a new item added from spreadsheet
-        onAddInteraction?.(item);
-        continue;
-      }
-      
-      const original = interactions.find(i => i.id === item.id);
-      if (JSON.stringify(original) !== JSON.stringify(item)) {
-        onUpdateInteraction?.(item);
-      }
-    }
-  };
-
   const handleSave = () => {
     if (!activeItem || !activeItem.text.trim()) return;
     if (isNew) {
@@ -464,11 +429,11 @@ const Timeline: React.FC<TimelineProps> = ({
     setActiveItem(null);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'audio') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0 && activeItem) {
       const newItems: MediaContent[] = Array.from(files).map(file => ({
-        type,
+        type: file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image',
         url: URL.createObjectURL(file)
       }));
       
@@ -480,34 +445,6 @@ const Timeline: React.FC<TimelineProps> = ({
         mediaItems: nextItems,
         media: nextItems[0]
       });
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (e) => chunksRef.current.push(e.data);
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/ogg; codecs=opus' });
-        const url = URL.createObjectURL(blob);
-        if (activeItem) {
-          setActiveItem({ ...activeItem, media: { type: 'audio', url } });
-        }
-        stream.getTracks().forEach(track => track.stop());
-      };
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch (err) {
-      alert("Microphone access is required.");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
     }
   };
 
@@ -816,9 +753,9 @@ const Timeline: React.FC<TimelineProps> = ({
                                       
                                       return (
                                         <div className="w-full h-full group">
-                                           <img 
+                                           <OptimizedImage 
                                               src={images[0].url} 
-                                              alt="" 
+                                              alt="Timeline memory media" 
                                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 cursor-pointer" 
                                               loading="lazy"
                                               onClick={(e) => {
@@ -987,8 +924,7 @@ const Timeline: React.FC<TimelineProps> = ({
                         ))}
                         
                         {/* Add Button */}
-                        <button
-                           onClick={() => setIsAddMediaOpen(true)}
+                        <label
                            className={`w-20 h-20 shrink-0 rounded-md border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
                               isFutureDate 
                                  ? 'border-purple-200 bg-purple-50 text-purple-400 hover:bg-purple-100' 
@@ -997,7 +933,14 @@ const Timeline: React.FC<TimelineProps> = ({
                         >
                            <i className="fas fa-plus text-xl"></i>
                            <span className="text-[9px] font-black uppercase">Add</span>
-                        </button>
+                           <input
+                              type="file"
+                              multiple
+                              accept="image/*,video/*,audio/*"
+                              className="hidden"
+                              onChange={handleFileChange}
+                           />
+                        </label>
                     </div>
                 </div>
 

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MemoryItem, Interaction } from '../types';
+import { MemoryItem, Interaction, MediaContent } from '../types';
 import OptimizedImage from './OptimizedImage';
 
 interface MemoryFrameProps {
@@ -18,6 +18,11 @@ interface MemoryFrameProps {
   timelineItems?: Interaction[]; // New prop for timeline items
   includeTimelineInGallery?: boolean; // New prop to control inclusion
 }
+
+const seededRatio = (seed: number) => {
+  const value = Math.sin(seed * 9301 + 49297) * 233280;
+  return value - Math.floor(value);
+};
 
 const MemoryFrame: React.FC<MemoryFrameProps> = ({ 
   isVisible, 
@@ -62,12 +67,12 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
       .filter(interaction => {
         // Handle both single media and media arrays
         const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
-        return mediaItems.some((media: any) => media.type === 'image');
+        return mediaItems.some((media: MediaContent) => media.type === 'image');
       })
       .map((interaction, index) => {
         // Get the first image from the media items
         const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
-        const firstImage = mediaItems.find((media: any) => media.type === 'image');
+        const firstImage = mediaItems.find((media: MediaContent) => media.type === 'image');
         return {
           id: interaction.id,
           url: firstImage?.url || '',
@@ -97,7 +102,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
   }, [allItems, viewMode, selectedAlbumId]);
 
   useEffect(() => {
-    setCurrentIndex(0);
+    queueMicrotask(() => setCurrentIndex(0));
   }, [viewMode, selectedAlbumId]);
 
   useEffect(() => {
@@ -109,6 +114,18 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
     }
   }, [isVisible, filteredItems.length, isZoomed, style]);
 
+  const scrollToIndex = useCallback((index: number) => {
+    if (scrollContainerRef.current) {
+       const container = scrollContainerRef.current;
+       const children = container.children;
+       if (children[index]) {
+         const child = children[index] as HTMLElement;
+         const newLeft = child.offsetLeft - (container.clientWidth / 2) + (child.clientWidth / 2);
+         container.scrollTo({ left: newLeft, behavior: 'smooth' });
+       }
+    }
+  }, []);
+
   useEffect(() => {
     if (isVisible && !isZoomed && style === 'carousel' && !isHovering && filteredItems.length > 0) {
       const interval = setInterval(() => {
@@ -119,19 +136,7 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
       }, 4000); 
       return () => clearInterval(interval);
     }
-  }, [isVisible, isZoomed, style, isHovering, currentIndex, filteredItems.length]);
-
-  const scrollToIndex = (index: number) => {
-    if (scrollContainerRef.current) {
-       const container = scrollContainerRef.current;
-       const children = container.children;
-       if (children[index]) {
-         const child = children[index] as HTMLElement;
-         const newLeft = child.offsetLeft - (container.clientWidth / 2) + (child.clientWidth / 2);
-         container.scrollTo({ left: newLeft, behavior: 'smooth' });
-       }
-    }
-  };
+  }, [isVisible, isZoomed, style, isHovering, currentIndex, filteredItems.length, scrollToIndex]);
 
   const handleScroll = () => {
     if (scrollContainerRef.current && style === 'carousel') {
@@ -164,14 +169,18 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
 
   /* Floating Animation Logic for Sky Variant */
   const floatingPositions = useMemo(() => {
-    return filteredItems.map(() => ({
-      top: `${5 + Math.random() * 40}%`, // Top 5-45% of screen
-      left: `${5 + Math.random() * 90}%`, // 5-95% width
-      duration: 10 + Math.random() * 20,
-      delay: Math.random() * 5,
-      scale: 0.5 + Math.random() * 0.5
-    }));
-  }, [filteredItems.length]); // Regenerate only when count changes
+    return filteredItems.map((item, index) => {
+      const seedSource = item.id || item.url || String(index);
+      const seed = [...seedSource].reduce((sum, char) => sum + char.charCodeAt(0), index + 1);
+      return {
+      top: `${5 + seededRatio(seed) * 40}%`, // Top 5-45% of screen
+      left: `${5 + seededRatio(seed + 1) * 90}%`, // 5-95% width
+      duration: 10 + seededRatio(seed + 2) * 20,
+      delay: seededRatio(seed + 3) * 5,
+      scale: 0.5 + seededRatio(seed + 4) * 0.5
+      };
+    });
+  }, [filteredItems]);
 
   // The original skyPos and its useEffect are no longer needed as each item will have its own random position and animation.
   // const [skyPos, setSkyPos] = useState({ top: '10%', left: '10%' });
@@ -515,14 +524,16 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
               className="relative max-w-6xl max-h-[85vh] group"
               onClick={(e) => e.stopPropagation()}
             >
-              <img 
+              <OptimizedImage
                 src={zoomedImage} 
-                referrerPolicy="no-referrer"
                 onError={(e) => {
                    e.currentTarget.src = "https://images.unsplash.com/photo-1516589174184-c6848463ea2a?q=80&w=800&auto=format&fit=crop";
                 }}
                 alt="Zoomed Memory" 
                 className="w-full h-full object-contain rounded-md shadow-[0_0_100px_rgba(236,72,153,0.2)] border-4 border-white/10"
+                loading="eager"
+                priority
+                style={{ width: 'min(95vw, 72rem)', height: 'min(85vh, 72rem)' }}
               />
               <div className="absolute -bottom-16 left-0 w-full flex justify-center gap-4">
                 {items.find(i => getDisplayUrl(i.url) === zoomedImage)?.privacy === 'private' && (

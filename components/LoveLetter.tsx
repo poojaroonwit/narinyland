@@ -24,6 +24,17 @@ interface LoveLetterProps {
   folders?: string[];
 }
 
+const seededRatio = (value: string) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  const ratio = Math.sin(hash * 9301 + 49297) * 233280;
+  return ratio - Math.floor(ratio);
+};
+
+const stablePaperRotation = (id: string) => (seededRatio(id) - 0.5) * 5;
+
 const LoveLetter: React.FC<LoveLetterProps> = ({ 
   isOpen, 
   onClose, 
@@ -51,8 +62,10 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
   // Reset state when opening
   useEffect(() => {
     if (isOpen) {
-      setView('list');
-      setSelectedMessage(null);
+      queueMicrotask(() => {
+        setView('list');
+        setSelectedMessage(null);
+      });
     }
   }, [isOpen]);
 
@@ -65,9 +78,14 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
       return;
     }
 
+    if (!msg.isRead && onUpdateMessage) {
+      onUpdateMessage({ ...msg, isRead: true, readAt: new Date() });
+    }
+
     setSelectedMessage(msg);
     setView('read');
   };
+  void handleOpenMessage;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
     const file = e.target.files?.[0];
@@ -451,7 +469,7 @@ const ReadAnimation: React.FC<{ message: LoveLetterMessage; onClose: () => void;
                     y: stage === 'closed' ? 0 : -160,
                     zIndex: stage === 'reading' ? 50 : 0,
                     scale: stage === 'reading' ? 1.4 : 1,
-                    rotate: stage === 'reading' ? 0 : (Math.random() - 0.5) * 5
+                    rotate: stage === 'reading' ? 0 : stablePaperRotation(message.id)
                 }}
                 transition={{ duration: 1, delay: 0.2, type: "spring", bounce: 0.4 }}
                 className="absolute top-2 w-[92%] h-[92%] bg-[#fffbf0] shadow-xl rounded-sm p-5 flex flex-col items-center cursor-default border border-[#e8dfc8] isolate"
@@ -495,7 +513,7 @@ const ReadAnimation: React.FC<{ message: LoveLetterMessage; onClose: () => void;
                           )}
 
                           <div className="font-quicksand text-[10px] leading-relaxed font-bold whitespace-pre-wrap text-gray-700 italic px-1">
-                              "{message.content}"
+                              &quot;{message.content}&quot;
                           </div>
                         </div>
 

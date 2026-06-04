@@ -3,8 +3,39 @@
 import * as React from 'react';
 import { useRef, useMemo, useLayoutEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Float, Sparkles } from '@react-three/drei';
+import { Float } from '@react-three/drei';
 import * as THREE from 'three';
+
+type TreeTheme = {
+  trunk: string;
+  leaves: string[];
+};
+
+type LeafInstance = {
+  position: [number, number, number];
+  scale: number;
+  color: string;
+  offset: number;
+  rotX: number;
+  rotY: number;
+  rotZ: number;
+  windSensitivity: number;
+  flutterSpeed: number;
+  turbulence: number;
+};
+
+type TreeContentProps = {
+  theme: TreeTheme;
+  scale?: number;
+  leafCount: number;
+  windFactor?: number;
+  branchCount?: number;
+  quality?: string;
+  shake?: boolean;
+  detail?: 'high' | 'medium' | 'low';
+  season?: 'spring' | 'summer' | 'autumn' | 'winter';
+  treeHeight?: number;
+};
 
 // Deterministic pseudo-random from seed
 function seededRandom(seed: number) {
@@ -33,7 +64,7 @@ const HeartFruit = ({ position, color, scale = 1 }: { position: [number, number,
 };
 
 // Instanced leaf rendering — 3D ellipsoid leaves visible from all angles
-export const InstancedLeaves = ({ leaves, windFactor, quality }: { leaves: any[], windFactor: number, quality: string }) => {
+export const InstancedLeaves = ({ leaves, windFactor, quality }: { leaves: LeafInstance[], windFactor: number, quality: string }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const segs = quality === 'low' ? 3 : (quality === 'medium' ? 4 : 5);
@@ -61,7 +92,7 @@ export const InstancedLeaves = ({ leaves, windFactor, quality }: { leaves: any[]
     if (meshRef.current.material) {
         (meshRef.current.material as THREE.Material).needsUpdate = true;
     }
-  }, [leaves]);
+  }, [dummy, leaves]);
 
   useFrame((state) => {
     if (!meshRef.current || quality === 'low' || leaves.length === 0) return;
@@ -114,7 +145,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
     length: number,
     thickness: number,
     color: string,
-    theme: any,
+    theme: TreeTheme,
     leafCount: number,
     windFactor: number,
     quality?: string,
@@ -138,7 +169,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
 
     // Generate leaf cluster at end of branch — spread along branch and at tip
     const branchLeaves = useMemo(() => {
-        const pos = [];
+        const pos: LeafInstance[] = [];
         const effectiveCount = quality === 'low' ? Math.floor(leafCount * 0.5) : leafCount;
         
         for(let i = 0; i < effectiveCount; i++) {
@@ -188,7 +219,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
 
     // Leaves for sub-branches (twigs) - concentrated at twig tips
     const subBranchLeaves1 = useMemo(() => {
-        const leaves = [];
+        const leaves: LeafInstance[] = [];
         const twigCount = quality === 'low' ? 4 : (quality === 'medium' ? 8 : 12);
         
         for(let i = 0; i < twigCount; i++) {
@@ -222,7 +253,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
     }, [length, quality, theme.leaves, season, seed, curveAmount]);
 
     const subBranchLeaves2 = useMemo(() => {
-        const leaves = [];
+        const leaves: LeafInstance[] = [];
         const twigCount = quality === 'low' ? 4 : (quality === 'medium' ? 8 : 12);
         
         for(let i = 0; i < twigCount; i++) {
@@ -298,7 +329,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
     );
 };
 
-export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branchCount = 6, quality = 'medium', shake = false, detail = 'high', season = 'spring', treeHeight = 1 }: { theme: any; scale?: number; leafCount: number; windFactor?: number; branchCount?: number; quality?: string; shake?: boolean, detail?: 'high' | 'medium' | 'low', season?: 'spring' | 'summer' | 'autumn' | 'winter', treeHeight?: number }) => {
+export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branchCount = 6, quality = 'medium', shake = false, detail = 'high', season = 'spring', treeHeight = 1 }: TreeContentProps) => {
   const group = useRef<THREE.Group>(null);
   const [pulse, setPulse] = React.useState(1);
   const prevLeafCount = useRef(leafCount);
@@ -374,7 +405,7 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
           });
       }
       return b;
-  }, [branchCount, leafCount]);
+  }, [branchCount, leafCount, treeHeight]);
 
   // Leaves per branch — very dense foliage for thick canopy
   const leavesPerBranch = useMemo(() => {
@@ -435,10 +466,11 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
     }
     return clusters;
   }, [isLow, isMid, theme.leaves, crownAsymmetry, season]);
+  void crownClusters;
 
   // Crown-distributed leaves — dense canopy with concentrated clusters
   const crownLeaves = useMemo(() => {
-    const leaves: any[] = [];
+    const leaves: LeafInstance[] = [];
     const count = isLow ? 120 : (isMid ? 300 : 600);
     
     for (let i = 0; i < count; i++) {
@@ -485,11 +517,10 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
       });
     }
     return leaves;
-  }, [isLow, isMid, theme.leaves]);
+  }, [isLow, isMid, theme.leaves, season, treeHeight]);
 
   // Trunk segments — dramatic tapering with natural irregularities and configurable height
   const trunkSegments = useMemo(() => {
-    const baseHeight = 4.85; // Original total height
     const heightScale = treeHeight;
     
     const segs = [
@@ -519,7 +550,7 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
         knotSize: 0
       };
     });
-  }, []);
+  }, [treeHeight]);
 
   return (
     <group ref={group} scale={[scale * pulse, scale * pulse, scale * pulse]}>
@@ -650,7 +681,7 @@ function getSeasonalLeafColor(baseColor: string, season: string): string {
     }
 }
 
-export const Tree = (props: any) => {
+export const Tree = (props: TreeContentProps) => {
     return (
         <group>
             <TreeContent {...props} detail="high" season={props.season || 'spring'} treeHeight={props.treeHeight || 1} />

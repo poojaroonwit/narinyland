@@ -1,8 +1,16 @@
 "use client";
 
-import { Emotion } from '../../types';
+export type GardenTheme = {
+  trunk: string;
+  leaves: string[];
+  bg: string;
+  ground: string;
+  patch: string;
+  particle: string;
+  grid?: string;
+};
 
-export const THEMES: Record<string, any> = {
+export const THEMES: Record<string, GardenTheme> = {
   oak: {
     trunk: '#8B4513',
     leaves: ['#4ade80', '#22c55e', '#16a34a', '#15803d'],
