@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { isAuthenticated, getUser, logout as authLogout, initAppKit, getUserCircles, AuthRequiredError } from '@/lib/auth';
-import { setActiveCircleId } from '@/lib/circle-store';
+import { getActiveCircleId, setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
 
 type Circle = { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string };
@@ -35,6 +35,11 @@ export const useAuth = () => useContext(AuthContext);
 
 // Routes that don't require auth
 const PUBLIC_ROUTES = ['/', '/auth/callback'];
+
+function isPublicPath(pathname: string): boolean {
+  return pathname === '/' || PUBLIC_ROUTES.some(route => route !== '/' && pathname.startsWith(route));
+}
+
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -112,7 +117,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setLoading(false);
         checkingRef.current = false;
         
-        const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+        const isPublicRoute = isPublicPath(pathname);
         if (!isPublicRoute) router.replace('/');
         return;
       }
@@ -124,7 +129,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       let userCircles: Circle[] = [];
       try {
         userCircles = await getUserCircles();
-        setCircles(userCircles);
       } catch (err) {
         if (err instanceof AuthRequiredError) {
           console.warn('AuthProvider: getUserCircles returned auth error, session likely expired.');
@@ -142,13 +146,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           checkingRef.current = false;
           return;
         }
-        // Non-auth errors: treat as no circles
-        setCircles([]);
+        console.warn('AuthProvider: getUserCircles failed, falling back to stored active circle:', err);
       }
 
       // Use the explicitly stored circle ID, falling back to first available circle
       const savedCircleId = userInfo.attributes?.circleId as string | undefined;
-      const storedCircleId = typeof window !== 'undefined' ? localStorage.getItem('narinyland_circle_id') : null;
+      const storedCircleId = getActiveCircleId();
       let resolvedCircleId = savedCircleId || storedCircleId || null;
 
       // If no circle stored yet but user already has circles, auto-pick the first one
@@ -164,6 +167,20 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
       }
 
+      if (resolvedCircleId && !userCircles.some(circle => circle.id === resolvedCircleId)) {
+        userCircles = [
+          {
+            id: resolvedCircleId,
+            name: 'Current World',
+            description: 'Current World',
+            role: 'member',
+          },
+          ...userCircles,
+        ];
+      }
+
+      setCircles(userCircles);
+
       setActiveCircleIdState(resolvedCircleId);
       setActiveCircleId(resolvedCircleId);
 
@@ -171,7 +188,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const isOnboarding = pathname.startsWith('/onboarding');
       const isRoot = pathname === '/';
 
-      if (userCircles.length === 0) {
+      if (userCircles.length === 0 && !resolvedCircleId) {
         // No circles -> must onboard to create or join a world
         if (!isOnboarding) {
           router.replace('/onboarding');
@@ -199,7 +216,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     checkingRef.current = false;
 
     // Redirect to marketing root if not authenticated and not on a public route
-    const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+    const isPublicRoute = isPublicPath(pathname);
     if (!authenticated && !isPublicRoute) {
       router.replace('/');
     }
@@ -208,6 +225,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const setActiveCircle = async (id: string) => {
     setActiveCircleIdState(id);
     setActiveCircleId(id);
+    setCircles(prev => (
+      prev.some(circle => circle.id === id)
+        ? prev
+        : [{ id, name: 'Current World', description: 'Current World', role: 'member' }, ...prev]
+    ));
     try {
       const { getAppKit } = await import('@/lib/auth');
       await getAppKit().updateAttributes({ circleId: id });
@@ -261,7 +283,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }
 
   // Allow public routes to render without auth
-  const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+  const isPublicRoute = isPublicPath(pathname);
   if (!isLoggedIn && !isPublicRoute) {
     // Already redirecting in effect, show loading in the meantime
     return (

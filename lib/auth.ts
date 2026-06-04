@@ -328,6 +328,32 @@ export class AuthRequiredError extends Error {
   }
 }
 
+type CircleListPayload = {
+  circles?: unknown;
+  data?: unknown;
+};
+
+function extractCircleList(payload: unknown): Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }> {
+  const candidates = [
+    payload,
+    payload && typeof payload === 'object' ? (payload as CircleListPayload).circles : undefined,
+    payload && typeof payload === 'object' ? (payload as CircleListPayload).data : undefined,
+    payload && typeof payload === 'object' && (payload as CircleListPayload).data && typeof (payload as CircleListPayload).data === 'object'
+      ? ((payload as { data: CircleListPayload }).data).circles
+      : undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((circle): circle is { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string } => (
+        !!circle && typeof circle === 'object' && typeof (circle as { id?: unknown }).id === 'string'
+      ));
+    }
+  }
+
+  return [];
+}
+
 export async function getUserCircles(): Promise<Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }>> {
   try {
     if (typeof window === 'undefined') return [];
@@ -347,8 +373,7 @@ export async function getUserCircles(): Promise<Array<{ id: string; name: string
 
     if (!res.ok) return [];
     const data = await res.json();
-    // API may return array directly or wrapped in { circles: [] }
-    return Array.isArray(data) ? data : (data.circles || data.data || []);
+    return extractCircleList(data);
   } catch (err) {
     if (err instanceof AuthRequiredError) throw err;
     console.error('getUserCircles error:', err);

@@ -66,7 +66,7 @@ export default function OnboardingPage() {
       await setActiveCircle(circle.id);
       
       await refreshUser();
-      router.replace('/');
+      router.replace('/garden');
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
@@ -99,7 +99,7 @@ export default function OnboardingPage() {
       await setActiveCircle(code);
       
       await refreshUser();
-      router.replace('/');
+      router.replace('/garden');
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
