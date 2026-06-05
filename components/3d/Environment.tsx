@@ -28,10 +28,18 @@ const seededRatio = (seed: number) => {
     return value - Math.floor(value);
 };
 
+const nextSeededRatio = (seedRef: React.MutableRefObject<number>) => {
+    seedRef.current = (seedRef.current * 1664525 + 1013904223) >>> 0;
+    return seedRef.current / 4294967296;
+};
+
+const advanceSeed = (seed: number) => (seed * 1664525 + 1013904223) >>> 0;
+
 // Ambient Falling Leaf
 export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: EnvironmentTheme, quality?: string }) => {
     const ref = useRef<THREE.Group>(null);
     const instanceSeed = hashString(React.useId());
+    const resetSeed = useRef(instanceSeed + 97);
     const { position, rotation, speed, color, drift } = useMemo(() => {
         return {
             position: [
@@ -59,9 +67,9 @@ export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: EnvironmentT
         
         // Reset leaf when it hits ground
         if (ref.current.position.y < 0) {
-            ref.current.position.y = 8 + Math.random() * 4;
-            ref.current.position.x = (Math.random() - 0.5) * 6;
-            ref.current.position.z = (Math.random() - 0.5) * 6;
+            ref.current.position.y = 8 + nextSeededRatio(resetSeed) * 4;
+            ref.current.position.x = (nextSeededRatio(resetSeed) - 0.5) * 6;
+            ref.current.position.z = (nextSeededRatio(resetSeed) - 0.5) * 6;
         }
     });
 
@@ -187,6 +195,10 @@ export const Butterfly = ({ flowers }: { flowers: FlowerPosition[] }) => {
     const timer = useRef(0);
     const targetPos = useRef(new THREE.Vector3());
     const instanceSeed = hashString(React.useId());
+    const behaviorSeed = useRef(instanceSeed + 131);
+    const direction = useMemo(() => new THREE.Vector3(), []);
+    const targetQuaternion = useMemo(() => new THREE.Quaternion(), []);
+    const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
     const color = useMemo(() => ['#f472b6', '#60a5fa', '#fbbf24', '#a78bfa', '#2dd4bf'][Math.floor(seededRatio(instanceSeed) * 5)], [instanceSeed]);
     const basePos = useMemo(() => [(seededRatio(instanceSeed + 1) - 0.5) * 10, 2 + seededRatio(instanceSeed + 2) * 2, (seededRatio(instanceSeed + 3) - 0.5) * 10], [instanceSeed]);
 
@@ -197,18 +209,18 @@ export const Butterfly = ({ flowers }: { flowers: FlowerPosition[] }) => {
 
         if (timer.current <= 0) {
             const choices: typeof activity[] = ['flutter', 'hover', 'zip', 'land'];
-            const newActivity = choices[Math.floor(Math.random() * choices.length)];
+            const newActivity = choices[Math.floor(nextSeededRatio(behaviorSeed) * choices.length)];
             setActivity(newActivity);
-            timer.current = 3 + Math.random() * 4;
+            timer.current = 3 + nextSeededRatio(behaviorSeed) * 4;
             
             if (newActivity === 'land' && flowers.length > 0) {
-                const flower = flowers[Math.floor(Math.random() * flowers.length)];
+                const flower = flowers[Math.floor(nextSeededRatio(behaviorSeed) * flowers.length)];
                 targetPos.current.set(flower.x, 0.45, flower.z);
             } else {
                 targetPos.current.set(
-                    (Math.random() - 0.5) * 8,
-                    1 + Math.random() * 2,
-                    (Math.random() - 0.5) * 8
+                    (nextSeededRatio(behaviorSeed) - 0.5) * 8,
+                    1 + nextSeededRatio(behaviorSeed) * 2,
+                    (nextSeededRatio(behaviorSeed) - 0.5) * 8
                 );
             }
         }
@@ -220,10 +232,10 @@ export const Butterfly = ({ flowers }: { flowers: FlowerPosition[] }) => {
             ref.current.position.y += Math.sin(t * 10) * 0.015;
         }
 
-        const dir = targetPos.current.clone().sub(ref.current.position).normalize();
-        if (dir.lengthSq() > 0.001) {
-            const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
-            ref.current.quaternion.slerp(targetQuat, 0.05);
+        direction.copy(targetPos.current).sub(ref.current.position).normalize();
+        if (direction.lengthSq() > 0.001) {
+            targetQuaternion.setFromUnitVectors(forward, direction);
+            ref.current.quaternion.slerp(targetQuaternion, 0.05);
         }
         
         ref.current.rotation.z = Math.sin(t * 5) * 0.2;
@@ -290,25 +302,39 @@ export const Butterfly = ({ flowers }: { flowers: FlowerPosition[] }) => {
 };
 
 export const FloatingText = ({ text, position, color = "#22c55e", onComplete }: { text: string, position: [number, number, number], color?: string, onComplete?: () => void }) => {
-    const textRef = useRef<THREE.Group>(null);
-    const [opacity, setOpacity] = React.useState(1);
+    const groupRef = useRef<THREE.Group>(null);
+    const textMeshRef = useRef<THREE.Mesh>(null);
+    const opacityRef = useRef(1);
+    const completedRef = useRef(false);
+    const [isVisible, setIsVisible] = React.useState(true);
     
-    useFrame((state, delta) => {
-        if (textRef.current) {
-            textRef.current.position.y += delta * 1.5;
-            setOpacity(prev => Math.max(0, prev - delta * 0.8));
-            if (opacity <= 0 && onComplete) {
-                onComplete();
-            }
+    useFrame((_, delta) => {
+        if (!groupRef.current || completedRef.current) return;
+
+        groupRef.current.position.y += delta * 1.5;
+        opacityRef.current = Math.max(0, opacityRef.current - delta * 0.8);
+
+        const textMesh = textMeshRef.current as (THREE.Mesh & { fillOpacity?: number; outlineOpacity?: number; sync?: () => void }) | null;
+        if (textMesh) {
+            textMesh.fillOpacity = opacityRef.current;
+            textMesh.outlineOpacity = opacityRef.current;
+            textMesh.sync?.();
+        }
+
+        if (opacityRef.current <= 0) {
+            completedRef.current = true;
+            setIsVisible(false);
+            onComplete?.();
         }
     });
 
-    if (opacity <= 0) return null;
+    if (!isVisible) return null;
 
     return (
-        <group ref={textRef} position={position}>
+        <group ref={groupRef} position={position}>
             <Float speed={5} rotationIntensity={0.2} floatIntensity={0.2}>
                <Text
+                 ref={textMeshRef}
                  color={color}
                  fontSize={0.8}
                  maxWidth={200}
@@ -320,8 +346,8 @@ export const FloatingText = ({ text, position, color = "#22c55e", onComplete }: 
                  anchorY="middle"
                  outlineWidth={0.05}
                  outlineColor="#ffffff"
-                 fillOpacity={opacity}
-                 outlineOpacity={opacity}
+                 fillOpacity={1}
+                 outlineOpacity={1}
                >
                  {text}
                </Text>
@@ -403,7 +429,8 @@ export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count
       rotation: [seededRatio(seed + 3) * Math.PI, seededRatio(seed + 4) * Math.PI, 0] as [number, number, number],
       speed: seededRatio(seed + 5) * 0.02 + 0.01,
       wobble: seededRatio(seed + 6) * 0.1,
-      wobblePhase: seededRatio(seed + 7) * Math.PI * 2
+      wobblePhase: seededRatio(seed + 7) * Math.PI * 2,
+      resetSeed: seed + 101
       };
     });
   }, [effectiveCount, instanceSeed]);
@@ -421,8 +448,10 @@ export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count
 
       if (p.position[1] < -0.1) {
         p.position[1] = 10;
-        p.position[0] = (Math.random() - 0.5) * 20;
-        p.position[2] = (Math.random() - 0.5) * 20;
+        p.resetSeed = advanceSeed(p.resetSeed);
+        p.position[0] = (p.resetSeed / 4294967296 - 0.5) * 20;
+        p.resetSeed = advanceSeed(p.resetSeed);
+        p.position[2] = (p.resetSeed / 4294967296 - 0.5) * 20;
       }
 
       dummy.position.set(p.position[0], p.position[1], p.position[2]);
@@ -552,17 +581,19 @@ export const Clouds = ({ hour, theme: _theme, quality = 'medium' }: { hour: numb
 export const ShootingStar = ({ quality = 'medium' }: { quality?: string }) => {
     const ref = useRef<THREE.Group>(null);
     const [active, setActive] = React.useState(false);
+    const instanceSeed = hashString(React.useId());
+    const spawnSeed = useRef(instanceSeed + 557);
     
     useFrame((state, delta) => {
         if (quality === 'low') return;
         
-        if (!active && Math.random() < 0.002) {
+        if (!active && nextSeededRatio(spawnSeed) < 0.002) {
             setActive(true);
             if (ref.current) {
                 ref.current.position.set(
-                    (Math.random() - 0.5) * 50,
-                    22 + Math.random() * 12,
-                    -30 - Math.random() * 20
+                    (nextSeededRatio(spawnSeed) - 0.5) * 50,
+                    22 + nextSeededRatio(spawnSeed) * 12,
+                    -30 - nextSeededRatio(spawnSeed) * 20
                 );
             }
         }

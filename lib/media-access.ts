@@ -12,10 +12,41 @@ export function allowUnscopedLegacyMediaAccess(env: LegacyMediaAccessEnv = proce
   return env.NODE_ENV !== 'production' || env.ALLOW_LEGACY_UNSCOPED_MEDIA === 'true';
 }
 
-export async function requireStorageKeyAccess(request: Request, key: string): Promise<NextResponse | null> {
-  const configId = getConfigIdFromStorageKey(key);
+export async function getStorageKeyConfigIds(key: string): Promise<string[]> {
+  const scopedConfigId = getConfigIdFromStorageKey(key);
+  if (scopedConfigId) return [scopedConfigId];
 
-  if (!configId) {
+  const [memories, timelineEvents, letters] = await Promise.all([
+    prisma.memory.findMany({
+      where: { s3Key: key },
+      select: { configId: true },
+    }),
+    prisma.timelineEvent.findMany({
+      where: {
+        OR: [
+          { mediaS3Key: key },
+          { mediaS3Keys: { has: key } },
+        ],
+      },
+      select: { configId: true },
+    }),
+    prisma.loveLetter.findMany({
+      where: { mediaS3Key: key },
+      select: { from: { select: { configId: true } } },
+    }),
+  ]);
+
+  return Array.from(new Set([
+    ...memories.map((memory) => memory.configId),
+    ...timelineEvents.map((event) => event.configId),
+    ...letters.map((letter) => letter.from.configId),
+  ]));
+}
+
+export async function requireStorageKeyAccess(request: Request, key: string): Promise<NextResponse | null> {
+  const configIds = await getStorageKeyConfigIds(key);
+
+  if (configIds.length === 0) {
     if (allowUnscopedLegacyMediaAccess()) return null;
 
     return NextResponse.json(
@@ -34,7 +65,7 @@ export async function requireStorageKeyAccess(request: Request, key: string): Pr
 
   const membership = await prisma.partner.findFirst({
     where: {
-      configId,
+      configId: { in: configIds },
       OR: [
         { id: session.userId },
         { userId: session.userId },

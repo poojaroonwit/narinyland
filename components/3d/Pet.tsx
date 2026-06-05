@@ -9,6 +9,7 @@ import { Emotion } from '../../types';
 
 type PetColors = { primary: string; secondary: string; nose: string };
 type PetDetail = 'high' | 'medium' | 'low';
+type PetActivity = 'walk' | 'sit' | 'lie' | 'idle' | 'play';
 type GroupRef = React.RefObject<THREE.Group | null>;
 
 type PetVisualsProps = {
@@ -31,6 +32,19 @@ type Pet3DProps = {
   startPos?: [number, number, number];
   otherPets?: Array<{ ref: GroupRef; type: string }>;
   quality?: string;
+};
+
+const hashString = (value: string) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
+const nextSeededRatio = (seedRef: React.MutableRefObject<number>) => {
+  seedRef.current = (seedRef.current * 1664525 + 1013904223) >>> 0;
+  return seedRef.current / 4294967296;
 };
 
 export const PetVisuals = ({ petType, colors, emotion, active, quality, detail = 'high', coreRef, headRef, tailRef, legRefs }: PetVisualsProps) => {
@@ -244,9 +258,17 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
     }
   }, [petType]);
 
-  const [activity, setActivity] = useState<'walk' | 'sit' | 'lie' | 'idle' | 'play'>('idle');
+  const activity = useRef<PetActivity>('idle');
   const activityTimer = useRef(0);
   const targetPos = useRef(new THREE.Vector3(startPos[0], startPos[1], startPos[2]));
+  const instanceSeed = hashString(React.useId());
+  const behaviorSeed = useRef(instanceSeed + 211);
+  const moveDirection = useMemo(() => new THREE.Vector3(), []);
+  const targetQuaternion = useMemo(() => new THREE.Quaternion(), []);
+  const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
+  const nextTarget = useMemo(() => new THREE.Vector3(), []);
+  const cameraPosition = useMemo(() => new THREE.Vector3(), []);
+  const scaleTarget = useMemo(() => new THREE.Vector3(1, 1, 1), []);
 
   // Jump Physics State
   const isJumping = useRef(false);
@@ -262,36 +284,40 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
         // 1. Natural Cycle State Machine
         if (activityTimer.current <= 0) {
             if (emotion === 'sleeping') {
-                setActivity('lie');
+                activity.current = 'lie';
                 activityTimer.current = 10;
             } else {
-                const states: typeof activity[] = ['walk', 'idle', 'sit', 'lie', 'play'];
+                const states: PetActivity[] = ['walk', 'idle', 'sit', 'lie', 'play'];
                 const weights = [0.4, 0.2, 0.1, 0.1, 0.2];
-                const rand = Math.random();
+                const rand = nextSeededRatio(behaviorSeed);
                 let acc = 0;
                 for(let i=0; i<states.length; i++) {
                     acc += weights[i];
                     if (rand < acc) {
-                        setActivity(states[i]);
+                        activity.current = states[i];
                         break;
                     }
                 }
-                activityTimer.current = 4 + Math.random() * 6;
+                activityTimer.current = 4 + nextSeededRatio(behaviorSeed) * 6;
             }
             
-            if (activity === 'walk' || activity === 'play') {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = activity === 'play' ? 1.0 + Math.random() * 2.0 : 1.5 + Math.random() * 4.5;
+            if (activity.current === 'walk' || activity.current === 'play') {
+                const angle = nextSeededRatio(behaviorSeed) * Math.PI * 2;
+                const dist = activity.current === 'play' ? 1.0 + nextSeededRatio(behaviorSeed) * 2.0 : 1.5 + nextSeededRatio(behaviorSeed) * 4.5;
                 
-                const finalTarget = new THREE.Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-                if (activity === 'play' && otherPets.length > 0) {
-                    const companion = otherPets[Math.floor(Math.random() * otherPets.length)];
+                nextTarget.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+                if (activity.current === 'play' && otherPets.length > 0) {
+                    const companion = otherPets[Math.floor(nextSeededRatio(behaviorSeed) * otherPets.length)];
                     if (companion.ref.current) {
                         const companionPos = companion.ref.current.position;
-                        finalTarget.set(companionPos.x + (Math.random() - 0.5) * 2, 0, companionPos.z + (Math.random() - 0.5) * 2);
+                        nextTarget.set(
+                          companionPos.x + (nextSeededRatio(behaviorSeed) - 0.5) * 2,
+                          0,
+                          companionPos.z + (nextSeededRatio(behaviorSeed) - 0.5) * 2
+                        );
                     }
                 }
-                targetPos.current.copy(finalTarget);
+                targetPos.current.copy(nextTarget);
             }
         }
 
@@ -303,13 +329,13 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
         let legRotX = [0, 0, 0, 0]; 
         const legRotZ = [0, 0, 0, 0];
 
-        switch(activity) {
+        switch(activity.current) {
             case 'walk':
                 ref.current.position.lerp(targetPos.current, 0.02);
-                const dir = targetPos.current.clone().sub(ref.current.position).normalize();
-                if (dir.lengthSq() > 0.001) {
-                    const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
-                    ref.current.quaternion.slerp(targetQuat, 0.1);
+                moveDirection.copy(targetPos.current).sub(ref.current.position).normalize();
+                if (moveDirection.lengthSq() > 0.001) {
+                    targetQuaternion.setFromUnitVectors(forward, moveDirection);
+                    ref.current.quaternion.slerp(targetQuaternion, 0.1);
                 }
                 targetY = Math.abs(Math.sin(t * 10)) * 0.1;
                 legRotX = [
@@ -343,10 +369,10 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
 
             case 'play':
                 ref.current.position.lerp(targetPos.current, 0.04);
-                const pDir = targetPos.current.clone().sub(ref.current.position).normalize();
-                if (pDir.lengthSq() > 0.001) {
-                    const tQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), pDir);
-                    ref.current.quaternion.slerp(tQuat, 0.2);
+                moveDirection.copy(targetPos.current).sub(ref.current.position).normalize();
+                if (moveDirection.lengthSq() > 0.001) {
+                    targetQuaternion.setFromUnitVectors(forward, moveDirection);
+                    ref.current.quaternion.slerp(targetQuaternion, 0.2);
                 }
                 targetY = 0.2 + Math.abs(Math.sin(t * 15)) * 0.4;
                 legRotX = [
@@ -373,11 +399,11 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
         if (headRef.current) {
             let headX = 0;
             let headY = 0;
-            if (activity === 'walk') {
+            if (activity.current === 'walk') {
                headX = Math.sin(t * 10) * 0.1;
             } else {
-               const cameraPos = state.camera.position.clone();
-               const localLook = headRef.current.parent!.worldToLocal(cameraPos);
+               cameraPosition.copy(state.camera.position);
+               const localLook = headRef.current.parent!.worldToLocal(cameraPosition);
                headY = Math.atan2(localLook.x, localLook.z);
                headX = -Math.atan2(localLook.y, Math.sqrt(localLook.x * localLook.x + localLook.z * localLook.z));
                headY = THREE.MathUtils.clamp(headY, -Math.PI / 2.5, Math.PI / 2.5);
@@ -397,7 +423,7 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
         });
 
         if (tailRef.current) {
-            const wagSpeed = (activity === 'walk' || emotion === 'excited') ? 15 : 2;
+            const wagSpeed = (activity.current === 'walk' || emotion === 'excited') ? 15 : 2;
             tailRef.current.rotation.z = (Math.PI / 8) + Math.sin(t * wagSpeed) * 0.2;
         }
 
@@ -415,7 +441,7 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
             if (coreRef.current) coreRef.current.position.y = Math.max(0, coreRef.current.position.y + jumpHeight.current);
         }
 
-        if (ref.current) ref.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+        if (ref.current) ref.current.scale.lerp(scaleTarget, 0.1);
     }
   });
 
@@ -424,7 +450,7 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
     if (!isJumping.current) {
         isJumping.current = true;
         jumpVelocity.current = 6.0;
-        spinSpeed.current = Math.random() > 0.5 ? 10 : -10;
+        spinSpeed.current = nextSeededRatio(behaviorSeed) > 0.5 ? 10 : -10;
         if (ref.current) ref.current.scale.set(1.2, 0.8, 1.2);
         setActive(true);
         setTimeout(() => setActive(false), 500);

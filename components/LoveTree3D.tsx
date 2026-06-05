@@ -59,30 +59,34 @@ const GameCameraController = ({ enabled, movement }: { enabled: boolean; movemen
   const playerPos = useRef(new THREE.Vector3(0, 0, 6));
   const velocity = useRef(new THREE.Vector3());
   const lookAtTarget = useRef(new THREE.Vector3(0, 1.15, 0));
+  const desiredMovement = useRef(new THREE.Vector3());
+  const cameraTarget = useRef(new THREE.Vector3());
+  const lookAtPoint = useRef(new THREE.Vector3());
 
   useFrame((_, delta) => {
     if (!enabled) return;
 
-    const desired = new THREE.Vector3(
+    desiredMovement.current.set(
       (movement.right ? 1 : 0) - (movement.left ? 1 : 0),
       0,
       (movement.back ? 1 : 0) - (movement.forward ? 1 : 0)
     );
 
-    if (desired.lengthSq() > 0) {
-      desired.normalize().multiplyScalar(4.2);
+    if (desiredMovement.current.lengthSq() > 0) {
+      desiredMovement.current.normalize().multiplyScalar(4.2);
     }
 
-    velocity.current.lerp(desired, 1 - Math.exp(-delta * 8));
+    velocity.current.lerp(desiredMovement.current, 1 - Math.exp(-delta * 8));
     playerPos.current.addScaledVector(velocity.current, delta);
     playerPos.current.x = THREE.MathUtils.clamp(playerPos.current.x, -13, 13);
     playerPos.current.z = THREE.MathUtils.clamp(playerPos.current.z, -13, 13);
 
-    const cameraTarget = new THREE.Vector3(playerPos.current.x, 3.6, playerPos.current.z + 8.5);
-    camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 4.5));
+    cameraTarget.current.set(playerPos.current.x, 3.6, playerPos.current.z + 8.5);
+    camera.position.lerp(cameraTarget.current, 1 - Math.exp(-delta * 4.5));
 
+    lookAtPoint.current.set(playerPos.current.x, 1.2, playerPos.current.z - 1.5);
     lookAtTarget.current.lerp(
-      new THREE.Vector3(playerPos.current.x, 1.2, playerPos.current.z - 1.5),
+      lookAtPoint.current,
       1 - Math.exp(-delta * 6)
     );
     camera.lookAt(lookAtTarget.current);
@@ -162,6 +166,11 @@ const seededRatio = (seed: number) => {
   return value - Math.floor(value);
 };
 
+const nextSeededRatio = (seedRef: React.MutableRefObject<number>) => {
+  seedRef.current = (seedRef.current * 1664525 + 1013904223) >>> 0;
+  return seedRef.current / 4294967296;
+};
+
 const CustomGLTFModel = ({ url, scale = 1 }: { url: string, scale?: number }) => {
   const { scene } = useGLTF(url);
   // Clone the scene so multiple of the same model can be rendered
@@ -169,13 +178,16 @@ const CustomGLTFModel = ({ url, scale = 1 }: { url: string, scale?: number }) =>
   return <primitive object={clone} scale={scale} />;
 };
 
-// Spawn-in animation: objects start from a glowing sphere and scale in with spring bounce
+// Spawn-in animation: objects start from a glowing sphere and scale in with a clean ease-out.
 const SpawnIn = ({ children, delay = 0, position = [0, 0, 0] as [number, number, number] }: { children: React.ReactNode, delay?: number, position?: [number, number, number] }) => {
   const groupRef = useRef<THREE.Group>(null);
   const sphereRef = useRef<THREE.Mesh>(null);
   const startTime = useRef<number | null>(null);
+  const completed = useRef(false);
   const DURATION = 0.65;
   useFrame((state) => {
+    if (completed.current) return;
+
     const t = state.clock.getElapsedTime();
 
     if (startTime.current === null) {
@@ -191,18 +203,17 @@ const SpawnIn = ({ children, delay = 0, position = [0, 0, 0] as [number, number,
     const elapsed = t - startTime.current;
     const p = Math.min(elapsed / DURATION, 1);
 
-    // Elastic spring overshoot easing
-    const spring = p === 1
-      ? 1
-      : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10 - 0.75) * (2 * Math.PI) / 3);
+    const easeOutQuint = 1 - Math.pow(1 - p, 5);
 
-    if (groupRef.current) groupRef.current.scale.setScalar(Math.max(0, spring));
+    if (groupRef.current) groupRef.current.scale.setScalar(easeOutQuint);
 
     // Glowing sphere: pulse in then shrink away as object appears
     if (sphereRef.current) {
       const sScale = p < 0.25 ? (p / 0.25) : Math.max(0, 1 - (p - 0.25) / 0.35);
       sphereRef.current.scale.setScalar(sScale * 0.6);
     }
+
+    if (p >= 1) completed.current = true;
   });
 
   return (
@@ -244,6 +255,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
    const [shakeTree, setShakeTree] = useState(false);
    const [floatingTexts, setFloatingTexts] = useState<Array<{ id: number; text: string; position: [number, number, number]; color: string }>>([]);
    const prevLeafCount = useRef(leaves);
+   const floatingTextSeed = useRef(0x9e3779b9);
 
    const selectedItem = useMemo(
      () => purchasedItems?.find(item => item.id === selectedItemId) ?? null,
@@ -378,9 +390,9 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
         
         // Add floating text
         const id = Date.now();
-        const randomX = (Math.random() - 0.5) * 3;
-        const randomZ = (Math.random() - 0.5) * 3;
-        const height = 4 + Math.random() * 2;
+        const randomX = (nextSeededRatio(floatingTextSeed) - 0.5) * 3;
+        const randomZ = (nextSeededRatio(floatingTextSeed) - 0.5) * 3;
+        const height = 4 + nextSeededRatio(floatingTextSeed) * 2;
         
         setFloatingTexts(prev => [
             ...prev, 
