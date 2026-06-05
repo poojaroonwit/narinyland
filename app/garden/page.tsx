@@ -849,22 +849,6 @@ const Home: React.FC = () => {
                  }}
                />
 
-               {/* Edit Mode Button for Tree Mode */}
-               <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
-                 <motion.button
-                   whileHover={{ scale: 1.1 }}
-                   whileTap={{ scale: 0.9 }}
-                   onClick={() => setIsEditMode(!isEditMode)}
-                   className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
-                     isEditMode
-                       ? 'bg-pink-500 text-white border-pink-400 shadow-pink-500/40'
-                       : 'bg-white/80 backdrop-blur-md text-gray-600 border-white/50 hover:bg-white'
-                   }`}
-                   title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
-                 >
-                   <i className={`fas ${isEditMode ? 'fa-times' : 'fa-pencil-alt'}`}></i>
-                 </motion.button>
-               </div>
              </>
            ) : (
              <>
@@ -1388,7 +1372,7 @@ const Home: React.FC = () => {
                   />
               </div>
 
-              {/* 3D / World toggle integrated below status bar */}
+              {/* Land / World toggle integrated below status bar */}
               <div 
                 className="mt-4 flex items-center bg-white/80 backdrop-blur-md rounded-md border border-pink-100 shadow-md p-1 pointer-events-auto"
                 onClick={(e) => e.stopPropagation()}
@@ -1401,7 +1385,7 @@ const Home: React.FC = () => {
                       : 'text-gray-400 hover:text-pink-500'
                   }`}
                 >
-                  <i className="fas fa-tree text-[9px]"></i> 3D
+                  <i className="fas fa-tree text-[9px]"></i> LAND
                 </button>
                 <button
                   onClick={() => {

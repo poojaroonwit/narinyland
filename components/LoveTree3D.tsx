@@ -232,7 +232,6 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
    void petMessage;
    void level;
    void onAddLeaf;
-   void setIsEditMode;
    const [isShopPopoverOpen, setIsShopPopoverOpen] = useState(false);
    const [cameraMode, setCameraMode] = useState<'orbit' | 'explore'>('orbit');
    const [movement, setMovement] = useState<MovementInput>({ forward: false, back: false, left: false, right: false });
@@ -250,6 +249,31 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
      () => purchasedItems?.find(item => item.id === selectedItemId) ?? null,
      [purchasedItems, selectedItemId]
    );
+
+   const placedItemCount = purchasedItems?.filter(item => item.type !== 'main_tree').length ?? 0;
+   const gardenQuests = useMemo(() => [
+     {
+       id: 'build',
+       label: 'Place a keepsake',
+       detail: placedItemCount > 0 ? `${placedItemCount} placed` : 'Open Build and choose one',
+       done: placedItemCount > 0,
+       icon: 'fa-cube',
+     },
+     {
+       id: 'grow',
+       label: 'Grow the love tree',
+       detail: leaves > 0 ? `${leaves.toLocaleString()} leaves` : 'Earn points, then grow',
+       done: leaves > 0,
+       icon: 'fa-leaf',
+     },
+     {
+       id: 'explore',
+       label: 'Take a garden walk',
+       detail: cameraMode === 'explore' ? 'Walking now' : 'Switch to Explore',
+       done: cameraMode === 'explore',
+       icon: 'fa-shoe-prints',
+     },
+   ], [cameraMode, leaves, placedItemCount]);
 
    React.useEffect(() => {
      if (!selectedItemId) return;
@@ -318,6 +342,18 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
    const openQRUpload = () => {
      setIsShopPopoverOpen(false);
      setIsQRUploadOpen(true);
+   };
+
+   const toggleBuildMode = () => {
+     const nextMode = !isEditMode;
+     setIsEditMode?.(nextMode);
+     if (nextMode) {
+       setCameraMode('orbit');
+       setIsQRUploadOpen(false);
+     } else {
+       setIsShopPopoverOpen(false);
+       setSelectedItemId(null);
+     }
    };
 
    const pressMovement = (key: keyof MovementInput, pressed: boolean) => {
@@ -953,52 +989,131 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
       {createPortal(
         <>
-      <div className="fixed top-20 left-4 md:left-6 z-[70] flex items-center gap-2 rounded-md border border-white/60 bg-white/80 p-1.5 shadow-2xl backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={() => setCameraMode('orbit')}
-          className={`h-10 px-3 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
-            cameraMode === 'orbit'
-              ? 'bg-stone-800 text-white shadow-sm'
-              : 'text-stone-600 hover:bg-white/80'
-          }`}
-          title="Orbit camera"
-        >
-          <i className="fas fa-street-view mr-2"></i>
-          Orbit
-        </button>
-        <button
-          type="button"
-          onClick={() => setCameraMode('explore')}
-          disabled={isEditMode}
-          className={`h-10 px-3 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
-            cameraMode === 'explore'
-              ? 'bg-emerald-700 text-white shadow-sm'
-              : isEditMode
-                ? 'text-stone-300 cursor-not-allowed'
-                : 'text-stone-600 hover:bg-white/80'
-          }`}
-          title="Explore land"
-        >
-          <i className="fas fa-shoe-prints mr-2"></i>
-          Explore
-        </button>
-        {isEditMode && (
+      <div className="fixed top-20 left-4 md:left-6 z-[70] w-[min(92vw,360px)] overflow-hidden rounded-md border border-white/60 bg-[#fffaf1]/90 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-amber-100/80 px-4 py-3">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-600">Land Controls</p>
+            <h3 className="text-sm font-black text-stone-800">{isEditMode ? 'Build Mode' : cameraMode === 'explore' ? 'Explore Mode' : 'Orbit View'}</h3>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">
+            <i className="fas fa-coins text-[10px]"></i>
+            {points.toLocaleString()}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 p-2">
           <button
             type="button"
-            onClick={() => setSnapToGrid(prev => !prev)}
-            className={`h-10 px-3 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
-              snapToGrid
-                ? 'bg-amber-500 text-white shadow-sm'
-                : 'text-stone-600 hover:bg-white/80'
+            onClick={() => {
+              setIsEditMode?.(false);
+              setCameraMode('explore');
+            }}
+            disabled={isEditMode}
+            className={`h-12 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+              cameraMode === 'explore' && !isEditMode
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : isEditMode
+                  ? 'cursor-not-allowed bg-stone-100 text-stone-300'
+                  : 'bg-white/70 text-stone-600 hover:bg-emerald-50 hover:text-emerald-700'
             }`}
-            title="Snap to grid"
+            title="Walk around the land"
           >
-            <i className="fas fa-border-all mr-2"></i>
-            Snap
+            <i className="fas fa-shoe-prints mb-1 block"></i>
+            Explore
           </button>
-        )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditMode?.(false);
+              setCameraMode('orbit');
+            }}
+            className={`h-12 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+              cameraMode === 'orbit' && !isEditMode
+                ? 'bg-stone-800 text-white shadow-sm'
+                : 'bg-white/70 text-stone-600 hover:bg-stone-100'
+            }`}
+            title="Look around the land"
+          >
+            <i className="fas fa-street-view mb-1 block"></i>
+            Orbit
+          </button>
+          <button
+            type="button"
+            onClick={toggleBuildMode}
+            className={`h-12 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+              isEditMode
+                ? 'bg-pink-500 text-white shadow-sm'
+                : 'bg-white/70 text-stone-600 hover:bg-pink-50 hover:text-pink-600'
+            }`}
+            title={isEditMode ? 'Leave Build Mode' : 'Enter Build Mode'}
+          >
+            <i className={`fas ${isEditMode ? 'fa-hammer' : 'fa-seedling'} mb-1 block`}></i>
+            Build
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {isEditMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="border-t border-amber-100/80 px-3 pb-3 pt-2"
+            >
+              <div className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-3 py-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-stone-500">Placement</span>
+                <button
+                  type="button"
+                  onClick={() => setSnapToGrid(prev => !prev)}
+                  className={`h-8 rounded-md px-3 text-[10px] font-black uppercase tracking-wider transition-all ${
+                    snapToGrid
+                      ? 'bg-amber-500 text-white shadow-sm'
+                      : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                  }`}
+                  title="Snap to grid"
+                >
+                  <i className="fas fa-border-all mr-2"></i>
+                  Snap {snapToGrid ? 'On' : 'Off'}
+                </button>
+              </div>
+              <p className="mt-2 text-[10px] font-bold leading-relaxed text-stone-500">
+                Drag objects on the land, rotate selected pieces, and open the catalog to place keepsakes.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {!isEditMode && (
+          <motion.div
+            initial={{ opacity: 0, x: -14 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -14 }}
+            className="fixed top-[15.5rem] left-4 md:left-6 z-[65] w-[min(92vw,300px)] rounded-md border border-white/60 bg-white/75 p-3 shadow-xl backdrop-blur-xl"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-pink-500">Garden Quests</p>
+              <span className="text-[10px] font-black text-stone-400">{gardenQuests.filter(quest => quest.done).length}/{gardenQuests.length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {gardenQuests.map(quest => (
+                <div key={quest.id} className="flex items-center gap-2 rounded-md bg-white/70 px-2.5 py-2">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                    quest.done ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-500'
+                  }`}>
+                    <i className={`fas ${quest.done ? 'fa-check' : quest.icon} text-[10px]`}></i>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-black text-stone-700">{quest.label}</p>
+                    <p className="truncate text-[9px] font-bold text-stone-400">{quest.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {cameraMode === 'explore' && !isEditMode && (
@@ -1064,7 +1179,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-xs font-black uppercase tracking-widest text-stone-500">Selected</p>
+                <p className="truncate text-xs font-black uppercase tracking-widest text-pink-500">Placed Piece</p>
                 <h3 className="truncate text-base font-black capitalize text-stone-800">{selectedItem.type.replace(/_/g, ' ')}</h3>
               </div>
               <button
@@ -1084,7 +1199,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 title="Rotate left"
               >
                 <i className="fas fa-undo mr-2"></i>
-                Rotate
+                Turn Left
               </button>
               <button
                 type="button"
@@ -1093,7 +1208,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
                 title="Rotate right"
               >
                 <i className="fas fa-redo mr-2"></i>
-                Rotate
+                Turn Right
               </button>
             </div>
           </motion.div>
@@ -1110,14 +1225,15 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={toggleShopPopover}
-              className={`fixed bottom-24 left-24 z-[80] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
+              className={`fixed bottom-24 left-6 z-[80] h-14 rounded-full px-5 shadow-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider transition-all border-2 ${
                 isShopPopoverOpen
                   ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
                   : 'bg-white/80 backdrop-blur-md text-amber-600 border-white/50 hover:bg-white'
               }`}
-              title="Open Shop"
+              title="Open build catalog"
             >
               <i className="fas fa-store"></i>
+              Catalog
             </motion.button>
           )}
         </AnimatePresence>
@@ -1132,14 +1248,14 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
             initial={{ opacity: 0, x: -20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -20, scale: 0.95 }}
-            className="fixed bottom-24 left-24 z-[80] w-80 max-h-[60vh] bg-white/95 backdrop-blur-xl rounded-md shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50 overflow-hidden flex flex-col"
+            className="fixed bottom-24 left-6 z-[80] w-80 max-h-[60vh] bg-white/95 backdrop-blur-xl rounded-md shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50 overflow-hidden flex flex-col"
           >
             <div className="p-4 border-b border-amber-100 flex justify-between items-center shrink-0">
               <div>
                 <h3 className="font-black text-amber-700 flex items-center gap-2">
-                  <i className="fas fa-store"></i> Shop
+                  <i className="fas fa-store"></i> Build Catalog
                 </h3>
-                <p className="text-[9px] font-bold text-amber-500/80 uppercase tracking-widest">Drag items to your world</p>
+                <p className="text-[9px] font-bold text-amber-500/80 uppercase tracking-widest">Choose a piece for this land</p>
               </div>
               <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-md flex items-center gap-1.5 text-sm shadow-sm border border-amber-200">
                 <i className="fas fa-coins text-amber-500 text-xs"></i>
