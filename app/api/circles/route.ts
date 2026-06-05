@@ -3,6 +3,7 @@ import { getAuthSession } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { createCircleViaServer } from '@/lib/appkit-server';
 import { getErrorMessage } from '@/lib/errors';
+import { debugLog, debugWarn } from '@/lib/logger';
 
 type AppKitCircle = {
   id?: string;
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
     const session = await getAuthSession(req);
     let token = session.token;
     const { userId, error, status, isSoft } = session;
-    console.log('BFF /api/circles: Session resolved:', { hasToken: !!token, userId, isSoft, error });
+    debugLog('BFF /api/circles: Session resolved.', { hasToken: !!token, hasUserId: !!userId, isSoft, hasError: !!error });
 
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
@@ -61,12 +62,12 @@ export async function GET(req: NextRequest) {
       try {
         res = await fetchCircles(token);
       } catch (fetchErr: unknown) {
-        console.warn('GET /api/circles AppKit fetch failed, falling back to local configs:', getErrorMessage(fetchErr));
+        debugWarn('GET /api/circles AppKit fetch failed, falling back to local configs.', getErrorMessage(fetchErr));
       }
 
       // --- 401 RETRY LOGIC ---
       if (res?.status === 401) {
-        console.log('BFF /api/circles: 401 from AppKit, attempting refresh...');
+        debugLog('BFF /api/circles: 401 from AppKit, attempting refresh.');
         const { refreshSession } = await import('@/lib/auth-server');
         const { cookies } = await import('next/headers');
         const cookieStore = await cookies();
@@ -79,14 +80,14 @@ export async function GET(req: NextRequest) {
             try {
               res = await fetchCircles(token);
             } catch (fetchErr: unknown) {
-              console.warn('GET /api/circles AppKit retry failed, falling back to local configs:', getErrorMessage(fetchErr));
+              debugWarn('GET /api/circles AppKit retry failed, falling back to local configs.', getErrorMessage(fetchErr));
               res = null;
             }
           }
         } else {
           // Refresh failed - no refresh token available.
           // Clear the expired token and fall through to local Prisma fallback.
-          console.warn('BFF /api/circles: Token refresh failed (no refresh token). Falling back to local configs.');
+          debugWarn('BFF /api/circles: Token refresh failed. Falling back to local configs.');
           cookieStore.delete('appkit_access_token');
           // Don't return 401 - let the code fall through to local fallback below
         }
@@ -123,7 +124,7 @@ export async function GET(req: NextRequest) {
                 configId: id,
               },
             }).catch(() => {}); // Ignore conflicts
-            console.log('BFF /api/circles: Auto-created Partner for existing circle:', id, 'user:', userId);
+            debugLog('BFF /api/circles: Auto-created partner for existing circle.', { circleId: id, hasUserId: !!userId });
           }
         }
 
@@ -149,7 +150,7 @@ export async function GET(req: NextRequest) {
 
       if (res) {
         const appkitError = await res.json().catch(() => ({}));
-        console.warn('GET /api/circles AppKit fallback to local configs:', { status: res.status, appkitError });
+        debugWarn('GET /api/circles AppKit fallback to local configs.', { status: res.status, appkitError });
       }
     }
 
@@ -157,7 +158,7 @@ export async function GET(req: NextRequest) {
     // IMPORTANT: Filter by userId (partnerId) to avoid leaking other users' data!
     let configs: Awaited<ReturnType<typeof prisma.appConfig.findMany>> = [];
     if (userId) {
-      console.log('BFF /api/circles: Querying Prisma for userId:', userId);
+      debugLog('BFF /api/circles: Querying Prisma for user.', { hasUserId: !!userId });
       configs = await prisma.appConfig.findMany({
         where: {
           partners: {
@@ -169,7 +170,7 @@ export async function GET(req: NextRequest) {
         include: { lands: { orderBy: { createdAt: 'asc' } } },
         orderBy: { createdAt: 'asc' },
       });
-      console.log('BFF /api/circles: Prisma returned configs:', configs.length, configs.map(c => ({ id: c.id, name: c.appName })));
+      debugLog('BFF /api/circles: Prisma returned configs.', { count: configs.length });
 
       // MIGRATION: If user has no partners but circles exist, auto-create partner for first circle
       // This handles legacy circles created before Partner records were added
@@ -178,7 +179,7 @@ export async function GET(req: NextRequest) {
           orderBy: { createdAt: 'asc' },
         });
         if (orphanedConfig) {
-          console.log('BFF /api/circles: No partners found but orphaned config exists:', orphanedConfig.id, '- creating Partner record');
+          debugLog('BFF /api/circles: No partners found but orphaned config exists; creating partner record.', { configId: orphanedConfig.id });
           try {
             await prisma.partner.create({
               data: {
@@ -191,24 +192,24 @@ export async function GET(req: NextRequest) {
             });
             configs = [orphanedConfig];
           } catch (err) {
-            console.warn('BFF /api/circles: Failed to create Partner for orphaned config:', err);
+            debugWarn('BFF /api/circles: Failed to create partner for orphaned config.', err);
           }
         }
       }
     } else {
-      console.warn('BFF /api/circles: No userId available for local fallback');
+      debugWarn('BFF /api/circles: No userId available for local fallback.');
     }
 
     // Filter out any configs without valid IDs and log for debugging
     const validConfigs = configs.filter(config => {
       if (!config.id || config.id === 'undefined') {
-        console.warn('BFF /api/circles: Filtering out config with invalid ID:', config);
+        debugWarn('BFF /api/circles: Filtering out config with invalid ID.', { name: config.appName });
         return false;
       }
       return true;
     });
 
-    console.log('BFF /api/circles: Returning', validConfigs.length, 'valid circles');
+    debugLog('BFF /api/circles: Returning valid circles.', { count: validConfigs.length });
 
     return NextResponse.json(
       validConfigs.map((config) => ({
@@ -255,7 +256,7 @@ export async function POST(req: NextRequest) {
       
       // Proactive retry on 401 for creation too
       if (!circle.id && !circle._id) {
-         console.log('BFF Circles: Creation might have failed due to token issues. Attempting refresh...');
+         debugLog('BFF Circles: Creation might have failed due to token issues. Attempting refresh.');
          const { refreshSession } = await import('@/lib/auth-server');
          if (await refreshSession()) {
            const { cookies } = await import('next/headers');
@@ -270,15 +271,15 @@ export async function POST(req: NextRequest) {
       const data = circle.data || circle.circle || circle;
       circleId = data.id || data._id || '';
     } catch (appkitErr: unknown) {
-      console.warn('AppKit circle creation failed, generating local ID:', getErrorMessage(appkitErr));
-      circleId = `world_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      debugWarn('AppKit circle creation failed, generating local ID.', getErrorMessage(appkitErr));
+      circleId = `world_${crypto.randomUUID()}`;
     }
 
     // Final safety guard: If AppKit reported SUCCESS but didn't return an ID, 
     // we must still ensure circleId is defined before Prisma upsert.
     if (!circleId) {
-       console.warn('AppKit response missing ID, using fallback');
-       circleId = `world_${Date.now()}`;
+       debugWarn('AppKit response missing ID, using fallback.');
+       circleId = `world_${crypto.randomUUID()}`;
     }
 
     // 2. Provision local AppConfig for this circle/world
@@ -323,9 +324,9 @@ export async function POST(req: NextRequest) {
           },
           update: { userId: sessionUserId },
         });
-        console.log('BFF /api/circles: Created Partner record for user:', sessionUserId, 'in config:', circleId);
+        debugLog('BFF /api/circles: Created partner record for circle creator.', { circleId, hasUserId: !!sessionUserId });
       } catch (partnerErr) {
-        console.warn('BFF /api/circles: Failed to create Partner record:', partnerErr);
+        debugWarn('BFF /api/circles: Failed to create partner record.', partnerErr);
         // Don't fail the whole request if partner creation fails
       }
     }

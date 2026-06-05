@@ -20,7 +20,7 @@ npm run db:scope-legacy-media # Dry-run scoped UniBox media key migration; add -
 npm run db:studio     # Open Prisma Studio GUI
 ```
 
-No test framework is configured. Use `npm run lint` for code quality checks.
+Focused Node tests are configured under `tests/`. Use `npm run lint`, `npm test`, and `npm run build` for quality checks.
 
 ## Architecture
 
@@ -29,7 +29,7 @@ No test framework is configured. Use `npm run lint` for code quality checks.
 ### Stack
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
-- **Prisma 5** → **PostgreSQL** (primary data store)
+- **Prisma 6** → **PostgreSQL** (primary data store)
 - **Redis** (ioredis) — caches config and timeline responses
 - **UniBox** — media storage via the local UniBox SDK adapter
 - **Google Gemini** — AI pet responses

@@ -14,8 +14,6 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:migrate-all": "node scripts/migrate-all-data.js",
-    "db:migrate-s3": "node scripts/update-s3-urls.js",
     "db:scope-legacy-media": "tsx prisma/scope-legacy-unibox-media.ts",
     "db:studio": "prisma studio",
     "db:deploy": "prisma migrate deploy"

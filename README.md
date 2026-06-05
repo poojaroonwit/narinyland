@@ -28,7 +28,7 @@ A romantic, AI-powered virtual companion for couples that reacts to your presenc
 ### 📱 **Modern Web Experience**
 - Progressive Web App (PWA) support
 - Responsive design for mobile and desktop
-- Real-time updates with WebSocket connections
+- Session-backed updates through API refreshes and cached responses
 - Cloud storage through UniBox for media files
 
 ### 🎮 **Gamification**
@@ -130,7 +130,7 @@ narinyland/
 ├── lib/                   # Utility libraries
 ├── prisma/               # Database schema and migrations
 ├── public/               # Static assets
-├── scripts/              # Migration and utility scripts
+├── tests/                # Focused Node tests for security and helpers
 ├── services/             # API service layer
 └── types.ts              # TypeScript type definitions
 ```
@@ -223,7 +223,7 @@ docker run -p 3000:3000 narinyland
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
+4. Run `npm run lint`, `npm test`, and `npm run build`
 5. Submit a pull request
 
 ## 📄 License
@@ -234,7 +234,7 @@ This project is licensed under the MIT License.
 
 For questions or support:
 - Create an issue in the GitHub repository
-- Check the documentation in `/docs`
+- Review `AGENTS.md`, `ARCHITECTURE.md`, and the API routes in `app/api/`
 - Review the API routes in `app/api/`
 
 ---

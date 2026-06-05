@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { rejectCrossOrigin } from '@/lib/security';
+import { debugLog, debugWarn } from '@/lib/logger';
 
 /**
  * BFF Auth Helper for Server Components and Route Handlers.
@@ -20,14 +21,14 @@ export async function getAuthSession(req?: Request) {
 
   // 2. Self-Healing: Auto-refresh if access token is missing but refresh token exists
   if (!token && refreshToken) {
-    console.log('BFF: Access token cookie expired, attempting silent refresh...');
+    debugLog('BFF: Access token cookie expired, attempting silent refresh.');
     const refreshed = await refreshSession();
     if (refreshed) {
       token = (await cookies()).get('appkit_access_token')?.value;
     }
   }
 
-  console.log('BFF Session Check:', {
+  debugLog('BFF Session Check:', {
     hasAccessToken: !!token,
     hasRefreshToken: !!refreshToken,
     isAuthMetaSet: cookieStore.has('narinyland_is_auth'),
@@ -36,7 +37,7 @@ export async function getAuthSession(req?: Request) {
   // Token exists but refresh token is missing - check if token is expired
   // If expired, clear it and allow fallback to soft session (Redis + narinyland_sub)
   if (token && !refreshToken) {
-    console.warn('BFF: Access token exists but refresh token is missing. Checking expiry...');
+    debugWarn('BFF: Access token exists but refresh token is missing. Checking expiry.');
     let isExpired = false;
     let tokenExp: number | undefined;
     let tokenSub: string | undefined;
@@ -47,22 +48,22 @@ export async function getAuthSession(req?: Request) {
         tokenExp = payload.exp;
         tokenSub = payload.sub;
         const now = Math.floor(Date.now() / 1000);
-        console.log('BFF: Token decode:', { exp: tokenExp, now, sub: tokenSub, isExpired: tokenExp ? tokenExp < now : 'no_exp' });
+        debugLog('BFF: Token decode:', { exp: tokenExp, now, hasSub: !!tokenSub, isExpired: tokenExp ? tokenExp < now : 'no_exp' });
         if (payload.exp && payload.exp < now) {
           isExpired = true;
         }
       } else {
-        console.warn('BFF: Token does not have 3 parts, invalid JWT');
+        debugWarn('BFF: Token does not have 3 parts, invalid JWT.');
         isExpired = true;
       }
     } catch (e) {
       // If we can't decode, assume it might be expired
-      console.warn('BFF: Failed to decode token:', e);
+      debugWarn('BFF: Failed to decode token.', e);
       isExpired = true;
     }
 
     if (isExpired) {
-      console.warn('BFF: Access token is expired and no refresh token available. Clearing token to allow soft session fallback.');
+      debugWarn('BFF: Access token is expired and no refresh token available. Clearing token to allow soft session fallback.');
       cookieStore.delete('appkit_access_token');
       token = undefined; // Allow soft session fallback below
     }
@@ -82,7 +83,7 @@ export async function getAuthSession(req?: Request) {
           const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
           if (payload.sub) {
             sub = payload.sub;
-            console.log('BFF: Recovered sub from expired access token:', sub);
+            debugLog('BFF: Recovered sub from expired access token.', { hasSub: !!sub });
           }
         }
       } catch {
@@ -90,16 +91,16 @@ export async function getAuthSession(req?: Request) {
       }
     }
 
-    console.log('BFF: No AppKit token. Checking soft session:', { sub: sub || 'NOT_FOUND', hasAuthMeta });
+    debugLog('BFF: No AppKit token. Checking soft session:', { hasSub: !!sub, hasAuthMeta });
 
     if (sub) {
-      console.log('BFF: Soft session found, returning name_session for sub:', sub);
+      debugLog('BFF: Soft session found, returning name_session.', { hasSub: !!sub });
       // Return the sub as a pseudo-token. This works for routes that only check
       // for session existence or use the sub for local Prisma queries.
       return { token: `name_session_${sub}`, userId: sub, status: 200, isSoft: true };
     }
 
-    console.warn('BFF: No AppKit token and no narinyland_sub cookie. Returning 401.');
+    debugWarn('BFF: No AppKit token and no narinyland_sub cookie. Returning 401.');
     // Do NOT clear narinyland_is_auth here.
     // /api/auth/me owns that cookie and handles the soft-session fallback independently.
     // Other routes simply return 401 when the access token is absent.
@@ -133,7 +134,7 @@ export async function refreshSession(): Promise<boolean> {
     const refreshToken = cookieStore.get('appkit_refresh_token')?.value;
 
     if (!refreshToken) {
-      console.warn('BFF: Refresh attempted but no refresh_token cookie found.');
+      debugWarn('BFF: Refresh attempted but no refresh_token cookie found.');
       return false;
     }
 
@@ -153,7 +154,7 @@ export async function refreshSession(): Promise<boolean> {
       client_secret: clientSecret
     });
 
-    console.log('BFF: Calling token refresh endpoint...', { domain, clientId });
+    debugLog('BFF: Calling token refresh endpoint.', { domain, hasClientId: !!clientId });
     const refreshRes = await fetch(`${domain}/oauth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -182,7 +183,7 @@ export async function refreshSession(): Promise<boolean> {
           maxAge: 30 * 24 * 3600, path: '/',
         });
 
-        console.log('BFF: Session refreshed successfully.');
+        debugLog('BFF: Session refreshed successfully.');
         return true;
       }
     } else {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import redis from '@/lib/redis';
 import { rejectCrossOrigin } from '@/lib/security';
+import { debugLog, debugWarn } from '@/lib/logger';
 
 
 export async function POST(req: Request) {
@@ -33,9 +34,9 @@ export async function POST(req: Request) {
     // Inject the client secret
     params.append('client_secret', clientSecret);
 
-    console.log('Proxying token request to AppKit...', {
+    debugLog('Proxying token request to AppKit.', {
       grant_type: body.grant_type,
-      client_id: body.client_id,
+      hasClientId: !!body.client_id,
       domain,
     });
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
     // Retry once on transient gateway errors (AppKit on Railway cold-starts / restarts)
     if (response.status === 502 || response.status === 503 || response.status === 504) {
-      console.warn(`BFF: AppKit returned ${response.status}, retrying after 800ms...`);
+      debugWarn(`BFF: AppKit returned ${response.status}, retrying after 800ms.`);
       await new Promise(r => setTimeout(r, 800));
       response = await tokenRequest();
     }
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
       path: '/',
     });
 
-    console.log('BFF: Cookies set:', {
+    debugLog('BFF: Cookies set:', {
       hasAccess: !!data.access_token,
       hasRefresh: !!data.refresh_token,
       hasIdToken: !!data.id_token,
@@ -111,7 +112,13 @@ export async function POST(req: Request) {
       try {
         const padded = data.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
         const idClaims = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-        console.log('BFF: ID Token claims:', idClaims);
+        debugLog('BFF: ID token claims decoded.', {
+          hasSub: !!idClaims.sub,
+          hasName: !!idClaims.name,
+          hasEmail: !!idClaims.email,
+          hasPicture: !!(idClaims.picture || idClaims.avatar || idClaims.profile_image || idClaims.image),
+          hasAttributes: !!idClaims.attributes,
+        });
 
         const sub = idClaims.sub;
         if (sub) {
@@ -127,7 +134,7 @@ export async function POST(req: Request) {
           // session in /api/auth/me can serve user data without a valid token.
           const SESSION_TTL = 7 * 24 * 3600;
           await redis.setex(`user_session:${sub}`, SESSION_TTL, JSON.stringify(userInfo));
-          console.log('BFF: User session cached from ID token for sub:', sub, '(TTL: 7d)');
+          debugLog('BFF: User session cached from ID token.', { hasSub: !!sub, ttl: SESSION_TTL });
 
           // Server-only soft-session marker. This lets /api/auth/me serve from
           // Redis even after the access token expires.
@@ -140,7 +147,7 @@ export async function POST(req: Request) {
           });
         }
       } catch (e) {
-        console.warn('BFF: Failed to cache user info from ID token:', e);
+        debugWarn('BFF: Failed to cache user info from ID token.', e);
       }
     }
 

@@ -28,7 +28,7 @@ graph TB
     subgraph "Data Layer"
         L[PostgreSQL] --> M[Prisma ORM]
         N[Redis Cache] --> O[Session Management]
-        P[AWS S3] --> Q[Media Storage]
+        P[UniBox] --> Q[Media Storage]
     end
     
     A --> E
@@ -60,7 +60,7 @@ graph LR
     subgraph "Data & Storage"
         C1[PostgreSQL] --> C2[Prisma ORM]
         C3[Redis Cache]
-        C4[AWS S3]
+        C4[UniBox]
         C5[Gemini AI]
     end
     
@@ -127,7 +127,7 @@ components/
 - **TypeScript**: Full type safety across API boundaries
 - **Error Handling**: Consistent error responses
 - **Validation**: Input validation and sanitization
-- **File Handling**: Streaming uploads with S3 integration
+- **File Handling**: API-mediated uploads with UniBox storage and scoped media keys
 
 ### 🗄️ Data Architecture
 
@@ -233,7 +233,7 @@ flowchart TD
     
     G --> J[PostgreSQL]
     H --> K[Gemini AI]
-    H --> L[AWS S3]
+    H --> L[UniBox]
     I --> M[Redis Cache]
     
     J --> N[Response Processing]
@@ -248,9 +248,9 @@ flowchart TD
 
 #### Storage Strategy
 - **Database**: PostgreSQL for structured data
-- **File Storage**: AWS S3 for media files
+- **File Storage**: UniBox for new media files, with legacy S3-compatible fallback reads
 - **Cache**: Redis for session and temporary data
-- **CDN**: CloudFront for static assets
+- **Media Serving**: `/api/serve-image` proxies access-controlled media
 
 ### 🤖 AI Integration
 
@@ -282,7 +282,7 @@ User Input → Emotion Detection → Gemini API → Response Generation → Pet 
 - **Database**: PostgreSQL
 - **ORM**: Prisma
 - **Cache**: Redis
-- **File Storage**: AWS S3
+- **File Storage**: UniBox
 - **AI**: Google Gemini API
 
 ### Development
@@ -299,7 +299,7 @@ User Input → Emotion Detection → Gemini API → Response Generation → Pet 
 2. API Call (Next.js Route)
 3. Business Logic (Service Layer)
 4. Database Operation (Prisma)
-5. External API (AI/S3)
+5. External API (AI/UniBox)
 6. Response Processing
 7. UI Update (React State)
 ```
@@ -320,7 +320,7 @@ User Input → Emotion Detection → Gemini API → Response Generation → Pet 
 
 ### Data Protection
 - **Environment Variables**: Sensitive configuration
-- **S3 Security**: Presigned URLs for media access
+- **Media Security**: Config-scoped storage keys plus `/api/serve-image` membership checks
 - **Input Validation**: Type checking and sanitization
 - **Error Handling**: No sensitive data exposure
 
@@ -335,7 +335,7 @@ User Input → Emotion Detection → Gemini API → Response Generation → Pet 
 ### Backend Optimization
 - **Database Indexing**: Optimized query performance
 - **Caching Strategy**: Redis for frequent queries
-- **File Compression**: S3 optimization
+- **File Delivery**: Proxied media responses with cache headers and range support
 - **API Response**: Efficient data structures
 
 ### Monitoring & Analytics
@@ -368,7 +368,7 @@ graph TB
     subgraph "Database & Storage"
         J[PostgreSQL] --> K[Prisma ORM]
         L[Redis Cache]
-        M[AWS S3 Storage]
+        M[UniBox Storage]
     end
     
     subgraph "External Services"
@@ -413,7 +413,7 @@ graph LR
     end
     
     subgraph "Storage"
-        L[AWS S3] --> M[CDN Distribution]
+        L[UniBox] --> M[Serve Image Proxy]
     end
     
     A --> B
@@ -458,7 +458,7 @@ graph LR
 ### Potential Enhancements
 - **Microservices**: Split into specialized services
 - **GraphQL**: More efficient data fetching
-- **WebSocket**: True real-time communication
+- **Live Updates**: Add route-level revalidation only if product flows require it
 - **Mobile App**: React Native expansion
 - **AI Models**: Custom fine-tuned models
 
