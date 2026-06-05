@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, DragControls, Grid, useGLTF } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -930,6 +931,8 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
 
       </Canvas>
 
+      {createPortal(
+        <>
       <div className="fixed top-20 left-4 md:left-6 z-[70] flex items-center gap-2 rounded-md border border-white/60 bg-white/80 p-1.5 shadow-2xl backdrop-blur-xl">
         <button
           type="button"
@@ -1227,6 +1230,9 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
            </motion.div>
         )}
       </AnimatePresence>
+        </>,
+        document.body
+      )}
     </div>
   );
 };

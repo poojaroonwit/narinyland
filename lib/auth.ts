@@ -396,7 +396,7 @@ export async function updateProfile(data: { name?: string; avatar?: string; attr
     await client.updateProfile({
       firstName: firstName || undefined,
       lastName: lastName || undefined,
-      avatar: data.avatar || undefined,
+      avatar: data.avatar !== undefined ? data.avatar : undefined,
     });
 
     if (data.attributes) {
