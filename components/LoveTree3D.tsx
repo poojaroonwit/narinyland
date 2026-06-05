@@ -300,6 +300,26 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
      }
    }, [cameraMode, isEditMode]);
 
+   React.useEffect(() => {
+     if (!isEditMode) {
+       setIsShopPopoverOpen(false);
+       setIsQRUploadOpen(false);
+     }
+   }, [isEditMode]);
+
+   const toggleShopPopover = () => {
+     setIsShopPopoverOpen(prev => {
+       const next = !prev;
+       if (next) setIsQRUploadOpen(false);
+       return next;
+     });
+   };
+
+   const openQRUpload = () => {
+     setIsShopPopoverOpen(false);
+     setIsQRUploadOpen(true);
+   };
+
    const pressMovement = (key: keyof MovementInput, pressed: boolean) => {
      setMovement(prev => ({ ...prev, [key]: pressed }));
    };
@@ -1089,7 +1109,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
               exit={{ scale: 0, opacity: 0 }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setIsShopPopoverOpen(!isShopPopoverOpen)}
+              onClick={toggleShopPopover}
               className={`fixed bottom-24 left-24 z-[80] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
                 isShopPopoverOpen
                   ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
@@ -1148,7 +1168,7 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
           >
              <div 
                 className="bg-white/80 backdrop-blur-xl p-3 rounded-md shadow-2xl border border-white/50 cursor-pointer hover:scale-105 transition-transform relative overflow-hidden active:scale-95"
-                onClick={() => setIsQRUploadOpen(true)}
+                onClick={openQRUpload}
               >
                  <Image 
                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -11,26 +11,44 @@ interface UserDropdownProps {
   onLogout: () => void;
   onEditUserInfo?: () => void;
   onOpenSettings?: () => void;
+  isOpen?: boolean;
+  onOpenChange?: (isOpen: boolean) => void;
   loading?: boolean;
   isMobile?: boolean;
 }
 
-export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSettings, loading }: UserDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function UserDropdown({
+  user,
+  onLogout,
+  onEditUserInfo,
+  onOpenSettings,
+  isOpen: controlledOpen,
+  onOpenChange,
+  loading,
+}: UserDropdownProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isOpen = controlledOpen ?? uncontrolledOpen;
+
+  const setDropdownOpen = useCallback((nextOpen: boolean) => {
+    if (controlledOpen === undefined) {
+      setUncontrolledOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  }, [controlledOpen, onOpenChange]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        setDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef]);
+  }, [dropdownRef, setDropdownOpen]);
 
   const displayUser = user || { name: 'My Account', email: '', picture: '' };
   
@@ -59,7 +77,9 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
     <div className="relative" ref={dropdownRef}>
       {/* Avatar Button */}
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setDropdownOpen(!isOpen);
+        }}
         disabled={loading}
         aria-label={isOpen ? 'Close account menu' : 'Open account menu'}
         aria-expanded={isOpen}
@@ -87,7 +107,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
+              onClick={() => setDropdownOpen(false)}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[75] md:hidden"
             />
             
@@ -122,7 +142,7 @@ export default function UserDropdown({ user, onLogout, onEditUserInfo, onOpenSet
                   <button
                     key={idx}
                     onClick={() => {
-                      setIsOpen(false);
+                      setDropdownOpen(false);
                       if (item.onClick) item.onClick();
                     }}
                     className={`w-full text-left px-5 py-4 md:px-4 md:py-2.5 text-base md:text-sm rounded-md transition-colors flex items-center gap-3 md:gap-2 ${item.color}`}

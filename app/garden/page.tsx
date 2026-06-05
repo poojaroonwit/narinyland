@@ -133,9 +133,46 @@ const Home: React.FC = () => {
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
+
+  const closeFloatingPanels = (except?: 'volume' | 'circle' | 'land' | 'user') => {
+    if (except !== 'volume') setIsVolumeModalOpen(false);
+    if (except !== 'circle') setIsCircleDropdownOpen(false);
+    if (except !== 'land') setIsLandDropdownOpen(false);
+    if (except !== 'user') setIsUserDropdownOpen(false);
+  };
+
+  const toggleVolumePanel = () => {
+    setIsVolumeModalOpen(prev => {
+      const next = !prev;
+      if (next) closeFloatingPanels('volume');
+      return next;
+    });
+  };
+
+  const toggleCircleDropdown = () => {
+    setIsCircleDropdownOpen(prev => {
+      const next = !prev;
+      if (next) closeFloatingPanels('circle');
+      return next;
+    });
+  };
+
+  const toggleLandDropdown = () => {
+    setIsLandDropdownOpen(prev => {
+      const next = !prev;
+      if (next) closeFloatingPanels('land');
+      return next;
+    });
+  };
+
+  const switchTab = (tab: 'home' | 'timeline' | 'coupons' | 'letters' | 'shop') => {
+    closeFloatingPanels();
+    setActiveTab(tab);
+  };
   // ─── Load config & data from database on mount ─────────────────────────────
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -835,43 +872,10 @@ const Home: React.FC = () => {
                   timeline={appConfig.timeline}
                   onFlagClick={(item) => setSelectedFlagItem(item)}
                />
-
-               {/* Global Edit Mode Logic for non-tree modes */}
-               <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsEditMode(!isEditMode)}
-                  className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition-all border-2 ${
-                    isEditMode
-                      ? 'bg-pink-500 text-white border-pink-400 shadow-pink-500/40'
-                      : 'bg-white/80 backdrop-blur-md text-gray-600 border-white/50 hover:bg-white'
-                  }`}
-                  title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
-                >
-                  <i className={`fas ${isEditMode ? 'fa-times' : 'fa-pencil-alt'}`}></i>
-                </motion.button>
-              </div>
             </>
            )}
         </div>
         
-        {/* Global Edit Mode Badge */}
-        <AnimatePresence>
-          {isEditMode && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-pink-500/90 backdrop-blur-md text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-2 pointer-events-none"
-            >
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <span className="text-xs font-black uppercase tracking-widest">Edit Mode</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-
         {/* Selected Flag Modal */}
 
         <AnimatePresence>
@@ -926,7 +930,7 @@ const Home: React.FC = () => {
                      onClick={() => {
                        setSelectedFlagItem(null);
                        setWorldMode('tree');
-                       setActiveTab('timeline');
+                       switchTab('timeline');
                      }} 
                      className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-md shadow-md hover:shadow-lg transition-all"
                    >
@@ -997,7 +1001,10 @@ const Home: React.FC = () => {
                     onUpdateInteraction={handleUpdateTimeline}
                     onDeleteInteraction={handleDeleteTimeline}
                     onAddInteraction={handleAddTimeline}
-                    onOpenSpreadsheet={() => setIsSpreadsheetOpen(true)}
+                    onOpenSpreadsheet={() => {
+                      closeFloatingPanels();
+                      setIsSpreadsheetOpen(true);
+                    }}
                     cardScale={appConfig.timelineCardScale}
                     layoutMode={appConfig.timelineLayoutMode}
                     zoomLevel={appConfig.timelineZoomLevel}
@@ -1081,7 +1088,7 @@ const Home: React.FC = () => {
                   <LoveLetter 
                     isOpen={true} 
                     isInline={true}
-                    onClose={() => setActiveTab('home')} 
+                    onClose={() => switchTab('home')} 
                     messages={loveLetters}
                     onSendMessage={handleSendMessage}
                     partners={activePartners}
@@ -1093,7 +1100,7 @@ const Home: React.FC = () => {
           {/* Bottom Navigation Tab Bar */}
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl rounded-full px-6 py-3 flex items-center gap-8 z-[70]">
              <button 
-               onClick={() => setActiveTab('home')}
+               onClick={() => switchTab('home')}
                className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'text-pink-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
                <i className="fas fa-home text-xl"></i>
@@ -1101,7 +1108,7 @@ const Home: React.FC = () => {
              </button>
 
              <button 
-               onClick={() => setActiveTab('timeline')}
+               onClick={() => switchTab('timeline')}
                className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'text-blue-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
                <i className="fas fa-calendar-alt text-xl"></i>
@@ -1109,7 +1116,7 @@ const Home: React.FC = () => {
              </button>
 
              <button 
-               onClick={() => setActiveTab('coupons')}
+               onClick={() => switchTab('coupons')}
                className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'text-purple-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
                <i className="fas fa-ticket-alt text-xl"></i>
@@ -1117,7 +1124,7 @@ const Home: React.FC = () => {
              </button>
 
              <button 
-               onClick={() => setActiveTab('letters')}
+               onClick={() => switchTab('letters')}
                className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${activeTab === 'letters' ? 'text-rose-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
              >
                <i className="fas fa-envelope text-xl"></i>
@@ -1138,7 +1145,7 @@ const Home: React.FC = () => {
       {/* Config & Top Menu - Persistently Visible */}
       <div className="fixed top-4 right-4 md:right-6 flex items-center gap-3 md:gap-4 z-[60]">
          <button
-           onClick={() => setIsVolumeModalOpen(!isVolumeModalOpen)}
+           onClick={toggleVolumePanel}
            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 border backdrop-blur-md ${
              isMusicMuted ? 'bg-gray-500/40 text-white border-gray-400/50' : 'bg-white/40 text-pink-500 border-white/50'
            }`}
@@ -1149,7 +1156,7 @@ const Home: React.FC = () => {
            {/* World Selection (Circle Switcher) - Left side */}
            <div className="relative">
               <button
-                onClick={() => setIsCircleDropdownOpen(!isCircleDropdownOpen)}
+                onClick={toggleCircleDropdown}
                 className="h-10 px-4 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-gray-700 shadow-lg flex items-center gap-2 hover:bg-white/60 transition-all transform hover:scale-105"
               >
                 <i className="fas fa-globe-asia text-emerald-500 text-xs"></i>
@@ -1218,7 +1225,7 @@ const Home: React.FC = () => {
            {appConfig.lands && appConfig.lands.length >= 1 && (
              <div className="relative">
                 <button
-                  onClick={() => setIsLandDropdownOpen(!isLandDropdownOpen)}
+                  onClick={toggleLandDropdown}
                   className="h-10 px-4 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-gray-700 shadow-lg flex items-center gap-2 hover:bg-white/60 transition-all transform hover:scale-105"
                 >
                   <i className="fas fa-map-marked-alt text-amber-500 text-xs"></i>
@@ -1259,8 +1266,19 @@ const Home: React.FC = () => {
           <UserDropdown
             user={user}
             onLogout={logout}
-            onEditUserInfo={() => setIsUserProfileModalOpen(true)}
-            onOpenSettings={() => setIsEditDrawerOpen(true)}
+            isOpen={isUserDropdownOpen}
+            onOpenChange={(nextOpen) => {
+              if (nextOpen) closeFloatingPanels('user');
+              setIsUserDropdownOpen(nextOpen);
+            }}
+            onEditUserInfo={() => {
+              closeFloatingPanels();
+              setIsUserProfileModalOpen(true);
+            }}
+            onOpenSettings={() => {
+              closeFloatingPanels();
+              setIsEditDrawerOpen(true);
+            }}
              loading={authLoading}
              isMobile={isMobile}
           />
@@ -1316,7 +1334,10 @@ const Home: React.FC = () => {
           {activeTab === 'home' && (
             <div 
               className="fixed top-24 md:top-8 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center pointer-events-auto cursor-pointer"
-              onClick={() => setIsStatsGuideOpen(true)}
+              onClick={() => {
+                closeFloatingPanels();
+                setIsStatsGuideOpen(true);
+              }}
             >
               <motion.div 
                 initial={{ opacity: 0, y: -20 }}
@@ -1383,7 +1404,10 @@ const Home: React.FC = () => {
                   <i className="fas fa-tree text-[9px]"></i> 3D
                 </button>
                 <button
-                  onClick={() => setWorldMode('globe')}
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setWorldMode('globe');
+                  }}
                   className={`rounded-md px-4 py-1.5 text-[10px] font-black tracking-widest transition-all flex items-center gap-1.5 ${
                     worldMode === 'globe'
                       ? 'bg-pink-500 text-white shadow-sm'
