@@ -19,6 +19,9 @@ type BrokenMediaItem = {
   createdAt: Date;
 };
 
+const CLEANUP_TARGETS = ['all', 'memories', 'timeline'] as const;
+type CleanupTarget = (typeof CLEANUP_TARGETS)[number];
+
 // Helper function to validate image URL
 async function validateImageUrl(url: string | null | undefined): Promise<boolean> {
   try {
@@ -62,11 +65,14 @@ function validateStorageReference(value: string | null | undefined): boolean {
     /\.s3\.amazonaws\.com/,
     /s3-[^/]+\.amazonaws\.com/,
     /s3-[^/]+\.amazonaws\.com\.cn/,
-    /storage\.googleapis\.com/,
     /storage\.googleapis\.com/
   ];
   
   return legacyCloudPatterns.some(pattern => pattern.test(value));
+}
+
+function isCleanupTarget(value: unknown): value is CleanupTarget {
+  return typeof value === 'string' && CLEANUP_TARGETS.includes(value as CleanupTarget);
 }
 
 // GET /api/cleanup - Analyze broken images
@@ -75,7 +81,7 @@ export async function GET(request: Request) {
   if (adminRejection) return adminRejection;
 
   try {
-    console.log('🔍 Starting broken image analysis...\n');
+    console.log('[Cleanup] Starting broken image analysis.');
 
     // Get all memories
     const memories = await prisma.memory.findMany({
@@ -106,7 +112,7 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'asc' }
     });
 
-    console.log(`📊 Found ${memories.length} memories and ${timelineEvents.length} timeline events\n`);
+    console.log(`[Cleanup] Found ${memories.length} memories and ${timelineEvents.length} timeline events.`);
 
     // Analyze memories
     const memoryAnalysis = {
@@ -199,10 +205,10 @@ export async function GET(request: Request) {
       }
     };
 
-    console.log('📊 Analysis Results:');
+    console.log('[Cleanup] Analysis results:');
     console.log(`   Memories: ${memoryAnalysis.valid} valid, ${memoryAnalysis.broken} broken`);
     console.log(`   Timeline Events: ${timelineAnalysis.valid} valid, ${timelineAnalysis.broken} broken`);
-    console.log(`   Total: ${totalAnalysis.summary.totalValid} valid, ${totalAnalysis.summary.totalBroken} broken\n`);
+    console.log(`   Total: ${totalAnalysis.summary.totalValid} valid, ${totalAnalysis.summary.totalBroken} broken`);
 
     return NextResponse.json(totalAnalysis, {
       headers: {
@@ -210,7 +216,7 @@ export async function GET(request: Request) {
       }
     });
   } catch (error) {
-    console.error('❌ Error analyzing broken images:', error);
+    console.error('[Cleanup] Error analyzing broken images:', error);
     return NextResponse.json(
       { error: 'Failed to analyze broken images', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -224,12 +230,19 @@ export async function DELETE(request: Request) {
   if (adminRejection) return adminRejection;
 
   try {
-    console.log('🧹 Starting broken image cleanup...\n');
+    console.log('[Cleanup] Starting broken image cleanup.');
 
     const body = await request.json();
-    const { dryRun = false, targetTable = 'all' } = body; // 'all', 'memories', 'timeline'
+    const { dryRun = false, targetTable = 'all' } = body;
+
+    if (!isCleanupTarget(targetTable)) {
+      return NextResponse.json(
+        { error: `Invalid targetTable. Expected one of: ${CLEANUP_TARGETS.join(', ')}` },
+        { status: 400 }
+      );
+    }
     
-    console.log(`🔧 Configuration: dryRun=${dryRun}, targetTable=${targetTable}\n`);
+    console.log(`[Cleanup] Configuration: dryRun=${dryRun}, targetTable=${targetTable}.`);
 
     let deletedMemories = 0;
     let deletedEvents = 0;
@@ -247,7 +260,7 @@ export async function DELETE(request: Request) {
         const isStorageKeyValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
         
         if (memory.url && (!isUrlValid || !isStorageKeyValid)) {
-          console.log(`   🗑️ Deleting memory: ${memory.id.substring(0, 8)}... (${memory.url?.substring(0, 50)}...)`);
+          console.log(`   Deleting memory: ${memory.id.substring(0, 8)}... (${memory.url?.substring(0, 50)}...)`);
           
           if (!dryRun) {
             try {
@@ -299,7 +312,7 @@ export async function DELETE(request: Request) {
         
         // Delete if no valid media or has broken media
         if ((allMediaUrls.length > 0 || allStorageKeys.length > 0) && (!hasValidMedia || hasBrokenMedia)) {
-          console.log(`   🗑️ Deleting timeline event: ${event.id.substring(0, 8)}... (${event.text?.substring(0, 50)}...)`);
+          console.log(`   Deleting timeline event: ${event.id.substring(0, 8)}... (${event.text?.substring(0, 50)}...)`);
           
           if (!dryRun) {
             try {
@@ -318,7 +331,7 @@ export async function DELETE(request: Request) {
 
     // Clear cache after cleanup
     if (!dryRun && (deletedMemories > 0 || deletedEvents > 0)) {
-      console.log('🗑️ Clearing cache...\n');
+      console.log('[Cleanup] Clearing cache.');
       await Promise.all(
         [...affectedConfigIds].flatMap((configId) => [
           redis.del(`app_config:${configId}`),
@@ -338,7 +351,7 @@ export async function DELETE(request: Request) {
       totalDeleted: deletedMemories + deletedEvents
     };
 
-    console.log('📊 Cleanup Results:');
+    console.log('[Cleanup] Cleanup results:');
     console.log(`   Deleted ${deletedMemories} memories`);
     console.log(`   Deleted ${deletedEvents} timeline events`);
     console.log(`   Total deleted: ${result.totalDeleted} items`);
@@ -353,7 +366,7 @@ export async function DELETE(request: Request) {
       }
     });
   } catch (error) {
-    console.error('❌ Error cleaning broken images:', error);
+    console.error('[Cleanup] Error cleaning broken images:', error);
     return NextResponse.json(
       { error: 'Failed to clean broken images', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

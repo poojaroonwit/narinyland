@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MemoryItem, Interaction, MediaContent } from '../types';
+import { MemoryItem, Interaction } from '../types';
 import OptimizedImage from './OptimizedImage';
+import { convertTimelineToMemoryItems, getDisplayUrl, isInstagramLink, seededRatio } from './memory-frame/helpers';
 
 interface MemoryFrameProps {
   isVisible: boolean;
@@ -18,12 +19,6 @@ interface MemoryFrameProps {
   timelineItems?: Interaction[]; // New prop for timeline items
   includeTimelineInGallery?: boolean; // New prop to control inclusion
 }
-
-const seededRatio = (seed: number) => {
-  const value = Math.sin(seed * 9301 + 49297) * 233280;
-  return value - Math.floor(value);
-};
-
 const MemoryFrame: React.FC<MemoryFrameProps> = ({ 
   isVisible, 
   items, 
@@ -46,42 +41,6 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
   const [isHovering, setIsHovering] = useState(false);
 
   // Helper to get the display URL — Instagram post URLs go through our server proxy
-  const getDisplayUrl = (url: string) => {
-    if (!url) return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect width='600' height='600' fill='%23f9fafb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
-    // If it's an Instagram post URL, proxy through our backend to get the actual image
-    if (/instagram\.com\/(p|reel|tv)\//.test(url)) {
-      return `/api/instagram/image?url=${encodeURIComponent(url)}`;
-    }
-    // If it's a relative API URL, convert to full URL
-    if (url.startsWith('/api/')) {
-      return `${window.location.origin}${url}`;
-    }
-    return url;
-  };
-
-  const isInstagramLink = (url: string) => url.includes('instagram.com') || url.includes('cdninstagram.com');
-
-  // Convert timeline interactions to MemoryItem format
-  const convertTimelineToMemoryItems = (timeline: Interaction[]): MemoryItem[] => {
-    return timeline
-      .filter(interaction => {
-        // Handle both single media and media arrays
-        const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
-        return mediaItems.some((media: MediaContent) => media.type === 'image');
-      })
-      .map((interaction, index) => {
-        // Get the first image from the media items
-        const mediaItems = interaction.mediaItems || (interaction.media ? [interaction.media] : []);
-        const firstImage = mediaItems.find((media: MediaContent) => media.type === 'image');
-        return {
-          id: interaction.id,
-          url: firstImage?.url || '',
-          privacy: 'public' as 'public' | 'private', // Default to public for timeline images
-          caption: interaction.text || `Memory ${index + 1}`
-        };
-      })
-      .filter(item => item.url); // Filter out any items without valid image URLs
-  };
 
   // Combine gallery items and timeline items
   const allItems = useMemo(() => {
@@ -556,4 +515,3 @@ const MemoryFrame: React.FC<MemoryFrameProps> = ({
 };
 
 export default MemoryFrame;
-
