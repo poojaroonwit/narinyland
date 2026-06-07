@@ -51,10 +51,15 @@ export async function POST(req: NextRequest) {
       update: {},
     });
 
+    const existingActiveLand = await prisma.land.findFirst({
+      where: { configId, isActive: true },
+      select: { id: true },
+    });
+
     const land = await prisma.land.create({
       data: {
         name: name.trim(),
-        isActive: false,
+        isActive: !existingActiveLand,
         configId,
       },
     });

@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { addCircleMemberViaServer } from '@/lib/appkit-server';
 import { getAuthSession } from '@/lib/auth-server';
 import { getErrorMessage } from '@/lib/errors';
+import { ensureActiveLand } from '@/lib/lands';
 
 /**
  * POST /api/circles/join
@@ -50,20 +51,8 @@ export async function POST(req: NextRequest) {
       update: {},
     });
 
-    // 3. Ensure at least one Land exists
-    const existingLands = await prisma.land.findMany({
-      where: { configId: circleId },
-    });
-
-    if (existingLands.length === 0) {
-      await prisma.land.create({
-        data: {
-          name: 'Main Land',
-          isActive: true,
-          configId: circleId,
-        },
-      });
-    }
+    // 3. Ensure this world has a usable active land.
+    await ensureActiveLand(circleId);
 
     await prisma.partner.upsert({
       where: {

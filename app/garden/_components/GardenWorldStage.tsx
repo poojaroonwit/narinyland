@@ -23,6 +23,7 @@ import { useGardenPageContext } from './context';
 
 export const GardenWorldStage: React.FC = () => {
   const { user, logout, authLoading, circles, activeCircleId, setActiveCircle, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount } = useGardenPageContext();
+  const activeLand = appConfig.lands?.find(l => l.isActive) ?? appConfig.lands?.[0];
 
   return (
     <>
@@ -51,14 +52,14 @@ export const GardenWorldStage: React.FC = () => {
                        isEditMode={isEditMode}
                        setIsEditMode={setIsEditMode}
                        onAddLeaf={handleAddLeaf}
-                       purchasedItems={appConfig.lands?.find(l => l.isActive)?.items}
+                       purchasedItems={activeLand?.items}
                         onUpdateItemPosition={async (itemId, update) => {
                           const { x, y, z, rotation } = update;
                           try {
                              setAppConfig(prev => {
                                 if (!prev.lands) return prev;
                                 const newLands = prev.lands.map(l => {
-                                   if (!l.isActive) return l;
+                                   if (l.id !== activeLand?.id) return l;
                                    return {
                                        ...l,
                                        items: l.items?.map(it => it.id === itemId ? {
@@ -82,10 +83,10 @@ export const GardenWorldStage: React.FC = () => {
                              console.error("Failed to update item position", e);
                           }
                        }}
-                       activeLandId={appConfig.lands?.find(l => l.isActive)?.id}
+                       activeLandId={activeLand?.id}
                        onPurchase={async (item) => {
                           try {
-                            const landId = appConfig.lands?.find(l => l.isActive)?.id;
+                            const landId = activeLand?.id;
                             if (!landId) return;
                             setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
                             const res = await fetch('/api/purchased-items', {

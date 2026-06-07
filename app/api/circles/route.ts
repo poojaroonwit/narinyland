@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { createCircleViaServer } from '@/lib/appkit-server';
 import { getErrorMessage } from '@/lib/errors';
 import { debugLog, debugWarn } from '@/lib/logger';
+import { ensureActiveLand } from '@/lib/lands';
 
 type AppKitCircle = {
   id?: string;
@@ -109,6 +110,9 @@ export async function GET(req: NextRequest) {
               data: { id, appName: circle.name || 'Untitled World' },
             }).catch(() => {}); // Ignore conflicts
           }
+          await ensureActiveLand(id).catch((err) => {
+            debugWarn('BFF /api/circles: Failed to ensure active land.', { circleId: id, error: getErrorMessage(err) });
+          });
 
           // Ensure Partner record exists linking user to this config
           const existingPartner = await prisma.partner.findUnique({

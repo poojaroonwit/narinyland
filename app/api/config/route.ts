@@ -5,6 +5,7 @@ import { deleteFile } from '@/lib/storage';
 
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { ensureActiveLand } from '@/lib/lands';
 
 type MediaInput = {
   type?: string;
@@ -97,6 +98,13 @@ async function invalidateConfigCaches(configId: string, configCacheKey: string) 
   ]);
 }
 
+const configInclude = {
+  partners: true,
+  coupons: { orderBy: { createdAt: 'asc' } },
+  albums: { orderBy: { createdAt: 'desc' } },
+  lands: { orderBy: { createdAt: 'desc' }, include: { items: true } },
+} satisfies Prisma.AppConfigInclude;
+
 // GET /api/config
 export async function GET(request: Request) {
   try {
@@ -108,16 +116,18 @@ export async function GET(request: Request) {
 
     // Check cache
     const cached = await redis.get(cacheKey);
-    if (cached) return NextResponse.json(JSON.parse(cached));
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const cachedLands = Array.isArray(parsed?.lands) ? parsed.lands : [];
+      if (cachedLands.length > 0 && cachedLands.some((land: { isActive?: boolean }) => land.isActive)) {
+        return NextResponse.json(parsed);
+      }
+      await redis.del(cacheKey);
+    }
 
     let config = await prisma.appConfig.findUnique({
       where: { id: configId },
-      include: {
-        partners: true,
-        coupons: { orderBy: { createdAt: 'asc' } },
-        albums: { orderBy: { createdAt: 'desc' } },
-        lands: { orderBy: { createdAt: 'desc' }, include: { items: true } },
-      },
+      include: configInclude,
     });
 
     if (!config) {
@@ -132,13 +142,19 @@ export async function GET(request: Request) {
             ],
           },
         },
-        include: {
-          partners: true,
-          coupons: { orderBy: { createdAt: 'asc' } },
-          albums: { orderBy: { createdAt: 'desc' } },
-          lands: { orderBy: { createdAt: 'desc' }, include: { items: true } },
-        },
+        include: configInclude,
       });
+    }
+
+    if (await ensureActiveLand(configId)) {
+      config = await prisma.appConfig.findUnique({
+        where: { id: configId },
+        include: configInclude,
+      });
+    }
+
+    if (!config) {
+      return NextResponse.json({ error: 'Failed to load configuration' }, { status: 500 });
     }
 
     // Transform to frontend-expected format — return ALL partners dynamically

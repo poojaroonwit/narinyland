@@ -23,6 +23,7 @@ import { useGardenPageContext } from './context';
 
 export const GardenTopControls: React.FC = () => {
   const { user, logout, authLoading, circles, activeCircleId, setActiveCircle, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount } = useGardenPageContext();
+  const activeLand = appConfig.lands?.find(l => l.isActive) ?? appConfig.lands?.[0];
 
   return (
     <>
@@ -116,7 +117,7 @@ export const GardenTopControls: React.FC = () => {
                       >
                         <i className="fas fa-map-marked-alt text-amber-500 text-xs"></i>
                         <span className="text-xs font-bold truncate max-w-[80px] md:max-w-[120px]">
-                          {appConfig.lands.find(l => l.isActive)?.name || 'Select Land'}
+                          {activeLand?.name || 'Select Land'}
                         </span>
                         <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`}></i>
                       </button>
@@ -134,13 +135,13 @@ export const GardenTopControls: React.FC = () => {
                                 key={land.id}
                                 onClick={() => handleSelectLand(land.id)}
                                 className={`w-full text-left px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between group ${
-                                  land.isActive
+                                  land.id === activeLand?.id
                                   ? 'bg-amber-500 text-white shadow-md'
                                   : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'
                                 }`}
                               >
                                 <span className="truncate">{land.name}</span>
-                                {land.isActive && <i className="fas fa-check text-[10px]"></i>}
+                                {land.id === activeLand?.id && <i className="fas fa-check text-[10px]"></i>}
                               </button>
                             ))}
                           </motion.div>
