@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { addCircleMemberViaServer } from '@/lib/appkit-server';
 import { getAuthSession } from '@/lib/auth-server';
 import { getErrorMessage } from '@/lib/errors';
-import { ensureActiveLand } from '@/lib/lands';
+import { ensureActiveLand } from '@/lib/config-access';
 
 /**
  * POST /api/circles/join

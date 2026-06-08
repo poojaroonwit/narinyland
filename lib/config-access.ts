@@ -19,6 +19,35 @@ export function isConfigAccessDenied(access: ConfigAccess): access is DeniedConf
   return 'response' in access;
 }
 
+export async function ensureActiveLand(configId: string): Promise<boolean> {
+  const lands = await prisma.land.findMany({
+    where: { configId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, isActive: true },
+  });
+
+  if (lands.length === 0) {
+    await prisma.land.create({
+      data: {
+        name: 'Main Land',
+        isActive: true,
+        configId,
+      },
+    });
+    return true;
+  }
+
+  if (!lands.some((land) => land.isActive)) {
+    await prisma.land.update({
+      where: { id: lands[0].id },
+      data: { isActive: true },
+    });
+    return true;
+  }
+
+  return false;
+}
+
 function allowsLegacyDefaultAccess(): boolean {
   return process.env.NODE_ENV !== 'production' || process.env.ALLOW_LEGACY_DEFAULT_CONFIG === 'true';
 }

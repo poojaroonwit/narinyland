@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { createCircleViaServer } from '@/lib/appkit-server';
 import { getErrorMessage } from '@/lib/errors';
 import { debugLog, debugWarn } from '@/lib/logger';
-import { ensureActiveLand } from '@/lib/lands';
+import { ensureActiveLand } from '@/lib/config-access';
 
 type AppKitCircle = {
   id?: string;

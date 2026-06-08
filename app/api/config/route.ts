@@ -4,8 +4,7 @@ import prisma from '@/lib/prisma';
 import { deleteFile } from '@/lib/storage';
 
 import { redis } from '@/lib/redis';
-import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
-import { ensureActiveLand } from '@/lib/lands';
+import { ensureActiveLand, isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 
 type MediaInput = {
   type?: string;
