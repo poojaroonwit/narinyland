@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Detailed } from '@react-three/drei';
 import * as THREE from 'three';
+import { seededRatio, useGameLoop } from '../game-engine-3d';
 
 type FlowerContentProps = {
     type: string;
@@ -13,11 +13,6 @@ type FlowerContentProps = {
     quality: string;
     detail?: 'low' | 'medium' | 'high';
     seed: number;
-};
-
-const seededRatio = (seed: number) => {
-    const value = Math.sin(seed * 9301 + 49297) * 233280;
-    return value - Math.floor(value);
 };
 
 const seededRotation = (seed: number, xRange: number, yRange: number, zRange: number): [number, number, number] => [
@@ -31,7 +26,7 @@ export const FlowerContent = ({ type, scale, windFactor, quality, detail = 'high
     const groupRef = useRef<THREE.Group>(null);
     const stemColor = "#15803d";
     
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (groupRef.current && detail !== 'low') {
             const t = state.clock.getElapsedTime();
             // Organic swaying in the wind - disable on low

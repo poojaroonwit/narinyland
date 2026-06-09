@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { EnvironmentTheme, hashString, nextSeededRatio, seededRatio } from './shared';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const Clouds = ({ hour, theme: _theme, quality = 'medium' }: { hour: number, theme: EnvironmentTheme, quality?: string }) => {
     const group = useRef<THREE.Group>(null);
@@ -64,7 +64,7 @@ export const Clouds = ({ hour, theme: _theme, quality = 'medium' }: { hour: numb
         });
     }, [clouds]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (!group.current) return;
         const t = state.clock.elapsedTime;
         group.current.children.forEach((cloud, i) => {
@@ -118,7 +118,7 @@ export const ShootingStar = ({ quality = 'medium' }: { quality?: string }) => {
     const instanceSeed = hashString(React.useId());
     const spawnSeed = useRef(instanceSeed + 557);
     
-    useFrame((state, delta) => {
+    useGameLoop((state, delta) => {
         if (quality === 'low') return;
         
         if (!active && nextSeededRatio(spawnSeed) < 0.002) {
@@ -190,7 +190,7 @@ export const GodRays = ({ sunPosition, hour, quality = 'medium' }: { sunPosition
         });
     }, [count, instanceSeed]);
 
-    useFrame(() => {
+    useGameLoop(() => {
         if (!group.current || opacity <= 0) return;
         group.current.rotation.z += 0.001;
     });
@@ -236,7 +236,7 @@ export const Aurora = ({ hour, quality = 'medium' }: { hour: number, quality?: s
         }));
     }, [bandCount]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (!groupRef.current || !isNight) return;
         const t = state.clock.elapsedTime;
         

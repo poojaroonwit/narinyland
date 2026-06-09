@@ -19,6 +19,7 @@ import UserDropdown from '../../../components/UserDropdown';
 import UserProfileModal from '../../../components/UserProfileModal';
 import Shop from '../../../components/Shop';
 import World3D from '../../../components/World3D';
+import { purchasedItemsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
 
 export const GardenWorldStage: React.FC = () => {
@@ -53,9 +54,33 @@ export const GardenWorldStage: React.FC = () => {
                        setIsEditMode={setIsEditMode}
                        onAddLeaf={handleAddLeaf}
                        purchasedItems={activeLand?.items}
+                       landName={activeLand?.name}
+                       onOpenWorldMap={() => {
+                         setIsEditMode(false);
+                         setWorldMode('globe');
+                       }}
                         onUpdateItemPosition={async (itemId, update) => {
                           const { x, y, z, rotation } = update;
+                          const landId = activeLand?.id;
+                          if (!landId) return;
+
                           try {
+                             if (itemId === 'main_tree') {
+                                const newItem = await purchasedItemsAPI.create({
+                                  type: 'main_tree',
+                                  landId,
+                                  x,
+                                  y,
+                                  z,
+                                  ...(rotation !== undefined ? { rotation } : {}),
+                                });
+                                setAppConfig(prev => ({
+                                  ...prev,
+                                  lands: prev.lands?.map(l => l.id === landId ? { ...l, items: [...(l.items || []), newItem] } : l)
+                                }));
+                                return;
+                             }
+
                              setAppConfig(prev => {
                                 if (!prev.lands) return prev;
                                 const newLands = prev.lands.map(l => {
@@ -74,11 +99,7 @@ export const GardenWorldStage: React.FC = () => {
                                 return { ...prev, lands: newLands };
                              });
       
-                             await fetch(`/api/purchased-items/${itemId}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ x, y, z, ...(rotation !== undefined ? { rotation } : {}) })
-                             });
+                             await purchasedItemsAPI.update(itemId, { x, y, z, ...(rotation !== undefined ? { rotation } : {}) });
                           } catch (e) {
                              console.error("Failed to update item position", e);
                           }
@@ -89,13 +110,7 @@ export const GardenWorldStage: React.FC = () => {
                             const landId = activeLand?.id;
                             if (!landId) return;
                             setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
-                            const res = await fetch('/api/purchased-items', {
-                               method: 'POST',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify({ type: item.type, landId, modelUrl: item.modelUrl })
-                            });
-                            if (!res.ok) throw new Error("Failed to purchase");
-                            const newItem = await res.json();
+                            const newItem = await purchasedItemsAPI.create({ type: item.type, landId, modelUrl: item.modelUrl });
                             setAppConfig(prev => ({
                               ...prev,
                               lands: prev.lands?.map(l => l.id === landId ? { ...l, items: [...(l.items || []), newItem] } : l)

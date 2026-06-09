@@ -19,6 +19,7 @@ import UserDropdown from '../../../components/UserDropdown';
 import UserProfileModal from '../../../components/UserProfileModal';
 import Shop from '../../../components/Shop';
 import World3D from '../../../components/World3D';
+import { purchasedItemsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
 
 export const GardenAcceptedContent: React.FC = () => {
@@ -125,15 +126,7 @@ export const GardenAcceptedContent: React.FC = () => {
                                // Deduct points locally (temporary until synced)
                                setLoveStats(prev => ({ ...prev, points: prev.points - item.price }));
                                
-                               const res = await fetch('/api/purchased-items', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ type: item.type, landId })
-                               });
-                               
-                               if (!res.ok) throw new Error("Failed to purchase");
-                               
-                               const newItem = await res.json();
+                               const newItem = await purchasedItemsAPI.create({ type: item.type, landId, modelUrl: item.modelUrl });
                                // Add to local config
                                setAppConfig(prev => ({
                                  ...prev,

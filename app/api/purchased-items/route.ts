@@ -62,11 +62,11 @@ export async function POST(request: Request) {
       data: {
         type,
         landId,
-        x: x || 0,
-        y: y || 0,
-        z: z || 0,
-        rotation: rotation || 0,
-        modelUrl: modelUrl || null
+        x: x ?? 0,
+        y: y ?? 0,
+        z: z ?? 0,
+        rotation: rotation ?? 0,
+        modelUrl: modelUrl ?? null
       }
     });
 

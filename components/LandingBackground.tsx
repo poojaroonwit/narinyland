@@ -1,14 +1,9 @@
 "use client";
 
 import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
-
-const seededRatio = (seed: number) => {
-  const value = Math.sin(seed * 9301 + 49297) * 233280;
-  return value - Math.floor(value);
-};
+import { GameEngine3D, seededRatio, useGameLoop } from './game-engine-3d';
 
 // Rolling hill / ground plane
 const Ground: React.FC = () => (
@@ -23,7 +18,7 @@ const GardenTree: React.FC<{ position: [number, number, number]; scale?: number;
   position, scale = 1, color = '#f472b6'
 }) => {
   const groupRef = useRef<THREE.Group>(null);
-  useFrame((state) => {
+  useGameLoop((state) => {
     if (groupRef.current) {
       groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.04;
     }
@@ -55,7 +50,7 @@ const GardenTree: React.FC<{ position: [number, number, number]; scale?: number;
 // Floating petal / blossom
 const Petal: React.FC<{ position: [number, number, number]; delay: number }> = ({ position, delay }) => {
   const ref = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
+  useGameLoop((state) => {
     if (!ref.current) return;
     const t = state.clock.elapsedTime + delay;
     ref.current.position.y = position[1] + Math.sin(t * 0.7) * 0.8;
@@ -96,7 +91,7 @@ export default function LandingBackground() {
 
   return (
     <div className="fixed inset-0 z-0 bg-gradient-to-b from-pink-100 via-rose-50 to-emerald-50">
-      <Canvas shadows camera={{ position: [0, 3, 10], fov: 50 }}>
+      <GameEngine3D quality="medium" dpr={1.5} camera={{ position: [0, 3, 10], fov: 50 }} alpha>
         <ambientLight intensity={0.7} />
         <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow color="#fff5e6" />
         <pointLight position={[-5, 5, -5]} intensity={0.4} color="#fce7f3" />
@@ -122,7 +117,7 @@ export default function LandingBackground() {
 
         {/* Sparkle particles */}
         <Sparkles count={60} scale={[16, 8, 8]} size={1.5} speed={0.3} color="#fce7f3" />
-      </Canvas>
+      </GameEngine3D>
       <div className="absolute inset-0 bg-white/10 pointer-events-none" />
     </div>
   );

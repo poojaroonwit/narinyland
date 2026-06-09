@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Sparkles, Float, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { EnvironmentTheme, FlowerPosition, advanceSeed, hashString, nextSeededRatio, seededRatio } from './shared';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: EnvironmentTheme, quality?: string }) => {
     const ref = useRef<THREE.Group>(null);
@@ -25,7 +25,7 @@ export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: EnvironmentT
         };
     }, [instanceSeed, theme]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (!ref.current || quality === 'low') return;
         const t = state.clock.getElapsedTime();
         ref.current.position.y -= speed;
@@ -60,7 +60,7 @@ export const FallingLeaf = ({ theme, quality = 'medium' }: { theme: EnvironmentT
 export const LeafExplosion = ({ count = 20, color = "#4ade80" }) => {
   const group = useRef<THREE.Group>(null);
   
-  useFrame((state, delta) => {
+  useGameLoop((state, delta) => {
     if (group.current) {
         group.current.children.forEach((child) => {
             const velocity = child.userData.velocity as THREE.Vector3 | undefined;
@@ -118,7 +118,7 @@ export const Bird = () => {
     const yOffset = useMemo(() => 6 + seededRatio(instanceSeed + 2) * 2, [instanceSeed]);
     const startPhase = useMemo(() => seededRatio(instanceSeed + 3) * Math.PI * 2, [instanceSeed]);
 
-    useFrame(({ clock }) => {
+    useGameLoop(({ clock }) => {
         if (!ref.current) return;
         const t = clock.elapsedTime * speed + startPhase;
         ref.current.position.x = Math.cos(t) * radius;
@@ -173,7 +173,7 @@ export const Butterfly = ({ flowers }: { flowers: FlowerPosition[] }) => {
     const color = useMemo(() => ['#f472b6', '#60a5fa', '#fbbf24', '#a78bfa', '#2dd4bf'][Math.floor(seededRatio(instanceSeed) * 5)], [instanceSeed]);
     const basePos = useMemo(() => [(seededRatio(instanceSeed + 1) - 0.5) * 10, 2 + seededRatio(instanceSeed + 2) * 2, (seededRatio(instanceSeed + 3) - 0.5) * 10], [instanceSeed]);
 
-    useFrame((state, delta) => {
+    useGameLoop((state, delta) => {
         if (!ref.current) return;
         const t = state.clock.elapsedTime;
         timer.current -= delta;
@@ -279,7 +279,7 @@ export const FloatingText = ({ text, position, color = "#22c55e", onComplete }: 
     const completedRef = useRef(false);
     const [isVisible, setIsVisible] = React.useState(true);
     
-    useFrame((_, delta) => {
+    useGameLoop((_, delta) => {
         if (!groupRef.current || completedRef.current) return;
 
         groupRef.current.position.y += delta * 1.5;
@@ -346,7 +346,7 @@ export const Fireflies = ({ count = 20, quality = 'medium', color = '#fef08a' }:
         });
     }, [effectiveCount, instanceSeed]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (!meshRef.current) return;
         const time = state.clock.getElapsedTime();
         
@@ -406,7 +406,7 @@ export const FallingPetals = ({ count = 50, theme, quality = 'medium' }: { count
     });
   }, [effectiveCount, instanceSeed]);
 
-  useFrame((state) => {
+  useGameLoop((state) => {
     if (!meshRef.current || effectiveCount === 0) return;
     const time = state.clock.getElapsedTime();
 

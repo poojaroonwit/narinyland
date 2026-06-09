@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Shop, { ShopItem } from '../Shop';
-import { ItemTransformUpdate, PurchasedItem } from '../../types';
-import { MovementInput } from './SceneHelpers';
+import { PurchasedItem } from '../../types';
+import { MovementInput } from '../game-engine-3d';
 
 type GardenQuest = {
   id: string;

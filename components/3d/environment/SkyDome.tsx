@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const SkyDome = ({ hour }: { skyColor: string, hour: number, quality?: string }) => {
     const meshRef = useRef<THREE.Mesh>(null);
@@ -168,7 +168,7 @@ export const HorizonGlow = ({ hour, quality = 'medium' }: { hour: number, qualit
         return { color: '#b8c8d8', opacity: 0.04 };
     }, [hour]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (meshRef.current) {
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity + Math.sin(state.clock.elapsedTime * 0.2) * 0.02;
         }

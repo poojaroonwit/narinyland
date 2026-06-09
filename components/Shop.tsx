@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { uploadAPI } from '../services/api';
 
@@ -22,6 +22,27 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'deco-tree1', name: 'Cherry Blossom', type: 'tree1', price: 300, icon: '🌸', description: 'A beautiful blossoming tree.' },
 ];
 
+const getShopIconClass = (type: string) => {
+  switch (type) {
+    case 'custom_3d':
+      return 'fa-cube';
+    case 'dog':
+      return 'fa-dog';
+    case 'cat':
+      return 'fa-cat';
+    case 'flower1':
+      return 'fa-seedling';
+    case 'rock1':
+      return 'fa-gem';
+    case 'house1':
+      return 'fa-house-chimney';
+    case 'tree1':
+      return 'fa-tree';
+    default:
+      return 'fa-shapes';
+  }
+};
+
 interface ShopProps {
   points: number;
   activeLandId?: string;
@@ -37,41 +58,35 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
     fileInputRef.current?.click();
   };
 
-  const handleCustomUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleCustomUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    
-    // Minimal validation
+
     if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
-      alert("Please upload a .glb or .gltf file.");
+      alert('Please upload a .glb or .gltf file.');
       return;
     }
 
-    const customItem = SHOP_ITEMS.find(i => i.id === 'custom-3d');
+    const customItem = SHOP_ITEMS.find(item => item.id === 'custom-3d');
     if (!customItem) return;
 
     if (points < customItem.price) {
-      alert("Not enough points!");
+      alert('Not enough points!');
       return;
     }
-    
+
     if (!activeLandId) {
-       alert("You need an active World to place this item! Create one in Settings.");
-       return;
+      alert('You need an active World to place this item! Create one in Settings.');
+      return;
     }
 
     setPurchasingId('custom-3d');
     try {
-      // 1. Upload file to S3
       const uploadResult = await uploadAPI.upload(file, 'models');
-      const modelUrl = uploadResult.url;
-
-      // 2. Trigger purchase with new modelUrl
-      await onPurchase({ ...customItem, modelUrl });
-      
-    } catch (err) {
-      console.error("Failed to upload model or purchase:", err);
-      alert("Upload failed. Please try again.");
+      await onPurchase({ ...customItem, modelUrl: uploadResult.url });
+    } catch (error) {
+      console.error('Failed to upload model or purchase:', error);
+      alert('Upload failed. Please try again.');
     } finally {
       setPurchasingId(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -81,15 +96,16 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   const handleBuy = async (item: ShopItem) => {
     if (item.id === 'custom-3d') {
       triggerUpload();
-      return; // Handled by handleCustomUpload via file input change
+      return;
     }
 
     if (points < item.price) {
-      alert("Not enough points!");
+      alert('Not enough points!');
       return;
     }
+
     if (!activeLandId) {
-      alert("You need an active World to place this item! Create one in Settings.");
+      alert('You need an active World to place this item! Create one in Settings.');
       return;
     }
 
@@ -101,7 +117,6 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
     }
   };
 
-  // Compact mode for floating edit popover
   if (compact) {
     return (
       <div className="space-y-2">
@@ -109,106 +124,114 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
           <motion.div
             key={item.id}
             whileHover={{ scale: 1.01 }}
-            className="bg-gradient-to-r from-white to-amber-50/50 rounded-md p-3 border border-amber-100/80 flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-3 rounded-[1.15rem] border border-amber-100/80 bg-white/82 p-3 shadow-sm"
           >
-            <div className="text-2xl w-10 h-10 bg-amber-50 rounded-md flex items-center justify-center shrink-0">{item.icon}</div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-black text-gray-800 text-sm truncate">{item.name}</h4>
-              <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
-                <i className="fas fa-coins text-[10px]"></i>
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+              <i className={`fas ${getShopIconClass(item.type)} text-base`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h4 className="truncate text-sm font-black text-stone-800">{item.name}</h4>
+              <div className="flex items-center gap-1 text-xs font-bold text-amber-700">
+                <i className="fas fa-coins text-[10px]" />
                 <span>{item.price}</span>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => handleBuy(item)}
               disabled={points < item.price || purchasingId === item.id}
-              className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
+              className={`h-10 shrink-0 rounded-full px-4 text-[10px] font-black uppercase tracking-wider transition active:scale-95 ${
                 purchasingId === item.id
-                  ? 'bg-gray-300 text-white cursor-wait'
+                  ? 'bg-stone-300 text-white'
                   : points >= item.price
-                    ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    ? 'bg-amber-500 text-white shadow-sm hover:bg-amber-600'
+                    : 'bg-stone-100 text-stone-400'
               }`}
             >
-              {purchasingId === item.id ? '...' : item.id === 'custom-3d' ? '📦' : 'Buy'}
+              {purchasingId === item.id ? '...' : item.id === 'custom-3d' ? 'Upload' : 'Buy'}
             </button>
           </motion.div>
         ))}
-        {/* Hidden file input for custom 3D model uploads */}
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleCustomUpload} 
-          accept=".glb,.gltf" 
-          className="hidden" 
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleCustomUpload}
+          accept=".glb,.gltf"
+          className="hidden"
         />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
-      <div className="bg-white/90 backdrop-blur-md rounded-md shadow-xl w-full p-6 md:p-8 flex flex-col">
-        <div className="flex justify-between items-center border-b border-amber-100 pb-4 mb-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col items-center">
+      <div className="flex w-full flex-col rounded-md bg-white/90 p-6 shadow-xl backdrop-blur-md md:p-8">
+        <div className="mb-6 flex items-center justify-between border-b border-amber-100 pb-4">
           <div>
-            <h2 className="text-2xl font-black text-amber-700 flex items-center gap-2">
-              <i className="fas fa-store"></i> The World Shop
+            <h2 className="flex items-center gap-2 text-2xl font-black text-amber-700">
+              <i className="fas fa-store" /> The World Shop
             </h2>
-            <p className="text-xs font-bold text-amber-500/80 uppercase tracking-widest mt-1">
+            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-amber-500/80">
               Buy items for your active world
             </p>
           </div>
-          <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-md flex items-center gap-2 shadow-sm border border-amber-200">
-            <i className="fas fa-coins text-amber-500"></i>
+          <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-100 px-4 py-2 text-amber-700 shadow-sm">
+            <i className="fas fa-coins text-amber-500" />
             <span className="font-black">{points}</span>
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">PTS</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {SHOP_ITEMS.map(item => (
-            <motion.div 
+            <motion.div
               key={item.id}
               whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-white to-amber-50 rounded-md p-5 border inline-block border-amber-100 shadow-sm flex flex-col justify-between"
+              className="flex flex-col justify-between rounded-md border border-amber-100 bg-gradient-to-br from-white to-amber-50 p-5 shadow-sm"
             >
               <div>
-                <div className="text-4xl text-center mb-4">{item.icon}</div>
-                <h3 className="font-black text-gray-800 text-lg">{item.name}</h3>
-                <p className="text-xs text-gray-500 mt-1 h-8">{item.description}</p>
+                <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-amber-100 text-amber-700 shadow-inner">
+                  <i className={`fas ${getShopIconClass(item.type)} text-2xl`} />
+                </div>
+                <h3 className="text-lg font-black text-gray-800">{item.name}</h3>
+                <p className="mt-1 h-8 text-xs text-gray-500">{item.description}</p>
               </div>
-              
-              <div className="mt-4 pt-4 border-t border-amber-100 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-amber-600 font-black">
-                  <i className="fas fa-coins text-sm"></i>
+
+              <div className="mt-4 flex items-center justify-between border-t border-amber-100 pt-4">
+                <div className="flex items-center gap-1.5 font-black text-amber-600">
+                  <i className="fas fa-coins text-sm" />
                   <span>{item.price}</span>
                 </div>
-                
+
                 <button
+                  type="button"
                   onClick={() => handleBuy(item)}
                   disabled={points < item.price || purchasingId === item.id}
-                  className={`px-4 py-2 rounded-md text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  className={`rounded-md px-4 py-2 text-xs font-black uppercase tracking-wider shadow-sm transition-all ${
                     purchasingId === item.id
-                      ? 'bg-gray-300 text-white cursor-wait'
+                      ? 'cursor-wait bg-gray-300 text-white'
                       : points >= item.price
                         ? 'bg-amber-500 text-white hover:bg-amber-600 hover:shadow-md'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'cursor-not-allowed bg-gray-200 text-gray-400'
                   }`}
                 >
-                  {purchasingId === item.id ? 'Buying...' : item.id === 'custom-3d' ? (points >= item.price ? 'Upload' : 'Not Enough') : points >= item.price ? 'Buy Item' : 'Not Enough'}
+                  {purchasingId === item.id
+                    ? 'Buying...'
+                    : item.id === 'custom-3d'
+                      ? points >= item.price ? 'Upload' : 'Not Enough'
+                      : points >= item.price ? 'Buy Item' : 'Not Enough'}
                 </button>
               </div>
             </motion.div>
           ))}
         </div>
-        
-        {/* Hidden file input for custom 3D model uploads */}
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleCustomUpload} 
-          accept=".glb,.gltf" 
-          className="hidden" 
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleCustomUpload}
+          accept=".glb,.gltf"
+          className="hidden"
         />
       </div>
     </div>
@@ -216,5 +239,3 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 };
 
 export default Shop;
-
-

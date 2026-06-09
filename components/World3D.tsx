@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Html, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { Interaction } from '../types';
 import dynamic from 'next/dynamic';
+import { GameEngine3D, useGameLoop } from './game-engine-3d';
 
 const World2DMap = dynamic(() => import('./World2DMap'), { ssr: false });
 
@@ -25,7 +25,7 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
 }
 
 function CameraWatcher({ onZoomIn }: { onZoomIn: () => void }) {
-  useFrame(({ camera }) => {
+  useGameLoop(({ camera }) => {
     // Zoom in threshold
     if (camera.position.length() <= 6.5) {
       onZoomIn();
@@ -47,7 +47,7 @@ const Globe: React.FC<{ timeline: Interaction[], onFlagClick: (item: Interaction
   ]);
 
   // Auto-rotate globe AND markers together so pins stay fixed to surface
-  useFrame(() => {
+  useGameLoop(() => {
     if (rotatingGroupRef.current) {
       rotatingGroupRef.current.rotation.y += 0.001;
     }
@@ -137,14 +137,14 @@ export default function World3D({ timeline, onFlagClick }: World3DProps) {
     <div className={`w-full h-full bg-slate-900 absolute inset-0 z-0 flex items-center justify-center transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
       {!is2DMode && (
         <>
-          <Canvas camera={{ position: [0, 0, 12], fov: 45 }}>
+          <GameEngine3D quality="high" dpr={1.5} camera={{ position: [0, 0, 12], fov: 45 }} alpha={false}>
             <ambientLight intensity={0.5} />
             <directionalLight position={[10, 10, 5]} intensity={1.5} />
             <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
             <OrbitControls enablePan={false} minDistance={6} maxDistance={20} />
             <CameraWatcher onZoomIn={startTransition} />
             <Globe timeline={timeline} onFlagClick={onFlagClick} />
-          </Canvas>
+          </GameEngine3D>
           <div className="absolute top-8 left-0 right-0 text-center pointer-events-none transition-opacity duration-300">
              <h1 className="text-white font-pacifico text-3xl md:text-5xl opacity-80 drop-shadow-lg">Our World of Memories</h1>
              <p className="text-white/60 text-sm mt-2 font-bold uppercase tracking-widest">Spin the globe to explore</p>

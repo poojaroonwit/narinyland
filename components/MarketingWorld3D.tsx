@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
 import { 
   ScrollControls, 
   Scroll, 
@@ -13,6 +12,7 @@ import * as THREE from 'three';
 import { Tree } from './3d/Tree';
 import { Pet3D } from './3d/Pet';
 import { Fireflies } from './3d/Environment';
+import { GameEngine3D, useGameLoop } from './game-engine-3d';
 
 // Monochrome Theme for the Archive look
 const ARCHIVE_THEME = {
@@ -24,7 +24,7 @@ const ARCHIVE_THEME = {
 
 function TechnicalGlobe() {
   const meshRef = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
+  useGameLoop((state) => {
     if (meshRef.current) {
       meshRef.current.rotation.y = state.clock.elapsedTime * 0.05;
       meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
@@ -68,7 +68,7 @@ function Scene({ quality = 'high' }: { quality?: string }) {
   // 0.6: Pet/Nari (Zoom into Ground level)
   // 1.0: Timeline/Final (Zoom out to see whole Garden)
   
-  useFrame((state) => {
+  useGameLoop((state) => {
     const offset = scroll.offset;
     
     // Smoothly interpolate camera position based on scroll
@@ -180,7 +180,7 @@ function Scene({ quality = 'high' }: { quality?: string }) {
 export default function MarketingWorld3D({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 w-full h-full z-0 bg-[#ffffff]">
-      <Canvas shadows gl={{ antialias: true, alpha: true }}>
+      <GameEngine3D quality="high" dpr={1.5} alpha>
         <ScrollControls pages={5} damping={0.3} distance={1}>
           <Scene />
           <Scroll html>
@@ -189,7 +189,7 @@ export default function MarketingWorld3D({ children }: { children: React.ReactNo
             </div>
           </Scroll>
         </ScrollControls>
-      </Canvas>
+      </GameEngine3D>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from 'react';
-import { Canvas } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Sky, Stars, Sparkles, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { Emotion, ItemTransformUpdate, PurchasedItem } from '../../types';
@@ -11,7 +10,7 @@ import { Tree } from '../3d/Tree';
 import { Flower } from '../3d/Flower';
 import { Terrain, Grass, MeadowLayer, Pond, StonePath, GardenProp } from '../3d/GardenProps';
 import { Butterfly, Bird, FallingLeaf, FloatingText, Fireflies, FallingPetals, LeafExplosion, Clouds, ShootingStar, GodRays, Nebula, Aurora, SkyDome, HorizonGlow, CirrusClouds, MilkyWay, SkyColorBands } from '../3d/Environment';
-import { CustomGLTFModel, DraggableItem, GameCameraController, MovementInput, SpawnIn } from './SceneHelpers';
+import { GameCameraController, GameEngine3D, GameEntity, GameModelAsset, MovementInput, SpawnIn } from '../game-engine-3d';
 
 type GardenTheme = (typeof THEMES)[keyof typeof THEMES];
 
@@ -83,11 +82,10 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
   flowerPositions,
   grassPositions,
 }) => (
-        <Canvas 
-          shadows={graphicsQuality === 'high'}
+        <GameEngine3D
+          quality={graphicsQuality}
           dpr={dpr}
-          performance={{ min: 0.5 }}
-          camera={{ position: [0, 6, 14], fov: 50 }}
+          camera={{ position: [0, 5.2, 11.5], fov: 52 }}
           onPointerMissed={() => setSelectedItemId(null)}
       >
           <color attach="background" args={[skyColor]} />
@@ -225,8 +223,8 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
               dampingFactor={0.05}
               minPolarAngle={0} 
               maxPolarAngle={Math.PI / 2.1} 
-              maxDistance={20} 
-              minDistance={4} 
+              maxDistance={17} 
+              minDistance={5} 
           />
   
           <SpawnIn delay={0.2} position={[0, -0.1, 0]}>
@@ -241,29 +239,18 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
               const fakeItem: PurchasedItem = mainTreeItem ?? { id: 'main_tree', type: 'main_tree', x: 0, y: 0, z: 0, rotation: 0, landId: activeLandId ?? '' };
               return (
                 <SpawnIn key="tree-edit" delay={0.6}>
-                  <DraggableItem
+                  <GameEntity
                     item={fakeItem}
                     snapToGrid={snapToGrid}
                     onSelect={() => setSelectedItemId(null)}
-                    onUpdate={async (id, update) => {
-                      // If this is the placeholder fake item, create a real DB record first
-                      if (!mainTreeItem && activeLandId) {
-                        try {
-                          await fetch('/api/purchased-items', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ type: 'main_tree', landId: activeLandId, x: update.x, y: 0, z: update.z })
-                          });
-                        } catch (e) { console.error('Failed to create main_tree item', e); }
-                      } else if (onUpdateItemPosition) {
-                        onUpdateItemPosition(id, update);
-                      }
+                    onUpdate={(id, update) => {
+                      onUpdateItemPosition?.(mainTreeItem ? id : 'main_tree', update);
                     }}
                   >
                     <group onClick={() => { setShakeTree(true); setTimeout(() => setShakeTree(false), 500); }}>
                       <Tree theme={theme} scale={growthScale} leafCount={leaves} windFactor={windFactor} branchCount={branchCount} quality={graphicsQuality} shake={shakeTree} />
                     </group>
-                  </DraggableItem>
+                  </GameEntity>
                 </SpawnIn>
               );
             }
@@ -318,7 +305,7 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
                  if (isEditMode) {
                    return (
                      <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
-                       <DraggableItem
+                       <GameEntity
                          item={item}
                          onUpdate={onUpdateItemPosition}
                          onSelect={setSelectedItemId}
@@ -327,7 +314,7 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
                          enabled={isEditMode}
                        >
                          <Pet3D emotion={petEmotion} theme={theme} petType={item.type} startPos={[0, 0, 0]} quality={graphicsQuality} />
-                       </DraggableItem>
+                       </GameEntity>
                      </SpawnIn>
                    );
                  }
@@ -340,7 +327,7 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
   
               return (
                  <SpawnIn key={item.id} delay={2.0 + idx * 0.12}>
-                   <DraggableItem
+                   <GameEntity
                      item={item}
                      onUpdate={onUpdateItemPosition}
                      onSelect={setSelectedItemId}
@@ -348,7 +335,7 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
                      snapToGrid={snapToGrid}
                      enabled={isEditMode}
                    >
-                     {item.type === 'custom_3d' && item.modelUrl && <CustomGLTFModel url={item.modelUrl} scale={1} />}
+                     {item.type === 'custom_3d' && item.modelUrl && <GameModelAsset url={item.modelUrl} scale={1} />}
                      {item.type === 'flower1' && <Flower type="sunflower" position={[0, 0, 0]} scale={1.5} windFactor={windFactor} />}
                      {item.type === 'rock1' && <GardenProp type="rock" position={[0, 0, 0]} />}
                      {item.type === 'tree1' && <Tree theme={theme} scale={0.5} leafCount={20} branchCount={4} quality={graphicsQuality} />}
@@ -362,7 +349,7 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
                          </mesh>
                        </mesh>
                      )}
-                   </DraggableItem>
+                   </GameEntity>
                  </SpawnIn>
               );
            })}
@@ -447,10 +434,10 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
                position={[0, 0.01, 0]}
                cellSize={1}
                cellThickness={0.6}
-               cellColor="#6b7280"
+               cellColor="#f5d79d"
                sectionSize={5}
                sectionThickness={1.2}
-               sectionColor="#ec4899"
+               sectionColor="#15803d"
                fadeDistance={30}
                fadeStrength={1}
                followCamera={false}
@@ -458,5 +445,5 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
              />
            )}
   
-        </Canvas>
+        </GameEngine3D>
 );

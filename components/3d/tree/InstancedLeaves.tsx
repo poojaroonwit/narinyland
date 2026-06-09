@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useMemo, useLayoutEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { LeafInstance } from './shared';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const InstancedLeaves = ({ leaves, windFactor, quality }: { leaves: LeafInstance[], windFactor: number, quality: string }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -35,7 +35,7 @@ export const InstancedLeaves = ({ leaves, windFactor, quality }: { leaves: LeafI
     }
   }, [dummy, leaves]);
 
-  useFrame((state) => {
+  useGameLoop((state) => {
     if (!meshRef.current || quality === 'low' || leaves.length === 0) return;
     const t = state.clock.getElapsedTime();
     

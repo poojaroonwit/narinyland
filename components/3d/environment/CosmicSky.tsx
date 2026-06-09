@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const CirrusClouds = ({ hour, quality = 'medium' }: { hour: number, quality?: string }) => {
     const groupRef = useRef<THREE.Group>(null);
@@ -36,7 +36,7 @@ export const CirrusClouds = ({ hour, quality = 'medium' }: { hour: number, quali
         });
     }, [count, isNight]);
 
-    useFrame(() => {
+    useGameLoop(() => {
         if (!groupRef.current) return;
         groupRef.current.children.forEach((wisp, i) => {
             if (!wisps[i]) return;
@@ -71,7 +71,7 @@ export const MilkyWay = ({ hour, quality = 'medium' }: { hour: number, quality?:
     const isNight = hour >= 20 || hour < 5;
     const starCount = quality === 'high' ? 8 : 4;
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (groupRef.current) {
             groupRef.current.rotation.z = state.clock.elapsedTime * 0.003;
         }
@@ -143,7 +143,7 @@ export const Nebula = ({ treeStyle, hour, quality = 'medium' }: { treeStyle: str
     const isSpecial = ['neon', 'midnight'].includes(treeStyle);
     const isNight = hour >= 19 || hour < 6;
 
-    useFrame(() => {
+    useGameLoop(() => {
         if (ref.current) {
             ref.current.rotation.z += 0.0005;
             ref.current.rotation.x += 0.0002;

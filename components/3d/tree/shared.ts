@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { seededRandom } from '../../game-engine-3d';
 
 export type TreeTheme = {
   trunk: string;
@@ -31,10 +32,7 @@ export type TreeContentProps = {
   treeHeight?: number;
 };
 
-export function seededRandom(seed: number) {
-    const s = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-    return s - Math.floor(s);
-}
+export { seededRandom };
 
 export function getSeasonalLeafColor(baseColor: string, season: string): string {
     const color = new THREE.Color(baseColor);

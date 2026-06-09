@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 import { useRef, useState, useMemo } from 'react';
-import { ThreeEvent, useFrame } from '@react-three/fiber';
+import { ThreeEvent } from '@react-three/fiber';
 import { Text, Float, Detailed } from '@react-three/drei';
 import * as THREE from 'three';
 import { Emotion } from '../../types';
+import { hashString, nextSeededRatio, useGameLoop } from '../game-engine-3d';
 
 type PetColors = { primary: string; secondary: string; nose: string };
 type PetDetail = 'high' | 'medium' | 'low';
@@ -32,19 +33,6 @@ type Pet3DProps = {
   startPos?: [number, number, number];
   otherPets?: Array<{ ref: GroupRef; type: string }>;
   quality?: string;
-};
-
-const hashString = (value: string) => {
-  let hash = 0;
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-};
-
-const nextSeededRatio = (seedRef: React.MutableRefObject<number>) => {
-  seedRef.current = (seedRef.current * 1664525 + 1013904223) >>> 0;
-  return seedRef.current / 4294967296;
 };
 
 export const PetVisuals = ({ petType, colors, emotion, active, quality, detail = 'high', coreRef, headRef, tailRef, legRefs }: PetVisualsProps) => {
@@ -276,7 +264,7 @@ export const Pet3D = React.forwardRef<THREE.Group, Pet3DProps>(({ emotion, petTy
   const jumpHeight = useRef(0);
   const spinSpeed = useRef(0);
 
-  useFrame((state, delta) => {
+  useGameLoop((state, delta) => {
     if (ref.current && coreRef.current) {
         const t = state.clock.getElapsedTime();
         activityTimer.current -= delta;

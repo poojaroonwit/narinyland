@@ -2,18 +2,13 @@
 
 import * as React from 'react';
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { seededRatio, useGameLoop } from '../game-engine-3d';
 
 type GardenTheme = {
     ground: string;
     patch: string;
     bg?: string;
-};
-
-const seededRatio = (seed: number) => {
-    const value = Math.sin(seed * 9301 + 49297) * 233280;
-    return value - Math.floor(value);
 };
 
 // Procedural Terrain with vertex coloring
@@ -74,7 +69,7 @@ export const Grass = ({ theme, position, windFactor, quality = 'medium' }: { the
     const ref = useRef<THREE.Group>(null);
     const seed = useMemo(() => position.x * 17.17 + position.z * 31.31, [position.x, position.z]);
     
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (ref.current && quality !== 'low') {
             const t = state.clock.getElapsedTime();
             ref.current.rotation.x = Math.sin(t * 2 + seed) * (0.1 * windFactor);
@@ -128,7 +123,7 @@ export const MeadowLayer = ({ theme, windFactor, quality = 'medium' }: { theme: 
         });
     }, [flowerCount]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (!ref.current || quality === 'low') return;
         const t = state.clock.getElapsedTime();
         ref.current.rotation.z = Math.sin(t * 0.28) * 0.01 * windFactor;
@@ -225,7 +220,7 @@ export const GardenProp = ({ position, type, quality = 'medium' }: { position: [
 
 export const Pond = ({ quality = 'medium' }: { quality?: string }) => {
     const meshRef = useRef<THREE.Mesh>(null);
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (meshRef.current && quality !== 'low') {
             const t = state.clock.getElapsedTime();
             // Simple ripple effect by moving texture offset or scale

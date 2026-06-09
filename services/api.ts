@@ -11,6 +11,7 @@ import type {
   LoveLetterMessage,
   LoveStats,
   MemoryItem,
+  PurchasedItem,
 } from '@/types';
 
 type ApiResult = Record<string, unknown>;
@@ -71,6 +72,21 @@ type StatsResult = LoveStats & {
   totalXP?: number;
   success?: boolean;
   leveledUp?: boolean;
+};
+type PurchasedItemCreatePayload = {
+  type: string;
+  landId: string;
+  x?: number;
+  y?: number;
+  z?: number;
+  rotation?: number;
+  modelUrl?: string | null;
+};
+type PurchasedItemUpdatePayload = {
+  x?: number;
+  y?: number;
+  z?: number;
+  rotation?: number;
 };
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
@@ -386,6 +402,28 @@ export const landsAPI = {
 };
 
 // ─── Circles API ──────────────────────────────────────────────────────────
+
+// â”€â”€â”€ Purchased Items API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export const purchasedItemsAPI = {
+  list: (landId: string) =>
+    fetchAPI<PurchasedItem[]>(`/purchased-items?landId=${encodeURIComponent(landId)}`),
+
+  create: (data: PurchasedItemCreatePayload) =>
+    fetchAPI<PurchasedItem>('/purchased-items', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: PurchasedItemUpdatePayload) =>
+    fetchAPI<PurchasedItem>(`/purchased-items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<ApiMutationResult>(`/purchased-items/${id}`, { method: 'DELETE' }),
+};
 
 export const circlesAPI = {
   list: () => fetchAPI<CircleRecord[]>('/circles'),

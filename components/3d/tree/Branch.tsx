@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { InstancedLeaves } from './InstancedLeaves';
 import { LeafInstance, TreeTheme, getSeasonalLeafColor, seededRandom } from './shared';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme, leafCount, windFactor, quality = 'medium', detail = 'high', seed = 0, curveAmount = 0, curveDirection = 0, season = 'spring' }: { 
     position: [number, number, number], 
@@ -26,7 +26,7 @@ export const Branch = ({ position, yAngle, tilt, length, thickness, color, theme
     const branchRef = useRef<THREE.Group>(null);
     const stableSeed = useMemo(() => seed, [seed]);
 
-    useFrame((state) => {
+    useGameLoop((state) => {
         if (branchRef.current && quality !== 'low') {
             const t = state.clock.getElapsedTime();
             const sway = Math.sin(t * 0.6 + stableSeed) * (0.03 * windFactor);

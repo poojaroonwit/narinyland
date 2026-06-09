@@ -2,13 +2,13 @@
 
 import * as React from 'react';
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { Branch } from './Branch';
 import { HeartFruit } from './HeartFruit';
 import { InstancedLeaves } from './InstancedLeaves';
 import { LeafInstance, TreeContentProps, getSeasonalLeafColor, seededRandom } from './shared';
+import { useGameLoop } from '../../game-engine-3d';
 
 export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branchCount = 6, quality = 'medium', shake = false, detail = 'high', season = 'spring', treeHeight = 1 }: TreeContentProps) => {
   const group = useRef<THREE.Group>(null);
@@ -18,7 +18,7 @@ export const TreeContent = ({ theme, scale = 1, leafCount, windFactor = 1, branc
   const isLow = detail === 'low' || quality === 'low';
   const isMid = detail === 'medium';
 
-  useFrame((state) => {
+  useGameLoop((state) => {
     if (group.current) {
         const t = state.clock.getElapsedTime();
         const breeze = Math.sin(t * 0.3) * 0.012 * windFactor;
