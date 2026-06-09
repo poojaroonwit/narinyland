@@ -22,27 +22,6 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'deco-tree1', name: 'Cherry Blossom', type: 'tree1', price: 300, icon: '🌸', description: 'A beautiful blossoming tree.' },
 ];
 
-const getShopIconClass = (type: string) => {
-  switch (type) {
-    case 'custom_3d':
-      return 'fa-cube';
-    case 'dog':
-      return 'fa-dog';
-    case 'cat':
-      return 'fa-cat';
-    case 'flower1':
-      return 'fa-seedling';
-    case 'rock1':
-      return 'fa-gem';
-    case 'house1':
-      return 'fa-house-chimney';
-    case 'tree1':
-      return 'fa-tree';
-    default:
-      return 'fa-shapes';
-  }
-};
-
 interface ShopProps {
   points: number;
   activeLandId?: string;
@@ -124,15 +103,13 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
           <motion.div
             key={item.id}
             whileHover={{ scale: 1.01 }}
-            className="flex items-center gap-3 rounded-[1.15rem] border border-amber-100/80 bg-white/82 p-3 shadow-sm"
+            className="bg-gradient-to-r from-white to-amber-50/50 rounded-md p-3 border border-amber-100/80 flex items-center gap-3 group cursor-pointer"
           >
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
-              <i className={`fas ${getShopIconClass(item.type)} text-base`} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="truncate text-sm font-black text-stone-800">{item.name}</h4>
-              <div className="flex items-center gap-1 text-xs font-bold text-amber-700">
-                <i className="fas fa-coins text-[10px]" />
+            <div className="text-2xl w-10 h-10 bg-amber-50 rounded-md flex items-center justify-center shrink-0">{item.icon}</div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-black text-gray-800 text-sm truncate">{item.name}</h4>
+              <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
+                <i className="fas fa-coins text-[10px]"></i>
                 <span>{item.price}</span>
               </div>
             </div>
@@ -140,15 +117,15 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
               type="button"
               onClick={() => handleBuy(item)}
               disabled={points < item.price || purchasingId === item.id}
-              className={`h-10 shrink-0 rounded-full px-4 text-[10px] font-black uppercase tracking-wider transition active:scale-95 ${
+              className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
                 purchasingId === item.id
-                  ? 'bg-stone-300 text-white'
+                  ? 'bg-gray-300 text-white cursor-wait'
                   : points >= item.price
                     ? 'bg-amber-500 text-white shadow-sm hover:bg-amber-600'
-                    : 'bg-stone-100 text-stone-400'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
-              {purchasingId === item.id ? '...' : item.id === 'custom-3d' ? 'Upload' : 'Buy'}
+              {purchasingId === item.id ? '...' : item.id === 'custom-3d' ? item.icon : 'Buy'}
             </button>
           </motion.div>
         ))}
@@ -190,9 +167,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
               className="flex flex-col justify-between rounded-md border border-amber-100 bg-gradient-to-br from-white to-amber-50 p-5 shadow-sm"
             >
               <div>
-                <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-amber-100 text-amber-700 shadow-inner">
-                  <i className={`fas ${getShopIconClass(item.type)} text-2xl`} />
-                </div>
+                <div className="text-4xl text-center mb-4">{item.icon}</div>
                 <h3 className="text-lg font-black text-gray-800">{item.name}</h3>
                 <p className="mt-1 h-8 text-xs text-gray-500">{item.description}</p>
               </div>

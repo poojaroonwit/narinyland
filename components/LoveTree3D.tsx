@@ -8,7 +8,7 @@ import { ShopItem } from './Shop';
 import { Emotion, ItemTransformUpdate, PurchasedItem } from '../types';
 import { THEMES } from './3d/GardenConstants';
 import { LoveTreeCanvasScene } from './love-tree3d/LoveTreeCanvasScene';
-import { MobileGameOverlays } from './love-tree3d/MobileGameOverlays';
+import { LoveTreeOverlays } from './love-tree3d/LoveTreeOverlays';
 import { MovementInput, nextSeededRatio, seededRatio } from './game-engine-3d';
 
 interface LoveTree3DProps {
@@ -34,8 +34,6 @@ interface LoveTree3DProps {
   onUpdateItemPosition?: (id: string, update: ItemTransformUpdate) => void;
   activeLandId?: string;
   onPurchase?: (item: ShopItem) => Promise<void>;
-  landName?: string;
-  onOpenWorldMap?: () => void;
   isEditMode?: boolean;
   setIsEditMode?: (val: boolean) => void;
 }
@@ -49,13 +47,14 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
      pets = [], albums = [],
      graphicsQuality = 'medium',
      purchasedItems = [], onUpdateItemPosition,
-     activeLandId, onPurchase, landName, onOpenWorldMap,
+     activeLandId, onPurchase,
      isEditMode = false, setIsEditMode
  }) => {
    void petMessage;
    void level;
+   void onAddLeaf;
    const [isShopPopoverOpen, setIsShopPopoverOpen] = useState(false);
-   const [cameraMode, setCameraMode] = useState<'orbit' | 'explore'>('explore');
+   const [cameraMode, setCameraMode] = useState<'orbit' | 'explore'>('orbit');
    const [movement, setMovement] = useState<MovementInput>({ forward: false, back: false, left: false, right: false });
    const [snapToGrid, setSnapToGrid] = useState(true);
    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -464,17 +463,13 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
         flowerPositions={flowerPositions}
         grassPositions={grassPositions}
       />
-      <MobileGameOverlays
+      <LoveTreeOverlays
         isEditMode={isEditMode}
         setIsEditMode={setIsEditMode}
         cameraMode={cameraMode}
         setCameraMode={setCameraMode}
         points={points}
-        landName={landName}
         toggleBuildMode={toggleBuildMode}
-        canGrowLeaf={points >= 100}
-        onAddLeaf={onAddLeaf}
-        onOpenWorldMap={onOpenWorldMap}
         snapToGrid={snapToGrid}
         setSnapToGrid={setSnapToGrid}
         gardenQuests={gardenQuests}

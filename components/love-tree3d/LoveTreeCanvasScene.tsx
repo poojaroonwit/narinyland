@@ -85,7 +85,7 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
         <GameEngine3D
           quality={graphicsQuality}
           dpr={dpr}
-          camera={{ position: [0, 5.2, 11.5], fov: 52 }}
+          camera={{ position: [0, 6, 14], fov: 50 }}
           onPointerMissed={() => setSelectedItemId(null)}
       >
           <color attach="background" args={[skyColor]} />
@@ -223,8 +223,8 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
               dampingFactor={0.05}
               minPolarAngle={0} 
               maxPolarAngle={Math.PI / 2.1} 
-              maxDistance={17} 
-              minDistance={5} 
+              maxDistance={20} 
+              minDistance={4} 
           />
   
           <SpawnIn delay={0.2} position={[0, -0.1, 0]}>
@@ -434,10 +434,10 @@ export const LoveTreeCanvasScene: React.FC<LoveTreeCanvasSceneProps> = ({
                position={[0, 0.01, 0]}
                cellSize={1}
                cellThickness={0.6}
-               cellColor="#f5d79d"
+               cellColor="#6b7280"
                sectionSize={5}
                sectionThickness={1.2}
-               sectionColor="#15803d"
+               sectionColor="#ec4899"
                fadeDistance={30}
                fadeStrength={1}
                followCamera={false}

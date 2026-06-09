@@ -54,11 +54,6 @@ export const GardenWorldStage: React.FC = () => {
                        setIsEditMode={setIsEditMode}
                        onAddLeaf={handleAddLeaf}
                        purchasedItems={activeLand?.items}
-                       landName={activeLand?.name}
-                       onOpenWorldMap={() => {
-                         setIsEditMode(false);
-                         setWorldMode('globe');
-                       }}
                         onUpdateItemPosition={async (itemId, update) => {
                           const { x, y, z, rotation } = update;
                           const landId = activeLand?.id;

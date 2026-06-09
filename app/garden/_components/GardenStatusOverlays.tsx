@@ -29,7 +29,7 @@ export const GardenStatusOverlays: React.FC = () => {
             {hasAcceptedProposal && (
               <>
                 {/* CENTERED STATUS BAR - HOME ONLY */}
-                {activeTab === 'home' && worldMode === 'globe' && (
+                {activeTab === 'home' && (
                   <div 
                     className="fixed top-24 md:top-8 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center pointer-events-auto cursor-pointer"
                     onClick={() => {
@@ -119,7 +119,7 @@ export const GardenStatusOverlays: React.FC = () => {
                 )}
       
                 {/* Logo - Fixed Top Left */}
-                <div className={`fixed top-4 md:top-6 left-6 flex items-center ${activeTab === 'home' && worldMode === 'tree' ? 'hidden' : ''}`}
+                <div className="fixed top-4 md:top-6 left-6 flex items-center"
                    style={{ zIndex: 'var(--z-index-fixed)' }}>
                   <Logo 
                     size={isMobile ? 70 : 120} 
@@ -129,7 +129,7 @@ export const GardenStatusOverlays: React.FC = () => {
                 </div>
       
                   {/* PWA Install Button & Grow Leaf Button */}
-                  <div className={`fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 items-end ${activeTab === 'home' && worldMode === 'tree' ? 'hidden' : ''}`}>
+                  <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 items-end">
                     {/* PWA Install Notification */}
                     <AnimatePresence>
                       {showInstallPrompt && (
