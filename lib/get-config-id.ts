@@ -23,16 +23,26 @@ function getCookieValue(request: Request, name: string): string | null {
   return null;
 }
 
+function getQueryConfigId(request: Request): string | null {
+  try {
+    return normalizeConfigId(new URL(request.url).searchParams.get('circleId'));
+  } catch {
+    return null;
+  }
+}
+
 export function getExplicitConfigId(request: Request): string | null {
   return (
     normalizeConfigId(request.headers.get('X-Circle-Id')) ||
+    getQueryConfigId(request) ||
     normalizeConfigId(getCookieValue(request, 'narinyland_circle_id'))
   );
 }
 
 /**
  * Extracts the active circle/config ID from the request. API calls send
- * X-Circle-Id; browser media requests use the same-site circle cookie.
+ * X-Circle-Id; browser streams can use ?circleId=; browser media requests
+ * use the same-site circle cookie.
  * Falls back to 'default' for backwards compatibility.
  */
 export function getConfigId(request: Request): string {

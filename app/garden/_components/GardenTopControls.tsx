@@ -20,10 +20,97 @@ import UserProfileModal from '../../../components/UserProfileModal';
 import Shop from '../../../components/Shop';
 import World3D from '../../../components/World3D';
 import { useGardenPageContext } from './context';
+import { circlesAPI, landsAPI } from '../../../services/api';
+import { getErrorMessage } from '../../../lib/errors';
 
 export const GardenTopControls: React.FC = () => {
-  const { user, logout, authLoading, circles, activeCircleId, setActiveCircle, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount } = useGardenPageContext();
+  const { user, logout, authLoading, circles, activeCircleId, setActiveCircle, refreshUser, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount } = useGardenPageContext();
   const activeLand = appConfig.lands?.find(l => l.isActive) ?? appConfig.lands?.[0];
+  const [newWorldName, setNewWorldName] = React.useState('');
+  const [newLandName, setNewLandName] = React.useState('');
+  const [isCreatingWorld, setIsCreatingWorld] = React.useState(false);
+  const [isCreatingLand, setIsCreatingLand] = React.useState(false);
+
+  const handleCreateWorld = async (event) => {
+    event.preventDefault();
+    const name = newWorldName.trim();
+    if (!name || isCreatingWorld) return;
+
+    setIsCreatingWorld(true);
+    try {
+      const result = await circlesAPI.create({ name });
+      const circleId = result.circleId || result.id;
+      if (!circleId) throw new Error('AppKit did not return a world ID.');
+
+      const defaultLand = result.defaultLand
+        ? { ...result.defaultLand, isActive: true, items: result.defaultLand.items || [] }
+        : null;
+
+      setNewWorldName('');
+      setConfigLoaded?.(false);
+      setAppConfig(prev => ({
+        ...prev,
+        ...(result.config || {}),
+        appName: name,
+        gallery: [],
+        timeline: [],
+        coupons: [],
+        albums: [],
+        lands: defaultLand ? [defaultLand] : [],
+      }));
+      setCircleMembers?.(user?.sub ? [{
+        id: user.sub,
+        userId: user.sub,
+        name: user.name || 'You',
+        avatar: user.picture || '',
+        role: result.role || 'member',
+      }] : []);
+      setIsCircleDropdownOpen(false);
+      await setActiveCircle(circleId, {
+        name: result.name || name,
+        description: typeof result.description === 'string' ? result.description : name,
+        role: result.role || 'member',
+      });
+      await refreshUser?.();
+      showToast?.(`Created world "${name}"${result.creatorLinked ? ' and linked it to you' : ''}`);
+    } catch (err) {
+      showToast?.(`Could not create world: ${getErrorMessage(err)}`);
+    } finally {
+      setIsCreatingWorld(false);
+    }
+  };
+
+  const handleCreateLand = async (event) => {
+    event.preventDefault();
+    const name = newLandName.trim();
+    if (!name || isCreatingLand) return;
+
+    setIsCreatingLand(true);
+    try {
+      const createdLand = await landsAPI.create(name);
+      const activeCreatedLand = createdLand.isActive ? createdLand : await landsAPI.setActive(createdLand.id);
+      const normalizedCreatedLand = { ...activeCreatedLand, isActive: true, items: activeCreatedLand.items || [] };
+
+      setAppConfig(prev => {
+        const existingLands = prev.lands || [];
+        const nextLands = [
+          ...existingLands
+            .filter(land => land.id !== normalizedCreatedLand.id)
+            .map(land => ({ ...land, isActive: false })),
+          normalizedCreatedLand,
+        ];
+
+        return { ...prev, lands: nextLands };
+      });
+      setNewLandName('');
+      setIsLandDropdownOpen(false);
+      showToast?.(`Created land "${name}"`);
+    } catch (err) {
+      showToast?.(`Could not create land: ${getErrorMessage(err)}`);
+    } finally {
+      setIsCreatingLand(false);
+    }
+  };
 
   return (
     <>
@@ -70,7 +157,7 @@ export const GardenTopControls: React.FC = () => {
                             animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
                             exit={isMobile ? { y: "100%" } : { opacity: 0, y: -10, scale: 0.95 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300, duration: 0.2 }}
-                            className={`fixed md:absolute bottom-0 md:bottom-auto md:top-full md:right-0 md:mt-3 w-full md:w-48 bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] md:rounded-md shadow-2xl border-t md:border border-pink-100 overflow-hidden z-[80]`}
+                            className={`fixed md:absolute bottom-0 md:bottom-auto md:top-full md:right-0 md:mt-3 w-full md:w-64 bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] md:rounded-md shadow-2xl border-t md:border border-pink-100 overflow-hidden z-[80]`}
                           >
                             {/* Drawer Handle (Mobile) */}
                             <div className="flex justify-center pt-4 pb-2 md:hidden">
@@ -79,12 +166,34 @@ export const GardenTopControls: React.FC = () => {
       
                             <div className="p-6 md:p-1.5">
                               <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest mb-4 ml-4 md:hidden">Switch World</p>
+                              <div className="mb-2 hidden items-center justify-between px-2 md:flex">
+                                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-pink-400">Create World</span>
+                                <i className="fas fa-circle-plus text-[10px] text-pink-300"></i>
+                              </div>
+                              <form onSubmit={handleCreateWorld} className="mb-3 md:mb-1.5 flex items-center gap-2 rounded-full md:rounded-md border border-pink-100 bg-pink-50/80 p-1.5">
+                                <input
+                                  value={newWorldName}
+                                  onChange={(event) => setNewWorldName(event.target.value)}
+                                  placeholder="New world"
+                                  aria-label="New world name"
+                                  className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm md:text-xs font-bold text-gray-700 placeholder:text-pink-300 outline-none"
+                                  disabled={isCreatingWorld}
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={!newWorldName.trim() || isCreatingWorld}
+                                  title="Create world"
+                                  className="h-9 w-9 shrink-0 rounded-full bg-pink-500 text-white shadow-md transition-all hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-pink-200"
+                                >
+                                  <i className={`fas ${isCreatingWorld ? 'fa-spinner fa-spin' : 'fa-plus'} text-[11px]`}></i>
+                                </button>
+                              </form>
                               <div className="space-y-1 md:space-y-0.5">
                                 {circles.map(circle => (
                                   <button
                                     key={circle.id}
                                     onClick={() => {
-                                      setActiveCircle(circle.id);
+                                      setActiveCircle(circle.id, circle);
                                       setIsCircleDropdownOpen(false);
                                     }}
                                     className={`w-full text-left px-6 py-4 md:px-4 md:py-2.5 rounded-full md:rounded-md text-sm md:text-xs font-bold transition-all flex items-center justify-between group ${
@@ -109,7 +218,6 @@ export const GardenTopControls: React.FC = () => {
                  </div>
       
                  {/* Land Switcher - Right of World Selection */}
-                 {appConfig.lands && appConfig.lands.length >= 1 && (
                    <div className="relative">
                       <button
                         onClick={toggleLandDropdown}
@@ -128,8 +236,30 @@ export const GardenTopControls: React.FC = () => {
                             initial={{ opacity: 0, y: -10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                            className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80] p-1.5"
+                            className="absolute right-0 mt-3 w-56 bg-white/90 backdrop-blur-xl rounded-md shadow-2xl border border-pink-100 overflow-hidden z-[80] p-1.5"
                           >
+                            <div className="mb-2 flex items-center justify-between px-2 pt-1">
+                              <span className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-500">Create Land</span>
+                              <i className="fas fa-circle-plus text-[10px] text-amber-300"></i>
+                            </div>
+                            <form onSubmit={handleCreateLand} className="mb-1.5 flex items-center gap-2 rounded-md border border-amber-100 bg-amber-50/80 p-1.5">
+                              <input
+                                value={newLandName}
+                                onChange={(event) => setNewLandName(event.target.value)}
+                                placeholder={activeCircleId ? 'New land' : 'Select world first'}
+                                aria-label="New land name"
+                                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs font-bold text-gray-700 placeholder:text-amber-300 outline-none"
+                                disabled={isCreatingLand || !activeCircleId}
+                              />
+                              <button
+                                type="submit"
+                                disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
+                                title="Create land"
+                                className="h-8 w-8 shrink-0 rounded-full bg-amber-500 text-white shadow-md transition-all hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-200"
+                              >
+                                <i className={`fas ${isCreatingLand ? 'fa-spinner fa-spin' : 'fa-plus'} text-[10px]`}></i>
+                              </button>
+                            </form>
                             {appConfig.lands?.map(land => (
                               <button
                                 key={land.id}
@@ -148,7 +278,6 @@ export const GardenTopControls: React.FC = () => {
                         )}
                       </AnimatePresence>
                    </div>
-                 )}
       
                 <UserDropdown
                   user={user}

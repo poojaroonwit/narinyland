@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
-import { createCircleViaServer } from '@/lib/appkit-server';
+import { addCircleMemberViaServer, createCircleViaServer } from '@/lib/appkit-server';
 import { getErrorMessage } from '@/lib/errors';
 import { debugLog, debugWarn } from '@/lib/logger';
 import { ensureActiveLand } from '@/lib/config-access';
+import { redis } from '@/lib/redis';
 
 type AppKitCircle = {
   id?: string;
@@ -35,6 +36,30 @@ function extractCircleList(payload: unknown): AppKitCircle[] {
   }
 
   return [];
+}
+
+function extractCircleId(payload: AppKitCircle | null | undefined): string {
+  const data = payload?.data || payload?.circle || payload;
+  return data?.id || data?._id || '';
+}
+
+async function userTokenCanSeeCircle(domain: string, token: string, circleId: string): Promise<boolean> {
+  if (!token || token.startsWith('name_session_')) return false;
+
+  try {
+    const res = await fetch(`${domain}/api/v1/circles`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return false;
+
+    const circles = extractCircleList(await res.json());
+    return circles.some((circle) => extractCircleId(circle) === circleId);
+  } catch (err: unknown) {
+    debugWarn('BFF /api/circles: Could not verify creator circle visibility.', getErrorMessage(err));
+    return false;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -239,51 +264,84 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { name, description } = (await req.json()) as CircleCreateBody;
+    const worldName = typeof name === 'string' ? name.trim().slice(0, 80) : '';
+    const worldDescription = typeof description === 'string' && description.trim()
+      ? description.trim().slice(0, 240)
+      : worldName;
 
-    if (!name) {
+    if (!worldName) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
     }
 
     // 1. Create circle in AppKit
     let circleId: string;
-    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
+    const domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || process.env.APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
     const session = await getAuthSession(req);
     let token = session.token;
-    const { userId: sessionUserId, error, status } = session;
+    const { userId: sessionUserId, error, status, isSoft } = session;
 
     if (error || !token) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
 
+    if (!sessionUserId) {
+      return NextResponse.json({ error: 'Could not identify the current user.' }, { status: 401 });
+    }
+
     try {
-      let circle = await createCircleViaServer(name, description, token) as AppKitCircle;
-      
-      // Proactive retry on 401 for creation too
-      if (!circle.id && !circle._id) {
-         debugLog('BFF Circles: Creation might have failed due to token issues. Attempting refresh.');
+      let circle = await createCircleViaServer(worldName, worldDescription, token) as AppKitCircle;
+
+      // Proactive retry when AppKit returns an unexpected shape, which can happen
+      // after an expired token is refreshed by middleware.
+      if (!extractCircleId(circle)) {
+         debugLog('BFF Circles: Creation response missing ID. Attempting refresh.');
          const { refreshSession } = await import('@/lib/auth-server');
          if (await refreshSession()) {
            const { cookies } = await import('next/headers');
            token = (await cookies()).get('appkit_access_token')?.value || '';
            if (token) {
-              circle = await createCircleViaServer(name, description, token) as AppKitCircle;
+              circle = await createCircleViaServer(worldName, worldDescription, token) as AppKitCircle;
            }
          }
       }
 
       // Handle different possible response structures (root, .data, or .circle)
-      const data = circle.data || circle.circle || circle;
-      circleId = data.id || data._id || '';
+      circleId = extractCircleId(circle);
     } catch (appkitErr: unknown) {
-      debugWarn('AppKit circle creation failed, generating local ID.', getErrorMessage(appkitErr));
-      circleId = `world_${crypto.randomUUID()}`;
+      debugWarn('AppKit circle creation failed.', getErrorMessage(appkitErr));
+      return NextResponse.json(
+        { error: `Could not create AppKit circle: ${getErrorMessage(appkitErr)}` },
+        { status: 502 }
+      );
     }
 
-    // Final safety guard: If AppKit reported SUCCESS but didn't return an ID, 
-    // we must still ensure circleId is defined before Prisma upsert.
     if (!circleId) {
-       debugWarn('AppKit response missing ID, using fallback.');
-       circleId = `world_${crypto.randomUUID()}`;
+       debugWarn('AppKit response missing ID; refusing to create local-only world.');
+       return NextResponse.json(
+         { error: 'AppKit created no circle ID. Please try again.' },
+         { status: 502 }
+       );
+    }
+
+    let creatorLinked = false;
+    try {
+      await addCircleMemberViaServer(circleId, sessionUserId, 'member', token);
+      creatorLinked = true;
+    } catch (memberErr: unknown) {
+      const message = getErrorMessage(memberErr);
+      const isAlreadyMember = /already|exists|member/i.test(message);
+      const creatorCanSeeCircle = isAlreadyMember || (!isSoft && await userTokenCanSeeCircle(domain, token, circleId));
+
+      if (!creatorCanSeeCircle) {
+        debugWarn('AppKit creator association failed.', { circleId, error: message });
+        return NextResponse.json(
+          { error: `Could not associate AppKit circle with user: ${message}` },
+          { status: 502 }
+        );
+      }
+
+      creatorLinked = true;
+      debugWarn('AppKit creator association already satisfied or verified.', { circleId, error: message });
     }
 
     // 2. Provision local AppConfig for this circle/world
@@ -291,9 +349,11 @@ export async function POST(req: NextRequest) {
       where: { id: circleId },
       create: {
         id: circleId,
-        appName: name,
+        appName: worldName,
       },
-      update: {},
+      update: {
+        appName: worldName,
+      },
     });
 
     // 2b. Create Partner record for the creating user (so they can see their circles)
@@ -335,19 +395,37 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Create a default Land inside this world
-    const land = await prisma.land.create({
-      data: {
-        name: 'Main Land',
-        isActive: true,
-        configId: circleId,
-      },
+    // 3. Ensure a default active Land exists inside this world.
+    await ensureActiveLand(circleId);
+    let land = await prisma.land.findFirst({
+      where: { configId: circleId, isActive: true },
+      include: { items: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!land) {
+      land = await prisma.land.create({
+        data: {
+          name: 'Main Land',
+          isActive: true,
+          configId: circleId,
+        },
+        include: { items: true },
+      });
+    }
+    await prisma.land.updateMany({
+      where: { configId: circleId, id: { not: land.id }, isActive: true },
+      data: { isActive: false },
     });
 
+    await redis.del(`app_config:${circleId}`).catch(() => {});
+
     return NextResponse.json({
+      circleId,
       id: circleId,
-      name,
-      description: description || name,
+      name: worldName,
+      description: worldDescription,
+      creatorLinked,
+      role: 'member',
       config,
       defaultLand: land,
     });

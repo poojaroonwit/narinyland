@@ -8,14 +8,6 @@ import Shop, { ShopItem } from '../Shop';
 import { PurchasedItem } from '../../types';
 import { MovementInput } from '../game-engine-3d';
 
-type GardenQuest = {
-  id: string;
-  label: string;
-  detail: string;
-  done: boolean;
-  icon: string;
-};
-
 type LoveTreeOverlaysProps = {
   isEditMode: boolean;
   setIsEditMode?: (val: boolean) => void;
@@ -25,7 +17,6 @@ type LoveTreeOverlaysProps = {
   toggleBuildMode: () => void;
   snapToGrid: boolean;
   setSnapToGrid: React.Dispatch<React.SetStateAction<boolean>>;
-  gardenQuests: GardenQuest[];
   pressMovement: (key: keyof MovementInput, pressed: boolean) => void;
   selectedItem: PurchasedItem | null;
   setSelectedItemId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -52,7 +43,6 @@ export const LoveTreeOverlays: React.FC<LoveTreeOverlaysProps> = ({
   toggleBuildMode,
   snapToGrid,
   setSnapToGrid,
-  gardenQuests,
   pressMovement,
   selectedItem,
   setSelectedItemId,
@@ -164,37 +154,6 @@ export const LoveTreeOverlays: React.FC<LoveTreeOverlaysProps> = ({
             )}
           </AnimatePresence>
         </div>
-  
-        <AnimatePresence>
-          {!isEditMode && (
-            <motion.div
-              initial={{ opacity: 0, x: -14 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -14 }}
-              className="fixed top-[15.5rem] left-4 md:left-6 z-[65] w-[min(92vw,300px)] rounded-md border border-white/60 bg-white/75 p-3 shadow-xl backdrop-blur-xl"
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-pink-500">Garden Quests</p>
-                <span className="text-[10px] font-black text-stone-400">{gardenQuests.filter(quest => quest.done).length}/{gardenQuests.length}</span>
-              </div>
-              <div className="space-y-1.5">
-                {gardenQuests.map(quest => (
-                  <div key={quest.id} className="flex items-center gap-2 rounded-md bg-white/70 px-2.5 py-2">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                      quest.done ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-500'
-                    }`}>
-                      <i className={`fas ${quest.done ? 'fa-check' : quest.icon} text-[10px]`}></i>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-black text-stone-700">{quest.label}</p>
-                      <p className="truncate text-[9px] font-bold text-stone-400">{quest.detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
   
         <AnimatePresence>
           {cameraMode === 'explore' && !isEditMode && (

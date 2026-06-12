@@ -16,7 +16,7 @@ interface AuthContextType {
   loading: boolean;
   circles: Circle[];
   activeCircleId: string | null;
-  setActiveCircle: (id: string) => Promise<void>;
+  setActiveCircle: (id: string, circle?: Partial<Circle>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -222,14 +222,30 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   }, [pathname, router]);
 
-  const setActiveCircle = async (id: string) => {
+  const setActiveCircle = async (id: string, circle?: Partial<Circle>) => {
     setActiveCircleIdState(id);
     setActiveCircleId(id);
-    setCircles(prev => (
-      prev.some(circle => circle.id === id)
-        ? prev
-        : [{ id, name: 'Current World', description: 'Current World', role: 'member' }, ...prev]
-    ));
+    setCircles(prev => {
+      const circlePatch = circle ? { ...circle, id } : null;
+      const fallbackCircle: Circle = {
+        id,
+        name: circle?.name || 'Current World',
+        description: circle?.description || circle?.name || 'Current World',
+        role: circle?.role || 'member',
+        memberCount: circle?.memberCount,
+        createdAt: circle?.createdAt,
+      };
+
+      if (prev.some(existingCircle => existingCircle.id === id)) {
+        return prev.map(existingCircle => (
+          existingCircle.id === id && circlePatch
+            ? { ...existingCircle, ...circlePatch, id, name: circlePatch.name || existingCircle.name }
+            : existingCircle
+        ));
+      }
+
+      return [fallbackCircle, ...prev];
+    });
     try {
       const { getAppKit } = await import('@/lib/auth');
       await getAppKit().updateAttributes({ circleId: id });

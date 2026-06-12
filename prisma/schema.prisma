@@ -9,43 +9,53 @@ datasource db {
 }
 
 model AppConfig {
-  id                      String          @id @default("default")
-  appName                 String          @default("Narinyland")
-  anniversaryDate         DateTime        @default(now())
-  treeStyle               String          @default("sakura")
-  galleryStyle            String          @default("carousel")
-  gallerySource           String          @default("manual")
-  instagramUsername       String          @default("")
-  daysPerTree             Int             @default(100)
-  daysPerFlower           Int             @default(7)
-  flowerType              String          @default("sunflower")
-  mixedFlowers            String[]        @default(["sunflower", "tulip", "rose", "cherry", "lavender", "heart"])
-  skyMode                 String          @default("follow_timezone")
-  petType                 String          @default("cat")
-  pets                    Json            @default("[]")
-  graphicsQuality         String          @default("medium")
-  showQRCode              Boolean         @default(false)
-  showCouponsOnTimeline   Boolean         @default(true)
-  timelineCardScale       Float           @default(1.0)
-  timelineDefaultRows     Int             @default(5)
-  timelineLayoutMode      String          @default("vertical")
-  timelineZoomLevel       Int             @default(0)
-  timelineThumbnailHeight Int             @default(150)
-  musicPlaylist           String[]        @default(["https://www.youtube.com/watch?v=5qap5aO4i9A"])
-  mailFolders             String[]        @default(["Inbox", "Archive", "Trash"])
-  proposalQuestions       String[]        @default(["Will you be my Valentine?", "Jaroonwit is so handsome, right?"])
-  isProposalAccepted      Boolean         @default(false)
-  proposalProgress        Int             @default(0)
-  gallery                 Json            @default("[]")
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  showProposal            Boolean         @default(true)
+  id                      String               @id @default("default")
+  appName                 String               @default("Narinyland")
+  anniversaryDate         DateTime             @default(now())
+  treeStyle               String               @default("sakura")
+  galleryStyle            String               @default("carousel")
+  gallerySource           String               @default("manual")
+  instagramUsername       String               @default("")
+  daysPerTree             Int                  @default(100)
+  daysPerFlower           Int                  @default(7)
+  flowerType              String               @default("sunflower")
+  mixedFlowers            String[]             @default(["sunflower", "tulip", "rose", "cherry", "lavender", "heart"])
+  skyMode                 String               @default("follow_timezone")
+  petType                 String               @default("cat")
+  pets                    Json                 @default("[]")
+  graphicsQuality         String               @default("medium")
+  showQRCode              Boolean              @default(false)
+  showCouponsOnTimeline   Boolean              @default(true)
+  timelineCardScale       Float                @default(1.0)
+  timelineDefaultRows     Int                  @default(5)
+  timelineLayoutMode      String               @default("vertical")
+  timelineZoomLevel       Int                  @default(0)
+  timelineThumbnailHeight Int                  @default(150)
+  musicPlaylist           String[]             @default(["https://www.youtube.com/watch?v=5qap5aO4i9A"])
+  mailFolders             String[]             @default(["Inbox", "Archive", "Trash"])
+  proposalQuestions       String[]             @default(["Will you be my Valentine?", "Jaroonwit is so handsome, right?"])
+  isProposalAccepted      Boolean              @default(false)
+  proposalProgress        Int                  @default(0)
+  gallery                 Json                 @default("[]")
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  showProposal            Boolean              @default(true)
   albums                  Album[]
+  characterProfiles       CharacterProfile[]
   coupons                 Coupon[]
   lands                   Land[]
   memories                Memory[]
   partners                Partner[]
   timeline                TimelineEvent[]
+  worldChatMessages       WorldChatMessage[]
+  worldEvents             WorldEvent[]
+  worldGuilds             WorldGuild[]
+  worldAchievements       WorldAchievement[]
+  worldInventoryItems     WorldInventoryItem[]
+  worldParties            WorldParty[]
+  worldRelationships      WorldRelationship[]
+  worldSocialActions      WorldSocialAction[]
+  worldVoiceRooms         WorldVoiceRoom[]
 }
 
 model Album {
@@ -99,18 +109,263 @@ model Partner {
   @@index([configId, userId])
 }
 
+model CharacterProfile {
+  id          String    @id @default(uuid())
+  userId      String
+  configId    String
+  displayName String
+  title       String    @default("Explorer")
+  status      String    @default("online")
+  activity    String    @default("Exploring")
+  emote       String    @default("idle")
+  modelUrl    String?
+  appearance  Json      @default("{}")
+  equipment   Json      @default("{}")
+  cosmetics   Json      @default("{}")
+  lastPosition Json      @default("{}")
+  lastZone     String    @default("Narinyland Commons")
+  lastMapPositions Json   @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  config      AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, userId])
+  @@index([configId, status])
+}
+
+model WorldSocialAction {
+  id         String    @id @default(uuid())
+  configId   String
+  fromUserId String
+  toUserId   String?
+  type       String
+  status     String    @default("requested")
+  message    String?
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  config     AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([configId, createdAt])
+  @@index([configId, toUserId, status])
+  @@index([configId, fromUserId, type])
+}
+
+model WorldChatMessage {
+  id         String    @id @default(uuid())
+  configId   String
+  fromUserId String
+  toUserId   String?
+  channel    String    @default("world")
+  body       String
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  config     AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([configId, channel, createdAt])
+  @@index([configId, fromUserId, createdAt])
+  @@index([configId, toUserId, createdAt])
+}
+
+model WorldParty {
+  id           String             @id @default(uuid())
+  configId     String
+  name         String
+  leaderUserId String
+  status       String             @default("active")
+  metadata     Json               @default("{}")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  config       AppConfig          @relation(fields: [configId], references: [id], onDelete: Cascade)
+  members      WorldPartyMember[]
+
+  @@index([configId, status])
+  @@index([configId, leaderUserId])
+}
+
+model WorldPartyMember {
+  id        String     @id @default(uuid())
+  partyId   String
+  userId    String
+  role      String     @default("member")
+  status    String     @default("active")
+  joinedAt  DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  party     WorldParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, userId])
+  @@index([userId, status])
+  @@index([partyId, status])
+}
+
+model WorldEvent {
+  id           String                  @id @default(uuid())
+  configId     String
+  title        String
+  description  String                  @default("")
+  district     String                  @default("Event Lawn")
+  status       String                  @default("active")
+  startsAt     DateTime                @default(now())
+  endsAt       DateTime?
+  metadata     Json                    @default("{}")
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  config       AppConfig               @relation(fields: [configId], references: [id], onDelete: Cascade)
+  participants WorldEventParticipant[]
+
+  @@index([configId, status])
+  @@index([configId, district, status])
+}
+
+model WorldEventParticipant {
+  id        String     @id @default(uuid())
+  eventId   String
+  userId    String
+  status    String     @default("attending")
+  joinedAt  DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  event     WorldEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId, status])
+  @@index([eventId, status])
+}
+
+model WorldGuild {
+  id           String             @id @default(uuid())
+  configId     String
+  name         String
+  leaderUserId String
+  status       String             @default("active")
+  bannerColor  String             @default("#047857")
+  motto        String             @default("")
+  metadata     Json               @default("{}")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  config       AppConfig          @relation(fields: [configId], references: [id], onDelete: Cascade)
+  members      WorldGuildMember[]
+
+  @@index([configId, status])
+  @@index([configId, leaderUserId])
+}
+
+model WorldGuildMember {
+  id        String     @id @default(uuid())
+  guildId   String
+  userId    String
+  role      String     @default("member")
+  status    String     @default("active")
+  joinedAt  DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  guild     WorldGuild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([userId, status])
+  @@index([guildId, status])
+}
+
+model WorldRelationship {
+  id         String    @id @default(uuid())
+  configId   String
+  fromUserId String
+  toUserId   String
+  type       String
+  status     String    @default("active")
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  config     AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, fromUserId, toUserId, type])
+  @@index([configId, fromUserId, type, status])
+  @@index([configId, toUserId, type, status])
+}
+
+model WorldInventoryItem {
+  id         String    @id @default(uuid())
+  configId   String
+  userId     String
+  slot       String
+  itemKey    String
+  name       String
+  rarity     String    @default("common")
+  icon       String    @default("fa-gem")
+  metadata   Json      @default("{}")
+  acquiredAt DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  config     AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, userId, itemKey])
+  @@index([configId, userId])
+  @@index([configId, userId, slot])
+}
+
+model WorldAchievement {
+  id             String    @id @default(uuid())
+  configId       String
+  userId         String
+  achievementKey String
+  name           String
+  description    String    @default("")
+  icon           String    @default("fa-award")
+  rarity         String    @default("common")
+  titleReward    String    @default("")
+  metadata       Json      @default("{}")
+  earnedAt       DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  config         AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, userId, achievementKey])
+  @@index([configId, userId])
+  @@index([configId, userId, earnedAt])
+}
+
+model WorldVoiceRoom {
+  id        String             @id @default(uuid())
+  configId  String
+  kind      String
+  scopeKey  String
+  name      String
+  status    String             @default("active")
+  metadata  Json               @default("{}")
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  config    AppConfig          @relation(fields: [configId], references: [id], onDelete: Cascade)
+  members   WorldVoiceMember[]
+
+  @@index([configId, kind, status])
+  @@index([configId, scopeKey, status])
+}
+
+model WorldVoiceMember {
+  id        String         @id @default(uuid())
+  roomId    String
+  userId    String
+  status    String         @default("active")
+  isMuted   Boolean        @default(false)
+  joinedAt  DateTime       @default(now())
+  lastSeen  DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  room      WorldVoiceRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId, status])
+  @@index([roomId, status])
+}
+
 model Memory {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   url       String
   s3Key     String?
-  privacy   String   @default("public")
+  privacy   String    @default("public")
   caption   String?
-  sortOrder Int      @default(0)
-  configId  String   @default("default")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sortOrder Int       @default(0)
+  configId  String    @default("default")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   albumId   String?
-  album     Album?   @relation(fields: [albumId], references: [id])
+  album     Album?    @relation(fields: [albumId], references: [id])
   config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
 
   @@index([configId])

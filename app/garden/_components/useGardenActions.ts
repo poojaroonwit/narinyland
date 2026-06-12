@@ -2,9 +2,20 @@
 
 import { Interaction, LoveLetterMessage } from '../../../types';
 import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../../../services/api';
+import { getErrorMessage } from '../../../lib/errors';
 
 export const useGardenActions = (ctx: any) => {
-  const { appConfig, setAppConfig, handleSetAppConfig, loveStats, setLoveStats, activePartners, setPetEmotion, setPetMessage, setLoveLetters, showToast, setHasAcceptedProposal } = ctx;
+  const { appConfig, setAppConfig, handleSetAppConfig, loveStats, setLoveStats, activePartners, setPetEmotion, setPetMessage, setLoveLetters, showToast, setHasAcceptedProposal, requestConfirm } = ctx;
+  const notify = (message: string) => {
+    if (typeof showToast === 'function') showToast(message);
+  };
+  const confirmWorldAction = async (prompt: { title: string; message: string; confirmLabel?: string; cancelLabel?: string; tone?: 'default' | 'danger' }) => {
+    if (typeof requestConfirm !== 'function') {
+      notify('Confirmation is unavailable right now.');
+      return false;
+    }
+    return requestConfirm(prompt);
+  };
 
   const addXP = async (amount: number, partnerId?: string) => {
     try {
@@ -35,7 +46,7 @@ export const useGardenActions = (ctx: any) => {
 
   const handleAddLeaf = async () => {
     if (loveStats.points < 100) {
-      alert("Not enough points to grow a leaf! Create coupons to earn points. 🌱");
+      notify('Not enough points to grow a leaf. Create coupons to earn points.');
       return;
     }
 
@@ -73,12 +84,12 @@ export const useGardenActions = (ctx: any) => {
       } else {
          // Revert on failure
          setLoveStats(prevStats);
-         alert("Something went wrong growing the leaf.");
+         notify('Something went wrong growing the leaf.');
       }
     } catch (e) {
       console.error("Failed to add leaf:", e);
       setLoveStats(prevStats); // Revert on error
-      alert("Something went wrong growing the leaf.");
+      notify('Something went wrong growing the leaf.');
     }
   };
 
@@ -139,7 +150,7 @@ export const useGardenActions = (ctx: any) => {
 
     } catch (err) {
       console.error("Failed to redeem coupon:", err);
-      alert("Failed to redeem coupon. Please try again.");
+      notify('Failed to redeem coupon. Please try again.');
     }
   };
 
@@ -152,12 +163,19 @@ export const useGardenActions = (ctx: any) => {
       }));
     } catch (err) {
       console.error("Failed to add coupon:", err);
-      alert("Failed to add coupon.");
+      notify('Failed to add coupon.');
     }
   };
 
   const handleDeleteCoupon = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this coupon? This cannot be undone.")) return;
+    const confirmed = await confirmWorldAction({
+      title: 'Delete coupon?',
+      message: 'This removes the reward from your shared world. This cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await couponsAPI.delete(id);
       setAppConfig(prev => ({
@@ -166,7 +184,7 @@ export const useGardenActions = (ctx: any) => {
       }));
     } catch (err) {
       console.error("Failed to delete coupon:", err);
-      alert("Failed to delete coupon.");
+      notify('Failed to delete coupon.');
     }
   };
 
@@ -231,7 +249,7 @@ export const useGardenActions = (ctx: any) => {
 
     } catch (err) {
       console.error("Failed to send letter:", err);
-      alert("Failed to save your letter. Please try again.");
+      notify('Failed to save your letter. Please try again.');
       // Revert optimistic update
       setLoveLetters(prev => prev.filter(l => l.id !== msg.id));
     }
@@ -248,7 +266,7 @@ export const useGardenActions = (ctx: any) => {
       setLoveLetters(prev => prev.map(m => m.id === msg.id ? msg : m));
     } catch (err: unknown) {
         console.error("Failed to update message", err);
-        alert(getErrorMessage(err) || 'Failed to update message');
+        notify(getErrorMessage(err) || 'Failed to update message');
     }
   };
 
@@ -289,7 +307,7 @@ export const useGardenActions = (ctx: any) => {
         }));
       } catch (err) {
         console.error("Failed to update timeline:", err);
-        alert("Failed to save changes.");
+        notify('Failed to save changes.');
       }
     };
 
@@ -347,7 +365,7 @@ export const useGardenActions = (ctx: any) => {
        }));
      } catch (err) {
        console.error("Failed to add timeline event:", err);
-       alert("Failed to save event.");
+       notify('Failed to save event.');
      }
    };
  
@@ -368,7 +386,7 @@ export const useGardenActions = (ctx: any) => {
             timeline: prev.timeline.filter(t => t.id !== id)
           }));
         } else {
-          alert("Failed to delete memory. Please try again.");
+          notify('Failed to delete memory. Please try again.');
         }
       }
     };

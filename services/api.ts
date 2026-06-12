@@ -6,12 +6,37 @@
 import { getActiveCircleId } from '@/lib/circle-store';
 import type {
   AppConfig,
+  CharacterAppearance,
+  CharacterEquipment,
+  CharacterProfile,
   Interaction,
   Land,
   LoveLetterMessage,
   LoveStats,
   MemoryItem,
   PurchasedItem,
+  WorldActivityFeed,
+  WorldAchievement,
+  WorldAchievementBadge,
+  WorldActionType,
+  WorldChatChannel,
+  WorldChatMessage,
+  WorldEvent,
+  WorldGuild,
+  WorldInventoryCatalogItem,
+  WorldInventoryItem,
+  WorldInventorySlot,
+  WorldParty,
+  WorldPresence,
+  WorldPresenceIntent,
+  WorldPresenceVector,
+  WorldRelationship,
+  WorldSnapshot,
+  WorldSocialAction,
+  WorldVoiceKind,
+  WorldVoiceRoom,
+  WorldVoiceSignalKind,
+  WorldVoiceSignalMessage,
 } from '@/types';
 
 type ApiResult = Record<string, unknown>;
@@ -55,7 +80,12 @@ type CircleMember = {
   role?: string;
 };
 type CircleCreateResult = ApiMutationResult & {
+  id?: string;
   circleId?: string;
+  name?: string;
+  description?: string;
+  role?: string;
+  creatorLinked?: boolean;
   config?: AppConfig;
   defaultLand?: Land;
 };
@@ -88,6 +118,178 @@ type PurchasedItemUpdatePayload = {
   z?: number;
   rotation?: number;
 };
+type PresenceHeartbeatPayload = {
+  name?: string;
+  avatar?: string;
+  position: WorldPresenceVector;
+  velocity?: WorldPresenceVector;
+  heading?: number;
+  moving?: boolean;
+  animation: string;
+  activity: string;
+  status: string;
+  guild?: string;
+  guildId?: string;
+  party?: string;
+  eventId?: string;
+  eventName?: string;
+  title?: string;
+  emote?: string;
+  modelUrl?: string | null;
+  appearance?: CharacterAppearance;
+  equipment?: CharacterEquipment;
+  cosmetics?: Record<string, unknown>;
+  achievements?: WorldAchievementBadge[];
+  voiceRoomId?: string;
+  voiceRoomName?: string;
+  isVoiceMuted?: boolean;
+  intent?: WorldPresenceIntent;
+  currentLandId?: string | null;
+  currentZone: string;
+};
+type CharacterProfileUpdatePayload = Partial<Pick<
+  CharacterProfile,
+  'displayName' | 'title' | 'status' | 'activity' | 'emote' | 'modelUrl' | 'appearance' | 'equipment' | 'cosmetics' | 'lastPosition' | 'lastZone' | 'lastMapPositions'
+>>;
+type WorldActionCreatePayload = {
+  type: WorldActionType;
+  targetUserId?: string;
+  targetName?: string;
+  currentLandId?: string;
+  currentZone?: string;
+  message?: string;
+  metadata?: Record<string, unknown>;
+};
+type WorldChatCreatePayload = {
+  body: string;
+  channel?: WorldChatChannel;
+  targetUserId?: string;
+  targetName?: string;
+  currentLandId?: string;
+  currentZone?: string;
+  metadata?: Record<string, unknown>;
+};
+type WorldPartyMutationPayload = {
+  action: 'ensure' | 'invite' | 'join' | 'leave';
+  partyId?: string;
+  targetUserId?: string;
+  targetName?: string;
+  currentLandId?: string;
+  currentZone?: string;
+};
+type WorldGuildMutationPayload = {
+  action: 'ensure' | 'invite' | 'join' | 'leave';
+  guildId?: string;
+  targetUserId?: string;
+  targetName?: string;
+  currentLandId?: string;
+  currentZone?: string;
+};
+type WorldEventMutationPayload = {
+  action: 'ensure' | 'join' | 'leave' | 'rally';
+  eventId?: string;
+  currentLandId?: string;
+  currentZone?: string;
+  district?: string;
+};
+type WorldRelationshipMutationPayload = {
+  action: 'follow' | 'unfollow' | 'add_friend' | 'remove_friend';
+  targetUserId: string;
+  targetName?: string;
+  currentLandId?: string;
+  currentZone?: string;
+  metadata?: Record<string, unknown>;
+};
+type WorldRequestResponsePayload = {
+  actionId: string;
+  response: 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready';
+  currentLandId?: string;
+  currentZone?: string;
+};
+type WorldInventoryMutationPayload = {
+  action: 'equip' | 'unequip';
+  slot: WorldInventorySlot;
+  itemKey?: string;
+};
+type WorldInventoryPurchasePayload = {
+  action: 'purchase';
+  itemKey: string;
+};
+type WorldInventoryResponse = {
+  profile: CharacterProfile;
+  equipment: CharacterEquipment;
+  inventory: WorldInventoryItem[];
+  catalog: WorldInventoryCatalogItem[];
+  stats: LoveStats;
+};
+type WorldAchievementResponse = {
+  title: string;
+  achievements: WorldAchievement[];
+};
+type WorldAchievementMutationPayload = {
+  action: 'equip_title';
+  achievementKey: string;
+};
+type WorldVoiceMutationPayload = {
+  action: 'join' | 'leave' | 'mute';
+  kind?: WorldVoiceKind;
+  roomId?: string;
+  targetUserId?: string;
+  targetName?: string;
+  currentLandId?: string;
+  currentZone?: string;
+  x?: number;
+  z?: number;
+  isMuted?: boolean;
+};
+type WorldVoiceResponse = {
+  rooms: WorldVoiceRoom[];
+  myRooms: WorldVoiceRoom[];
+  room?: WorldVoiceRoom | null;
+};
+type WorldVoiceSignalPayload = {
+  roomId: string;
+  toUserId?: string;
+  kind: WorldVoiceSignalKind;
+  payload?: Record<string, unknown>;
+};
+type WorldVoiceSignalResponse = {
+  signals: WorldVoiceSignalMessage[];
+  cursor: number;
+};
+type WorldInterestQuery = {
+  currentLandId?: string;
+  currentZone?: string;
+  x?: number;
+  z?: number;
+  radius?: number;
+};
+type WorldLocationContext = {
+  eventId?: string;
+  currentLandId?: string;
+  currentZone?: string;
+  district?: string;
+};
+type PresenceLeaveOptions = {
+  circleId?: string | null;
+  keepalive?: boolean;
+  currentLandId?: string;
+  currentZone?: string;
+};
+
+function toWorldLocationContext(input?: string | WorldLocationContext) {
+  return typeof input === 'string' ? { currentZone: input } : input || {};
+}
+
+function toWorldInterestQuery(options: WorldInterestQuery = {}) {
+  const params = new URLSearchParams();
+  if (options.currentLandId) params.set('currentLandId', options.currentLandId);
+  if (options.currentZone) params.set('currentZone', options.currentZone);
+  if (typeof options.x === 'number') params.set('x', String(options.x));
+  if (typeof options.z === 'number') params.set('z', String(options.z));
+  if (typeof options.radius === 'number') params.set('radius', String(options.radius));
+  return params;
+}
 
 // Use VITE_API_URL if defined, otherwise default to relative '/api' path
 // This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
@@ -352,6 +554,304 @@ export const statsAPI = {
 };
 
 // ─── Upload API ──────────────────────────────────────────────────────
+
+export const presenceAPI = {
+  list: (options: WorldInterestQuery = {}) => {
+    const params = toWorldInterestQuery(options);
+    const query = params.toString();
+    return fetchAPI<{ presences: WorldPresence[]; interest?: WorldSnapshot['interest'] }>(`/presence${query ? `?${query}` : ''}`);
+  },
+
+  heartbeat: (data: PresenceHeartbeatPayload) =>
+    fetchAPI<{ presence: WorldPresence }>('/presence', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  leave: (options: PresenceLeaveOptions = {}) => {
+    const circleId = options.circleId ?? getActiveCircleId();
+    const params = toWorldInterestQuery({
+      currentLandId: options.currentLandId,
+      currentZone: options.currentZone,
+    });
+    const query = params.toString();
+    return fetchAPI<ApiMutationResult>(`/presence${query ? `?${query}` : ''}`, {
+      method: 'DELETE',
+      keepalive: options.keepalive,
+      headers: circleId ? { 'X-Circle-Id': circleId } : undefined,
+    });
+  },
+};
+
+export const characterAPI = {
+  get: () => fetchAPI<{ profile: CharacterProfile }>('/character'),
+
+  update: (data: CharacterProfileUpdatePayload) =>
+    fetchAPI<{ profile: CharacterProfile }>('/character', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const worldAchievementsAPI = {
+  get: () => fetchAPI<WorldAchievementResponse>('/world-achievements'),
+
+  equipTitle: (achievementKey: string) =>
+    fetchAPI<WorldAchievementResponse>('/world-achievements', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'equip_title', achievementKey } satisfies WorldAchievementMutationPayload),
+    }),
+};
+
+export const worldInventoryAPI = {
+  get: () => fetchAPI<WorldInventoryResponse>('/world-inventory'),
+
+  equip: (slot: WorldInventorySlot, itemKey: string) =>
+    fetchAPI<WorldInventoryResponse>('/world-inventory', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'equip', slot, itemKey } satisfies WorldInventoryMutationPayload),
+    }),
+
+  unequip: (slot: WorldInventorySlot) =>
+    fetchAPI<WorldInventoryResponse>('/world-inventory', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'unequip', slot } satisfies WorldInventoryMutationPayload),
+    }),
+
+  purchase: (itemKey: string) =>
+    fetchAPI<WorldInventoryResponse>('/world-inventory', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'purchase', itemKey } satisfies WorldInventoryPurchasePayload),
+    }),
+};
+
+export const worldActionsAPI = {
+  list: (limit = 12, options: WorldInterestQuery = {}) => {
+    const params = toWorldInterestQuery(options);
+    params.set('limit', String(limit));
+    return fetchAPI<{ actions: WorldSocialAction[] }>(`/world-actions?${params.toString()}`);
+  },
+
+  create: (data: WorldActionCreatePayload) =>
+    fetchAPI<{ action: WorldSocialAction }>('/world-actions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const worldActivityAPI = {
+  get: (userId: string, limit = 12, options: WorldInterestQuery = {}) => {
+    const params = toWorldInterestQuery(options);
+    params.set('userId', userId);
+    params.set('limit', String(limit));
+    return fetchAPI<{ feed: WorldActivityFeed }>(`/world-activity?${params.toString()}`);
+  },
+};
+
+export const worldRelationshipsAPI = {
+  list: () => fetchAPI<{ relationships: WorldRelationship[] }>('/world-relationships'),
+
+  follow: (data: Omit<WorldRelationshipMutationPayload, 'action'>) =>
+    fetchAPI<{ relationship: WorldRelationship; relationships: WorldRelationship[] }>('/world-relationships', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'follow', ...data } satisfies WorldRelationshipMutationPayload),
+    }),
+
+  unfollow: (data: Omit<WorldRelationshipMutationPayload, 'action'>) =>
+    fetchAPI<{ relationships: WorldRelationship[] }>('/world-relationships', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'unfollow', ...data } satisfies WorldRelationshipMutationPayload),
+    }),
+
+  addFriend: (data: Omit<WorldRelationshipMutationPayload, 'action'>) =>
+    fetchAPI<{ relationship: WorldRelationship; relationships: WorldRelationship[] }>('/world-relationships', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'add_friend', ...data } satisfies WorldRelationshipMutationPayload),
+    }),
+
+  removeFriend: (data: Omit<WorldRelationshipMutationPayload, 'action'>) =>
+    fetchAPI<{ relationships: WorldRelationship[] }>('/world-relationships', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'remove_friend', ...data } satisfies WorldRelationshipMutationPayload),
+    }),
+};
+
+export const worldRequestsAPI = {
+  list: (limit = 24, options: Pick<WorldInterestQuery, 'currentLandId'> = {}) => {
+    const params = toWorldInterestQuery(options);
+    params.set('limit', String(limit));
+    return fetchAPI<{ requests: WorldSocialAction[] }>(`/world-requests?${params.toString()}`);
+  },
+
+  respond: (data: WorldRequestResponsePayload) =>
+    fetchAPI<{ request: WorldSocialAction; requests: WorldSocialAction[] }>('/world-requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const worldVoiceAPI = {
+  get: (options: { currentLandId?: string; currentZone?: string; x?: number; z?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (options.currentLandId) params.set('currentLandId', options.currentLandId);
+    if (options.currentZone) params.set('currentZone', options.currentZone);
+    if (Number.isFinite(options.x)) params.set('x', String(options.x));
+    if (Number.isFinite(options.z)) params.set('z', String(options.z));
+    const query = params.toString();
+    return fetchAPI<WorldVoiceResponse>(`/world-voice${query ? `?${query}` : ''}`);
+  },
+
+  join: (data: { kind: WorldVoiceKind; targetUserId?: string; targetName?: string; currentLandId?: string; currentZone?: string; x?: number; z?: number; isMuted?: boolean }) =>
+    fetchAPI<WorldVoiceResponse>('/world-voice', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'join', ...data } satisfies WorldVoiceMutationPayload),
+    }),
+
+  leave: (roomId?: string, options: { currentLandId?: string; currentZone?: string; x?: number; z?: number } = {}) =>
+    fetchAPI<WorldVoiceResponse>('/world-voice', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'leave', roomId, ...options } satisfies WorldVoiceMutationPayload),
+    }),
+
+  mute: (roomId: string, isMuted: boolean, options: { currentLandId?: string; currentZone?: string; x?: number; z?: number } = {}) =>
+    fetchAPI<WorldVoiceResponse>('/world-voice', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'mute', roomId, isMuted, ...options } satisfies WorldVoiceMutationPayload),
+    }),
+
+  signals: (roomId: string, since = 0, limit = 40) =>
+    fetchAPI<WorldVoiceSignalResponse>(
+      `/world-voice/signal?roomId=${encodeURIComponent(roomId)}&since=${encodeURIComponent(String(since))}&limit=${encodeURIComponent(String(limit))}`
+    ),
+
+  sendSignal: (data: WorldVoiceSignalPayload) =>
+    fetchAPI<ApiMutationResult & { count: number; cursor: number }>('/world-voice/signal', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const worldChatAPI = {
+  list: (limit = 18, options: WorldInterestQuery = {}) => {
+    const params = toWorldInterestQuery(options);
+    params.set('limit', String(limit));
+    return fetchAPI<{ messages: WorldChatMessage[] }>(`/world-chat?${params.toString()}`);
+  },
+
+  create: (data: WorldChatCreatePayload) =>
+    fetchAPI<{ message: WorldChatMessage }>('/world-chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const worldPartyAPI = {
+  get: (options: Pick<WorldInterestQuery, 'currentLandId'> = {}) => {
+    const params = toWorldInterestQuery(options);
+    const query = params.toString();
+    return fetchAPI<{ party: WorldParty | null }>(`/world-party${query ? `?${query}` : ''}`);
+  },
+
+  ensure: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ party: WorldParty }>('/world-party', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'ensure', ...toWorldLocationContext(context) } satisfies WorldPartyMutationPayload),
+    }),
+
+  invite: (data: { targetUserId: string; targetName?: string; currentLandId?: string; currentZone?: string }) =>
+    fetchAPI<{ party: WorldParty }>('/world-party', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'invite', ...data } satisfies WorldPartyMutationPayload),
+    }),
+
+  join: (data: { partyId: string; currentLandId?: string; currentZone?: string }) =>
+    fetchAPI<{ party: WorldParty }>('/world-party', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'join', ...data } satisfies WorldPartyMutationPayload),
+    }),
+
+  leave: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ party: WorldParty | null }>('/world-party', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'leave', ...toWorldLocationContext(context) } satisfies WorldPartyMutationPayload),
+    }),
+};
+
+export const worldGuildAPI = {
+  get: (options: Pick<WorldInterestQuery, 'currentLandId'> = {}) => {
+    const params = toWorldInterestQuery(options);
+    const query = params.toString();
+    return fetchAPI<{ guild: WorldGuild | null }>(`/world-guild${query ? `?${query}` : ''}`);
+  },
+
+  ensure: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ guild: WorldGuild }>('/world-guild', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'ensure', ...toWorldLocationContext(context) } satisfies WorldGuildMutationPayload),
+    }),
+
+  invite: (data: { targetUserId: string; targetName?: string; currentLandId?: string; currentZone?: string }) =>
+    fetchAPI<{ guild: WorldGuild }>('/world-guild', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'invite', ...data } satisfies WorldGuildMutationPayload),
+    }),
+
+  join: (data: { guildId: string; currentLandId?: string; currentZone?: string }) =>
+    fetchAPI<{ guild: WorldGuild }>('/world-guild', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'join', ...data } satisfies WorldGuildMutationPayload),
+    }),
+
+  leave: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ guild: WorldGuild | null }>('/world-guild', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'leave', ...toWorldLocationContext(context) } satisfies WorldGuildMutationPayload),
+    }),
+};
+
+export const worldEventsAPI = {
+  get: (options: WorldInterestQuery = {}) => {
+    const params = toWorldInterestQuery(options);
+    const query = params.toString();
+    return fetchAPI<{ event: WorldEvent | null }>(`/world-events${query ? `?${query}` : ''}`);
+  },
+
+  ensure: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ event: WorldEvent }>('/world-events', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'ensure', ...toWorldLocationContext(context) } satisfies WorldEventMutationPayload),
+    }),
+
+  join: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ event: WorldEvent }>('/world-events', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'join', ...toWorldLocationContext(context) } satisfies WorldEventMutationPayload),
+    }),
+
+  rally: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ event: WorldEvent }>('/world-events', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'rally', ...toWorldLocationContext(context) } satisfies WorldEventMutationPayload),
+    }),
+
+  leave: (context?: string | WorldLocationContext) =>
+    fetchAPI<{ event: WorldEvent | null }>('/world-events', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'leave', ...toWorldLocationContext(context) } satisfies WorldEventMutationPayload),
+    }),
+};
+
+export const worldStreamAPI = {
+  url: (options: WorldInterestQuery & { presenceLimit?: number; actionLimit?: number; chatLimit?: number } = {}) => {
+    const params = toWorldInterestQuery(options);
+    const circleId = getActiveCircleId();
+    params.set('presenceLimit', String(options.presenceLimit || 22));
+    params.set('actionLimit', String(options.actionLimit || 12));
+    params.set('chatLimit', String(options.chatLimit || 18));
+    if (circleId) params.set('circleId', circleId);
+    return `${API_BASE}/world-stream?${params.toString()}`;
+  },
+};
 
 export const uploadAPI = {
   upload: (file: File, folder?: string) => {

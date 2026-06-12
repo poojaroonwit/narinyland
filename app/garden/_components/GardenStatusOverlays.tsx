@@ -153,7 +153,7 @@ export const GardenStatusOverlays: React.FC = () => {
       
                     {/* Grow Leaf Button (Visible only if points >= 100) */}
                     <AnimatePresence>
-                      {loveStats.points >= 100 && activeTab === 'home' && (
+                      {loveStats.points >= 100 && activeTab === 'home' && worldMode === 'tree' && (
                         <motion.button
                           initial={{ scale: 0, opacity: 0, x: 20 }}
                           animate={{ scale: 1, opacity: 1, x: 0 }}

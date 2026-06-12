@@ -13,6 +13,19 @@ function getNormalizedAppKitDomain() {
   return APPKIT_DOMAIN.trim().replace(/\/+$/, '');
 }
 
+function getAppKitErrorMessage(payload: unknown, fallback: string) {
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+    for (const key of ['error', 'message', 'detail']) {
+      if (typeof record[key] === 'string' && record[key].trim()) {
+        return record[key].trim();
+      }
+    }
+  }
+
+  return fallback;
+}
+
 function isLocalLaunchUrl(ssoLaunchUrl: string) {
   try {
     const hostname = new URL(ssoLaunchUrl).hostname;
@@ -199,19 +212,20 @@ export async function createCircleViaServer(name: string, description?: string, 
   
   const token = effectiveToken || await getServiceToken();
   if (!token) throw new Error('Missing authentication token');
+  const baseUrl = getNormalizedAppKitDomain();
+  const circleUrl = effectiveToken
+    ? `${baseUrl}/api/v1/circles`
+    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles`;
 
-  const res = await fetch(
-    `${APPKIT_DOMAIN}/api/v1/${effectiveToken ? '' : 'admin/applications/' + APPKIT_CLIENT_ID + '/'}circles`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, circleType: 'team', description: description || name }),
-    }
-  );
+  const res = await fetch(circleUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, circleType: 'team', description: description || name }),
+  });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Failed to create circle: ${res.status}`);
+    throw new Error(getAppKitErrorMessage(err, `Failed to create circle: ${res.status}`));
   }
   return res.json();
 }
@@ -230,8 +244,9 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
   if (!token) return [];
 
   try {
+    const baseUrl = getNormalizedAppKitDomain();
     const res = await fetch(
-      `${APPKIT_DOMAIN}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}/members`,
+      `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}/members`,
       {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 30 },
@@ -261,8 +276,13 @@ export async function addCircleMemberViaServer(circleId: string, userId: string,
   
   const token = effectiveToken || await getServiceToken();
   if (!token) throw new Error('Missing authentication token');
+  const baseUrl = getNormalizedAppKitDomain();
 
-  const res = await fetch(`${APPKIT_DOMAIN}/api/v1/circles/${circleId}/members`, {
+  const memberUrl = effectiveToken
+    ? `${baseUrl}/api/v1/circles/${circleId}/members`
+    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}/members`;
+
+  const res = await fetch(memberUrl, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, role }),
@@ -270,7 +290,11 @@ export async function addCircleMemberViaServer(circleId: string, userId: string,
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Failed to add member: ${res.status}`);
+    const message = getAppKitErrorMessage(err, `Failed to add member: ${res.status}`);
+    if (/already|exists|member/i.test(message)) {
+      return { success: true, alreadyMember: true };
+    }
+    throw new Error(message);
   }
   return res.json();
 }
@@ -282,19 +306,20 @@ export async function updateCircleViaServer(circleId: string, data: { name?: str
   const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
   const token = effectiveToken || await getServiceToken();
   if (!token) throw new Error('Missing authentication token');
+  const baseUrl = getNormalizedAppKitDomain();
+  const circleUrl = effectiveToken
+    ? `${baseUrl}/api/v1/circles/${circleId}`
+    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}`;
 
-  const res = await fetch(
-    `${APPKIT_DOMAIN}/api/v1/${effectiveToken ? '' : 'admin/'}applications/${APPKIT_CLIENT_ID}/circles/${circleId}`,
-    {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    }
-  );
+  const res = await fetch(circleUrl, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to update circle: ' + res.status);
+    throw new Error(getAppKitErrorMessage(err, 'Failed to update circle: ' + res.status));
   }
   return res.json();
 }
@@ -306,18 +331,19 @@ export async function deleteCircleViaServer(circleId: string, userToken?: string
   const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
   const token = effectiveToken || await getServiceToken();
   if (!token) throw new Error('Missing authentication token');
+  const baseUrl = getNormalizedAppKitDomain();
+  const circleUrl = effectiveToken
+    ? `${baseUrl}/api/v1/circles/${circleId}`
+    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}`;
 
-  const res = await fetch(
-    `${APPKIT_DOMAIN}/api/v1/${effectiveToken ? '' : 'admin/'}applications/${APPKIT_CLIENT_ID}/circles/${circleId}`,
-    {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + token },
-    }
-  );
+  const res = await fetch(circleUrl, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + token },
+  });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to delete circle: ' + res.status);
+    throw new Error(getAppKitErrorMessage(err, 'Failed to delete circle: ' + res.status));
   }
   return true;
 }

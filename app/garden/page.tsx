@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { Interaction, Emotion, LoveLetterMessage, LoveStats, MemoryItem, AppConfig } from '../../types';
-import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, circlesAPI } from '../../services/api';
+import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, circlesAPI, landsAPI } from '../../services/api';
 import { useAuth } from '../../components/AuthProvider';
 import { getErrorMessage } from '../../lib/errors';
 import { GardenAcceptedContent } from './_components/GardenAcceptedContent';
@@ -31,8 +31,16 @@ type CircleMemberProfile = {
   role?: string;
 };
 
+type GardenConfirmPrompt = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  tone?: 'default' | 'danger';
+};
+
 const Home: React.FC = () => {
-  const { user, logout, loading: authLoading, circles, activeCircleId, setActiveCircle } = useAuth();
+  const { user, logout, loading: authLoading, circles, activeCircleId, setActiveCircle, refreshUser } = useAuth();
   const [hasAcceptedProposal, setHasAcceptedProposal] = useState(false);
   const [isLetterOpen, setIsLetterOpen] = useState(false); 
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -47,6 +55,8 @@ const Home: React.FC = () => {
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [toast, setToast] = useState({ message: '', isVisible: false });
+  const [confirmPrompt, setConfirmPrompt] = useState<GardenConfirmPrompt | null>(null);
+  const confirmResolverRef = React.useRef<((confirmed: boolean) => void) | null>(null);
 
   const showToast = (message: string) => {
     setToast({ message, isVisible: true });
@@ -120,20 +130,41 @@ const Home: React.FC = () => {
 
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
   const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
-  const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('tree');
+  const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('globe');
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const previousAcceptedProposalRef = React.useRef(hasAcceptedProposal);
 
-  const closeFloatingPanels = (except?: 'volume' | 'circle' | 'land' | 'user') => {
+  const closeFloatingPanels = React.useCallback((except?: 'volume' | 'circle' | 'land' | 'user') => {
     if (except !== 'volume') setIsVolumeModalOpen(false);
     if (except !== 'circle') setIsCircleDropdownOpen(false);
     if (except !== 'land') setIsLandDropdownOpen(false);
     if (except !== 'user') setIsUserDropdownOpen(false);
-  };
+  }, []);
+
+  const answerConfirmPrompt = React.useCallback((confirmed: boolean) => {
+    confirmResolverRef.current?.(confirmed);
+    confirmResolverRef.current = null;
+    setConfirmPrompt(null);
+  }, []);
+
+  const requestConfirm = React.useCallback((prompt: GardenConfirmPrompt) => {
+    closeFloatingPanels();
+    confirmResolverRef.current?.(false);
+    setConfirmPrompt(prompt);
+    return new Promise<boolean>((resolve) => {
+      confirmResolverRef.current = resolve;
+    });
+  }, [closeFloatingPanels]);
+
+  useEffect(() => () => {
+    confirmResolverRef.current?.(false);
+    confirmResolverRef.current = null;
+  }, []);
 
   const toggleVolumePanel = () => {
     setIsVolumeModalOpen(prev => {
@@ -191,7 +222,7 @@ const Home: React.FC = () => {
     };
   }, []);
 
-  const handleSelectLand = (landId: string) => {
+  const handleSelectLand = async (landId: string) => {
     setAppConfig(prev => ({
       ...prev,
       lands: prev.lands?.map(l => ({
@@ -200,6 +231,26 @@ const Home: React.FC = () => {
       }))
     }));
     setIsLandDropdownOpen(false);
+
+    try {
+      const activeLand = await landsAPI.setActive(landId);
+      setAppConfig(prev => ({
+        ...prev,
+        lands: prev.lands?.map(l => l.id === activeLand.id ? activeLand : { ...l, isActive: false })
+      }));
+    } catch (err: unknown) {
+      console.error('Failed to activate land:', getErrorMessage(err));
+      showToast(`Could not switch land: ${getErrorMessage(err)}`);
+      try {
+        const serverConfig = await configAPI.get();
+        setAppConfig(prev => ({
+          ...prev,
+          lands: serverConfig.lands || prev.lands,
+        }));
+      } catch {
+        // Keep the optimistic UI if the config refresh also fails.
+      }
+    }
   };
 
   const handleInstallApp = async () => {
@@ -350,6 +401,16 @@ const Home: React.FC = () => {
   }, [appConfig.proposal?.isAccepted, appConfig.proposal?.progress, appConfig.proposal?.questions?.length, appConfig.showProposal]);
 
   useEffect(() => {
+    const becameAccepted = hasAcceptedProposal && !previousAcceptedProposalRef.current;
+    previousAcceptedProposalRef.current = hasAcceptedProposal;
+    if (!becameAccepted) return;
+
+    setActiveTab('home');
+    setIsEditMode(false);
+    setWorldMode('globe');
+  }, [hasAcceptedProposal]);
+
+  useEffect(() => {
     if (!hasAcceptedProposal) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -358,7 +419,7 @@ const Home: React.FC = () => {
     }
   }, [hasAcceptedProposal]);
 
-  const actionContext = { appConfig, setAppConfig, handleSetAppConfig, loveStats, setLoveStats, activePartners, setPetEmotion, setPetMessage, setLoveLetters, showToast, setHasAcceptedProposal };
+  const actionContext = { appConfig, setAppConfig, handleSetAppConfig, loveStats, setLoveStats, activePartners, setPetEmotion, setPetMessage, setLoveLetters, showToast, setHasAcceptedProposal, requestConfirm };
   const { addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate } = useGardenActions(actionContext);
 
   const combinedInteractions = useMemo(() => {
@@ -391,7 +452,7 @@ const Home: React.FC = () => {
   const daysTogether = Math.max(0, Math.floor((new Date().getTime() - new Date(appConfig.anniversaryDate).getTime()) / (1000 * 60 * 60 * 24)));
   const flowerCount = Math.floor(daysTogether / appConfig.daysPerFlower);
 
-  const gardenContext = { user, logout, authLoading, circles, activeCircleId, setActiveCircle, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount };
+  const gardenContext = { user, logout, authLoading, circles, activeCircleId, setActiveCircle, refreshUser, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, confirmPrompt, answerConfirmPrompt, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount };
 
   return (
     <GardenPageProvider value={gardenContext}>

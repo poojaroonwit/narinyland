@@ -40,7 +40,7 @@ export default function OnboardingPage() {
         },
         body: JSON.stringify({
           name: worldName.trim(),
-          description: `${worldName.trim()} — a Narinyland world`,
+          description: `${worldName.trim()} - a Narinyland world`,
           userId: user?.sub,
         }),
       });
@@ -51,6 +51,8 @@ export default function OnboardingPage() {
       }
 
       const circle = await res.json();
+      const circleId = circle.circleId || circle.id;
+      if (!circleId) throw new Error('AppKit did not return a world ID.');
       
       // Add the user to the circle in AppKit
       await fetch('/api/circles/join', {
@@ -59,11 +61,15 @@ export default function OnboardingPage() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ circleId: circle.id, userId: user?.sub }),
+        body: JSON.stringify({ circleId, userId: user?.sub }),
       }).catch(() => {});
 
       // Set as active and persist to attributes
-      await setActiveCircle(circle.id);
+      await setActiveCircle(circleId, {
+        name: worldName.trim(),
+        description: `${worldName.trim()} - a Narinyland world`,
+        role: 'member',
+      });
       
       await refreshUser();
       router.replace('/garden');

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Interaction, AppConfig, MediaContent } from '../types';
-import { uploadAPI, circlesAPI } from '../services/api';
+import { uploadAPI, circlesAPI, landsAPI } from '../services/api';
 import "react-datepicker/dist/react-datepicker.css";
 import { EditDrawerProvider } from './edit-drawer/context';
 import { EditDrawerShell } from './edit-drawer/EditDrawerShell';
@@ -304,19 +304,17 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   const addLand = async (name: string) => {
     if (!name.trim()) return;
     try {
-      const isFirst = !(localConfig.lands && localConfig.lands.length > 0);
-      const res = await fetch('/api/lands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, isActive: isFirst })
-      });
-      if (res.ok) {
-        const newLand = await res.json();
-        updateLocal(prev => ({
-          ...prev,
-          lands: [newLand, ...(prev.lands || [])].map(l => l.id === newLand.id ? l : { ...l, isActive: isFirst ? false : l.isActive })
-        }));
-      }
+      const newLand = await landsAPI.create(name.trim());
+      const activeLand = newLand.isActive ? newLand : await landsAPI.setActive(newLand.id);
+      updateLocal(prev => ({
+        ...prev,
+        lands: [
+          activeLand,
+          ...(prev.lands || [])
+            .filter(l => l.id !== activeLand.id)
+            .map(l => ({ ...l, isActive: false })),
+        ],
+      }));
     } catch (err) {
       console.error("Failed to add land:", err);
     }
@@ -325,13 +323,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   const deleteLand = async (id: string) => {
     if (!confirm("Are you sure you want to delete this world? All objects inside will be destroyed.")) return;
     try {
-      const res = await fetch(`/api/lands/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        updateLocal(prev => ({
-          ...prev,
-          lands: (prev.lands || []).filter(l => l.id !== id)
-        }));
-      }
+      await landsAPI.delete(id);
+      updateLocal(prev => ({
+        ...prev,
+        lands: (prev.lands || []).filter(l => l.id !== id)
+      }));
     } catch (err) {
       console.error("Failed to delete land:", err);
     }
@@ -340,17 +336,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   const toggleLandActive = async (id: string) => {
     if (localConfig.lands?.find(l => l.id === id)?.isActive) return; // Already active
     try {
-      const res = await fetch(`/api/lands/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: true })
-      });
-      if (res.ok) {
-        updateLocal(prev => ({
-          ...prev,
-          lands: (prev.lands || []).map(l => ({ ...l, isActive: l.id === id }))
-        }));
-      }
+      const activeLand = await landsAPI.setActive(id);
+      updateLocal(prev => ({
+        ...prev,
+        lands: (prev.lands || []).map(l => l.id === id ? activeLand : { ...l, isActive: false })
+      }));
     } catch (err) {
       console.error("Failed to update land active status:", err);
     }
@@ -385,11 +375,19 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   };
 
   const handleCreateWorld = async () => {
-    if (!newWorldName.trim()) return;
+    const name = newWorldName.trim();
+    if (!name) return;
     setIsCircleUpdating(true);
     try {
-      await circlesAPI.create({ name: newWorldName.trim() });
+      const result = await circlesAPI.create({ name });
+      const circleId = result.circleId || result.id;
+      if (!circleId) throw new Error('AppKit did not return a world ID.');
       setNewWorldName('');
+      await setActiveCircle(circleId, {
+        name,
+        description: typeof result.description === 'string' ? result.description : name,
+        role: 'member',
+      });
       await refreshUser();
       alert('World created successfully!');
     } catch (err: unknown) {

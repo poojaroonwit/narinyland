@@ -5,8 +5,14 @@ type RedisClient = Redis;
 type SafeRedis = {
   get(key: string): Promise<string | null>;
   setex(key: string, seconds: number, value: string): Promise<string>;
+  mget(...keys: string[]): Promise<(string | null)[]>;
   del(...keys: string[]): Promise<number>;
   expire(key: string, seconds: number): Promise<number>;
+  zadd(key: string, score: number, member: string): Promise<number>;
+  zrem(key: string, ...members: string[]): Promise<number>;
+  zrangebyscore(key: string, min: number, max: number): Promise<string[]>;
+  zremrangebyscore(key: string, min: number, max: number): Promise<number>;
+  publish(channel: string, message: string): Promise<number>;
   ping(): Promise<string>;
 };
 
@@ -46,6 +52,21 @@ function createRedisClient(): RedisClient | null {
 
 const client = createRedisClient();
 
+export function createRedisSubscriber(): RedisClient | null {
+  if (!shouldCreateClient) return null;
+
+  const subscriber = new Redis(redisUrl || 'redis://localhost:6379', {
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
+    retryStrategy(times) {
+      return Math.min(times * 100, 1000);
+    },
+  });
+
+  subscriber.on('error', (error) => warnRedisFailure('subscriber connection', error));
+  return subscriber;
+}
+
 async function safeRedisCommand<T>(
   operation: string,
   fallback: T,
@@ -68,11 +89,29 @@ export const redis: SafeRedis = {
   setex(key, seconds, value) {
     return safeRedisCommand('setex', 'OK', (redisClient) => redisClient.setex(key, seconds, value));
   },
+  mget(...keys) {
+    return safeRedisCommand('mget', keys.map(() => null), (redisClient) => redisClient.mget(...keys));
+  },
   del(...keys) {
     return safeRedisCommand('del', 0, (redisClient) => redisClient.del(...keys));
   },
   expire(key, seconds) {
     return safeRedisCommand('expire', 0, (redisClient) => redisClient.expire(key, seconds));
+  },
+  zadd(key, score, member) {
+    return safeRedisCommand('zadd', 0, (redisClient) => redisClient.zadd(key, score, member));
+  },
+  zrem(key, ...members) {
+    return safeRedisCommand('zrem', 0, (redisClient) => redisClient.zrem(key, ...members));
+  },
+  zrangebyscore(key, min, max) {
+    return safeRedisCommand('zrangebyscore', [], (redisClient) => redisClient.zrangebyscore(key, min, max));
+  },
+  zremrangebyscore(key, min, max) {
+    return safeRedisCommand('zremrangebyscore', 0, (redisClient) => redisClient.zremrangebyscore(key, min, max));
+  },
+  publish(channel, message) {
+    return safeRedisCommand('publish', 0, (redisClient) => redisClient.publish(channel, message));
   },
   async ping() {
     if (!client) throw new Error('Redis is not configured');

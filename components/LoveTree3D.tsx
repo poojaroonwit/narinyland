@@ -72,31 +72,6 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
      [purchasedItems, selectedItemId]
    );
 
-   const placedItemCount = purchasedItems?.filter(item => item.type !== 'main_tree').length ?? 0;
-   const gardenQuests = useMemo(() => [
-     {
-       id: 'build',
-       label: 'Place a keepsake',
-       detail: placedItemCount > 0 ? `${placedItemCount} placed` : 'Open Build and choose one',
-       done: placedItemCount > 0,
-       icon: 'fa-cube',
-     },
-     {
-       id: 'grow',
-       label: 'Grow the love tree',
-       detail: leaves > 0 ? `${leaves.toLocaleString()} leaves` : 'Earn points, then grow',
-       done: leaves > 0,
-       icon: 'fa-leaf',
-     },
-     {
-       id: 'explore',
-       label: 'Take a garden walk',
-       detail: cameraMode === 'explore' ? 'Walking now' : 'Switch to Explore',
-       done: cameraMode === 'explore',
-       icon: 'fa-shoe-prints',
-     },
-   ], [cameraMode, leaves, placedItemCount]);
-
    React.useEffect(() => {
      if (!selectedItemId) return;
      if (!purchasedItems?.some(item => item.id === selectedItemId)) {
@@ -472,7 +447,6 @@ const LoveTree3D: React.FC<LoveTree3DProps> = ({
         toggleBuildMode={toggleBuildMode}
         snapToGrid={snapToGrid}
         setSnapToGrid={setSnapToGrid}
-        gardenQuests={gardenQuests}
         pressMovement={pressMovement}
         selectedItem={selectedItem}
         setSelectedItemId={setSelectedItemId}

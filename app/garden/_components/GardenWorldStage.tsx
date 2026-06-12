@@ -18,7 +18,7 @@ import TimelineSpreadsheet from '../../../components/TimelineSpreadsheet';
 import UserDropdown from '../../../components/UserDropdown';
 import UserProfileModal from '../../../components/UserProfileModal';
 import Shop from '../../../components/Shop';
-import World3D from '../../../components/World3D';
+import WorldMMO3D from '../../../components/mmo-world/WorldMMO3D';
 import { purchasedItemsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
 
@@ -122,8 +122,19 @@ export const GardenWorldStage: React.FC = () => {
                    </>
                  ) : (
                    <>
-                     <World3D
+                     <WorldMMO3D
+                        user={user}
+                        activeCircleId={activeCircleId}
+                        circleName={circles.find(circle => circle.id === activeCircleId)?.name || appConfig.appName}
+                        activeLandId={activeLand?.id}
+                        activeLandName={activeLand?.name}
+                        circleMembers={circleMembers}
+                        landObjects={activeLand?.items || []}
+                        quality={appConfig.graphicsQuality}
                         timeline={appConfig.timeline}
+                        memories={appConfig.gallery}
+                        coupons={appConfig.coupons}
+                        loveLetters={loveLetters}
                         onFlagClick={(item) => setSelectedFlagItem(item)}
                      />
                   </>
@@ -183,12 +194,11 @@ export const GardenWorldStage: React.FC = () => {
                          <button 
                            onClick={() => {
                              setSelectedFlagItem(null);
-                             setWorldMode('tree');
-                             switchTab('timeline');
+                             if (worldMode === 'tree') switchTab('timeline');
                            }} 
                            className="mt-6 w-full py-3 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-md shadow-md hover:shadow-lg transition-all"
                          >
-                            View on Timeline
+                            {worldMode === 'tree' ? 'View on Timeline' : 'Back to World'}
                          </button>
                       </motion.div>
                    </motion.div>
