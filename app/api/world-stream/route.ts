@@ -5,13 +5,12 @@ import { createRedisSubscriber, redis } from '@/lib/redis';
 import { filterWorldPresencesByInterest, getActiveWorldEvent, getActiveWorldGuildForUser, getActiveWorldPartyForUser, getWorldActionById, getWorldChatMessageById, getWorldPlayerStateForUser, getWorldPresences, getWorldRelationshipsForUser, getWorldRequestsForUser, getWorldSnapshot, getWorldVoiceRoomsForUser, presenceUserKey, PRESENCE_ACTIVE_MS, worldUpdateChannelKey } from '@/lib/world-state';
 import { getWorldVoiceSignalsForUser } from '@/lib/world-voice-signals';
 import { cleanWorldMapKey } from '@/lib/world-location';
+import { getWorldStreamSnapshotInterval, WORLD_STREAM_FALLBACK_SNAPSHOT_MS, WORLD_STREAM_KEEPALIVE_MS } from '@/lib/world-stream-timing';
 import type { WorldActionDelta, WorldChatDelta, WorldPresence, WorldPresenceDelta, WorldSocialStateDelta, WorldSocialStateDeltaKind, WorldVoiceDelta, WorldVoiceSignalDelta } from '@/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SNAPSHOT_INTERVAL_MS = 1500;
-const KEEPALIVE_INTERVAL_MS = 15000;
 const UPDATE_DEBOUNCE_MS = 120;
 const SOCIAL_STATE_KINDS = new Set<WorldSocialStateDeltaKind>([
   'event',
@@ -154,6 +153,11 @@ export async function GET(request: NextRequest) {
         } finally {
           isSending = false;
         }
+      };
+
+      const startSnapshotTimer = (intervalMs: number) => {
+        if (snapshotTimer) clearInterval(snapshotTimer);
+        snapshotTimer = setInterval(() => void sendSnapshot(), intervalMs);
       };
 
       const requestSnapshot = () => {
@@ -424,12 +428,13 @@ export async function GET(request: NextRequest) {
             message: `World update subscription unavailable: ${getErrorMessage(err)}`,
             serverTime: new Date().toISOString(),
           }));
+          startSnapshotTimer(WORLD_STREAM_FALLBACK_SNAPSHOT_MS);
         });
       }
-      snapshotTimer = setInterval(() => void sendSnapshot(), SNAPSHOT_INTERVAL_MS);
+      startSnapshotTimer(getWorldStreamSnapshotInterval(Boolean(subscriber)));
       keepaliveTimer = setInterval(() => write(sseEvent('ping', {
         serverTime: new Date().toISOString(),
-      })), KEEPALIVE_INTERVAL_MS);
+      })), WORLD_STREAM_KEEPALIVE_MS);
       request.signal.addEventListener('abort', close, { once: true });
       cleanup = close;
     },

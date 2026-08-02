@@ -17,6 +17,34 @@ let initPromise: Promise<void> | null = null;
 const DEFAULT_APPKIT_DOMAIN = 'https://appkits.up.railway.app';
 const DEFAULT_APPKIT_SCOPES = ['openid', 'profile', 'email', 'offline_access'];
 const PUBLIC_AUTH_RETURN_PATH = '/';
+const AUTH_FETCH_TIMEOUT_MS = 8000;
+
+export class AuthRequiredError extends Error {
+  constructor(message = 'Authentication required') {
+    super(message);
+    this.name = 'AuthRequiredError';
+  }
+}
+
+export class AuthUnavailableError extends Error {
+  constructor(message = 'Authentication service unavailable') {
+    super(message);
+    this.name = 'AuthUnavailableError';
+  }
+}
+
+async function fetchAuthResource(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    throw new AuthUnavailableError(error instanceof Error ? error.message : undefined);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
 
 declare global {
   interface Window {
@@ -62,7 +90,7 @@ async function resolveAppKitConfig() {
 
   if (typeof window !== 'undefined') {
     try {
-      const res = await fetch(`/api/config/appkit?ts=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetchAuthResource(`/api/config/appkit?ts=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const runtimeConfig = await res.json();
         const resolvedClientId = normalizeClientId(
@@ -247,7 +275,7 @@ export function getAccessToken(): string | null {
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
   // In BFF mode, we check for our non-HttpOnly metadata cookie
-  return document.cookie.includes('narinyland_is_auth=true');
+  return (document.cookie || '').includes('narinyland_is_auth=true');
 }
 
 /**
@@ -272,8 +300,9 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
     if (!isAuthenticated()) return null;
 
     // Call our proxied "me" endpoint which uses the HttpOnly cookie
-    const res = await fetch('/api/auth/me', { credentials: 'include' });
-    if (!res.ok) return null;
+    const res = await fetchAuthResource('/api/auth/me', { credentials: 'include' });
+    if (res.status === 401 || res.status === 403) return null;
+    if (!res.ok) throw new AuthUnavailableError(`Profile request failed: ${res.status}`);
 
     const user = (await res.json()) as AuthUserResponse;
     const sub = user.id || user.sub;
@@ -287,8 +316,9 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
       attributes: user.attributes || {},
     };
   } catch (err) {
+    if (err instanceof AuthUnavailableError) throw err;
     console.error('AppKit getUser error:', err);
-    return null;
+    throw new AuthUnavailableError(err instanceof Error ? err.message : undefined);
   }
 }
 
@@ -321,13 +351,6 @@ export async function logout(): Promise<void> {
  * Proxied through our own backend to avoid CORS restrictions when calling
  * the AppKit API directly from the browser.
  */
-export class AuthRequiredError extends Error {
-  constructor(message = 'Authentication required') {
-    super(message);
-    this.name = 'AuthRequiredError';
-  }
-}
-
 type CircleListPayload = {
   circles?: unknown;
   data?: unknown;
@@ -361,7 +384,7 @@ export async function getUserCircles(): Promise<Array<{ id: string; name: string
 
     // Use our server-side proxy. In BFF mode, auth lives in cookies rather than
     // the SDK's browser storage state, so rely on the cookie-backed session.
-    const res = await fetch('/api/circles', {
+    const res = await fetchAuthResource('/api/circles', {
       credentials: 'include',
       cache: 'no-store',
     });

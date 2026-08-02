@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 import { getErrorMessage } from '@/lib/errors';
 import { getDisplayNameMap, getWorldRequestsForUser, publishWorldUpdate, toWorldSocialAction } from '@/lib/world-state';
 import { awardWorldAchievement } from '@/lib/world-achievements';
 import { cleanWorldMapKey } from '@/lib/world-location';
+import { getWorldEquipmentItem, normalizeWorldEquipment } from '@/lib/world-inventory-catalog';
+import { applyWorldTradeOffer, getWorldTradeState, type WorldTradeParticipantRole } from '@/lib/world-trade';
 import type { WorldActionType } from '@/types';
 
 type WorldRequestBody = {
   actionId?: string;
-  response?: 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready';
+  response?: 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready' | 'offer' | 'clear_offer';
+  itemKey?: string;
   currentLandId?: string;
   currentZone?: string;
 };
@@ -29,7 +32,7 @@ function normalizeMetadata(value: Prisma.JsonValue): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
       .filter(([key, entry]) => key.length <= 48 && ['string', 'number', 'boolean'].includes(typeof entry))
-      .slice(0, 20)
+      .slice(0, 40)
   );
 }
 
@@ -48,7 +51,9 @@ function normalizeResponse(value: unknown): WorldRequestBody['response'] | null 
     value === 'complete' ||
     value === 'cancel' ||
     value === 'ready' ||
-    value === 'unready'
+    value === 'unready' ||
+    value === 'offer' ||
+    value === 'clear_offer'
     ? value
     : null;
 }
@@ -182,6 +187,113 @@ async function getWorldRequests(configId: string, userId: string, limit = 24, cu
   return getWorldRequestsForUser(configId, userId, limit, { currentLandId });
 }
 
+function worldTradeError(status: number, message: string) {
+  return Object.assign(new Error(message), { status });
+}
+
+function getErrorStatus(err: unknown) {
+  if (err && typeof err === 'object' && 'status' in err && typeof err.status === 'number') {
+    return Math.min(599, Math.max(400, err.status));
+  }
+  return 500;
+}
+
+async function settleWorldTrade(
+  configId: string,
+  actionId: string,
+  settledByUserId: string,
+  currentLandId?: string,
+  currentZone?: string,
+) {
+  return prisma.$transaction(async (tx) => {
+    const trade = await tx.worldSocialAction.findFirst({
+      where: { id: actionId, configId, type: 'trade' },
+    });
+    if (!trade) throw worldTradeError(404, 'Trade session not found');
+    if (trade.status !== 'accepted') throw worldTradeError(409, 'Trade session is no longer active');
+    if (!trade.toUserId) throw worldTradeError(409, 'Trade session has no recipient');
+
+    const metadata = normalizeMetadata(trade.metadata);
+    const state = getWorldTradeState(metadata);
+    if (!state.canSettle) {
+      throw worldTradeError(409, 'Both participants must confirm at least one valid trade offer');
+    }
+
+    const claimed = await tx.worldSocialAction.updateMany({
+      where: { id: trade.id, configId, type: 'trade', status: 'accepted' },
+      data: { status: 'settling' },
+    });
+    if (claimed.count !== 1) throw worldTradeError(409, 'Trade was already completed');
+
+    const loadOffer = async (itemKey: string | null, ownerUserId: string, receiverUserId: string) => {
+      if (!itemKey) return null;
+      const catalogItem = getWorldEquipmentItem(itemKey);
+      if (!catalogItem || catalogItem.source !== 'market') {
+        throw worldTradeError(400, 'Only purchased market items can be traded');
+      }
+
+      const item = await tx.worldInventoryItem.findUnique({
+        where: { configId_userId_itemKey: { configId, userId: ownerUserId, itemKey } },
+      });
+      if (!item) throw worldTradeError(409, `${catalogItem.name} is no longer owned by its trader`);
+
+      const receiverOwnsItem = await tx.worldInventoryItem.findUnique({
+        where: { configId_userId_itemKey: { configId, userId: receiverUserId, itemKey } },
+        select: { id: true },
+      });
+      if (receiverOwnsItem) throw worldTradeError(409, `${catalogItem.name} is already owned by the recipient`);
+      return { item, catalogItem, ownerUserId, receiverUserId };
+    };
+
+    const [senderOffer, recipientOffer] = await Promise.all([
+      loadOffer(state.senderOfferItemKey, trade.fromUserId, trade.toUserId),
+      loadOffer(state.recipientOfferItemKey, trade.toUserId, trade.fromUserId),
+    ]);
+
+    const offers = [senderOffer, recipientOffer].filter((offer): offer is NonNullable<typeof offer> => Boolean(offer));
+    for (const offer of offers) {
+      const moved = await tx.worldInventoryItem.updateMany({
+        where: { id: offer.item.id, configId, userId: offer.ownerUserId },
+        data: { userId: offer.receiverUserId },
+      });
+      if (moved.count !== 1) throw worldTradeError(409, `${offer.catalogItem.name} changed owners before settlement`);
+
+      const ownerProfile = await tx.characterProfile.findUnique({
+        where: { configId_userId: { configId, userId: offer.ownerUserId } },
+        select: { equipment: true },
+      });
+      if (ownerProfile) {
+        const equipment = normalizeWorldEquipment(ownerProfile.equipment);
+        if (equipment[offer.catalogItem.slot] === offer.item.itemKey) {
+          await tx.characterProfile.update({
+            where: { configId_userId: { configId, userId: offer.ownerUserId } },
+            data: {
+              equipment: toInputJson({ ...equipment, [offer.catalogItem.slot]: 'none' }),
+            },
+          });
+        }
+      }
+    }
+
+    return tx.worldSocialAction.update({
+      where: { id: trade.id },
+      data: {
+        status: 'completed',
+        metadata: toInputJson({
+          ...metadata,
+          ...(currentLandId ? { sessionCompletedLandId: currentLandId } : {}),
+          ...(currentZone ? { sessionCompletedZone: currentZone } : {}),
+          sessionCompletedAt: new Date().toISOString(),
+          settledByUserId,
+          senderOfferName: senderOffer?.catalogItem.name || '',
+          recipientOfferName: recipientOffer?.catalogItem.name || '',
+          transferredItemCount: offers.length,
+        }),
+      },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 export async function GET(request: NextRequest) {
   try {
     const access = await requireConfigAccess(request);
@@ -239,18 +351,124 @@ export async function POST(request: NextRequest) {
     if ((response === 'ready' || response === 'unready') && requestRecord.status !== 'accepted') {
       return NextResponse.json({ error: 'Session must be active before updating readiness' }, { status: 400 });
     }
+    if ((response === 'offer' || response === 'clear_offer') && (!isSender && !isRecipient)) {
+      return NextResponse.json({ error: 'Only trade participants can change offers' }, { status: 403 });
+    }
+    if ((response === 'offer' || response === 'clear_offer') && (requestRecord.type !== 'trade' || requestRecord.status !== 'accepted')) {
+      return NextResponse.json({ error: 'Offers require an active trade session' }, { status: 400 });
+    }
 
     const existingMetadata = normalizeMetadata(requestRecord.metadata);
+    const tradeState = requestRecord.type === 'trade' ? getWorldTradeState(existingMetadata) : null;
     if (
       response === 'complete' &&
       (requestRecord.type === 'trade' || requestRecord.type === 'collaborate') &&
-      (existingMetadata.senderReady !== true || existingMetadata.recipientReady !== true)
+      (requestRecord.type === 'trade'
+        ? !tradeState?.canSettle
+        : existingMetadata.senderReady !== true || existingMetadata.recipientReady !== true)
     ) {
-      return NextResponse.json({ error: 'Both participants must be ready before completing this session' }, { status: 409 });
+      return NextResponse.json({
+        error: requestRecord.type === 'trade'
+          ? 'Both participants must confirm at least one valid trade offer'
+          : 'Both participants must be ready before completing this session',
+      }, { status: 409 });
     }
 
     const currentLandId = cleanWorldMapKey(body.currentLandId);
     const currentZone = cleanOptionalText(body.currentZone, 80);
+
+    if (response === 'offer' || response === 'clear_offer') {
+      const role: WorldTradeParticipantRole = isSender ? 'sender' : 'recipient';
+      const itemKey = response === 'offer' ? cleanOptionalText(body.itemKey, 120) : undefined;
+      if (response === 'offer' && !itemKey) {
+        return NextResponse.json({ error: 'itemKey is required for a trade offer' }, { status: 400 });
+      }
+
+      if (itemKey) {
+        const catalogItem = getWorldEquipmentItem(itemKey);
+        if (!catalogItem || catalogItem.source !== 'market') {
+          return NextResponse.json({ error: 'Only purchased market items can be traded' }, { status: 400 });
+        }
+        const ownedItem = await prisma.worldInventoryItem.findUnique({
+          where: { configId_userId_itemKey: { configId: access.configId, userId: access.userId, itemKey } },
+          select: { id: true },
+        });
+        if (!ownedItem) return NextResponse.json({ error: 'You no longer own this item' }, { status: 409 });
+
+        const otherOffer = role === 'sender' ? tradeState?.recipientOfferItemKey : tradeState?.senderOfferItemKey;
+        if (otherOffer === itemKey) {
+          return NextResponse.json({ error: 'Both participants cannot offer the same item' }, { status: 409 });
+        }
+      }
+
+      const offerMetadata = applyWorldTradeOffer(
+        existingMetadata,
+        role,
+        itemKey || null,
+        new Date().toISOString(),
+      );
+      const offerUpdated = await prisma.worldSocialAction.updateMany({
+        where: { id: requestRecord.id, status: 'accepted', updatedAt: requestRecord.updatedAt },
+        data: { metadata: toInputJson(offerMetadata) },
+      });
+      if (offerUpdated.count !== 1) throw worldTradeError(409, 'Trade changed while updating your offer. Please try again.');
+      const updated = await prisma.worldSocialAction.findUniqueOrThrow({
+        where: { id: requestRecord.id },
+      });
+      await publishWorldUpdate(access.configId, 'request', {
+        userId: access.userId,
+        currentLandId,
+        actionId: updated.id,
+        requestType: updated.type,
+        status: updated.status,
+      });
+      const names = await getDisplayNameMap(access.configId, [updated.fromUserId, updated.toUserId || '']);
+      return NextResponse.json({
+        request: toWorldSocialAction(updated, names),
+        requests: await getWorldRequests(access.configId, access.userId, 24, currentLandId),
+      });
+    }
+
+    if (response === 'complete' && requestRecord.type === 'trade') {
+      const updated = await settleWorldTrade(
+        access.configId,
+        requestRecord.id,
+        access.userId,
+        currentLandId,
+        currentZone,
+      );
+      await Promise.all([
+        publishWorldUpdate(access.configId, 'request', {
+          userId: access.userId,
+          currentLandId,
+          actionId: updated.id,
+          requestType: updated.type,
+          status: updated.status,
+        }),
+        publishWorldUpdate(access.configId, 'inventory', {
+          userId: access.userId,
+          currentLandId,
+          actionId: updated.id,
+          action: 'trade_settled',
+        }),
+        awardWorldAchievement(access.configId, requestRecord.fromUserId, 'trusted_trader', {
+          tradeId: updated.id,
+          ...(currentLandId ? { currentLandId } : {}),
+        }).catch(() => null),
+        requestRecord.toUserId
+          ? awardWorldAchievement(access.configId, requestRecord.toUserId, 'trusted_trader', {
+            tradeId: updated.id,
+            ...(currentLandId ? { currentLandId } : {}),
+          }).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      const names = await getDisplayNameMap(access.configId, [updated.fromUserId, updated.toUserId || '']);
+      return NextResponse.json({
+        request: toWorldSocialAction(updated, names),
+        requests: await getWorldRequests(access.configId, access.userId, 24, currentLandId),
+      });
+    }
+
     if (response === 'accept' && requestRecord.type === 'invite_party') {
       await acceptPartyInvite(access.configId, requestRecord, currentLandId, currentZone);
     }
@@ -301,12 +519,16 @@ export async function POST(request: NextRequest) {
             ? 'canceled'
             : requestRecord.status;
 
-    const updated = await prisma.worldSocialAction.update({
-      where: { id: requestRecord.id },
+    const requestUpdated = await prisma.worldSocialAction.updateMany({
+      where: { id: requestRecord.id, updatedAt: requestRecord.updatedAt },
       data: {
         status,
         metadata: toInputJson(metadata),
       },
+    });
+    if (requestUpdated.count !== 1) throw worldTradeError(409, 'Request changed while you were responding. Please try again.');
+    const updated = await prisma.worldSocialAction.findUniqueOrThrow({
+      where: { id: requestRecord.id },
     });
     await publishWorldUpdate(access.configId, 'request', {
       userId: access.userId,
@@ -323,6 +545,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('POST /api/world-requests error:', err);
-    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: getErrorStatus(err) });
   }
 }

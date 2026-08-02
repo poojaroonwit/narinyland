@@ -26,6 +26,7 @@ import type {
   WorldInventoryCatalogItem,
   WorldInventoryItem,
   WorldInventorySlot,
+  WorldMovementCorrection,
   WorldParty,
   WorldPresence,
   WorldPresenceIntent,
@@ -147,6 +148,7 @@ type PresenceHeartbeatPayload = {
   currentLandId?: string | null;
   currentZone: string;
 };
+type PresenceMovementPayload = Pick<PresenceHeartbeatPayload, 'position' | 'velocity' | 'heading' | 'moving' | 'currentLandId' | 'currentZone'>;
 type CharacterProfileUpdatePayload = Partial<Pick<
   CharacterProfile,
   'displayName' | 'title' | 'status' | 'activity' | 'emote' | 'modelUrl' | 'appearance' | 'equipment' | 'cosmetics' | 'lastPosition' | 'lastZone' | 'lastMapPositions'
@@ -202,7 +204,8 @@ type WorldRelationshipMutationPayload = {
 };
 type WorldRequestResponsePayload = {
   actionId: string;
-  response: 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready';
+  response: 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready' | 'offer' | 'clear_offer';
+  itemKey?: string;
   currentLandId?: string;
   currentZone?: string;
 };
@@ -563,8 +566,14 @@ export const presenceAPI = {
   },
 
   heartbeat: (data: PresenceHeartbeatPayload) =>
-    fetchAPI<{ presence: WorldPresence }>('/presence', {
+    fetchAPI<{ presence: WorldPresence; correction: WorldMovementCorrection }>('/presence', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  move: (data: PresenceMovementPayload) =>
+    fetchAPI<{ presence: WorldPresence; correction: WorldMovementCorrection }>('/presence', {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
 

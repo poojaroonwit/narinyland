@@ -121,7 +121,7 @@ function normalizeMetadata(value: Prisma.JsonValue): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
       .filter(([key, entry]) => key.length <= 48 && ['string', 'number', 'boolean'].includes(typeof entry))
-      .slice(0, 16)
+      .slice(0, 40)
   );
 }
 

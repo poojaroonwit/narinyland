@@ -78,6 +78,14 @@ export const WORLD_ACHIEVEMENTS: AchievementDefinition[] = [
     rarity: 'keepsake',
     titleReward: 'Market Regular',
   },
+  {
+    achievementKey: 'trusted_trader',
+    name: 'Trusted Trader',
+    description: 'Completed a secure item exchange with another avatar.',
+    icon: 'fa-people-arrows',
+    rarity: 'keepsake',
+    titleReward: 'Trusted Trader',
+  },
 ];
 
 const ACHIEVEMENT_BY_KEY = new Map(WORLD_ACHIEVEMENTS.map(achievement => [achievement.achievementKey, achievement]));

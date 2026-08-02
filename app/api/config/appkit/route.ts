@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const applicationId = getAppKitApplicationId();
   const ssoLaunchUrl = getBoundarySsoLaunchUrl(req);
 
-  await ensureSsoLaunchUrlConfigured(ssoLaunchUrl).catch((err) => {
+  void ensureSsoLaunchUrlConfigured(ssoLaunchUrl).catch((err) => {
     console.warn('Runtime AppKit config ssoLaunchUrl sync failed:', err);
   });
 

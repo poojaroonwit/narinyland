@@ -7,6 +7,9 @@ import { redis } from '@/lib/redis';
 import { filterWorldPresencesByInterest, getActiveWorldEventForUser, getActiveWorldGuildForUser, getActiveWorldPartyForUser, getWorldPresences, presenceIndexKey, presenceUserKey, PRESENCE_ACTIVE_MS, PRESENCE_TTL_SECONDS, publishWorldUpdate } from '@/lib/world-state';
 import { normalizeWorldEquipment } from '@/lib/world-inventory-catalog';
 import { cleanWorldMapKey, withWorldLocationMapEntry } from '@/lib/world-location';
+import { getAuthSession } from '@/lib/auth-server';
+import { getConfigId } from '@/lib/get-config-id';
+import { applyAuthoritativePresenceMovementUpdate, preserveNewerPresenceMovement, type PresenceMovementCorrection } from '@/lib/world-presence-movement';
 import type { CharacterAppearance, CharacterEquipment, WorldAchievementBadge, WorldPresence, WorldPresenceIntent, WorldPresenceIntentKind, WorldPresenceVector } from '@/types';
 
 type PresenceBody = {
@@ -47,6 +50,11 @@ const DEFAULT_APPEARANCE: CharacterAppearance = {
 };
 
 const LOCATION_PERSIST_THROTTLE_SECONDS = 8;
+const PRESENCE_MOVEMENT_LEASE_SECONDS = 12;
+
+function presenceMovementLeaseKey(configId: string, userId: string) {
+  return `presence:${configId}:movement-lease:${userId}`;
+}
 
 const clampNumber = (value: unknown, min: number, max: number, fallback: number) => {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -357,6 +365,7 @@ export async function POST(request: NextRequest) {
     if (isConfigAccessDenied(access)) return access.response;
 
     const body = (await request.json().catch(() => ({}))) as PresenceBody;
+    const requestStartedAt = Date.now();
     const currentLandId = cleanWorldMapKey(body.currentLandId);
     const [partner, character, party, event, guild] = await Promise.all([
       getPartnerProfile(access.configId, access.userId),
@@ -377,7 +386,7 @@ export async function POST(request: NextRequest) {
       ? animation === 'walk' || Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z) > 0.08
       : Boolean(body.moving);
 
-    const presence: WorldPresence = {
+    let nextPresence: WorldPresence = {
       userId: access.userId,
       name: cleanText(body.name, character?.displayName || partner?.name || 'Explorer', 48),
       avatar: cleanText(body.avatar, partner?.avatar || '', 240),
@@ -414,8 +423,45 @@ export async function POST(request: NextRequest) {
       ...(intent ? { intent } : {}),
     };
 
+    const currentRecord = await redis.get(presenceUserKey(access.configId, access.userId));
+    let currentPresence: WorldPresence | null = null;
+    if (currentRecord) {
+      try {
+        currentPresence = JSON.parse(currentRecord) as WorldPresence;
+      } catch {
+        currentPresence = null;
+      }
+    }
+    let correction: PresenceMovementCorrection = {
+      corrected: false,
+      requestedDistance: 0,
+      allowedDistance: 0,
+    };
+    const currentPresenceAt = currentPresence ? Date.parse(currentPresence.lastSeen) : Number.NaN;
+    const isSameMovementScope = currentPresence &&
+      (currentPresence.currentLandId || '').toLowerCase() === (nextPresence.currentLandId || '').toLowerCase();
+    if (currentPresence && isSameMovementScope && currentPresenceAt <= requestStartedAt) {
+      const authoritative = applyAuthoritativePresenceMovementUpdate(currentPresence, {
+        position: nextPresence.position,
+        velocity: nextPresence.velocity,
+        heading: nextPresence.heading,
+        moving: nextPresence.moving,
+      }, now);
+      nextPresence = {
+        ...nextPresence,
+        position: authoritative.presence.position,
+        velocity: authoritative.presence.velocity,
+        heading: authoritative.presence.heading,
+        moving: authoritative.presence.moving,
+        animation: authoritative.presence.animation,
+      };
+      correction = authoritative.correction;
+    }
+    const presence = preserveNewerPresenceMovement(nextPresence, currentPresence, requestStartedAt);
+
     await Promise.all([
       redis.setex(presenceUserKey(access.configId, access.userId), PRESENCE_TTL_SECONDS, JSON.stringify(presence)),
+      redis.setex(presenceMovementLeaseKey(access.configId, access.userId), PRESENCE_MOVEMENT_LEASE_SECONDS, '1'),
       redis.zadd(presenceIndexKey(access.configId), now, access.userId),
       redis.zremrangebyscore(presenceIndexKey(access.configId), 0, now - PRESENCE_ACTIVE_MS),
       persistCharacterLocation(access.configId, access.userId, presence),
@@ -431,9 +477,67 @@ export async function POST(request: NextRequest) {
       intentLabel: presence.intent?.label,
     });
 
-    return NextResponse.json({ presence });
+    return NextResponse.json({ presence, correction });
   } catch (err: unknown) {
     console.error('POST /api/presence error:', err);
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getAuthSession(request);
+    if (session.error || !session.userId) {
+      return NextResponse.json({ error: session.error || 'unauthorized' }, { status: session.status || 401 });
+    }
+
+    const configId = getConfigId(request);
+    const body = (await request.json().catch(() => ({}))) as PresenceBody;
+    const [record, lease] = await redis.mget(
+      presenceUserKey(configId, session.userId),
+      presenceMovementLeaseKey(configId, session.userId),
+    );
+    if (!record || !lease) {
+      return NextResponse.json({ error: 'presence_movement_lease_expired' }, { status: 409 });
+    }
+
+    const existing = JSON.parse(record) as WorldPresence;
+    const requestedLandId = cleanWorldMapKey(body.currentLandId);
+    const requestedZone = cleanOptionalText(body.currentZone, 56);
+    if (
+      existing.userId !== session.userId ||
+      (requestedLandId && !existing.currentLandId) ||
+      (requestedLandId && existing.currentLandId && requestedLandId.toLowerCase() !== existing.currentLandId.toLowerCase()) ||
+      (requestedZone && requestedZone.toLowerCase() !== existing.currentZone.toLowerCase())
+    ) {
+      return NextResponse.json({ error: 'presence_scope_changed' }, { status: 409 });
+    }
+
+    const now = Date.now();
+    const authoritative = applyAuthoritativePresenceMovementUpdate(existing, {
+      position: body.position,
+      velocity: body.velocity,
+      heading: body.heading,
+      moving: body.moving,
+    }, now);
+    const { presence, correction } = authoritative;
+
+    await Promise.all([
+      redis.setex(presenceUserKey(configId, session.userId), PRESENCE_TTL_SECONDS, JSON.stringify(presence)),
+      redis.zadd(presenceIndexKey(configId), now, session.userId),
+      redis.zremrangebyscore(presenceIndexKey(configId), 0, now - PRESENCE_ACTIVE_MS),
+    ]);
+    await publishWorldUpdate(configId, 'presence', {
+      userId: session.userId,
+      currentLandId: presence.currentLandId,
+      currentZone: presence.currentZone,
+      animation: presence.animation,
+      moving: presence.moving,
+    });
+
+    return NextResponse.json({ presence, correction });
+  } catch (err: unknown) {
+    console.error('PUT /api/presence error:', err);
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
@@ -449,6 +553,7 @@ export async function DELETE(request: NextRequest) {
     const voiceRoomIds = await leaveActiveVoiceRooms(access.configId, access.userId);
     await Promise.all([
       redis.del(presenceUserKey(access.configId, access.userId)),
+      redis.del(presenceMovementLeaseKey(access.configId, access.userId)),
       redis.zrem(presenceIndexKey(access.configId), access.userId),
     ]);
     await publishWorldUpdate(access.configId, 'presence', {

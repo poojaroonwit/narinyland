@@ -2,12 +2,19 @@
 
 import * as React from 'react';
 import { ContactShadows, Environment, Html, Sparkles, Stars, useAnimations, useGLTF } from '@react-three/drei';
-import { ThreeEvent, useThree } from '@react-three/fiber';
+import { createPortal, ThreeEvent, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameEngine3D, GameModelAsset, MovementInput, SpawnIn, useGameLoop } from '../game-engine-3d';
 import { characterAPI, presenceAPI, worldAchievementsAPI, worldActionsAPI, worldActivityAPI, worldChatAPI, worldEventsAPI, worldGuildAPI, worldInventoryAPI, worldPartyAPI, worldRelationshipsAPI, worldRequestsAPI, worldStreamAPI, worldVoiceAPI } from '../../services/api';
+import { reconcilePresenceDelta, reconcilePresenceSnapshot } from '../../lib/world-presence-reconciliation';
+import { getCameraRelativeMovement } from '../../lib/world-navigation';
+import { getProximityVoiceGain } from '../../lib/world-voice-spatial';
+import { PRESENCE_FULL_HEARTBEAT_MS, PRESENCE_MOVEMENT_TICK_MS, shouldBroadcastPresenceMovement, type PresenceMovementSample } from '../../lib/world-presence-movement';
+import { findAvatarRigAnchors, type AvatarRigAnchors } from '../../lib/avatar-rig';
+import { isWorldStreamFresh as hasFreshWorldStream, WORLD_STREAM_STATUS_TICK_MS } from '../../lib/world-stream-timing';
+import { getWorldTradeState } from '../../lib/world-trade';
 import type { AppConfig, CharacterAppearance, CharacterEquipment, CharacterProfile, Interaction, LoveLetterMessage, LoveStats, MemoryItem, PurchasedItem, WorldActionDelta, WorldActivityFeed, WorldAchievement, WorldAchievementBadge, WorldActionType, WorldChatChannel, WorldChatDelta, WorldChatMessage, WorldEvent, WorldGuild, WorldInventoryCatalogItem, WorldInventoryItem, WorldInventorySlot, WorldParty, WorldPresence, WorldPresenceDelta, WorldPresenceIntent, WorldPresenceVector, WorldRelationship, WorldSnapshot, WorldSocialAction, WorldSocialStateDelta, WorldVoiceDelta, WorldVoiceKind, WorldVoiceRoom, WorldVoiceSignalDelta, WorldVoiceSignalMessage } from '../../types';
 
 type WorldUser = {
@@ -154,7 +161,7 @@ type SelectedActivityEntry =
   | { id: string; kind: 'action'; createdAt: string; action: WorldSocialAction }
   | { id: string; kind: 'chat'; createdAt: string; message: WorldChatMessage };
 
-type WorldRequestResponse = 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready';
+type WorldRequestResponse = 'accept' | 'decline' | 'complete' | 'cancel' | 'ready' | 'unready' | 'offer' | 'clear_offer';
 
 type WorldActivityBeacon = {
   id: string;
@@ -469,8 +476,6 @@ const LIVE_PROMPT_AVATAR_RANGE = 13;
 const LIVE_PROMPT_SESSION_RANGE = 22;
 const NEARBY_AVATAR_PROMPT_RANGE = 9.5;
 const EVENT_RALLY_PULSE_ACTIVE_MS = 70_000;
-const WORLD_STREAM_STALE_AFTER_MS = 8000;
-const WORLD_STREAM_STATUS_TICK_MS = 2000;
 const WORLD_STREAM_INTEREST_RADIUS = 18;
 const AVATAR_INTERACTION_RANGE = 4.4;
 const AVATAR_ACTION_QUEUE_TTL_MS = 18_000;
@@ -1634,7 +1639,6 @@ function AvatarWorldPassport({
   onRespondRequest,
   onOpenRequestContext,
   onOpenRequestChat,
-  onOpenCharacterSheet,
   voiceRoom,
   voiceMediaLabel,
   voiceInputPercent,
@@ -1671,7 +1675,6 @@ function AvatarWorldPassport({
   onRespondRequest?: (request: WorldSocialAction, response: WorldRequestResponse) => void;
   onOpenRequestContext?: (request: WorldSocialAction) => void;
   onOpenRequestChat?: (request: WorldSocialAction) => void;
-  onOpenCharacterSheet?: (presence: WorldPresence) => void;
   voiceRoom?: WorldVoiceRoom | null;
   voiceMediaLabel?: string;
   voiceInputPercent?: number;
@@ -1715,17 +1718,6 @@ function AvatarWorldPassport({
             <p className="truncate text-[10px] font-bold text-emerald-700">{presence.title || 'Explorer'}</p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {onOpenCharacterSheet && (
-              <button
-                type="button"
-                onClick={() => onOpenCharacterSheet(presence)}
-                className="grid h-6 w-6 place-items-center rounded-full bg-white/80 text-stone-500 shadow-sm transition hover:bg-stone-800 hover:text-white"
-                title={`Open ${presence.name} sheet`}
-                aria-label={`Open ${presence.name} sheet`}
-              >
-                <i className="fas fa-up-right-from-square text-[8px]"></i>
-              </button>
-            )}
             <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-stone-600">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusMeta.color }} />
               {statusMeta.label}
@@ -3837,46 +3829,64 @@ function AvatarCosmeticLayer({
   );
 }
 
-function getAvatarAnimationKeywords(animation: string, emote: string) {
-  if (emote === 'dance') return ['dance', 'dancing', 'groove'];
-  if (emote === 'wave') return ['wave', 'hello', 'greet'];
-  if (emote === 'heart') return ['heart', 'love', 'kiss'];
-  if (emote === 'sit') return ['sit', 'sitting'];
-  if (animation === 'walk') return ['walk', 'walking', 'run', 'running', 'locomotion'];
+type AvatarAnimationState = 'idle' | 'locomotion' | 'wave' | 'heart' | 'dance' | 'sit';
+
+const ONE_SHOT_AVATAR_ANIMATION_STATES = new Set<AvatarAnimationState>(['wave', 'heart']);
+
+function getAvatarAnimationState(animation: string, emote: string): AvatarAnimationState {
+  if (animation === 'walk') return 'locomotion';
+  if (emote === 'dance' || emote === 'wave' || emote === 'heart' || emote === 'sit') return emote;
+  return 'idle';
+}
+
+function getAvatarAnimationKeywords(state: AvatarAnimationState) {
+  if (state === 'locomotion') return ['walk', 'walking', 'run', 'running', 'locomotion'];
+  if (state === 'dance') return ['dance', 'dancing', 'groove'];
+  if (state === 'wave') return ['wave', 'hello', 'greet'];
+  if (state === 'heart') return ['heart', 'love', 'kiss'];
+  if (state === 'sit') return ['sit', 'sitting'];
   return ['idle', 'standing', 'breathing', 'default'];
 }
 
-function findAvatarAnimationClip(animations: THREE.AnimationClip[], animation: string, emote: string) {
+function findAvatarAnimationClip(animations: THREE.AnimationClip[], state: AvatarAnimationState) {
   const normalizedClips = animations.map(clip => ({
     clip,
     name: clip.name.toLowerCase().replace(/[\s_-]/g, ''),
   }));
-  const preferredKeywords = getAvatarAnimationKeywords(animation, emote);
+  const preferredKeywords = getAvatarAnimationKeywords(state);
 
   for (const keyword of preferredKeywords) {
     const normalizedKeyword = keyword.toLowerCase().replace(/[\s_-]/g, '');
     const match = normalizedClips.find(item => item.name.includes(normalizedKeyword));
-    if (match) return match.clip.name;
+    if (match) return { clipName: match.clip.name, state };
   }
 
   const idle = normalizedClips.find(item => item.name.includes('idle') || item.name.includes('stand'));
-  return idle?.clip.name || animations[0]?.name || null;
+  return {
+    clipName: idle?.clip.name || animations[0]?.name || null,
+    state: 'idle' as const,
+  };
 }
 
 function UploadedAvatarModel({
   modelUrl,
   animation,
   emote,
+  equipment,
+  colors,
 }: {
   modelUrl: string;
   animation: string;
   emote: string;
+  equipment: CharacterEquipment;
+  colors: CharacterAppearance;
 }) {
   const modelRootRef = React.useRef<THREE.Group>(null);
   const activeActionRef = React.useRef<THREE.AnimationAction | null>(null);
+  const [completedOneShotState, setCompletedOneShotState] = React.useState<AvatarAnimationState | null>(null);
   const { scene, animations } = useGLTF(modelUrl);
-  const { actions } = useAnimations(animations, modelRootRef);
-  const model = React.useMemo(() => {
+  const { actions, mixer } = useAnimations(animations, modelRootRef);
+  const normalizedModel = React.useMemo(() => {
     const clone = SkeletonUtils.clone(scene) as THREE.Object3D;
     const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
@@ -3894,16 +3904,26 @@ function UploadedAvatarModel({
       }
     });
 
-    return clone;
+    return { model: clone, scale };
   }, [scene]);
-  const activeClipName = React.useMemo(
-    () => findAvatarAnimationClip(animations, animation, emote),
-    [animation, animations, emote]
+  const model = normalizedModel.model;
+  const rigAnchors = React.useMemo(() => findAvatarRigAnchors(model), [model]);
+  const requestedAnimationState = getAvatarAnimationState(animation, emote);
+  const effectiveAnimationState = ONE_SHOT_AVATAR_ANIMATION_STATES.has(requestedAnimationState) && completedOneShotState === requestedAnimationState
+    ? 'idle'
+    : requestedAnimationState;
+  const activeAnimation = React.useMemo(
+    () => findAvatarAnimationClip(animations, effectiveAnimationState),
+    [animations, effectiveAnimationState]
   );
 
   React.useEffect(() => {
-    if (!activeClipName) return;
-    const nextAction = actions[activeClipName];
+    setCompletedOneShotState(null);
+  }, [emote]);
+
+  React.useEffect(() => {
+    if (!activeAnimation.clipName) return;
+    const nextAction = actions[activeAnimation.clipName];
     if (!nextAction) return;
 
     const previousAction = activeActionRef.current;
@@ -3911,23 +3931,91 @@ function UploadedAvatarModel({
       previousAction.fadeOut(0.18);
     }
 
+    const oneShot = ONE_SHOT_AVATAR_ANIMATION_STATES.has(activeAnimation.state);
+    nextAction.clampWhenFinished = oneShot;
+    nextAction.setLoop(oneShot ? THREE.LoopOnce : THREE.LoopRepeat, oneShot ? 1 : Infinity);
     nextAction
       .reset()
-      .setEffectiveTimeScale(animation === 'walk' ? 1.08 : 1)
+      .setEffectiveTimeScale(activeAnimation.state === 'locomotion' ? 1.08 : 1)
       .setEffectiveWeight(1)
       .fadeIn(0.18)
       .play();
     activeActionRef.current = nextAction;
 
+    const handleFinished = (event: { action: THREE.AnimationAction }) => {
+      if (oneShot && event.action === nextAction) {
+        setCompletedOneShotState(activeAnimation.state);
+      }
+    };
+    if (oneShot) mixer.addEventListener('finished', handleFinished);
+
     return () => {
+      if (oneShot) mixer.removeEventListener('finished', handleFinished);
       nextAction.fadeOut(0.18);
     };
-  }, [actions, activeClipName, animation]);
+  }, [actions, activeAnimation, mixer]);
 
   return (
     <group ref={modelRootRef} rotation={[0, Math.PI / 4, 0]}>
       <primitive object={model} />
+      <RiggedAvatarEquipment
+        anchors={rigAnchors}
+        modelScale={normalizedModel.scale}
+        equipment={equipment}
+        colors={colors}
+      />
     </group>
+  );
+}
+
+function RiggedAvatarEquipment({
+  anchors,
+  modelScale,
+  equipment,
+  colors,
+}: {
+  anchors: AvatarRigAnchors;
+  modelScale: number;
+  equipment: CharacterEquipment;
+  colors: CharacterAppearance;
+}) {
+  const inverseScale = 1 / Math.max(0.001, modelScale);
+  const slotEquipment = (slot: keyof CharacterEquipment): CharacterEquipment => ({
+    head: slot === 'head' ? equipment.head : 'none',
+    back: slot === 'back' ? equipment.back : 'none',
+    hand: slot === 'hand' ? equipment.hand : 'none',
+  });
+  const attachment = (
+    slot: keyof AvatarRigAnchors,
+    offset: [number, number, number],
+  ) => {
+    const anchor = anchors[slot];
+    if (!anchor || !equipment[slot] || equipment[slot] === 'none') return null;
+    return createPortal(
+      <group
+        position={offset.map(value => value * inverseScale) as [number, number, number]}
+        scale={inverseScale}
+      >
+        <AvatarEquipmentLayer equipment={slotEquipment(slot)} colors={colors} />
+      </group>,
+      anchor,
+    );
+  };
+
+  return (
+    <>
+      {attachment('head', [0, -1.56, 0])}
+      {attachment('back', [0, -1.18, -0.08])}
+      {attachment('hand', [-0.44, -0.7, 0.02])}
+      <AvatarEquipmentLayer
+        equipment={{
+          head: anchors.head ? 'none' : equipment.head,
+          back: anchors.back ? 'none' : equipment.back,
+          hand: anchors.hand ? 'none' : equipment.hand,
+        }}
+        colors={colors}
+      />
+    </>
   );
 }
 
@@ -4129,6 +4217,19 @@ function AvatarActivityPulse({ pulse, selected, isSelf }: { pulse: ActivityPulse
   );
 }
 
+type SelfAvatarControls = {
+  open: boolean;
+  isSaving: boolean;
+  activity: string;
+  status: string;
+  emote: string;
+  onToggle: () => void;
+  onClose: () => void;
+  onCycleActivity: () => void;
+  onCycleStatus: () => void;
+  onEmote: (emote: string) => void;
+};
+
 function AvatarCharacter({
   presence,
   isSelf,
@@ -4165,7 +4266,6 @@ function AvatarCharacter({
   onRespondRequest,
   onOpenRequestContext,
   onOpenRequestChat,
-  onOpenCharacterSheet,
   voiceRoom,
   voiceMediaLabel,
   voiceInputPercent,
@@ -4173,6 +4273,7 @@ function AvatarCharacter({
   isVoiceUpdating,
   onToggleVoiceMute,
   onLeaveVoiceRoom,
+  selfControls,
   position,
   sceneCue,
 }: {
@@ -4211,7 +4312,6 @@ function AvatarCharacter({
   onRespondRequest?: (request: WorldSocialAction, response: WorldRequestResponse) => void;
   onOpenRequestContext?: (request: WorldSocialAction) => void;
   onOpenRequestChat?: (request: WorldSocialAction) => void;
-  onOpenCharacterSheet?: (presence: WorldPresence) => void;
   voiceRoom?: WorldVoiceRoom | null;
   voiceMediaLabel?: string;
   voiceInputPercent?: number;
@@ -4219,6 +4319,7 @@ function AvatarCharacter({
   isVoiceUpdating?: boolean;
   onToggleVoiceMute?: () => void;
   onLeaveVoiceRoom?: (roomId?: string) => void;
+  selfControls?: SelfAvatarControls;
   position?: WorldPresenceVector;
   sceneCue?: AvatarSceneCue;
 }) {
@@ -4284,10 +4385,11 @@ function AvatarCharacter({
       position={[avatarPosition.x, avatarPosition.y, avatarPosition.z]}
       onClick={(event) => {
         event.stopPropagation();
-        if (!isSelf) onSelect?.(presence);
+        if (isSelf) selfControls?.onToggle();
+        else onSelect?.(presence);
       }}
       onPointerOver={() => {
-        if (!isSelf) document.body.style.cursor = 'pointer';
+        if (!isSelf || selfControls) document.body.style.cursor = 'pointer';
       }}
       onPointerOut={() => {
         document.body.style.cursor = 'auto';
@@ -4324,10 +4426,15 @@ function AvatarCharacter({
               fallback={<AvatarModelPlaceholder colors={colors} />}
             >
               <React.Suspense fallback={<AvatarModelPlaceholder colors={colors} loading />}>
-                <UploadedAvatarModel modelUrl={presence.modelUrl} animation={presence.animation} emote={emote} />
+                <UploadedAvatarModel
+                  modelUrl={presence.modelUrl}
+                  animation={presence.animation}
+                  emote={emote}
+                  equipment={equipment}
+                  colors={colors}
+                />
               </React.Suspense>
             </AvatarModelErrorBoundary>
-            <AvatarEquipmentLayer equipment={equipment} colors={colors} />
           </>
         ) : (
           <group rotation={[0, Math.PI / 4, 0]}>
@@ -4658,6 +4765,81 @@ function AvatarCharacter({
             </div>
           </Html>
         )}
+        {isSelf && selfControls?.open && (
+          <Html center distanceFactor={8.5} position={[1.3, 2.5, 0]} className="pointer-events-auto" zIndexRange={[92, 0]}>
+            <div
+              className="w-[226px] rounded-md border border-pink-100 bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-stone-900/10 backdrop-blur-md"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-pink-600">My Avatar</p>
+                  <p className="truncate text-[11px] font-black text-stone-800">
+                    <i className={`fas ${getActivityMeta(selfControls.activity).icon} mr-1.5 text-amber-600`}></i>
+                    {selfControls.activity}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={selfControls.onClose}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/80 text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                  title="Close avatar controls"
+                  aria-label="Close avatar controls"
+                >
+                  <i className="fas fa-times text-[10px]"></i>
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={selfControls.onCycleActivity}
+                  disabled={selfControls.isSaving}
+                  className="min-h-10 rounded-md bg-emerald-700 px-2 py-1.5 text-left text-white transition hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                    <i className={`fas ${selfControls.isSaving ? 'fa-spinner fa-spin' : getActivityMeta(selfControls.activity).icon} mr-1.5`}></i>
+                    Activity
+                  </span>
+                  <span className="mt-0.5 block truncate text-[8px] font-bold text-white/75">{selfControls.activity}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={selfControls.onCycleStatus}
+                  disabled={selfControls.isSaving}
+                  className="min-h-10 rounded-md border border-amber-100 bg-white/85 px-2 py-1.5 text-left text-stone-700 transition hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                    <i className={`fas ${getStatusMeta(selfControls.status).icon} mr-1.5`} style={{ color: getStatusMeta(selfControls.status).color }}></i>
+                    Status
+                  </span>
+                  <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">{getStatusMeta(selfControls.status).label}</span>
+                </button>
+              </div>
+              <div className="mt-1.5 grid grid-cols-5 gap-1">
+                {EMOTE_OPTIONS.map(emote => {
+                  const meta = getEmoteMeta(emote);
+                  const active = selfControls.emote === emote;
+                  return (
+                    <button
+                      key={emote}
+                      type="button"
+                      onClick={() => selfControls.onEmote(emote)}
+                      disabled={selfControls.isSaving}
+                      className={`grid h-9 place-items-center rounded-md transition disabled:cursor-wait disabled:opacity-60 ${
+                        active ? 'bg-pink-500 text-white' : 'bg-white/85 text-stone-600 hover:bg-pink-50 hover:text-pink-600'
+                      }`}
+                      title={meta.label}
+                      aria-label={`${meta.label} emote`}
+                    >
+                      <i className={`fas ${meta.icon} text-[11px]`}></i>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </Html>
+        )}
         {selected && !isSelf && (
           <AvatarWorldPassport
             presence={presence}
@@ -4688,7 +4870,6 @@ function AvatarCharacter({
             onRespondRequest={onRespondRequest}
             onOpenRequestContext={onOpenRequestContext}
             onOpenRequestChat={onOpenRequestChat}
-            onOpenCharacterSheet={onOpenCharacterSheet}
             voiceRoom={voiceRoom}
             voiceMediaLabel={voiceMediaLabel}
             voiceInputPercent={voiceInputPercent}
@@ -4753,12 +4934,116 @@ type DistrictEventControls = {
   onRally: () => void;
 };
 
+type DistrictGroupChatControls = {
+  messages: WorldChatMessage[];
+  selfUserId: string;
+  draft: string;
+  isSending: boolean;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent) => void;
+};
+
+type DistrictGuildControls = DistrictGroupChatControls & {
+  guild: WorldGuild | null;
+  isUpdating: boolean;
+  voiceActive: boolean;
+  voiceUpdating: boolean;
+  voiceMemberCount: number;
+  onToggleMembership: () => void;
+  onToggleVoice: () => void;
+};
+
+type DistrictPartyControls = DistrictGroupChatControls & {
+  party: WorldParty | null;
+  isUpdating: boolean;
+  voiceActive: boolean;
+  voiceUpdating: boolean;
+  voiceMemberCount: number;
+  onLeave: () => void;
+  onToggleVoice: (district: WorldDistrict) => void;
+};
+
+type DistrictChatControls = {
+  activeDistrictId: string | null;
+  messages: WorldChatMessage[];
+  selfUserId: string;
+  draft: string;
+  isSending: boolean;
+  voiceActive: boolean;
+  voiceMuted: boolean;
+  voiceUpdating: boolean;
+  voiceMemberCount: number;
+  nearbyVoiceCount: number;
+  voiceStatusLabel: string;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent) => void;
+  onToggleVoice: () => void;
+  onToggleVoiceMute: () => void;
+};
+
+function DistrictGroupChat({
+  controls,
+  label,
+  accent,
+}: {
+  controls: DistrictGroupChatControls;
+  label: string;
+  accent: 'party' | 'guild';
+}) {
+  const accentClasses = accent === 'party'
+    ? { name: 'text-pink-600', border: 'border-pink-100', focus: 'focus:border-pink-300', button: 'bg-pink-500 hover:bg-pink-600' }
+    : { name: 'text-emerald-700', border: 'border-emerald-100', focus: 'focus:border-emerald-300', button: 'bg-emerald-700 hover:bg-emerald-800' };
+
+  return (
+    <div className={`mt-1.5 border-t pt-1.5 ${accentClasses.border}`}>
+      <div className="space-y-1">
+        {controls.messages.slice(-2).map(message => (
+          <div key={message.id} className="flex items-baseline gap-1.5 rounded-md bg-white/80 px-2 py-1.5">
+            <span className={`max-w-[68px] shrink-0 truncate text-[8px] font-black uppercase tracking-wider ${accentClasses.name}`}>
+              {message.fromUserId === controls.selfUserId ? 'You' : message.fromName}
+            </span>
+            <span className="min-w-0 truncate text-[9px] font-bold text-stone-600">{message.body}</span>
+          </div>
+        ))}
+        {controls.messages.length === 0 && (
+          <p className="rounded-md bg-white/70 px-2 py-1.5 text-center text-[9px] font-bold text-stone-400">No {label.toLowerCase()} messages yet.</p>
+        )}
+      </div>
+      <form onSubmit={controls.onSubmit} className="mt-1.5 grid grid-cols-[1fr_34px] gap-1.5">
+        <input
+          value={controls.draft}
+          onChange={(event) => controls.onDraftChange(event.target.value)}
+          maxLength={280}
+          placeholder={`Message ${label.toLowerCase()}`}
+          className={`h-9 min-w-0 rounded-md border bg-white/90 px-2 text-[9px] font-bold text-stone-700 outline-none transition placeholder:text-stone-400 ${accentClasses.border} ${accentClasses.focus}`}
+          aria-label={`${label} message`}
+        />
+        <button
+          type="submit"
+          disabled={controls.isSending || !controls.draft.trim()}
+          className={`grid h-9 w-[34px] place-items-center rounded-md text-white transition disabled:cursor-not-allowed disabled:opacity-45 ${accentClasses.button}`}
+          title={`Send ${label.toLowerCase()} message`}
+          aria-label={`Send ${label.toLowerCase()} message`}
+        >
+          <i className={`fas ${controls.isSending ? 'fa-spinner fa-spin' : 'fa-paper-plane'} text-[10px]`}></i>
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function DistrictMarker({
   district,
   active,
   selected,
+  detailsOpen,
   summary,
+  districtPresences,
+  districtNpcs,
+  selfUserId,
   onSelect,
+  onSelectPresence,
+  onSelectNpc,
   onRunAction,
   onOpenDetails,
   onClearSelection,
@@ -4767,14 +5052,23 @@ function DistrictMarker({
   isPartyUpdating,
   workshopControls,
   marketControls,
+  partyControls,
+  guildControls,
+  chatControls,
   titleControls,
   eventControls,
 }: {
   district: WorldDistrict;
   active?: boolean;
   selected?: boolean;
+  detailsOpen?: boolean;
   summary?: DistrictPresenceSummary;
+  districtPresences: WorldPresence[];
+  districtNpcs: WorldNpc[];
+  selfUserId: string;
   onSelect: (district: WorldDistrict) => void;
+  onSelectPresence: (presence: WorldPresence) => void;
+  onSelectNpc: (npc: WorldNpc) => void;
   onRunAction: (district: WorldDistrict, action: WorldDistrictAction) => void | Promise<void>;
   onOpenDetails: (district: WorldDistrict) => void;
   onClearSelection: () => void;
@@ -4783,6 +5077,9 @@ function DistrictMarker({
   isPartyUpdating: boolean;
   workshopControls?: DistrictWorkshopControls;
   marketControls?: DistrictMarketControls;
+  partyControls?: DistrictPartyControls;
+  guildControls?: DistrictGuildControls;
+  chatControls?: DistrictChatControls;
   titleControls?: DistrictTitleControls;
   eventControls?: DistrictEventControls;
 }) {
@@ -4866,7 +5163,7 @@ function DistrictMarker({
       {selected && (
         <Html center distanceFactor={8.5} position={[1.35, 2.58, 0]} className="pointer-events-auto" zIndexRange={[84, 0]}>
           <div
-            className="w-[244px] rounded-md border border-white/80 bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-stone-900/10 backdrop-blur-md"
+            className="max-h-[72vh] w-[244px] overflow-y-auto overscroll-contain rounded-md border border-white/80 bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-stone-900/10 backdrop-blur-md"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
@@ -4936,6 +5233,162 @@ function DistrictMarker({
                 <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">{chatCount} recent messages</span>
               </button>
             </div>
+            {chatControls?.activeDistrictId === district.id && (
+              <div className="mt-2 border-t border-pink-100 pt-2">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="truncate text-[8px] font-black uppercase tracking-[0.2em] text-pink-600">Nearby Chat</p>
+                  <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800">
+                    {chatControls.messages.length} voices
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {chatControls.messages.slice(-3).map(message => (
+                    <div
+                      key={message.id}
+                      className={`rounded-md px-2 py-1.5 ${
+                        message.fromUserId === chatControls.selfUserId ? 'bg-pink-50' : 'bg-white/80'
+                      }`}
+                    >
+                      <div className="flex items-baseline gap-1.5">
+                        <span className={`max-w-[72px] shrink-0 truncate text-[8px] font-black uppercase tracking-wider ${
+                          message.fromUserId === chatControls.selfUserId ? 'text-pink-600' : 'text-emerald-700'
+                        }`}>
+                          {message.fromUserId === chatControls.selfUserId ? 'You' : message.fromName}
+                        </span>
+                        <span className="min-w-0 truncate text-[9px] font-bold text-stone-600">{message.body}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {chatControls.messages.length === 0 && (
+                    <p className="rounded-md bg-white/75 px-2 py-2 text-center text-[9px] font-bold text-stone-400">
+                      The path is quiet nearby.
+                    </p>
+                  )}
+                </div>
+                <form onSubmit={chatControls.onSubmit} className="mt-1.5 grid grid-cols-[1fr_34px] gap-1.5">
+                  <input
+                    value={chatControls.draft}
+                    onChange={(event) => chatControls.onDraftChange(event.target.value)}
+                    maxLength={280}
+                    placeholder="Say something nearby"
+                    className="h-9 min-w-0 rounded-md border border-pink-100 bg-white/90 px-2 text-[9px] font-bold text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-pink-300"
+                    aria-label={`Nearby chat in ${district.name}`}
+                  />
+                  <button
+                    type="submit"
+                    disabled={chatControls.isSending || !chatControls.draft.trim()}
+                    className="grid h-9 w-[34px] place-items-center rounded-md bg-pink-500 text-white transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-45"
+                    title="Send nearby message"
+                    aria-label="Send nearby message"
+                  >
+                    <i className={`fas ${chatControls.isSending ? 'fa-spinner fa-spin' : 'fa-paper-plane'} text-[10px]`}></i>
+                  </button>
+                </form>
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={chatControls.onToggleVoice}
+                    disabled={chatControls.voiceUpdating}
+                    className={`min-h-9 rounded-md px-2 py-1.5 text-left transition disabled:cursor-wait disabled:opacity-60 ${
+                      chatControls.voiceActive
+                        ? 'bg-violet-700 text-white hover:bg-violet-800'
+                        : 'border border-violet-100 bg-white/85 text-violet-700 hover:bg-violet-50'
+                    }`}
+                  >
+                    <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                      <i className={`fas ${chatControls.voiceUpdating ? 'fa-spinner fa-spin' : chatControls.voiceActive ? 'fa-phone-slash' : 'fa-microphone'} mr-1.5`}></i>
+                      {chatControls.voiceActive ? 'Leave voice' : 'Nearby voice'}
+                    </span>
+                    <span className={`mt-0.5 block truncate text-[8px] font-bold ${chatControls.voiceActive ? 'text-white/75' : 'text-stone-400'}`}>
+                      {chatControls.voiceActive
+                        ? `${chatControls.voiceMemberCount} in range`
+                        : `${chatControls.nearbyVoiceCount} nearby`}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={chatControls.onToggleVoiceMute}
+                    disabled={!chatControls.voiceActive || chatControls.voiceUpdating}
+                    className={`min-h-9 rounded-md border px-2 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                      chatControls.voiceMuted
+                        ? 'border-stone-200 bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                      <i className={`fas ${chatControls.voiceMuted ? 'fa-microphone-slash' : 'fa-wave-square'} mr-1.5`}></i>
+                      {chatControls.voiceMuted ? 'Unmute' : 'Mute'}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">{chatControls.voiceStatusLabel}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {partyControls?.party && (
+              <div className="mt-2 border-t border-amber-100 pt-2">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-[8px] font-black uppercase tracking-[0.2em] text-amber-700">Party Camp</p>
+                    <p className="truncate text-[10px] font-black text-stone-700">
+                      <i className="fas fa-users mr-1.5 text-pink-500"></i>
+                      {partyControls.party.name}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-pink-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-pink-700">
+                    {partyControls.party.members.length} members
+                  </span>
+                </div>
+                <div className="mb-1.5 flex min-h-7 items-center gap-1 overflow-hidden rounded-md bg-white/80 px-2 py-1">
+                  {partyControls.party.members.slice(0, 3).map(member => (
+                    <span
+                      key={member.userId}
+                      className={`min-w-0 truncate rounded-full px-1.5 py-0.5 text-[8px] font-black ${
+                        member.role === 'leader' ? 'bg-amber-100 text-amber-800' : 'bg-pink-50 text-pink-700'
+                      }`}
+                      title={`${member.name} - ${member.role}`}
+                    >
+                      {member.name}
+                    </span>
+                  ))}
+                  {partyControls.party.members.length > 3 && (
+                    <span className="shrink-0 text-[8px] font-black text-stone-400">+{partyControls.party.members.length - 3}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={partyControls.onLeave}
+                    disabled={partyControls.isUpdating}
+                    className="min-h-9 rounded-md bg-stone-700 px-2 py-1.5 text-left text-white transition hover:bg-stone-800 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                      <i className={`fas ${partyControls.isUpdating ? 'fa-spinner fa-spin' : 'fa-door-open'} mr-1.5`}></i>
+                      Leave party
+                    </span>
+                    <span className="mt-0.5 block truncate text-[8px] font-bold text-white/75">Exit this group</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => partyControls.onToggleVoice(district)}
+                    disabled={partyControls.voiceUpdating}
+                    className={`min-h-9 rounded-md border px-2 py-1.5 text-left transition disabled:cursor-wait disabled:opacity-60 ${
+                      partyControls.voiceActive
+                        ? 'border-violet-200 bg-violet-700 text-white hover:bg-violet-800'
+                        : 'border-violet-100 bg-white/85 text-violet-700 hover:bg-violet-50'
+                    }`}
+                  >
+                    <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                      <i className={`fas ${partyControls.voiceUpdating ? 'fa-spinner fa-spin' : partyControls.voiceActive ? 'fa-phone-slash' : 'fa-headset'} mr-1.5`}></i>
+                      {partyControls.voiceActive ? 'Leave voice' : 'Party voice'}
+                    </span>
+                    <span className={`mt-0.5 block truncate text-[8px] font-bold ${partyControls.voiceActive ? 'text-white/75' : 'text-stone-400'}`}>
+                      {partyControls.voiceActive ? `${partyControls.voiceMemberCount} connected` : 'Talk as a group'}
+                    </span>
+                  </button>
+                </div>
+                <DistrictGroupChat controls={partyControls} label="Party" accent="party" />
+              </div>
+            )}
             {district.id === 'market' && marketControls && (
               <div className="mt-2 border-t border-amber-100 pt-2">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -4990,6 +5443,77 @@ function DistrictMarker({
                     </p>
                   )}
                 </div>
+              </div>
+            )}
+            {district.id === 'guild-hall' && guildControls && (
+              <div className="mt-2 border-t border-emerald-100 pt-2">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-[8px] font-black uppercase tracking-[0.2em] text-emerald-700">Guild Hall</p>
+                    <p className="truncate text-[10px] font-black text-stone-700">
+                      <i className="fas fa-shield-heart mr-1.5 text-emerald-700"></i>
+                      {guildControls.guild?.name || 'Found a shared guild'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-800">
+                    {guildControls.guild ? `${guildControls.guild.members.length} members` : 'Open'}
+                  </span>
+                </div>
+                {guildControls.guild && (
+                  <div className="mb-1.5 flex min-h-7 items-center gap-1 overflow-hidden rounded-md bg-white/80 px-2 py-1">
+                    {guildControls.guild.members.slice(0, 3).map(member => (
+                      <span
+                        key={member.userId}
+                        className={`min-w-0 truncate rounded-full px-1.5 py-0.5 text-[8px] font-black ${
+                          member.role === 'leader' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'
+                        }`}
+                        title={`${member.name} - ${member.role}`}
+                      >
+                        {member.name}
+                      </span>
+                    ))}
+                    {guildControls.guild.members.length > 3 && (
+                      <span className="shrink-0 text-[8px] font-black text-stone-400">+{guildControls.guild.members.length - 3}</span>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={guildControls.onToggleMembership}
+                    disabled={guildControls.isUpdating}
+                    className={`min-h-9 rounded-md px-2 py-1.5 text-left text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-60 ${
+                      guildControls.guild ? 'bg-stone-700 hover:bg-stone-800' : 'bg-emerald-700 hover:bg-emerald-800'
+                    }`}
+                  >
+                    <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                      <i className={`fas ${guildControls.isUpdating ? 'fa-spinner fa-spin' : guildControls.guild ? 'fa-door-open' : 'fa-shield-heart'} mr-1.5`}></i>
+                      {guildControls.guild ? 'Leave' : 'Create'}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[8px] font-bold text-white/75">
+                      {guildControls.guild ? 'Exit guild' : 'Start together'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={guildControls.onToggleVoice}
+                    disabled={!guildControls.guild || guildControls.voiceUpdating}
+                    className={`min-h-9 rounded-md border px-2 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                      guildControls.voiceActive
+                        ? 'border-rose-100 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                        : 'border-emerald-100 bg-white/85 text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                      <i className={`fas ${guildControls.voiceUpdating ? 'fa-spinner fa-spin' : guildControls.voiceActive ? 'fa-phone-slash' : 'fa-microphone'} mr-1.5`}></i>
+                      {guildControls.voiceActive ? 'Leave voice' : 'Guild voice'}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">
+                      {guildControls.voiceActive ? `${guildControls.voiceMemberCount} listening` : 'Talk together'}
+                    </span>
+                  </button>
+                </div>
+                {guildControls.guild && <DistrictGroupChat controls={guildControls} label="Guild" accent="guild" />}
               </div>
             )}
             {district.id === 'guild-hall' && titleControls && (
@@ -5190,16 +5714,71 @@ function DistrictMarker({
             <button
               type="button"
               onClick={() => onOpenDetails(district)}
-              className="mt-2 flex min-h-8 w-full items-center justify-between gap-2 rounded-md bg-emerald-50 px-2 py-1.5 text-left text-emerald-700 transition hover:bg-emerald-100"
+              className={`mt-2 flex min-h-8 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition ${
+                detailsOpen ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }`}
             >
               <span className="min-w-0 truncate text-[9px] font-black uppercase tracking-wider">
-                <i className="fas fa-location-dot mr-1.5"></i>
-                Roster
+                <i className={`fas ${detailsOpen ? 'fa-chevron-up' : 'fa-location-dot'} mr-1.5`}></i>
+                {detailsOpen ? 'Hide Roster' : 'Roster'}
               </span>
-              <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[8px] font-black">
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[8px] font-black ${detailsOpen ? 'bg-white/20 text-white' : 'bg-white/80'}`}>
                 {population} here
               </span>
             </button>
+            {detailsOpen && (
+              <div className="mt-2 border-t border-emerald-100 pt-2">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="truncate text-[8px] font-black uppercase tracking-[0.2em] text-emerald-700">Avatars Here</p>
+                  <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[8px] font-black text-emerald-700">{districtPresences.length}</span>
+                </div>
+                <div className="space-y-1">
+                  {districtPresences.slice(0, 6).map(presence => {
+                    const statusMeta = getStatusMeta(presence.status);
+                    const isSelf = presence.userId === selfUserId;
+                    return (
+                      <button
+                        key={presence.userId}
+                        type="button"
+                        disabled={isSelf}
+                        onClick={() => onSelectPresence(presence)}
+                        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md bg-white/80 px-2 py-1.5 text-left transition hover:bg-pink-50 disabled:cursor-default disabled:hover:bg-white/80"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-[9px] font-black text-stone-700">{isSelf ? `${presence.name} (You)` : presence.name}</span>
+                          <span className="block truncate text-[8px] font-bold text-stone-400">{presence.activity}</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-stone-100 px-1.5 py-0.5 text-[7px] font-black uppercase text-stone-600">
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusMeta.color }} />
+                          {statusMeta.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {districtPresences.length === 0 && (
+                    <p className="rounded-md bg-white/75 px-2 py-2 text-center text-[9px] font-bold text-stone-400">No avatars are standing here yet.</p>
+                  )}
+                </div>
+                {districtNpcs.length > 0 && (
+                  <div className="mt-2">
+                    <p className="mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-amber-700">Guides Here</p>
+                    <div className="space-y-1">
+                      {districtNpcs.map(npc => (
+                        <button
+                          key={npc.id}
+                          type="button"
+                          onClick={() => onSelectNpc(npc)}
+                          className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md bg-amber-50/85 px-2 py-1.5 text-left transition hover:bg-amber-100"
+                        >
+                          <span className="min-w-0 truncate text-[9px] font-black text-stone-700"><i className={`fas ${npc.icon} mr-1.5 text-amber-600`}></i>{npc.name}</span>
+                          <span className="max-w-[92px] shrink-0 truncate text-[8px] font-bold text-amber-700">{npc.role}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </Html>
       )}
@@ -5352,16 +5931,143 @@ function WorldPopulationBoard({
   );
 }
 
+type WorldPortalBoardData = {
+  timeline: Interaction[];
+  memories: MemoryItem[];
+  coupons: AppConfig['coupons'];
+  letters: LoveLetterMessage[];
+  landObjects: PurchasedItem[];
+  onTimelineSelect: (item: Interaction) => void;
+  onLandObjectSelect: (item: PurchasedItem) => void;
+};
+
+function WorldPortalBoardContent({ portal, data }: { portal: WorldPortal; data: WorldPortalBoardData }) {
+  const emptyLabel = portal.id === 'home'
+    ? 'No grove memories yet.'
+    : portal.id === 'timeline'
+      ? 'No story markers yet.'
+      : portal.id === 'coupons'
+        ? 'No reward tickets yet.'
+        : portal.id === 'letters'
+          ? 'No lantern letters yet.'
+          : 'The cart is ready for your first decoration.';
+
+  const hasItems = portal.id === 'home'
+    ? data.memories.length > 0
+    : portal.id === 'timeline'
+      ? data.timeline.length > 0
+      : portal.id === 'coupons'
+        ? data.coupons.length > 0
+        : portal.id === 'letters'
+          ? data.letters.length > 0
+          : data.landObjects.length > 0;
+
+  return (
+    <div className="mt-2 border-t border-stone-200/70 pt-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[8px] font-black uppercase tracking-[0.2em] text-stone-400">
+          <i className={`fas ${portal.icon} mr-1.5`} style={{ color: portal.color }}></i>
+          In-World Board
+        </p>
+        <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-emerald-700">Live</span>
+      </div>
+      {!hasItems ? (
+        <p className="rounded-md bg-white/75 px-2 py-3 text-center text-[9px] font-bold text-stone-400">{emptyLabel}</p>
+      ) : (
+        <div className="max-h-[190px] space-y-1 overflow-y-auto pr-0.5">
+          {portal.id === 'home' && data.memories.slice(0, 5).map((memory, index) => (
+            <div key={memory.id || memory.url || index} className="flex items-center gap-2 rounded-md bg-white/80 px-2 py-1.5">
+              <div className="h-8 w-8 shrink-0 overflow-hidden rounded-md bg-pink-50">
+                <img src={memory.url} alt={memory.caption || 'Memory'} className="h-full w-full object-cover" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[9px] font-black text-stone-700">{memory.caption || 'Shared memory'}</p>
+                <p className="truncate text-[8px] font-bold text-stone-400">{memory.privacy} grove item</p>
+              </div>
+            </div>
+          ))}
+          {portal.id === 'timeline' && data.timeline.slice(0, 5).map(item => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => data.onTimelineSelect(item)}
+              className="w-full rounded-md bg-white/80 px-2 py-1.5 text-left transition hover:bg-sky-50"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-[9px] font-black text-stone-700">{item.text}</span>
+                <span className="shrink-0 text-[8px] font-black text-sky-700">{formatPortalDate(item.timestamp)}</span>
+              </span>
+              <span className="block truncate text-[8px] font-bold text-stone-400">{item.location || 'Story marker'}</span>
+            </button>
+          ))}
+          {portal.id === 'coupons' && data.coupons.slice(0, 5).map(coupon => (
+            <div key={coupon.id} className="rounded-md bg-white/80 px-2 py-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-[9px] font-black text-stone-700"><span className="mr-1">{coupon.emoji}</span>{coupon.title}</p>
+                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${
+                  coupon.isRedeemed ? 'bg-stone-100 text-stone-500' : 'bg-purple-100 text-purple-700'
+                }`}>
+                  {coupon.isRedeemed ? 'Used' : `${coupon.points || 0} pts`}
+                </span>
+              </div>
+              <p className="truncate text-[8px] font-bold text-stone-400">{coupon.desc}</p>
+            </div>
+          ))}
+          {portal.id === 'letters' && data.letters.slice(0, 5).map(letter => {
+            const state = getLetterState(letter);
+            return (
+              <div key={letter.id} className="rounded-md bg-white/80 px-2 py-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-[9px] font-black text-stone-700">From {letter.fromId || 'someone'}</p>
+                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${state.className}`}>
+                    <i className={`fas ${state.icon} mr-1`}></i>{state.label}
+                  </span>
+                </div>
+                <p className="truncate text-[8px] font-bold text-stone-400">{letter.content}</p>
+              </div>
+            );
+          })}
+          {portal.id === 'shop' && data.landObjects.slice(0, 5).map(item => {
+            const meta = getLandObjectMeta(item);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => data.onLandObjectSelect(item)}
+                className="flex w-full items-center justify-between gap-2 rounded-md bg-white/80 px-2 py-1.5 text-left transition hover:bg-amber-50"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[9px] font-black text-stone-700"><i className={`fas ${meta.icon} mr-1.5 text-amber-600`}></i>{meta.label}</span>
+                  <span className="block truncate text-[8px] font-bold text-stone-400">x {item.x.toFixed(1)} / z {item.z.toFixed(1)}</span>
+                </span>
+                <i className="fas fa-chevron-right shrink-0 text-[8px] text-stone-300"></i>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WorldPortalMarker({
   portal,
   active,
+  boardOpen,
+  boardData,
   onSelect,
+  onClose,
+  onWalk,
   onOpen,
   onOpenBoard,
 }: {
   portal: WorldPortal;
   active?: boolean;
+  boardOpen?: boolean;
+  boardData: WorldPortalBoardData;
   onSelect: (portal: WorldPortal) => void;
+  onClose: () => void;
+  onWalk: (portal: WorldPortal) => void;
   onOpen?: (portal: WorldPortal) => void | Promise<void>;
   onOpenBoard?: (portal: WorldPortal) => void;
 }) {
@@ -5420,7 +6126,7 @@ function WorldPortalMarker({
       {active && (
         <Html center distanceFactor={8.5} position={[1.12, 2.28, 0]} className="pointer-events-auto" zIndexRange={[82, 0]}>
           <div
-            className="w-[222px] rounded-md border border-white/80 bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-stone-900/10 backdrop-blur-md"
+            className="w-[260px] rounded-md border border-white/80 bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-stone-900/10 backdrop-blur-md"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
@@ -5430,12 +6136,31 @@ function WorldPortalMarker({
                 <p className="truncate text-sm font-black text-stone-800">{portal.name}</p>
                 <p className="truncate text-[10px] font-bold text-emerald-700">{portal.subtitle}</p>
               </div>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-stone-600">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: portalStatus.color }} />
-                {portalStatus.label}
-              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-stone-600">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: portalStatus.color }} />
+                  {portalStatus.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="grid h-7 w-7 place-items-center rounded-md bg-white/80 text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                  title="Close portal controls"
+                  aria-label="Close portal controls"
+                >
+                  <i className="fas fa-times text-[10px]"></i>
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => onWalk(portal)}
+                className="min-h-10 rounded-md border border-emerald-100 bg-white/85 px-2 py-1.5 text-left text-stone-700 transition hover:bg-emerald-50"
+              >
+                <span className="block truncate text-[9px] font-black uppercase tracking-wider"><i className="fas fa-route mr-1 text-emerald-600"></i>Walk</span>
+                <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">Move here</span>
+              </button>
               <button
                 type="button"
                 onClick={() => void onOpen?.(portal)}
@@ -5451,19 +6176,22 @@ function WorldPortalMarker({
               <button
                 type="button"
                 onClick={() => onOpenBoard?.(portal)}
-                className="min-h-10 rounded-md border border-pink-100 bg-white/85 px-2 py-1.5 text-left text-stone-700 transition hover:bg-pink-50 hover:text-pink-700"
+                className={`min-h-10 rounded-md border px-2 py-1.5 text-left transition ${
+                  boardOpen ? 'border-pink-200 bg-pink-500 text-white' : 'border-pink-100 bg-white/85 text-stone-700 hover:bg-pink-50 hover:text-pink-700'
+                }`}
               >
                 <span className="block truncate text-[9px] font-black uppercase tracking-wider">
-                  <i className="fas fa-table-list mr-1.5 text-pink-500"></i>
+                  <i className={`fas fa-table-list mr-1.5 ${boardOpen ? 'text-white' : 'text-pink-500'}`}></i>
                   Board
                 </span>
-                <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">Preview here</span>
+                <span className={`mt-0.5 block truncate text-[8px] font-bold ${boardOpen ? 'text-white/75' : 'text-stone-400'}`}>{boardOpen ? 'Hide preview' : 'Preview here'}</span>
               </button>
             </div>
             <p className="mt-2 truncate rounded-md bg-emerald-50 px-2 py-1.5 text-[8px] font-black uppercase tracking-wider text-emerald-700">
               <i className="fas fa-signal mr-1.5"></i>
               Broadcasts {portal.activity}
             </p>
+            {boardOpen && <WorldPortalBoardContent portal={portal} data={boardData} />}
           </div>
         </Html>
       )}
@@ -5690,14 +6418,24 @@ function VoiceMarker({
 function LiveActivityMarker({
   marker,
   onSelect,
+  selfUserId,
+  pending,
+  onRespondSession,
+  onOpenSessionChat,
 }: {
   marker: WorldLiveActivityMarker;
   onSelect: (marker: WorldLiveActivityMarker) => void;
+  selfUserId: string;
+  pending: boolean;
+  onRespondSession: (session: WorldSocialAction, response: WorldRequestResponse) => void;
+  onOpenSessionChat: (session: WorldSocialAction) => void;
 }) {
   const groupRef = React.useRef<THREE.Group>(null);
   const isEvent = marker.kind === 'event';
   const isGroup = marker.kind === 'party' || marker.kind === 'guild';
-  const sessionReadyState = marker.session ? getSessionReadyState(marker.session, marker.session.fromUserId) : null;
+  const sessionReadyState = marker.session ? getSessionReadyState(marker.session, selfUserId) : null;
+  const sessionCounterpart = marker.session ? getRequestCounterpart(marker.session, selfUserId) : null;
+  const sessionAccent = marker.session ? getSessionAccent(marker.session.type) : null;
   const sessionAllReady = Boolean(sessionReadyState?.allReady);
   const markerGlowColor = sessionAllReady ? '#10b981' : marker.color;
   const participantTokens = isEvent
@@ -5975,6 +6713,82 @@ function LiveActivityMarker({
             )}
           </div>
         </Html>
+        {marker.active && marker.session && sessionReadyState && sessionCounterpart && sessionAccent && (
+          <Html center distanceFactor={8.5} position={[1.42, 1.36, 0]} className="pointer-events-auto" zIndexRange={[86, 0]}>
+            <div
+              className={`w-[226px] rounded-md border bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-stone-900/10 backdrop-blur-md ${sessionAccent.border}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className={`truncate text-[8px] font-black uppercase tracking-[0.2em] ${sessionAccent.text}`}>
+                    {marker.session.type === 'trade' ? 'Trade Table' : 'Collaboration Table'}
+                  </p>
+                  <p className="truncate text-[11px] font-black text-stone-800">
+                    <i className={`fas ${sessionAccent.icon} mr-1.5`}></i>
+                    With {sessionCounterpart.name}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                  sessionReadyState.allReady ? 'bg-emerald-100 text-emerald-800' : sessionAccent.badge
+                }`}>
+                  {sessionReadyState.readyCount}/2 ready
+                </span>
+              </div>
+              <div className="mb-2 grid grid-cols-2 gap-1.5">
+                <div className={`rounded-md px-2 py-1.5 ${
+                  sessionReadyState.selfReady ? 'bg-emerald-50 text-emerald-700' : 'bg-white/80 text-stone-500'
+                }`}>
+                  <p className="truncate text-[8px] font-black uppercase tracking-wider">You</p>
+                  <p className="truncate text-[9px] font-black">{sessionReadyState.selfReady ? 'Ready' : 'Waiting'}</p>
+                </div>
+                <div className={`rounded-md px-2 py-1.5 ${
+                  sessionReadyState.otherReady ? 'bg-emerald-50 text-emerald-700' : 'bg-white/80 text-stone-500'
+                }`}>
+                  <p className="truncate text-[8px] font-black uppercase tracking-wider">{sessionCounterpart.name}</p>
+                  <p className="truncate text-[9px] font-black">{sessionReadyState.otherReady ? 'Ready' : 'Waiting'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onOpenSessionChat(marker.session!)}
+                  disabled={pending}
+                  className="min-h-9 rounded-md border border-pink-100 bg-white/85 px-1.5 py-1 text-pink-700 transition hover:bg-pink-50 disabled:cursor-wait disabled:opacity-60"
+                  title={`Chat with ${sessionCounterpart.name}`}
+                >
+                  <i className="fas fa-comment block text-[10px]"></i>
+                  <span className="mt-0.5 block truncate text-[8px] font-black uppercase tracking-wider">Chat</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRespondSession(marker.session!, sessionReadyState.selfReady ? 'unready' : 'ready')}
+                  disabled={pending}
+                  className={`min-h-9 rounded-md px-1.5 py-1 transition disabled:cursor-wait disabled:opacity-60 ${
+                    sessionReadyState.selfReady
+                      ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
+                  title={sessionReadyState.selfReady ? 'Mark not ready' : 'Mark ready'}
+                >
+                  <i className={`fas ${pending ? 'fa-spinner fa-spin' : sessionReadyState.selfReady ? 'fa-check' : 'fa-hourglass-half'} block text-[10px]`}></i>
+                  <span className="mt-0.5 block truncate text-[8px] font-black uppercase tracking-wider">{sessionReadyState.selfReady ? 'Ready' : 'Set ready'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRespondSession(marker.session!, 'complete')}
+                  disabled={pending || !sessionReadyState.allReady}
+                  className="min-h-9 rounded-md bg-stone-800 px-1.5 py-1 text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-45"
+                  title={sessionReadyState.allReady ? 'Complete session' : 'Both participants must be ready'}
+                >
+                  <i className="fas fa-flag-checkered block text-[10px]"></i>
+                  <span className="mt-0.5 block truncate text-[8px] font-black uppercase tracking-wider">Complete</span>
+                </button>
+              </div>
+            </div>
+          </Html>
+        )}
       </group>
     </group>
   );
@@ -6088,14 +6902,25 @@ function EventRallyPulse({
   );
 }
 
+type LandObjectControls = {
+  landName: string;
+  onClose: () => void;
+  onWalk: (item: PurchasedItem) => void;
+  onInspect: (item: PurchasedItem) => void;
+  onOpenCart: () => void;
+  onOpenWorkshop: () => void;
+};
+
 function LandObjectMarker({
   item,
   selected,
   onSelect,
+  controls,
 }: {
   item: PurchasedItem;
   selected?: boolean;
   onSelect: (item: PurchasedItem) => void;
+  controls?: LandObjectControls;
 }) {
   const groupRef = React.useRef<THREE.Group>(null);
   const meta = getLandObjectMeta(item);
@@ -6240,14 +7065,82 @@ function LandObjectMarker({
           <meshStandardMaterial color="#fff7ed" roughness={0.84} transparent opacity={0.72} />
         </mesh>
         {renderObject()}
-        {selected && (
-          <Html center distanceFactor={12} position={[0, 1.82, 0]} className="pointer-events-none">
-            <div className="max-w-[170px] rounded-md border border-amber-100 bg-[#fffaf1]/95 px-3 py-1.5 text-center shadow-lg">
-              <p className="truncate text-[10px] font-black text-stone-800">
-                <i className={`fas ${meta.icon} mr-1.5`} style={{ color: meta.color }}></i>
-                {meta.label}
+        {selected && controls && (
+          <Html center distanceFactor={8.5} position={[1.16, 2.02, 0]} className="pointer-events-auto" zIndexRange={[84, 0]}>
+            <div
+              className="w-[232px] rounded-md border border-amber-100 bg-[#fffaf1]/96 p-2.5 text-left shadow-xl shadow-amber-900/10 backdrop-blur-md"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-600">Land Object</p>
+                  <p className="truncate text-sm font-black text-stone-800">
+                    <i className={`fas ${meta.icon} mr-1.5`} style={{ color: meta.color }}></i>
+                    {meta.label}
+                  </p>
+                  <p className="truncate text-[9px] font-bold text-emerald-700">{controls.landName}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={controls.onClose}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/80 text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                  title="Close object controls"
+                  aria-label="Close object controls"
+                >
+                  <i className="fas fa-times text-[10px]"></i>
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => controls.onWalk(item)}
+                  className="min-h-10 rounded-md border border-emerald-100 bg-white/85 px-2 py-1.5 text-left text-stone-700 transition hover:bg-emerald-50"
+                >
+                  <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                    <i className="fas fa-route mr-1.5 text-emerald-600"></i>
+                    Walk
+                  </span>
+                  <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">Move closer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => controls.onInspect(item)}
+                  className="min-h-10 rounded-md bg-amber-600 px-2 py-1.5 text-left text-white transition hover:bg-amber-500"
+                >
+                  <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                    <i className="fas fa-magnifying-glass mr-1.5"></i>
+                    Inspect
+                  </span>
+                  <span className="mt-0.5 block truncate text-[8px] font-bold text-white/75">Broadcast activity</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={controls.onOpenCart}
+                  className="min-h-10 rounded-md border border-amber-100 bg-white/85 px-2 py-1.5 text-left text-stone-700 transition hover:bg-amber-50"
+                >
+                  <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                    <i className="fas fa-cart-shopping mr-1.5 text-amber-600"></i>
+                    Cart
+                  </span>
+                  <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">More objects</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={controls.onOpenWorkshop}
+                  className="min-h-10 rounded-md border border-sky-100 bg-white/85 px-2 py-1.5 text-left text-stone-700 transition hover:bg-sky-50"
+                >
+                  <span className="block truncate text-[9px] font-black uppercase tracking-wider">
+                    <i className="fas fa-hammer mr-1.5 text-sky-700"></i>
+                    Workshop
+                  </span>
+                  <span className="mt-0.5 block truncate text-[8px] font-bold text-stone-400">Land tools</span>
+                </button>
+              </div>
+              <p className="mt-1.5 truncate rounded-md bg-white/70 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-stone-400">
+                {item.type} / x {position[0].toFixed(1)} / z {position[2].toFixed(1)}
+                {item.modelUrl ? ' / custom model' : ''}
               </p>
-              <p className="truncate text-[8px] font-black uppercase tracking-wider text-stone-400">Land Object</p>
             </div>
           </Html>
         )}
@@ -6279,6 +7172,7 @@ function NpcCharacter({
   queuedActionIntent,
   pendingActionIntent,
   onSelect,
+  onClose,
   onRunAction,
   onPositionUpdate,
 }: {
@@ -6289,6 +7183,7 @@ function NpcCharacter({
   queuedActionIntent?: string | null;
   pendingActionIntent?: string | null;
   onSelect: (npc: WorldNpc) => void;
+  onClose: () => void;
   onRunAction?: (npc: WorldNpc, action: WorldNpc['actions'][number]) => void;
   onPositionUpdate: (npcId: string, position: THREE.Vector3) => void;
 }) {
@@ -6457,9 +7352,20 @@ function NpcCharacter({
                   <p className="truncate text-sm font-black text-stone-800">{npc.name}</p>
                   <p className="truncate text-[10px] font-bold text-emerald-700">{npc.role}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-700">
-                  {actionRangeLabel}
-                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="rounded-full bg-amber-100 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-700">
+                    {actionRangeLabel}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="grid h-7 w-7 place-items-center rounded-md bg-white/80 text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                    title="Close NPC interaction"
+                    aria-label="Close NPC interaction"
+                  >
+                    <i className="fas fa-times text-[10px]"></i>
+                  </button>
+                </div>
               </div>
               <div className="grid gap-1.5">
                 {npc.actions.map((action) => {
@@ -6722,79 +7628,10 @@ function AvatarInspectionCamera() {
   return null;
 }
 
-function AvatarInspectionPreview({
-  presence,
-  quality,
-  relationshipLabel,
-  rangeLabel,
-}: {
-  presence: WorldPresence;
-  quality: 'low' | 'medium' | 'high';
-  relationshipLabel?: string;
-  rangeLabel: string;
-}) {
-  const stageRef = React.useRef<THREE.Group>(null);
-  const previewPresence = React.useMemo<WorldPresence>(() => ({
-    ...presence,
-    position: ZERO_VECTOR,
-    moving: false,
-    animation: presence.emote === 'dance' ? 'idle' : presence.animation,
-  }), [presence]);
-
-  useGameLoop((_, __, elapsed) => {
-    if (!stageRef.current) return;
-    stageRef.current.rotation.y = Math.sin(elapsed * 0.58) * 0.22 + Math.PI / 10;
-  });
-
-  return (
-    <div className="mb-3 overflow-hidden rounded-md border border-amber-100 bg-[#f7e7cc] shadow-inner">
-      <div className="relative h-44">
-        <GameEngine3D
-          quality={quality}
-          dpr={quality === 'high' ? 1.35 : 1}
-          camera={{ position: [3.4, 2.65, 4.6], fov: 34 }}
-          alpha={false}
-          shadows={quality !== 'low'}
-        >
-          <color attach="background" args={['#f7e7cc']} />
-          <AvatarInspectionCamera />
-          <ambientLight intensity={0.92} />
-          <directionalLight position={[3, 4, 2]} intensity={1.2} castShadow={quality !== 'low'} />
-          <hemisphereLight args={['#fff7ed', '#b7d7bb', 0.7]} />
-          <group ref={stageRef} position={[0, -0.06, 0]} scale={0.92}>
-            <AvatarCharacter presence={previewPresence} selected position={ZERO_VECTOR} />
-          </group>
-          <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <circleGeometry args={[1.28, 48]} />
-            <meshStandardMaterial color="#e8c690" roughness={0.86} />
-          </mesh>
-          <ContactShadows scale={3.4} blur={1.6} far={3} opacity={0.26} resolution={quality === 'high' ? 512 : 256} />
-        </GameEngine3D>
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-between gap-2">
-          <div className="min-w-0 rounded-full border border-white/80 bg-[#fffaf1]/92 px-3 py-1 shadow-sm backdrop-blur-md">
-            <p className="truncate text-[9px] font-black uppercase tracking-wider text-stone-700">
-              <i className="fas fa-user-astronaut mr-1.5 text-pink-500"></i>
-              {presence.title || 'Explorer'}
-            </p>
-          </div>
-          <div className="flex min-w-0 flex-col items-end gap-1">
-            {relationshipLabel && (
-              <span className="max-w-[130px] truncate rounded-full bg-sky-100 px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-sky-700">
-                {relationshipLabel}
-              </span>
-            )}
-            <span className="max-w-[130px] truncate rounded-full bg-emerald-100 px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-emerald-700">
-              {rangeLabel}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function LocalPlayerController({
   movement,
+  cameraMode,
+  cameraRotation,
   selfPresence,
   sceneCue,
   collisionBodies,
@@ -6803,8 +7640,11 @@ function LocalPlayerController({
   moveTargetRef,
   initialPosition,
   spawnRevision,
+  selfControls,
 }: {
   movement: MovementInput;
+  cameraMode: 'isometric' | 'third';
+  cameraRotation: number;
   selfPresence: WorldPresence;
   sceneCue?: AvatarSceneCue;
   collisionBodies: WorldCollisionBody[];
@@ -6813,6 +7653,7 @@ function LocalPlayerController({
   moveTargetRef: React.MutableRefObject<THREE.Vector3>;
   initialPosition: WorldPresenceVector;
   spawnRevision: number;
+  selfControls: SelfAvatarControls;
 }) {
   const playerRef = React.useRef<THREE.Group>(null);
   const positionRef = React.useRef(new THREE.Vector3(initialPosition.x, initialPosition.y, initialPosition.z));
@@ -6846,11 +7687,8 @@ function LocalPlayerController({
   }, [cameraTargetRef, clearFootstepTraces, initialPosition.x, initialPosition.y, initialPosition.z, moveTargetRef, onSample, spawnRevision]);
 
   useGameLoop((_, delta, elapsed) => {
-    const input = new THREE.Vector3(
-      (movement.right ? 1 : 0) - (movement.left ? 1 : 0),
-      0,
-      (movement.back ? 1 : 0) - (movement.forward ? 1 : 0)
-    );
+    const cameraRelativeMovement = getCameraRelativeMovement(movement, cameraMode, cameraRotation);
+    const input = new THREE.Vector3(cameraRelativeMovement.x, 0, cameraRelativeMovement.z);
 
     if (input.lengthSq() > 0) {
       input.normalize().multiplyScalar(5.2);
@@ -6917,7 +7755,7 @@ function LocalPlayerController({
     <>
       <AvatarFootstepTrail traces={footstepTraces} />
       <group ref={playerRef} position={[initialPosition.x, initialPosition.y, initialPosition.z]}>
-        <AvatarCharacter presence={selfPresence} isSelf position={{ x: 0, y: 0, z: 0 }} sceneCue={sceneCue} />
+        <AvatarCharacter presence={selfPresence} isSelf position={{ x: 0, y: 0, z: 0 }} sceneCue={sceneCue} selfControls={selfControls} />
       </group>
     </>
   );
@@ -6956,7 +7794,6 @@ function NetworkAvatarCharacter({
   onRespondRequest,
   onOpenRequestContext,
   onOpenRequestChat,
-  onOpenCharacterSheet,
   voiceRoom,
   voiceMediaLabel,
   voiceInputPercent,
@@ -7000,7 +7837,6 @@ function NetworkAvatarCharacter({
   onRespondRequest?: (request: WorldSocialAction, response: WorldRequestResponse) => void;
   onOpenRequestContext?: (request: WorldSocialAction) => void;
   onOpenRequestChat?: (request: WorldSocialAction) => void;
-  onOpenCharacterSheet?: (presence: WorldPresence) => void;
   voiceRoom?: WorldVoiceRoom | null;
   voiceMediaLabel?: string;
   voiceInputPercent?: number;
@@ -7141,7 +7977,6 @@ function NetworkAvatarCharacter({
           onRespondRequest={onRespondRequest}
           onOpenRequestContext={onOpenRequestContext}
           onOpenRequestChat={onOpenRequestChat}
-          onOpenCharacterSheet={onOpenCharacterSheet}
           voiceRoom={voiceRoom}
           voiceMediaLabel={voiceMediaLabel}
           voiceInputPercent={voiceInputPercent}
@@ -7902,10 +8737,14 @@ function LivePromptGuide({
 function CommonsScene({
   movement,
   selfPresence,
+  selfControls,
   sceneCues,
   activeDistrict,
   selectedDistrict,
+  districtDetailsOpen,
   selectedPortal,
+  portalBoardId,
+  portalBoardData,
   selectedLandObject,
   activityBeacons,
   voiceMarkers,
@@ -7967,6 +8806,8 @@ function CommonsScene({
   onOpenDistrictDetails,
   onClearDistrictSelection,
   onSelectPortal,
+  onClearPortalSelection,
+  onWalkPortal,
   onOpenPortal,
   onOpenPortalBoard,
   onSelectActivityBeacon,
@@ -7983,28 +8824,36 @@ function CommonsScene({
   onRespondRequest,
   onOpenRequestContext,
   onOpenRequestChat,
-  onOpenPresenceSheet,
   onToggleVoiceMute,
   onLeaveVoiceRoom,
   onRunPresenceAction,
   onSelectNpc,
+  onClearNpcSelection,
   onRunNpcAction,
   onNpcPositionUpdate,
   onFlagClick,
   districtPartyLabel,
   districtChatCount,
   isDistrictPartyUpdating,
+  landObjectControls,
   workshopControls,
   marketControls,
+  partyControls,
+  guildControls,
+  chatControls,
   titleControls,
   eventControls,
 }: {
   movement: MovementInput;
   selfPresence: WorldPresence;
+  selfControls: SelfAvatarControls;
   sceneCues: Record<string, AvatarSceneCue>;
   activeDistrict: WorldDistrict;
   selectedDistrict: WorldDistrict | null;
+  districtDetailsOpen: boolean;
   selectedPortal: WorldPortal | null;
+  portalBoardId: WorldPortalId | null;
+  portalBoardData: WorldPortalBoardData;
   selectedLandObject: PurchasedItem | null;
   activityBeacons: WorldActivityBeacon[];
   voiceMarkers: WorldVoiceMarker[];
@@ -8066,6 +8915,8 @@ function CommonsScene({
   onOpenDistrictDetails: (district: WorldDistrict) => void;
   onClearDistrictSelection: () => void;
   onSelectPortal: (portal: WorldPortal) => void;
+  onClearPortalSelection: () => void;
+  onWalkPortal: (portal: WorldPortal) => void;
   onOpenPortal: (portal: WorldPortal) => void | Promise<void>;
   onOpenPortalBoard: (portal: WorldPortal) => void;
   onSelectActivityBeacon: (beacon: WorldActivityBeacon) => void;
@@ -8082,19 +8933,23 @@ function CommonsScene({
   onRespondRequest: (request: WorldSocialAction, response: WorldRequestResponse) => void;
   onOpenRequestContext: (request: WorldSocialAction) => void;
   onOpenRequestChat: (request: WorldSocialAction) => void;
-  onOpenPresenceSheet: (presence: WorldPresence) => void;
   onToggleVoiceMute: () => void;
   onLeaveVoiceRoom: (roomId?: string) => void;
   onRunPresenceAction: (action: WorldActionDescriptor, target: WorldPresence) => void;
   onSelectNpc: (npc: WorldNpc) => void;
+  onClearNpcSelection: () => void;
   onRunNpcAction: (npc: WorldNpc, action: WorldNpc['actions'][number]) => void;
   onNpcPositionUpdate: (npcId: string, position: THREE.Vector3) => void;
   onFlagClick: (item: Interaction) => void;
   districtPartyLabel: string;
   districtChatCount: number;
   isDistrictPartyUpdating: boolean;
+  landObjectControls: LandObjectControls;
   workshopControls?: DistrictWorkshopControls;
   marketControls?: DistrictMarketControls;
+  partyControls?: DistrictPartyControls;
+  guildControls?: DistrictGuildControls;
+  chatControls?: DistrictChatControls;
   titleControls?: DistrictTitleControls;
   eventControls?: DistrictEventControls;
 }) {
@@ -8180,8 +9035,16 @@ function CommonsScene({
           district={district}
           active={district.id === activeDistrict.id}
           selected={selectedDistrict?.id === district.id}
+          detailsOpen={selectedDistrict?.id === district.id && districtDetailsOpen}
           summary={districtPresenceSummary[district.id]}
+          districtPresences={[selfPresence, ...remotePresences]
+            .filter(presence => getDistrictForPosition(presence.position).id === district.id)
+            .slice(0, 6)}
+          districtNpcs={WORLD_NPCS.filter(npc => npc.district === district.name)}
+          selfUserId={selfPresence.userId}
           onSelect={onSelectDistrict}
+          onSelectPresence={onSelectPresence}
+          onSelectNpc={onSelectNpc}
           onRunAction={onRunDistrictAction}
           onOpenDetails={onOpenDistrictDetails}
           onClearSelection={onClearDistrictSelection}
@@ -8190,6 +9053,9 @@ function CommonsScene({
           isPartyUpdating={isDistrictPartyUpdating}
           workshopControls={workshopControls}
           marketControls={marketControls}
+          partyControls={partyControls}
+          guildControls={guildControls}
+          chatControls={chatControls}
           titleControls={titleControls}
           eventControls={eventControls}
         />
@@ -8207,7 +9073,11 @@ function CommonsScene({
           key={portal.id}
           portal={portal}
           active={selectedPortal?.id === portal.id}
+          boardOpen={selectedPortal?.id === portal.id && portalBoardId === portal.id}
+          boardData={portalBoardData}
           onSelect={onSelectPortal}
+          onClose={onClearPortalSelection}
+          onWalk={onWalkPortal}
           onOpen={onOpenPortal}
           onOpenBoard={onOpenPortalBoard}
         />
@@ -8223,6 +9093,7 @@ function CommonsScene({
           queuedActionIntent={selectedNpc?.id === npc.id && queuedNpcAction?.npcId === npc.id ? queuedNpcAction.actionIntent : null}
           pendingActionIntent={selectedNpc?.id === npc.id ? pendingNpcIntent : null}
           onSelect={onSelectNpc}
+          onClose={onClearNpcSelection}
           onRunAction={onRunNpcAction}
           onPositionUpdate={onNpcPositionUpdate}
         />
@@ -8249,6 +9120,10 @@ function CommonsScene({
           key={marker.id}
           marker={marker}
           onSelect={onSelectLiveActivityMarker}
+          selfUserId={selfPresence.userId}
+          pending={pendingRequestId === marker.session?.id}
+          onRespondSession={onRespondRequest}
+          onOpenSessionChat={onOpenRequestChat}
         />
       ))}
 
@@ -8272,6 +9147,7 @@ function CommonsScene({
             item={item}
             selected={selectedLandObject?.id === item.id}
             onSelect={onSelectLandObject}
+            controls={selectedLandObject?.id === item.id ? landObjectControls : undefined}
           />
         </SpawnIn>
       ))}
@@ -8322,7 +9198,10 @@ function CommonsScene({
 
       <LocalPlayerController
         movement={movement}
+        cameraMode={cameraMode}
+        cameraRotation={rotation}
         selfPresence={selfPresence}
+        selfControls={selfControls}
         cameraTargetRef={cameraTargetRef}
         moveTargetRef={moveTargetRef}
         initialPosition={spawnPosition}
@@ -8375,7 +9254,6 @@ function CommonsScene({
             onRespondRequest={selectedAvatar ? onRespondRequest : undefined}
             onOpenRequestContext={selectedAvatar ? onOpenRequestContext : undefined}
             onOpenRequestChat={selectedAvatar ? onOpenRequestChat : undefined}
-            onOpenCharacterSheet={selectedAvatar ? onOpenPresenceSheet : undefined}
             voiceRoom={selectedAvatar ? selectedVoiceRoom : null}
             voiceMediaLabel={voiceMediaLabel}
             voiceInputPercent={voiceInputPercent}
@@ -8842,9 +9720,9 @@ export default function WorldMMO3D({
   const [isLoadingSelectedProfile, setIsLoadingSelectedProfile] = React.useState(false);
   const [isSelectedActivityOpen, setIsSelectedActivityOpen] = React.useState(false);
   const [isLoadingSelectedActivity, setIsLoadingSelectedActivity] = React.useState(false);
-  const [selectedCharacterPanelUserId, setSelectedCharacterPanelUserId] = React.useState<string | null>(null);
   const [selectedNpc, setSelectedNpc] = React.useState<WorldNpc | null>(null);
   const [selectedDistrict, setSelectedDistrict] = React.useState<WorldDistrict | null>(null);
+  const [activeDistrictChatId, setActiveDistrictChatId] = React.useState<string | null>(null);
   const [isDistrictPanelOpen, setIsDistrictPanelOpen] = React.useState(false);
   const [selectedPortal, setSelectedPortal] = React.useState<WorldPortal | null>(null);
   const [selectedLandObject, setSelectedLandObject] = React.useState<PurchasedItem | null>(null);
@@ -8867,6 +9745,8 @@ export default function WorldMMO3D({
   const [chatSpatialMode, setChatSpatialMode] = React.useState<'world' | 'nearby'>('world');
   const [chatTarget, setChatTarget] = React.useState<WorldPresence | null>(null);
   const [chatDraft, setChatDraft] = React.useState('');
+  const [partyChatDraft, setPartyChatDraft] = React.useState('');
+  const [guildChatDraft, setGuildChatDraft] = React.useState('');
   const [isSendingChat, setIsSendingChat] = React.useState(false);
   const [isSelectedDirectChatOpen, setIsSelectedDirectChatOpen] = React.useState(false);
   const [pendingActionType, setPendingActionType] = React.useState<WorldActionType | null>(null);
@@ -8913,6 +9793,7 @@ export default function WorldMMO3D({
   const [isAchievementsPanelOpen, setIsAchievementsPanelOpen] = React.useState(false);
   const [isMarketPanelOpen, setIsMarketPanelOpen] = React.useState(false);
   const [isEmoteWheelOpen, setIsEmoteWheelOpen] = React.useState(false);
+  const [isSelfAvatarBoardOpen, setIsSelfAvatarBoardOpen] = React.useState(false);
   const [isSavingCharacter, setIsSavingCharacter] = React.useState(false);
   const [isEquippingItem, setIsEquippingItem] = React.useState<string | null>(null);
   const [isEquippingTitle, setIsEquippingTitle] = React.useState<string | null>(null);
@@ -8949,6 +9830,7 @@ export default function WorldMMO3D({
   const proximityVoiceRetuneAtRef = React.useRef(0);
   const voicePeerConnectionsRef = React.useRef<Map<string, RTCPeerConnection>>(new Map());
   const voiceRemoteAudioRef = React.useRef<Map<string, HTMLAudioElement>>(new Map());
+  const voiceRemoteGainRef = React.useRef<Map<string, number>>(new Map());
   const voicePendingIceRef = React.useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const voiceMakingOfferRef = React.useRef<Set<string>>(new Set());
   const voicePeerRoomRef = React.useRef<string | null>(null);
@@ -9131,16 +10013,6 @@ export default function WorldMMO3D({
     });
   }, [remotePresences, selectedPresence?.userId]);
 
-  const selectedDistrictPresences = React.useMemo(() => {
-    if (!selectedDistrict) return [];
-    return [selfPresence, ...remotePresences]
-      .filter(presence => getDistrictForPosition(presence.position).id === selectedDistrict.id)
-      .slice(0, 6);
-  }, [remotePresences, selectedDistrict, selfPresence]);
-  const selectedDistrictNpcs = React.useMemo(
-    () => selectedDistrict ? WORLD_NPCS.filter(npc => npc.district === selectedDistrict.name) : [],
-    [selectedDistrict]
-  );
   const selectedNpcPosition = React.useMemo(
     () => selectedNpc ? vectorToObject(getNpcPositionVector(selectedNpc)) : null,
     [getNpcPositionVector, selectedNpc, worldStreamNow]
@@ -9148,11 +10020,6 @@ export default function WorldMMO3D({
   const selectedNpcDistance = React.useMemo(
     () => selectedNpcPosition ? getPresenceDistance(selfPosition, selectedNpcPosition) : null,
     [selectedNpcPosition, selfPosition]
-  );
-  const selectedNpcQueued = Boolean(
-    selectedNpc &&
-    queuedNpcAction &&
-    queuedNpcAction.npcId === selectedNpc.id
   );
   const selectedDistrictZone = React.useMemo(
     () => selectedDistrict ? getZoneName(activeLandName, selectedDistrict) : currentZone,
@@ -9166,11 +10033,6 @@ export default function WorldMMO3D({
     () => activeFollowPresence ? getPresenceDistance(selfPosition, activeFollowPresence.position) : null,
     [activeFollowPresence, selfPosition]
   );
-  const selectedPresenceDistance = React.useMemo(
-    () => selectedPresence ? getPresenceDistance(selfPosition, selectedPresence.position) : null,
-    [selectedPresence, selfPosition]
-  );
-  const selectedPresenceReady = selectedPresenceDistance !== null && selectedPresenceDistance <= AVATAR_INTERACTION_RANGE;
   const nearbyVoicePresences = React.useMemo(
     () => remotePresences
       .map(presence => ({ presence, distance: getPresenceDistance(selfPosition, presence.position) }))
@@ -9535,6 +10397,22 @@ export default function WorldMMO3D({
     return undefined;
   }, [activeFollowPresence, activeInteractionSession, activeLandName, activePortalPanelId, activeVoiceRoom, chatChannel, chatTarget, currentZone, getNpcPositionVector, isChatPanelOpen, isGuildPanelOpen, isJoinedEvent, isPartyPanelOpen, queuedAvatarAction, queuedNpcAction, remotePresences, selectedDistrict, selectedDistrictZone, selectedLandObject, selectedNpc, selectedNpcPosition, selectedPortal, selfPresence, userId, worldEvent, worldGuild, worldNavigationIntent, worldParty]);
 
+  const reconcileAuthoritativeSelf = React.useCallback((response: Awaited<ReturnType<typeof presenceAPI.move>>) => {
+    if (!response.correction.corrected) return;
+    const authoritativePosition = response.presence.position;
+    heartbeatRef.current = {
+      ...heartbeatRef.current,
+      position: authoritativePosition,
+      velocity: response.presence.velocity || ZERO_VECTOR,
+      heading: response.presence.heading || 0,
+      moving: Boolean(response.presence.moving),
+    };
+    setSelfPosition(authoritativePosition);
+    setSpawnPosition(authoritativePosition);
+    setSpawnRevision(revision => revision + 1);
+    moveTargetRef.current.set(authoritativePosition.x, authoritativePosition.y, authoritativePosition.z);
+  }, []);
+
   const sendPresenceHeartbeatNow = React.useCallback(async (
     profileOverride?: CharacterProfile,
     options: { forceManualPresence?: boolean } = {},
@@ -9547,7 +10425,7 @@ export default function WorldMMO3D({
     const isAway = isHidden || isIdleAfk;
     const autoPresenceActive = !options.forceManualPresence && autoZonePresenceEnabled && profile.status !== 'afk';
 
-    await presenceAPI.heartbeat({
+    const response = await presenceAPI.heartbeat({
       name: profile.displayName || selfName,
       avatar: selfAvatar,
       position: snapshot.position,
@@ -9576,9 +10454,10 @@ export default function WorldMMO3D({
       currentLandId: activeLandScopeKey,
       currentZone,
     });
+    reconcileAuthoritativeSelf(response);
 
     return true;
-  }, [activeCircleId, activeLandScopeKey, activeVoiceRoom, autoZonePresenceEnabled, currentProfile, currentWorldIntent, currentZone, isIdleAfk, isVoiceMuted, selfAvatar, selfName, user?.sub, userId, worldAchievementBadges, worldEvent, worldGuild, worldParty?.name, worldSpawnReadyKey, zonePresenceMeta]);
+  }, [activeCircleId, activeLandScopeKey, activeVoiceRoom, autoZonePresenceEnabled, currentProfile, currentWorldIntent, currentZone, isIdleAfk, isVoiceMuted, reconcileAuthoritativeSelf, selfAvatar, selfName, user?.sub, userId, worldAchievementBadges, worldEvent, worldGuild, worldParty?.name, worldSpawnReadyKey, zonePresenceMeta]);
 
   const applyVoiceRoomState = React.useCallback((voiceRooms: WorldVoiceRoom[], myVoiceRooms?: WorldVoiceRoom[]) => {
     setWorldVoiceRooms(voiceRooms);
@@ -9592,7 +10471,7 @@ export default function WorldMMO3D({
   }, [activeVoiceRoomId, userId]);
 
   const applyWorldSnapshot = React.useCallback((snapshot: WorldSnapshot) => {
-    setPresences(snapshot.presences);
+    setPresences(current => reconcilePresenceSnapshot(current, snapshot.presences, snapshot.serverTime));
     setWorldActions(snapshot.actions);
     setWorldChatMessages(snapshot.chatMessages);
     if (snapshot.interest !== undefined) setWorldInterestStats(snapshot.interest);
@@ -9621,15 +10500,7 @@ export default function WorldMMO3D({
   const applyPresenceDelta = React.useCallback((delta: WorldPresenceDelta) => {
     if (!isPresenceDeltaInWorldScope(delta, activeLandScopeKey, currentZone)) return;
     if (delta.interest !== undefined) setWorldInterestStats(delta.interest);
-    if (delta.removedUserId) {
-      setPresences(prev => prev.filter(presence => presence.userId !== delta.removedUserId));
-      return;
-    }
-    if (!delta.presence) return;
-    setPresences(prev => (
-      [delta.presence!, ...prev.filter(presence => presence.userId !== delta.presence!.userId)]
-        .sort((a, b) => a.name.localeCompare(b.name))
-    ));
+    setPresences(current => reconcilePresenceDelta(current, delta));
   }, [activeLandScopeKey, currentZone]);
 
   const applyActionDelta = React.useCallback((delta: WorldActionDelta) => {
@@ -9683,14 +10554,6 @@ export default function WorldMMO3D({
     moveTargetRef.current.set(selfPosition.x, 0, selfPosition.z);
     setWorldToast(message);
   }, [activeFollowTargetId, selfPosition]);
-
-  const cancelQueuedAvatarApproach = React.useCallback((message = 'Canceled approach') => {
-    setQueuedAvatarAction(null);
-    setPendingActionType(null);
-    setWorldNavigationIntent(null);
-    moveTargetRef.current.set(selfPosition.x, 0, selfPosition.z);
-    setWorldToast(message);
-  }, [selfPosition]);
 
   const pressMovement = React.useCallback((key: keyof MovementInput, pressed: boolean) => {
     if (pressed) {
@@ -9968,6 +10831,7 @@ export default function WorldMMO3D({
         audio.srcObject = null;
       }
       voiceRemoteAudioRef.current.delete(id);
+      voiceRemoteGainRef.current.delete(id);
     };
 
     if (peerId) {
@@ -10061,6 +10925,9 @@ export default function WorldMMO3D({
       const stream = event.streams[0] || new MediaStream([event.track]);
       const audio = voiceRemoteAudioRef.current.get(peerId) || new Audio();
       audio.autoplay = true;
+      const initialGain = voiceRemoteGainRef.current.get(peerId) ?? 1;
+      audio.volume = initialGain;
+      audio.muted = initialGain <= 0;
       audio.srcObject = stream;
       voiceRemoteAudioRef.current.set(peerId, audio);
       void audio.play().catch(() => {});
@@ -10081,6 +10948,34 @@ export default function WorldMMO3D({
     syncVoicePeerTracks(connection);
     return connection;
   }, [closeVoicePeerConnection, syncVoicePeerTracks, updateVoicePeerState]);
+
+  React.useEffect(() => {
+    const nextGains = new Map<string, number>();
+
+    activeVoicePeerIds.forEach((peerId) => {
+      let gain = 1;
+      if (activeVoiceRoom?.kind === 'proximity') {
+        const peerPresence = remotePresences.find(presence => presence.userId === peerId);
+        const sameLand = Boolean(
+          peerPresence &&
+          (!peerPresence.currentLandId || isSameWorldScope(peerPresence.currentLandId, activeLandScopeKey))
+        );
+        const sameZone = Boolean(peerPresence && isSameWorldScope(peerPresence.currentZone, currentZone));
+        gain = peerPresence && sameLand && sameZone
+          ? getProximityVoiceGain(getPresenceDistance(selfPosition, peerPresence.position), PROXIMITY_VOICE_RANGE)
+          : 0;
+      }
+
+      nextGains.set(peerId, gain);
+      const audio = voiceRemoteAudioRef.current.get(peerId);
+      if (audio) {
+        audio.volume = gain;
+        audio.muted = gain <= 0;
+      }
+    });
+
+    voiceRemoteGainRef.current = nextGains;
+  }, [activeLandScopeKey, activeVoicePeerIds, activeVoiceRoom?.kind, currentZone, remotePresences, selfPosition]);
 
   const makeVoiceOffer = React.useCallback(async (peerId: string, roomId: string) => {
     const connection = ensureVoicePeerConnection(peerId, roomId);
@@ -10638,6 +11533,46 @@ export default function WorldMMO3D({
     void updateQuickPresence({ emote }, `${meta.label} emote`);
   }, [markWorldActive, updateQuickPresence]);
 
+  const cycleSelfActivity = React.useCallback(() => {
+    const currentIndex = ACTIVITY_OPTIONS.indexOf(currentProfile.activity);
+    const nextActivity = ACTIVITY_OPTIONS[(currentIndex + 1 + ACTIVITY_OPTIONS.length) % ACTIVITY_OPTIONS.length];
+    const meta = getActivityMeta(nextActivity);
+    markWorldActive();
+    setAutoZonePresenceEnabled(false);
+    void updateQuickPresence({ activity: nextActivity, status: meta.status }, `${nextActivity} presence`);
+  }, [currentProfile.activity, markWorldActive, updateQuickPresence]);
+
+  const cycleSelfStatus = React.useCallback(() => {
+    const currentIndex = STATUS_OPTIONS.indexOf(currentProfile.status);
+    const nextStatus = STATUS_OPTIONS[(currentIndex + 1 + STATUS_OPTIONS.length) % STATUS_OPTIONS.length];
+    const meta = getStatusMeta(nextStatus);
+    markWorldActive();
+    setAutoZonePresenceEnabled(false);
+    void updateQuickPresence({ status: nextStatus }, `${meta.label} status`);
+  }, [currentProfile.status, markWorldActive, updateQuickPresence]);
+
+  const selfAvatarControls = React.useMemo<SelfAvatarControls>(() => ({
+    open: isSelfAvatarBoardOpen,
+    isSaving: isSavingCharacter,
+    activity: currentProfile.activity,
+    status: currentProfile.status,
+    emote: currentProfile.emote || 'idle',
+    onToggle: () => setIsSelfAvatarBoardOpen(open => !open),
+    onClose: () => setIsSelfAvatarBoardOpen(false),
+    onCycleActivity: cycleSelfActivity,
+    onCycleStatus: cycleSelfStatus,
+    onEmote: runEmoteAction,
+  }), [
+    currentProfile.activity,
+    currentProfile.emote,
+    currentProfile.status,
+    cycleSelfActivity,
+    cycleSelfStatus,
+    isSavingCharacter,
+    isSelfAvatarBoardOpen,
+    runEmoteAction,
+  ]);
+
   const equipInventoryItem = React.useCallback(async (slot: WorldInventorySlot, itemKey?: string) => {
     setIsEquippingItem(`${slot}:${itemKey || 'none'}`);
     try {
@@ -11009,12 +11944,61 @@ export default function WorldMMO3D({
     };
 
     sendHeartbeat();
-    const interval = window.setInterval(sendHeartbeat, 1200);
+    const interval = window.setInterval(sendHeartbeat, PRESENCE_FULL_HEARTBEAT_MS);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
   }, [activeCircleId, activeLandScopeKey, sendPresenceHeartbeatNow, user?.sub, worldSpawnReadyKey]);
+
+  React.useEffect(() => {
+    if (!user?.sub || !activeCircleId || worldSpawnReadyKey !== activeLandScopeKey) return;
+    let cancelled = false;
+    let inFlight = false;
+    let backoffUntil = 0;
+    let lastSentAt = 0;
+    let lastSent: PresenceMovementSample | null = null;
+
+    const sendMovement = async () => {
+      const now = Date.now();
+      const snapshot = heartbeatRef.current;
+      if (
+        cancelled ||
+        inFlight ||
+        now < backoffUntil ||
+        !shouldBroadcastPresenceMovement(lastSent, snapshot, now - lastSentAt)
+      ) return;
+
+      const sent: PresenceMovementSample = {
+        position: { ...snapshot.position },
+        velocity: { ...snapshot.velocity },
+        heading: snapshot.heading,
+        moving: snapshot.moving,
+      };
+      inFlight = true;
+      try {
+        const response = await presenceAPI.move({
+          ...sent,
+          currentLandId: activeLandScopeKey,
+          currentZone,
+        });
+        reconcileAuthoritativeSelf(response);
+        lastSent = sent;
+        lastSentAt = now;
+      } catch (err) {
+        backoffUntil = now + 2000;
+        console.warn('World movement sync paused:', err);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const interval = window.setInterval(() => void sendMovement(), PRESENCE_MOVEMENT_TICK_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeCircleId, activeLandScopeKey, currentZone, reconcileAuthoritativeSelf, user?.sub, worldSpawnReadyKey]);
 
   const markWorldStreamFresh = React.useCallback(() => {
     const now = Date.now();
@@ -11029,7 +12013,7 @@ export default function WorldMMO3D({
       const now = Date.now();
       setWorldStreamNow(now);
       if (!worldStreamLastSeenAtRef.current) return;
-      if (now - worldStreamLastSeenAtRef.current > WORLD_STREAM_STALE_AFTER_MS) {
+      if (!hasFreshWorldStream(worldStreamLastSeenAtRef.current, now)) {
         setIsWorldStreamConnected(false);
       }
     }, WORLD_STREAM_STATUS_TICK_MS);
@@ -11403,14 +12387,6 @@ export default function WorldMMO3D({
   }, [landObjects, selectedLandObject]);
 
   React.useEffect(() => {
-    if (!selectedPresence) {
-      setSelectedCharacterPanelUserId(null);
-      return;
-    }
-    setSelectedCharacterPanelUserId(prev => prev === selectedPresence.userId ? prev : null);
-  }, [selectedPresence]);
-
-  React.useEffect(() => {
     if (!activeFollowTargetId) return;
     if (!activeFollowPresence) {
       setActiveFollowTargetId(null);
@@ -11517,11 +12493,6 @@ export default function WorldMMO3D({
     setIsSelectedDirectChatOpen(prev => chatTarget?.userId === presence.userId ? prev : false);
   }, [chatTarget?.userId]);
 
-  const openSelectedPresenceSheet = React.useCallback((presence: WorldPresence) => {
-    setSelectedPresence(presence);
-    setSelectedCharacterPanelUserId(presence.userId);
-  }, []);
-
   const onSelectLandObject = React.useCallback((item: PurchasedItem) => {
     const meta = getLandObjectMeta(item);
     setSelectedLandObject(item);
@@ -11609,8 +12580,8 @@ export default function WorldMMO3D({
   }, [activeCircleId, activeLandScopeKey, currentZone, loadWorldAchievements, saveCharacterProfile, user?.sub]);
 
   const openPortalBoard = React.useCallback((portal: WorldPortal) => {
-    setActivePortalPanelId(portal.id);
-    setWorldToast(`${portal.name} board expanded in-world`);
+    setActivePortalPanelId(current => current === portal.id ? null : portal.id);
+    setWorldToast(`${portal.name} board toggled in-world`);
   }, []);
 
   const openDirectChat = React.useCallback((target: WorldPresence, options: { openPanel?: boolean } = {}) => {
@@ -11761,18 +12732,24 @@ export default function WorldMMO3D({
     }
   }, [activeCircleId, activeLandScopeKey, currentZone, loadWorldAchievements, user?.sub]);
 
-  const openSessionContext = React.useCallback(async (session: WorldSocialAction) => {
-    if (session.type === 'trade') {
-      setIsMarketPanelOpen(true);
-      setWorldToast('Market opened for trade');
-      return;
-    }
-
-    const sessionZone = typeof session.metadata?.sessionZone === 'string' && session.metadata.sessionZone
-      ? session.metadata.sessionZone
-      : currentZone;
-    await joinWorldEvent(sessionZone);
-  }, [currentZone, joinWorldEvent]);
+  const openSessionContext = React.useCallback((session: WorldSocialAction) => {
+    const district = getSessionDistrict(session);
+    const markerPosition = getSessionMarkerPosition(session, [selfPresence, ...remotePresences]);
+    setActiveSessionId(session.id);
+    setSelectedDistrict(district);
+    setIsDistrictPanelOpen(false);
+    setSelectedPortal(null);
+    setActivePortalPanelId(null);
+    setSelectedNpc(null);
+    setSelectedPresence(null);
+    setSelectedLandObject(null);
+    setIsSelectedDirectChatOpen(false);
+    setIsMarketPanelOpen(false);
+    setIsEventPanelOpen(false);
+    setIsSessionsPanelOpen(false);
+    onMinimapMoveTarget(getMiniMapVector(markerPosition), getRequestTitle(session.type));
+    setWorldToast(`${getRequestTitle(session.type)} table selected in-world`);
+  }, [onMinimapMoveTarget, remotePresences, selfPresence]);
 
   const leaveWorldEvent = React.useCallback(async (zone = currentZone) => {
     setIsEventUpdating(true);
@@ -11818,12 +12795,12 @@ export default function WorldMMO3D({
     }
   }, [activeCircleId, activeLandScopeKey, currentZone, loadWorldAchievements, user?.sub]);
 
-  const leaveGuild = React.useCallback(async () => {
+  const leaveGuild = React.useCallback(async (zone = currentZone) => {
     setIsGuildUpdating(true);
     try {
       const { guild } = await worldGuildAPI.leave({
         currentLandId: activeLandScopeKey,
-        currentZone,
+        currentZone: zone,
       });
       setWorldGuild(guild);
       setChatChannel(prev => prev === 'guild' ? 'world' : prev);
@@ -11839,13 +12816,15 @@ export default function WorldMMO3D({
 
   const respondToWorldRequest = React.useCallback(async (
     request: WorldSocialAction,
-    response: WorldRequestResponse
+    response: WorldRequestResponse,
+    itemKey?: string,
   ) => {
     setPendingRequestId(request.id);
     try {
       const result = await worldRequestsAPI.respond({
         actionId: request.id,
         response,
+        ...(itemKey ? { itemKey } : {}),
         currentLandId: activeLandScopeKey,
         currentZone,
       });
@@ -11865,6 +12844,13 @@ export default function WorldMMO3D({
       if (response === 'accept' && isInteractionSessionType(request.type)) {
         setActiveSessionId(result.request.id);
       }
+      if (response === 'complete' && request.type === 'trade') {
+        const inventoryResponse = await worldInventoryAPI.get();
+        setWorldInventory(inventoryResponse.inventory);
+        setWorldMarketCatalog(inventoryResponse.catalog);
+        setWorldMarketStats(inventoryResponse.stats);
+        setCharacterProfile(inventoryResponse.profile);
+      }
       if ((response === 'complete' || response === 'cancel' || response === 'decline') && request.id === activeSessionId) {
         setActiveSessionId(null);
         setIsSessionsPanelOpen(false);
@@ -11879,6 +12865,10 @@ export default function WorldMMO3D({
               ? 'Marked ready'
               : response === 'unready'
                 ? 'Marked not ready'
+                : response === 'offer'
+                  ? 'Offer updated'
+                  : response === 'clear_offer'
+                    ? 'Offer cleared'
                 : 'Canceled';
       setWorldToast(`${label} ${getRequestTitle(request.type).toLowerCase()}`);
     } catch (err) {
@@ -12328,23 +13318,33 @@ export default function WorldMMO3D({
     return 'Say something in the world';
   }, [chatChannel, chatSpatialMode, chatTarget, worldGuild?.name, worldParty?.name]);
 
-  const sendWorldChat = React.useCallback(async (event?: React.FormEvent) => {
+  const sendWorldChat = React.useCallback(async (
+    event?: React.FormEvent,
+    options: {
+      channel?: WorldChatChannel;
+      spatialMode?: 'world' | 'nearby';
+      body?: string;
+      onSent?: () => void;
+    } = {}
+  ) => {
     event?.preventDefault();
-    const body = chatDraft.trim();
+    const body = (options.body ?? chatDraft).trim();
+    const effectiveChannel = options.channel || chatChannel;
+    const effectiveSpatialMode = options.spatialMode || chatSpatialMode;
     if (!body || isSendingChat) return;
     if (!user?.sub || !activeCircleId) {
       setWorldToast('Sign in to chat in the world');
       return;
     }
-    if (chatChannel === 'direct' && !chatTarget) {
+    if (effectiveChannel === 'direct' && !chatTarget) {
       setWorldToast('Choose a character for direct chat');
       return;
     }
-    if (chatChannel === 'party' && !worldParty) {
+    if (effectiveChannel === 'party' && !worldParty) {
       setWorldToast('Create or join a party first');
       return;
     }
-    if (chatChannel === 'guild' && !worldGuild) {
+    if (effectiveChannel === 'guild' && !worldGuild) {
       setWorldToast('Create or join a guild first');
       return;
     }
@@ -12352,12 +13352,12 @@ export default function WorldMMO3D({
     setIsSendingChat(true);
     try {
       const chatPosition = heartbeatRef.current.position || selfPosition;
-      const isNearbySpeech = chatChannel === 'world' && chatSpatialMode === 'nearby';
+      const isNearbySpeech = effectiveChannel === 'world' && effectiveSpatialMode === 'nearby';
       const response = await worldChatAPI.create({
         body,
-        channel: chatChannel,
-        targetUserId: chatChannel === 'direct' ? chatTarget?.userId : undefined,
-        targetName: chatChannel === 'direct' ? chatTarget?.name : undefined,
+        channel: effectiveChannel,
+        targetUserId: effectiveChannel === 'direct' ? chatTarget?.userId : undefined,
+        targetName: effectiveChannel === 'direct' ? chatTarget?.name : undefined,
         currentLandId: activeLandScopeKey,
         currentZone,
         metadata: {
@@ -12373,7 +13373,8 @@ export default function WorldMMO3D({
         },
       });
       setWorldChatMessages(prev => [...prev.filter(message => message.id !== response.message.id), response.message].slice(-18));
-      setChatDraft('');
+      if (options.body === undefined) setChatDraft('');
+      options.onSent?.();
       await loadWorldAchievements();
     } catch (err) {
       console.warn('World chat send failed:', err);
@@ -12382,6 +13383,50 @@ export default function WorldMMO3D({
       setIsSendingChat(false);
     }
   }, [activeCircleId, activeLandScopeKey, chatChannel, chatDraft, chatSpatialMode, chatTarget, currentProfile.activity, currentProfile.status, currentZone, isSendingChat, loadWorldAchievements, selfPosition, user?.sub, worldGuild, worldParty]);
+
+  const activateDistrictChat = React.useCallback((district: WorldDistrict) => {
+    setChatTarget(null);
+    setChatChannel('world');
+    setChatSpatialMode('nearby');
+    setIsSelectedDirectChatOpen(false);
+    setIsChatPanelOpen(false);
+    setActiveDistrictChatId(district.id);
+    setWorldToast(`${district.name} nearby chat selected`);
+  }, []);
+
+  const sendDistrictChat = React.useCallback((event: React.FormEvent) => {
+    setChatTarget(null);
+    setChatChannel('world');
+    setChatSpatialMode('nearby');
+    setIsChatPanelOpen(false);
+    void sendWorldChat(event, { channel: 'world', spatialMode: 'nearby' });
+  }, [sendWorldChat]);
+
+  const sendPartyChat = React.useCallback((event: React.FormEvent) => {
+    setChatTarget(null);
+    setChatChannel('party');
+    setChatSpatialMode('world');
+    setIsSelectedDirectChatOpen(false);
+    setIsChatPanelOpen(false);
+    void sendWorldChat(event, {
+      channel: 'party',
+      body: partyChatDraft,
+      onSent: () => setPartyChatDraft(''),
+    });
+  }, [partyChatDraft, sendWorldChat]);
+
+  const sendGuildChat = React.useCallback((event: React.FormEvent) => {
+    setChatTarget(null);
+    setChatChannel('guild');
+    setChatSpatialMode('world');
+    setIsSelectedDirectChatOpen(false);
+    setIsChatPanelOpen(false);
+    void sendWorldChat(event, {
+      channel: 'guild',
+      body: guildChatDraft,
+      onSent: () => setGuildChatDraft(''),
+    });
+  }, [guildChatDraft, sendWorldChat]);
 
   const ensureParty = React.useCallback(async (
     zone = currentZone,
@@ -12439,8 +13484,7 @@ export default function WorldMMO3D({
     }
 
     if (action === 'chat') {
-      openWorldChat();
-      setWorldToast(`${district.name} chat opened`);
+      activateDistrictChat(district);
       return;
     }
 
@@ -12473,8 +13517,8 @@ export default function WorldMMO3D({
       return;
     }
 
-    openWorldChat();
-  }, [activeLandName, ensureGuild, ensureParty, focusWorldDistrict, joinWorldEvent, onMinimapMoveTarget, openWorldChat]);
+    activateDistrictChat(district);
+  }, [activeLandName, activateDistrictChat, ensureGuild, ensureParty, focusWorldDistrict, joinWorldEvent, onMinimapMoveTarget]);
 
   const leaveParty = React.useCallback(async () => {
     setIsPartyUpdating(true);
@@ -12962,8 +14006,11 @@ export default function WorldMMO3D({
     if (!marker.room) return;
 
     if (marker.room.id === activeVoiceRoom?.id) {
-      setIsVoicePanelOpen(true);
-      setWorldToast('Voice room opened');
+      const district = getDistrictForZoneName(getVoiceRoomZone(marker.room) || currentZone);
+      setSelectedDistrict(district);
+      setIsVoicePanelOpen(false);
+      activateDistrictChat(district);
+      setWorldToast('Voice range selected in-world');
       return;
     }
 
@@ -12978,8 +14025,11 @@ export default function WorldMMO3D({
       return;
     }
 
-    await joinVoiceRoom(marker.room.kind, undefined, roomZone);
-  }, [activeVoiceRoom?.id, currentZone, joinVoiceRoom, onSelectPresence, userId]);
+    await joinVoiceRoom(marker.room.kind, undefined, roomZone, { openPanel: false });
+    const district = getDistrictForZoneName(roomZone);
+    setSelectedDistrict(district);
+    activateDistrictChat(district);
+  }, [activeVoiceRoom?.id, activateDistrictChat, currentZone, joinVoiceRoom, onSelectPresence, userId]);
 
   const liveActivityMarkers = React.useMemo<WorldLiveActivityMarker[]>(() => {
     const markers: WorldLiveActivityMarker[] = [];
@@ -13382,8 +14432,11 @@ export default function WorldMMO3D({
     if (focusPulsePresence(entry.presence)) return;
 
     if (entry.kind === 'voice') {
-      setIsVoicePanelOpen(true);
-      setWorldToast('Voice panel opened');
+      const district = getDistrictForZoneName(currentZone);
+      setSelectedDistrict(district);
+      activateDistrictChat(district);
+      setIsVoicePanelOpen(false);
+      setWorldToast('Nearby voice selected in-world');
       return;
     }
 
@@ -13411,14 +14464,8 @@ export default function WorldMMO3D({
       onMinimapMoveTarget(getMiniMapVector(marketDistrict.position), marketDistrict.name);
       setWorldToast('Market district selected');
     }
-  }, [focusPulsePresence, markWorldActive, onMinimapMoveTarget, onSelectLiveActivityMarker, onSelectPresence, onSelectVoiceMarker, userId, worldEvent]);
+  }, [activateDistrictChat, currentZone, focusPulsePresence, markWorldActive, onMinimapMoveTarget, onSelectLiveActivityMarker, onSelectPresence, onSelectVoiceMarker, userId, worldEvent]);
 
-  const recentTargetActions = React.useMemo(() => {
-    if (!selectedPresence) return [];
-    return worldActions
-      .filter(action => action.fromUserId === selectedPresence.userId || action.toUserId === selectedPresence.userId)
-      .slice(0, 3);
-  }, [selectedPresence, worldActions]);
   const selectedActivityEntries = React.useMemo<SelectedActivityEntry[]>(() => {
     if (!selectedPresence || selectedActivityFeed?.userId !== selectedPresence.userId) return [];
     return [
@@ -13563,14 +14610,6 @@ export default function WorldMMO3D({
       })
     );
   }, [remotePresences, selfPresence]);
-  const selectedProfileAppearance = React.useMemo(
-    () => selectedPresence ? getAvatarAppearance(selectedPresence) : DEFAULT_APPEARANCE,
-    [selectedPresence]
-  );
-  const selectedProfileEquipment = React.useMemo(
-    () => selectedPresence ? getEquipment(selectedPresence) : DEFAULT_EQUIPMENT,
-    [selectedPresence]
-  );
   const selectedProfileSummary = selectedPresence && selectedActivityFeed?.userId === selectedPresence.userId
     ? selectedActivityFeed.profile
     : null;
@@ -13596,10 +14635,6 @@ export default function WorldMMO3D({
       ready: closest.distance <= AVATAR_INTERACTION_RANGE,
     };
   }, [livePrompt?.presence?.userId, nearbyWorldPresences, selectedPresence?.userId, userId, worldRelationships]);
-  const selectedQueuedAction = React.useMemo(() => {
-    if (!selectedPresence || queuedAvatarAction?.targetUserId !== selectedPresence.userId) return null;
-    return getWorldActionDescriptor(queuedAvatarAction.type);
-  }, [queuedAvatarAction, selectedPresence]);
   const activeSessionCounterpart = React.useMemo(
     () => activeInteractionSession ? getRequestCounterpart(activeInteractionSession, userId) : null,
     [activeInteractionSession, userId]
@@ -13611,6 +14646,27 @@ export default function WorldMMO3D({
   const activeSessionReadyState = React.useMemo(
     () => activeInteractionSession ? getSessionReadyState(activeInteractionSession, userId) : null,
     [activeInteractionSession, userId]
+  );
+  const activeTradeState = React.useMemo(
+    () => activeInteractionSession?.type === 'trade'
+      ? getWorldTradeState(activeInteractionSession.metadata || {})
+      : null,
+    [activeInteractionSession]
+  );
+  const activeTradeRole = activeInteractionSession?.fromUserId === userId ? 'sender' : 'recipient';
+  const activeTradeSelfOfferKey = activeTradeState
+    ? activeTradeRole === 'sender' ? activeTradeState.senderOfferItemKey : activeTradeState.recipientOfferItemKey
+    : null;
+  const activeTradeOtherOfferKey = activeTradeState
+    ? activeTradeRole === 'sender' ? activeTradeState.recipientOfferItemKey : activeTradeState.senderOfferItemKey
+    : null;
+  const tradeCatalogByKey = React.useMemo(
+    () => new Map(worldMarketCatalog.map(item => [item.itemKey, item])),
+    [worldMarketCatalog]
+  );
+  const tradeableInventory = React.useMemo(
+    () => worldMarketCatalog.filter(item => item.source === 'market' && item.isOwned),
+    [worldMarketCatalog]
   );
   const currentActivityMeta = getActivityMeta(selfPresence.activity);
   const currentStatusMeta = getStatusMeta(selfPresence.status);
@@ -13624,24 +14680,41 @@ export default function WorldMMO3D({
     : null;
   const isWorldStreamFresh = Boolean(
     isWorldStreamConnected &&
-    worldStreamLastSeenAt &&
-    worldStreamNow - worldStreamLastSeenAt <= WORLD_STREAM_STALE_AFTER_MS
+    hasFreshWorldStream(worldStreamLastSeenAt, worldStreamNow)
   );
   const worldStreamStatusLabel = isWorldStreamFresh
     ? `Live ${worldStreamAgeSeconds ?? 0}s`
     : 'Fallback';
-  const selectedDistrictPrimaryAction = selectedDistrict ? getDistrictPrimaryAction(selectedDistrict) : null;
   const arrivalDistrict = zoneArrivalPrompt && zoneArrivalPrompt.districtId === activeDistrict.id && !selectedDistrict
     ? activeDistrict
     : null;
   const arrivalPrimaryAction = arrivalDistrict ? getDistrictPrimaryAction(arrivalDistrict) : null;
   const arrivalSummary = arrivalDistrict ? districtPresenceSummary[arrivalDistrict.id] : null;
-  const selectedLandObjectMeta = selectedLandObject ? getLandObjectMeta(selectedLandObject) : null;
-  const selectedLandObjectPosition = selectedLandObject ? getLandObjectPosition(selectedLandObject) : null;
-  const objectCartPortal = WORLD_PORTALS.find(portal => portal.id === 'shop') || null;
+  const landObjectControls = React.useMemo<LandObjectControls>(() => ({
+    landName: activeLandName || 'Active Land',
+    onClose: () => setSelectedLandObject(null),
+    onWalk: (item) => {
+      const meta = getLandObjectMeta(item);
+      onMinimapMoveTarget(getMiniMapVector(getLandObjectPosition(item)), meta.label);
+    },
+    onInspect: (item) => {
+      void inspectLandObject(item);
+    },
+    onOpenCart: () => {
+      const portal = WORLD_PORTALS.find(item => item.id === 'shop');
+      if (portal) onSelectPortal(portal);
+    },
+    onOpenWorkshop: () => {
+      setSelectedDistrict(WORLD_DISTRICTS.find(district => district.id === 'workshop') || null);
+      setSelectedLandObject(null);
+      setSelectedPortal(null);
+      setSelectedNpc(null);
+      setSelectedPresence(null);
+      setIsSelectedDirectChatOpen(false);
+    },
+  }), [activeLandName, inspectLandObject, onMinimapMoveTarget, onSelectPortal]);
   const followUserAction = getWorldActionDescriptor('follow_user');
   const startChatAction = getWorldActionDescriptor('start_chat');
-  const activePortal = selectedPortal && activePortalPanelId === selectedPortal.id ? selectedPortal : null;
   const portalTimelineItems = React.useMemo(
     () => [...timeline]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -13656,6 +14729,15 @@ export default function WorldMMO3D({
       .slice(0, 5),
     [loveLetters]
   );
+  const portalBoardData = React.useMemo<WorldPortalBoardData>(() => ({
+    timeline: portalTimelineItems,
+    memories: portalMemoryItems,
+    coupons: portalCouponItems,
+    letters: portalLetterItems,
+    landObjects,
+    onTimelineSelect: onFlagClick,
+    onLandObjectSelect: onSelectLandObject,
+  }), [landObjects, onFlagClick, onSelectLandObject, portalCouponItems, portalLetterItems, portalMemoryItems, portalTimelineItems]);
   const cycleWorkshopColor = React.useCallback((key: WorkshopColorKey) => {
     const swatches = key === 'bodyColor' ? BODY_SWATCHES : key === 'trimColor' ? TRIM_SWATCHES : HAIR_SWATCHES;
     const currentColor = currentProfile.appearance[key];
@@ -13734,12 +14816,190 @@ export default function WorldMMO3D({
     isEquippingItem,
     onSelectCatalogItem: runMarketCatalogItem,
   }), [isEquippingItem, isPurchasingItem, marketBalance, runMarketCatalogItem, worldMarketCatalog]);
+  const partyVoiceRoom = React.useMemo(
+    () => myVoiceRooms.find(room => room.kind === 'party') || null,
+    [myVoiceRooms]
+  );
+  const partyChatMessages = React.useMemo(
+    () => worldChatMessages.filter(message => (
+      message.channel === 'party' &&
+      typeof message.metadata?.partyId === 'string' &&
+      message.metadata.partyId === worldParty?.id
+    )).slice(-6),
+    [worldChatMessages, worldParty?.id]
+  );
+  const partyControls = React.useMemo<DistrictPartyControls>(() => ({
+    party: worldParty,
+    messages: partyChatMessages,
+    selfUserId: userId,
+    draft: partyChatDraft,
+    isSending: isSendingChat && chatChannel === 'party',
+    isUpdating: isPartyUpdating,
+    voiceActive: Boolean(partyVoiceRoom),
+    voiceUpdating: Boolean(
+      isVoiceUpdating?.startsWith('party:') ||
+      (partyVoiceRoom && isVoiceUpdating === `leave:${partyVoiceRoom.id}`)
+    ),
+    voiceMemberCount: partyVoiceRoom?.members.length || 0,
+    onDraftChange: setPartyChatDraft,
+    onSubmit: sendPartyChat,
+    onLeave: () => {
+      void (async () => {
+        if (partyVoiceRoom) await leaveVoiceRoom(partyVoiceRoom.id);
+        await leaveParty();
+      })();
+    },
+    onToggleVoice: (district) => {
+      if (partyVoiceRoom) {
+        void leaveVoiceRoom(partyVoiceRoom.id);
+        return;
+      }
+      const zone = getZoneName(activeLandName, district);
+      void joinVoiceRoom('party', undefined, zone, { openPanel: false });
+    },
+  }), [
+    activeLandName,
+    chatChannel,
+    isPartyUpdating,
+    isSendingChat,
+    isVoiceUpdating,
+    joinVoiceRoom,
+    leaveParty,
+    leaveVoiceRoom,
+    partyChatDraft,
+    partyChatMessages,
+    partyVoiceRoom,
+    sendPartyChat,
+    userId,
+    worldParty,
+  ]);
+  const nearbyDistrictChatMessages = React.useMemo(
+    () => worldChatMessages
+      .filter(message => isNearbySpeechMessage(message, selfPosition))
+      .slice(-6),
+    [selfPosition, worldChatMessages]
+  );
+  const activeDistrictProximityRoom = activeVoiceRoom?.kind === 'proximity' && proximityVoiceRange.active
+    ? activeVoiceRoom
+    : null;
+  const districtChatControls = React.useMemo<DistrictChatControls>(() => ({
+    activeDistrictId: activeDistrictChatId,
+    messages: nearbyDistrictChatMessages,
+    selfUserId: userId,
+    draft: chatDraft,
+    isSending: isSendingChat,
+    voiceActive: Boolean(activeDistrictProximityRoom),
+    voiceMuted: isVoiceMuted,
+    voiceUpdating: Boolean(
+      isVoiceUpdating?.startsWith('proximity:') ||
+      (activeDistrictProximityRoom && (
+        isVoiceUpdating === `leave:${activeDistrictProximityRoom.id}` ||
+        isVoiceUpdating === `mute:${activeDistrictProximityRoom.id}`
+      ))
+    ),
+    voiceMemberCount: activeDistrictProximityRoom?.members.length || 0,
+    nearbyVoiceCount: nearbyVoicePresences.length,
+    voiceStatusLabel: voiceMediaMeta.label,
+    onDraftChange: setChatDraft,
+    onSubmit: sendDistrictChat,
+    onToggleVoice: () => {
+      if (activeDistrictProximityRoom) {
+        void leaveVoiceRoom(activeDistrictProximityRoom.id);
+        return;
+      }
+      void joinVoiceRoom('proximity', undefined, currentZone, { openPanel: false });
+    },
+    onToggleVoiceMute: () => {
+      void toggleVoiceMute();
+    },
+  }), [
+    activeDistrictChatId,
+    activeDistrictProximityRoom,
+    chatDraft,
+    currentZone,
+    isSendingChat,
+    isVoiceMuted,
+    isVoiceUpdating,
+    joinVoiceRoom,
+    leaveVoiceRoom,
+    nearbyDistrictChatMessages,
+    nearbyVoicePresences.length,
+    sendDistrictChat,
+    toggleVoiceMute,
+    userId,
+    voiceMediaMeta.label,
+  ]);
   const guildTitleControls = React.useMemo<DistrictTitleControls>(() => ({
     achievements: worldAchievements.filter(achievement => Boolean(achievement.titleReward)).slice(0, 6),
     currentTitle: currentProfile.title,
     isEquippingTitle,
     onEquipTitle: equipAchievementTitle,
   }), [currentProfile.title, equipAchievementTitle, isEquippingTitle, worldAchievements]);
+  const guildHallZone = React.useMemo(
+    () => getZoneName(activeLandName, getDistrictById('guild-hall')),
+    [activeLandName]
+  );
+  const guildVoiceRoom = React.useMemo(
+    () => myVoiceRooms.find(room => room.kind === 'guild') || null,
+    [myVoiceRooms]
+  );
+  const guildChatMessages = React.useMemo(
+    () => worldChatMessages.filter(message => (
+      message.channel === 'guild' &&
+      typeof message.metadata?.guildId === 'string' &&
+      message.metadata.guildId === worldGuild?.id
+    )).slice(-6),
+    [worldChatMessages, worldGuild?.id]
+  );
+  const guildControls = React.useMemo<DistrictGuildControls>(() => ({
+    guild: worldGuild,
+    messages: guildChatMessages,
+    selfUserId: userId,
+    draft: guildChatDraft,
+    isSending: isSendingChat && chatChannel === 'guild',
+    isUpdating: isGuildUpdating,
+    voiceActive: Boolean(guildVoiceRoom),
+    voiceUpdating: Boolean(
+      isVoiceUpdating?.startsWith('guild:') ||
+      (guildVoiceRoom && isVoiceUpdating === `leave:${guildVoiceRoom.id}`)
+    ),
+    voiceMemberCount: guildVoiceRoom?.members.length || 0,
+    onDraftChange: setGuildChatDraft,
+    onSubmit: sendGuildChat,
+    onToggleMembership: () => {
+      if (worldGuild) {
+        void (async () => {
+          if (guildVoiceRoom) await leaveVoiceRoom(guildVoiceRoom.id);
+          await leaveGuild(guildHallZone);
+        })();
+        return;
+      }
+      void ensureGuild(guildHallZone, { openPanel: false });
+    },
+    onToggleVoice: () => {
+      if (guildVoiceRoom) {
+        void leaveVoiceRoom(guildVoiceRoom.id);
+        return;
+      }
+      void joinVoiceRoom('guild', undefined, guildHallZone, { openPanel: false });
+    },
+  }), [
+    ensureGuild,
+    chatChannel,
+    guildChatDraft,
+    guildChatMessages,
+    guildHallZone,
+    guildVoiceRoom,
+    isGuildUpdating,
+    isSendingChat,
+    isVoiceUpdating,
+    joinVoiceRoom,
+    leaveGuild,
+    leaveVoiceRoom,
+    sendGuildChat,
+    userId,
+    worldGuild,
+  ]);
   const eventLawnZone = React.useMemo(
     () => getZoneName(activeLandName, getDistrictById('event-lawn')),
     [activeLandName]
@@ -13783,10 +15043,14 @@ export default function WorldMMO3D({
       <CommonsScene
         movement={movement}
         selfPresence={selfPresence}
+        selfControls={selfAvatarControls}
         sceneCues={avatarSceneCues}
         activeDistrict={activeDistrict}
         selectedDistrict={selectedDistrict}
+        districtDetailsOpen={isDistrictPanelOpen}
         selectedPortal={selectedPortal}
+        portalBoardId={activePortalPanelId}
+        portalBoardData={portalBoardData}
         selectedLandObject={selectedLandObject}
         activityBeacons={activityBeacons}
         voiceMarkers={voiceMarkers}
@@ -13847,13 +15111,18 @@ export default function WorldMMO3D({
         onRunDistrictAction={runDistrictAction}
         onOpenDistrictDetails={(district) => {
           setSelectedDistrict(district);
-          setIsDistrictPanelOpen(true);
+          setIsDistrictPanelOpen(open => selectedDistrict?.id === district.id ? !open : true);
         }}
         onClearDistrictSelection={() => {
           setSelectedDistrict(null);
           setIsDistrictPanelOpen(false);
         }}
         onSelectPortal={onSelectPortal}
+        onClearPortalSelection={() => {
+          setSelectedPortal(null);
+          setActivePortalPanelId(null);
+        }}
+        onWalkPortal={(portal) => onMinimapMoveTarget(getMiniMapVector(portal.position), portal.name)}
         onOpenPortal={openWorldPortal}
         onOpenPortalBoard={openPortalBoard}
         onSelectActivityBeacon={onSelectActivityBeacon}
@@ -13870,19 +15139,27 @@ export default function WorldMMO3D({
         onRespondRequest={respondToWorldRequest}
         onOpenRequestContext={openSessionContext}
         onOpenRequestChat={openSessionChat}
-        onOpenPresenceSheet={openSelectedPresenceSheet}
         onToggleVoiceMute={toggleVoiceMute}
         onLeaveVoiceRoom={leaveVoiceRoom}
         onRunPresenceAction={runWorldAction}
         onSelectNpc={onSelectNpc}
+        onClearNpcSelection={() => {
+          setSelectedNpc(null);
+          setQueuedNpcAction(null);
+          setPendingNpcIntent(null);
+        }}
         onRunNpcAction={runNpcAction}
         onNpcPositionUpdate={updateNpcPosition}
         onFlagClick={onFlagClick}
         districtPartyLabel={worldParty ? worldParty.name : 'Create local party'}
         districtChatCount={worldChatMessages.length}
         isDistrictPartyUpdating={isPartyUpdating}
+        landObjectControls={landObjectControls}
         workshopControls={workshopControls}
         marketControls={marketControls}
+        partyControls={partyControls}
+        guildControls={guildControls}
+        chatControls={districtChatControls}
         titleControls={guildTitleControls}
         eventControls={eventControls}
       />
@@ -15466,10 +16743,67 @@ export default function WorldMMO3D({
                   <div className="mb-3 rounded-md bg-[#fffaf1] px-3 py-2">
                     <p className="text-[10px] font-bold leading-relaxed text-stone-600">
                       {activeInteractionSession.type === 'trade'
-                        ? 'Open the keepsake market, agree in chat, then complete the exchange when both sides are ready.'
+                        ? 'Choose a purchased keepsake, review both offers, then confirm the atomic exchange.'
                         : 'Use the shared event space and direct chat to coordinate the moment, then complete when the work is done.'}
                     </p>
                   </div>
+
+                  {activeInteractionSession.type === 'trade' && activeTradeState && (
+                    <div className="mb-3 border-y border-amber-100 py-2.5">
+                      <div className="mb-2 grid grid-cols-2 gap-2 text-[9px]">
+                        <div className="min-w-0">
+                          <p className="font-black uppercase tracking-wider text-stone-400">Your offer</p>
+                          <p className="truncate font-black text-amber-800">
+                            {activeTradeSelfOfferKey
+                              ? tradeCatalogByKey.get(activeTradeSelfOfferKey)?.name || activeTradeSelfOfferKey
+                              : 'Nothing selected'}
+                          </p>
+                        </div>
+                        <div className="min-w-0 text-right">
+                          <p className="font-black uppercase tracking-wider text-stone-400">Their offer</p>
+                          <p className="truncate font-black text-amber-800">
+                            {activeTradeOtherOfferKey
+                              ? tradeCatalogByKey.get(activeTradeOtherOfferKey)?.name || activeTradeOtherOfferKey
+                              : 'Nothing selected'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {tradeableInventory.map(item => (
+                          <button
+                            key={item.itemKey}
+                            type="button"
+                            onClick={() => respondToWorldRequest(activeInteractionSession, 'offer', item.itemKey)}
+                            disabled={pendingRequestId === activeInteractionSession.id || item.itemKey === activeTradeOtherOfferKey}
+                            title={`Offer ${item.name}`}
+                            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[9px] font-black transition ${
+                              item.itemKey === activeTradeSelfOfferKey
+                                ? 'bg-amber-600 text-white'
+                                : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                            } disabled:cursor-not-allowed disabled:opacity-40`}
+                          >
+                            <i className={`fas ${item.icon}`}></i>
+                            <span className="max-w-20 truncate">{item.name}</span>
+                          </button>
+                        ))}
+                        {activeTradeSelfOfferKey && (
+                          <button
+                            type="button"
+                            onClick={() => respondToWorldRequest(activeInteractionSession, 'clear_offer')}
+                            disabled={pendingRequestId === activeInteractionSession.id}
+                            title="Clear trade offer"
+                            aria-label="Clear trade offer"
+                            className="h-9 w-9 shrink-0 rounded-md bg-stone-100 text-stone-500 transition hover:bg-stone-200 disabled:opacity-40"
+                          >
+                            <i className="fas fa-xmark"></i>
+                          </button>
+                        )}
+                      </div>
+                      {tradeableInventory.length === 0 && (
+                        <p className="text-[9px] font-bold text-stone-400">Purchase a market keepsake before offering an item.</p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mb-3 grid grid-cols-2 gap-1.5">
                     <div className={`rounded-md px-2.5 py-2 ${
@@ -15522,7 +16856,12 @@ export default function WorldMMO3D({
                     <button
                       type="button"
                       onClick={() => respondToWorldRequest(activeInteractionSession, 'complete')}
-                      disabled={pendingRequestId === activeInteractionSession.id || !activeSessionReadyState?.allReady}
+                      disabled={
+                        pendingRequestId === activeInteractionSession.id ||
+                        (activeInteractionSession.type === 'trade'
+                          ? !activeTradeState?.canSettle
+                          : !activeSessionReadyState?.allReady)
+                      }
                       className="h-9 rounded-md bg-stone-800 text-[9px] font-black uppercase tracking-wider text-white transition hover:bg-stone-700 disabled:cursor-wait disabled:opacity-60"
                     >
                       <i className={`fas ${pendingRequestId === activeInteractionSession.id ? 'fa-spinner fa-spin' : 'fa-flag-checkered'} mr-1.5`}></i>
@@ -15939,7 +17278,7 @@ export default function WorldMMO3D({
                 </div>
                 <button
                   type="button"
-                  onClick={worldGuild ? leaveGuild : () => void ensureGuild()}
+                  onClick={worldGuild ? () => void leaveGuild() : () => void ensureGuild()}
                   disabled={isGuildUpdating}
                   className="h-9 rounded-md bg-[#fffaf1] px-3 text-[9px] font-black uppercase tracking-wider text-stone-700 transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
                 >
@@ -16176,872 +17515,6 @@ export default function WorldMMO3D({
           </motion.div>
         </div>
       </div>
-
-      <AnimatePresence>
-        {selectedLandObject && selectedLandObjectMeta && selectedLandObjectPosition && (
-          <motion.div
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.96 }}
-            className="fixed right-4 top-20 z-[85] max-h-[calc(100vh-6.5rem)] w-[min(92vw,340px)] overflow-y-auto rounded-md border border-white/70 bg-[#fffaf1]/95 p-4 shadow-2xl backdrop-blur-xl md:right-6"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-600">Land Object</p>
-                <h3 className="truncate text-lg font-black text-stone-800">
-                  <i className={`fas ${selectedLandObjectMeta.icon} mr-2`} style={{ color: selectedLandObjectMeta.color }}></i>
-                  {selectedLandObjectMeta.label}
-                </h3>
-                <p className="truncate text-xs font-bold text-emerald-700">{activeLandName || 'Active Land'}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedLandObject(null)}
-                className="h-9 w-9 shrink-0 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
-                title="Close"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => onMinimapMoveTarget(getMiniMapVector(selectedLandObjectPosition), selectedLandObjectMeta.label)}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-emerald-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-route mr-1.5 text-emerald-600"></i>
-                  Walk Here
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">
-                  {selectedLandObjectPosition[0].toFixed(1)}, {selectedLandObjectPosition[2].toFixed(1)}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void inspectLandObject(selectedLandObject)}
-                className="min-h-14 rounded-md bg-amber-600 px-3 py-2 text-left text-white shadow-md shadow-amber-200/70 transition hover:bg-amber-500"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider">
-                  <i className="fas fa-magnifying-glass mr-1.5"></i>
-                  Inspect
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-white/75">Broadcast object activity</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (objectCartPortal) onSelectPortal(objectCartPortal);
-                }}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-amber-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-cart-shopping mr-1.5 text-amber-600"></i>
-                  Object Cart
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">Place more keepsakes</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedDistrict(WORLD_DISTRICTS.find(district => district.id === 'workshop') || null);
-                  setSelectedLandObject(null);
-                  setSelectedPortal(null);
-                  setSelectedNpc(null);
-                  setSelectedPresence(null);
-                  setIsSelectedDirectChatOpen(false);
-                }}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-sky-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-hammer mr-1.5 text-sky-700"></i>
-                  Workshop
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">Land tools and gear</span>
-              </button>
-            </div>
-
-            <div className="mt-3 rounded-md bg-white/70 px-3 py-2">
-              <p className="text-[10px] font-black uppercase tracking-wider text-stone-500">Object Data</p>
-              <p className="mt-1 truncate text-[11px] font-bold text-stone-600">
-                Type {selectedLandObject.type} / Rotation {(selectedLandObject.rotation || 0).toFixed(2)}
-              </p>
-              {selectedLandObject.modelUrl && (
-                <p className="mt-1 truncate text-[10px] font-bold text-sky-700">
-                  <i className="fas fa-cube mr-1.5"></i>
-                  Custom model attached
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedPortal && (
-          <motion.div
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.96 }}
-            className="fixed right-4 top-20 z-[85] max-h-[calc(100vh-6.5rem)] w-[min(92vw,340px)] overflow-y-auto rounded-md border border-white/70 bg-[#fffaf1]/95 p-4 shadow-2xl backdrop-blur-xl md:right-6"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-pink-500">World Portal</p>
-                <h3 className="truncate text-lg font-black text-stone-800">
-                  <i className={`fas ${selectedPortal.icon} mr-2`} style={{ color: selectedPortal.color }}></i>
-                  {selectedPortal.name}
-                </h3>
-                <p className="truncate text-xs font-bold text-emerald-700">{selectedPortal.subtitle}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPortal(null);
-                  setActivePortalPanelId(null);
-                }}
-                className="h-9 w-9 shrink-0 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
-                title="Close"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => onMinimapMoveTarget(getMiniMapVector(selectedPortal.position), selectedPortal.name)}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-emerald-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-route mr-1.5 text-emerald-600"></i>
-                  Walk Here
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">Move to portal marker</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void openWorldPortal(selectedPortal)}
-                className="min-h-14 rounded-md px-3 py-2 text-left text-white shadow-md transition hover:-translate-y-0.5"
-                style={{ backgroundColor: selectedPortal.color }}
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider">
-                  <i className={`fas ${selectedPortal.icon} mr-1.5`}></i>
-                  Open Here
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-white/75">Open inside Narinyland</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => openPortalBoard(selectedPortal)}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-pink-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-table-list mr-1.5 text-pink-500"></i>
-                  Board
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">Stay in-world</span>
-              </button>
-            </div>
-            <p className="mt-3 rounded-md bg-white/70 px-3 py-2 text-[11px] font-bold leading-relaxed text-stone-500">
-              This keeps navigation anchored in the world: walk to the marker, then open the activity from here.
-            </p>
-            <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-emerald-50/80 px-3 py-2">
-              <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-wider text-emerald-700">
-                <i className="fas fa-signal mr-1.5"></i>
-                Broadcast
-              </span>
-              <span className="shrink-0 truncate text-[10px] font-bold text-stone-600">
-                {selectedPortal.activity} / {getStatusMeta(selectedPortal.status).label}
-              </span>
-            </div>
-            {activePortal && (
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-[9px] font-black uppercase tracking-[0.2em] text-stone-400">
-                    <i className={`fas ${activePortal.icon} mr-1.5`} style={{ color: activePortal.color }}></i>
-                    In-World Board
-                  </p>
-                  <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-stone-500">
-                    Live
-                  </span>
-                </div>
-
-                {activePortal.id === 'home' && (
-                  <div className="space-y-1.5">
-                    {portalMemoryItems.length > 0 ? portalMemoryItems.map((memory, index) => (
-                      <div key={memory.id || memory.url || index} className="flex items-center gap-2 rounded-md bg-white/80 px-2.5 py-2">
-                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-pink-50">
-                          <img src={memory.url} alt={memory.caption || 'Memory'} className="h-full w-full object-cover" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-black text-stone-700">{memory.caption || 'Shared memory'}</p>
-                          <p className="truncate text-[9px] font-bold text-stone-400">{memory.privacy} grove item</p>
-                        </div>
-                      </div>
-                    )) : (
-                      <p className="rounded-md bg-white/80 px-3 py-4 text-center text-[11px] font-bold text-stone-400">
-                        No grove memories yet.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activePortal.id === 'timeline' && (
-                  <div className="space-y-1.5">
-                    {portalTimelineItems.length > 0 ? portalTimelineItems.map(item => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => onFlagClick(item)}
-                        className="w-full rounded-md bg-white/80 px-2.5 py-2 text-left transition hover:bg-sky-50"
-                      >
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate text-[11px] font-black text-stone-700">{item.text}</span>
-                          <span className="shrink-0 text-[9px] font-black text-sky-700">{formatPortalDate(item.timestamp)}</span>
-                        </span>
-                        <span className="mt-0.5 block truncate text-[9px] font-bold text-stone-400">
-                          {item.location || 'Story marker'}{getInteractionMediaCount(item) ? ` / ${getInteractionMediaCount(item)} media` : ''}
-                        </span>
-                      </button>
-                    )) : (
-                      <p className="rounded-md bg-white/80 px-3 py-4 text-center text-[11px] font-bold text-stone-400">
-                        No story markers yet.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activePortal.id === 'coupons' && (
-                  <div className="space-y-1.5">
-                    {portalCouponItems.length > 0 ? portalCouponItems.map(coupon => (
-                      <div key={coupon.id} className="rounded-md bg-white/80 px-2.5 py-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="min-w-0 truncate text-[11px] font-black text-stone-700">
-                            <span className="mr-1.5">{coupon.emoji}</span>
-                            {coupon.title}
-                          </p>
-                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${
-                            coupon.isRedeemed ? 'bg-stone-100 text-stone-500' : 'bg-purple-100 text-purple-700'
-                          }`}>
-                            {coupon.isRedeemed ? 'Redeemed' : `${coupon.points || 0} pts`}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 line-clamp-2 text-[9px] font-bold text-stone-400">{coupon.desc}</p>
-                      </div>
-                    )) : (
-                      <p className="rounded-md bg-white/80 px-3 py-4 text-center text-[11px] font-bold text-stone-400">
-                        No reward tickets yet.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activePortal.id === 'letters' && (
-                  <div className="space-y-1.5">
-                    {portalLetterItems.length > 0 ? portalLetterItems.map(letter => {
-                      const state = getLetterState(letter);
-                      return (
-                        <div key={letter.id} className="rounded-md bg-white/80 px-2.5 py-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="min-w-0 truncate text-[11px] font-black text-stone-700">
-                              Letter from {letter.fromId || 'someone'}
-                            </p>
-                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${state.className}`}>
-                              <i className={`fas ${state.icon} mr-1`}></i>
-                              {state.label}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 line-clamp-2 text-[9px] font-bold text-stone-400">{letter.content}</p>
-                        </div>
-                      );
-                    }) : (
-                      <p className="rounded-md bg-white/80 px-3 py-4 text-center text-[11px] font-bold text-stone-400">
-                        No lantern letters yet.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activePortal.id === 'shop' && (
-                  <div className="space-y-1.5">
-                    {landObjects.length > 0 ? landObjects.slice(0, 6).map(item => {
-                      const meta = getLandObjectMeta(item);
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => onSelectLandObject(item)}
-                          className="flex w-full items-center justify-between gap-2 rounded-md bg-white/80 px-2.5 py-2 text-left transition hover:bg-amber-50"
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate text-[11px] font-black text-stone-700">
-                              <i className={`fas ${meta.icon} mr-1.5 text-amber-600`}></i>
-                              {meta.label}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[9px] font-bold text-stone-400">
-                              x {item.x.toFixed(1)} / z {item.z.toFixed(1)}
-                            </span>
-                          </span>
-                          <i className="fas fa-chevron-right shrink-0 text-[9px] text-stone-300"></i>
-                        </button>
-                      );
-                    }) : (
-                      <p className="rounded-md bg-white/80 px-3 py-4 text-center text-[11px] font-bold text-stone-400">
-                        The cart is ready for your first decoration.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isDistrictPanelOpen && selectedDistrict && selectedDistrictPrimaryAction && (
-          <motion.div
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.96 }}
-            className="fixed right-4 top-20 z-[85] max-h-[calc(100vh-6.5rem)] w-[min(92vw,360px)] overflow-y-auto rounded-md border border-white/70 bg-[#fffaf1]/95 p-4 shadow-2xl backdrop-blur-xl md:right-6"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-700">District Hub</p>
-                <h3 className="truncate text-lg font-black text-stone-800">
-                  <i className={`fas ${selectedDistrict.icon} mr-2 text-amber-600`}></i>
-                  {selectedDistrict.name}
-                </h3>
-                <p className="truncate text-xs font-bold text-emerald-700">{selectedDistrictZone}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDistrict(null)}
-                className="h-9 w-9 shrink-0 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
-                title="Close"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => void runDistrictAction(selectedDistrict, 'walk')}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-emerald-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-route mr-1.5 text-emerald-600"></i>
-                  Walk Here
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">Move to district center</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void runDistrictAction(selectedDistrict, 'primary')}
-                className="min-h-14 rounded-md bg-pink-500 px-3 py-2 text-left text-white shadow-md shadow-pink-200/70 transition hover:bg-pink-600"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider">
-                  <i className={`fas ${selectedDistrictPrimaryAction.icon} mr-1.5`}></i>
-                  {selectedDistrictPrimaryAction.label}
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-white/75">{selectedDistrictPrimaryAction.hint}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void runDistrictAction(selectedDistrict, 'party')}
-                disabled={isPartyUpdating}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className={`fas ${isPartyUpdating ? 'fa-spinner fa-spin' : 'fa-users'} mr-1.5 text-amber-600`}></i>
-                  Party Up
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">{worldParty ? worldParty.name : 'Create local party'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void runDistrictAction(selectedDistrict, 'chat')}
-                className="min-h-14 rounded-md bg-white/85 px-3 py-2 text-left transition hover:bg-emerald-50"
-              >
-                <span className="block text-[10px] font-black uppercase tracking-wider text-stone-700">
-                  <i className="fas fa-comment mr-1.5 text-emerald-600"></i>
-                  World Chat
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-bold text-stone-400">{worldChatMessages.length} recent messages</span>
-              </button>
-            </div>
-
-            <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-500">Nearby Here</p>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-700">{selectedDistrictPresences.length}</span>
-              </div>
-              {selectedDistrictPresences.length > 0 ? (
-                <div className="space-y-1.5">
-                  {selectedDistrictPresences.map(presence => {
-                    const statusMeta = getStatusMeta(presence.status);
-                    const isSelf = presence.userId === userId;
-                    return (
-                      <button
-                        key={presence.userId}
-                        type="button"
-                        onClick={() => {
-                          if (!isSelf) onSelectPresence(presence);
-                        }}
-                        disabled={isSelf}
-                        className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md bg-white/75 px-2.5 py-2 text-left transition hover:bg-pink-50 disabled:cursor-default disabled:hover:bg-white/75"
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-[11px] font-black text-stone-800">{isSelf ? `${presence.name} (You)` : presence.name}</span>
-                          <span className="block truncate text-[10px] font-bold text-stone-400">{presence.activity}</span>
-                        </span>
-                        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-stone-100 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-stone-600">
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: statusMeta.color }} />
-                          {statusMeta.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="rounded-md bg-white/70 px-3 py-4 text-center text-[11px] font-bold text-stone-400">No avatars are standing here yet.</p>
-              )}
-            </div>
-
-            {selectedDistrictNpcs.length > 0 && (
-              <div className="mt-4">
-                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-stone-500">Guides Here</p>
-                <div className="grid gap-1.5">
-                  {selectedDistrictNpcs.map(npc => (
-                    <button
-                      key={npc.id}
-                      type="button"
-                      onClick={() => onSelectNpc(npc)}
-                      className="flex min-h-10 items-center justify-between gap-2 rounded-md bg-amber-50/80 px-2.5 py-2 text-left transition hover:bg-amber-100"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-[11px] font-black text-stone-800">
-                          <i className={`fas ${npc.icon} mr-1.5 text-amber-600`}></i>
-                          {npc.name}
-                        </span>
-                        <span className="block truncate text-[10px] font-bold text-amber-700">{npc.role}</span>
-                      </span>
-                      <i className="fas fa-chevron-right shrink-0 text-[10px] text-amber-700"></i>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedNpc && (
-          <motion.div
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.96 }}
-            className="fixed right-4 top-20 z-[85] max-h-[calc(100vh-6.5rem)] w-[min(92vw,360px)] overflow-y-auto rounded-md border border-white/70 bg-[#fffaf1]/95 p-4 shadow-2xl backdrop-blur-xl md:right-6"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-600">District NPC</p>
-                <h3 className="truncate text-lg font-black text-stone-800">
-                  <i className={`fas ${selectedNpc.icon} mr-2 text-amber-600`}></i>
-                  {selectedNpc.name}
-                </h3>
-                <p className="truncate text-xs font-bold text-emerald-700">{selectedNpc.role} in {selectedNpc.district}</p>
-                <p className="truncate text-[11px] font-black uppercase tracking-wider text-stone-400">
-                  {selectedNpcQueued
-                    ? 'Approaching'
-                    : selectedNpcDistance !== null
-                      ? selectedNpcDistance <= NPC_INTERACTION_RANGE
-                        ? 'Ready nearby'
-                        : `${selectedNpcDistance.toFixed(1)}m away`
-                      : 'Patrolling'}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = selectedNpcPosition || tupleToPresenceVector(selectedNpc.position);
-                    onMinimapMoveTarget(getFollowDestination(selfPosition, target), selectedNpc.name);
-                  }}
-                  className="h-9 w-9 rounded-md bg-amber-100 text-amber-700 transition hover:bg-amber-200"
-                  title="Walk to guide"
-                  aria-label="Walk to guide"
-                >
-                  <i className="fas fa-location-crosshairs text-[11px]"></i>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedNpc(null)}
-                  className="h-9 w-9 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
-                  title="Close"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {selectedNpc.actions.map(action => (
-                <button
-                  key={action.intent}
-                  type="button"
-                  onClick={() => runNpcAction(selectedNpc, action)}
-                  disabled={pendingNpcIntent === action.intent}
-                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md bg-white/80 px-3 py-2 text-left transition hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-[11px] font-black uppercase tracking-wider text-stone-700">{action.label}</span>
-                    <span className="block truncate text-[10px] font-bold text-stone-400">
-                      {pendingNpcIntent === action.intent && selectedNpcQueued
-                        ? 'Approaching guide'
-                        : selectedNpcDistance !== null && selectedNpcDistance > NPC_INTERACTION_RANGE
-                          ? `${selectedNpcDistance.toFixed(1)}m away`
-                          : selectedNpc.district}
-                    </span>
-                  </span>
-                  <i className={`fas ${pendingNpcIntent === action.intent ? 'fa-spinner fa-spin' : 'fa-chevron-right'} shrink-0 text-[10px] text-amber-600`}></i>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedPresence && selectedCharacterPanelUserId === selectedPresence.userId && (
-          <motion.div
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.96 }}
-            className="fixed right-4 top-20 z-[85] max-h-[calc(100vh-6.5rem)] w-[min(92vw,360px)] overflow-y-auto rounded-md border border-white/70 bg-[#fffaf1]/95 p-4 shadow-2xl backdrop-blur-xl md:right-6"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-pink-500">Character</p>
-                <h3 className="truncate text-lg font-black text-stone-800">{selectedPresence.name}</h3>
-                <p className="truncate text-xs font-bold text-emerald-700">{selectedPresence.activity} in {selectedPresence.currentZone}</p>
-                <p className="truncate text-[11px] font-black uppercase tracking-wider text-stone-400">
-                  {selectedQueuedAction
-                    ? 'Approaching'
-                    : selectedPresenceReady
-                      ? 'Ready nearby'
-                      : selectedPresenceDistance !== null
-                        ? `${selectedPresenceDistance.toFixed(1)}m away`
-                        : 'In world'}
-                </p>
-                {selectedPresence.guild && (
-                  <p className="truncate text-[11px] font-black uppercase tracking-wider text-emerald-600">
-                    <i className="fas fa-shield-heart mr-1.5"></i>
-                    {selectedPresence.guild}
-                  </p>
-                )}
-                {selectedRelationship?.label && (
-                  <p className="truncate text-[11px] font-black uppercase tracking-wider text-sky-600">
-                    <i className="fas fa-heart-circle-check mr-1.5"></i>
-                    {selectedRelationship.label}
-                  </p>
-                )}
-                {selectedPresence.achievements && selectedPresence.achievements.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {selectedPresence.achievements.map(achievement => (
-                      <span
-                        key={achievement.achievementKey}
-                        className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-700"
-                        title={achievement.titleReward || achievement.name}
-                      >
-                        <i className={`fas ${achievement.icon}`}></i>
-                        {achievement.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => onMinimapMoveTarget(getFollowDestination(selfPosition, selectedPresence.position), selectedPresence.name)}
-                  className="h-9 w-9 rounded-md bg-pink-100 text-pink-600 transition hover:bg-pink-200"
-                  title="Walk to avatar"
-                  aria-label="Walk to avatar"
-                >
-                  <i className="fas fa-location-crosshairs text-[11px]"></i>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedPresence(null);
-                    setSelectedCharacterPanelUserId(null);
-                    setSelectedActivityFeed(null);
-                    setIsSelectedProfileOpen(false);
-                    setIsSelectedActivityOpen(false);
-                    setIsSelectedDirectChatOpen(false);
-                  }}
-                  className="h-9 w-9 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
-                  title="Close"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-            <AvatarInspectionPreview
-              presence={selectedPresence}
-              quality={quality}
-              relationshipLabel={selectedRelationship?.label}
-              rangeLabel={
-                selectedQueuedAction
-                  ? 'Approaching'
-                  : selectedPresenceReady
-                    ? 'Ready nearby'
-                    : selectedPresenceDistance !== null
-                      ? `${selectedPresenceDistance.toFixed(1)}m away`
-                      : 'In world'
-              }
-            />
-            <div className="mb-3 rounded-md bg-white/75 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700">Current Activity</p>
-                  <p className="truncate text-sm font-black text-stone-800">
-                    {selectedActivityFeed?.userId === selectedPresence.userId
-                      ? selectedActivityFeed.profile?.activity || selectedPresence.activity
-                      : selectedPresence.activity}
-                  </p>
-                  <p className="truncate text-[10px] font-bold text-stone-500">{selectedPresence.currentZone}</p>
-                  {selectedPresence.intent && (
-                    <p className="mt-1 truncate text-[10px] font-black uppercase tracking-wider text-amber-700">
-                      <i className={`fas ${selectedPresence.intent.icon || getPresenceIntentMeta(selectedPresence.intent)?.icon || 'fa-location-dot'} mr-1.5`}></i>
-                      {selectedPresence.intent.label}
-                    </p>
-                  )}
-                </div>
-                <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-700">
-                  {selectedActivityFeed?.userId === selectedPresence.userId
-                    ? selectedActivityFeed.profile?.status || selectedPresence.status
-                    : selectedPresence.status}
-                </span>
-              </div>
-            </div>
-            {selectedQueuedAction && (
-              <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-amber-100 bg-amber-50/90 px-3 py-2 text-amber-800">
-                <div className="flex min-w-0 items-center gap-2">
-                  <i className="fas fa-person-walking shrink-0 text-xs"></i>
-                  <div className="min-w-0">
-                    <p className="truncate text-[9px] font-black uppercase tracking-[0.18em]">Approaching</p>
-                    <p className="truncate text-[10px] font-bold">Walking closer for {selectedQueuedAction.label}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => cancelQueuedAvatarApproach()}
-                  className="h-7 shrink-0 rounded-md bg-white/80 px-2 text-[8px] font-black uppercase tracking-wider text-amber-800 transition hover:bg-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              {WORLD_ACTIONS.map(action => {
-                const isLiveFollowAction = action.type === 'follow_user' && activeFollowTargetId === selectedPresence.userId;
-                const queued = selectedQueuedAction?.type === action.type;
-                const needsApproach = AVATAR_PROXIMITY_ACTION_TYPES.has(action.type) && !selectedPresenceReady;
-                const hint = isLiveFollowAction
-                  ? 'Following'
-                  : getAvatarActionRangeHint(action.type, selectedPresenceDistance, selectedPresenceReady, selectedQueuedAction?.type);
-                return (
-                  <button
-                    key={action.type}
-                    type="button"
-                    onClick={() => runWorldAction(action, selectedPresence)}
-                    disabled={pendingActionType === action.type}
-                    className={`flex min-h-12 min-w-0 flex-col items-center justify-center rounded-md px-2 py-1.5 text-center transition disabled:cursor-wait disabled:opacity-60 ${getAvatarPanelActionClasses(action.type, isLiveFollowAction, queued, needsApproach)}`}
-                  >
-                    <span className="flex max-w-full items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
-                      <i className={`fas ${pendingActionType === action.type ? 'fa-spinner fa-spin' : isLiveFollowAction ? 'fa-route' : action.icon} shrink-0 text-[10px]`}></i>
-                      <span className="truncate">
-                        {isLiveFollowAction ? 'Stop Follow' : getRelationshipActionLabel(action.type, action.label, selectedRelationship)}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 block max-w-full truncate text-[8px] font-black uppercase tracking-wider opacity-70">
-                      {hint}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {isSelectedProfileOpen && (
-              <div className="mt-4 rounded-md bg-white/75 p-3">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-500">Profile Passport</p>
-                    <p className="truncate text-sm font-black text-stone-800">{selectedPresence.name}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => loadSelectedProfile(selectedPresence)}
-                    disabled={isLoadingSelectedProfile}
-                    className="h-7 w-7 shrink-0 rounded-md text-stone-500 transition hover:bg-pink-50 hover:text-pink-600 disabled:cursor-wait disabled:opacity-50"
-                    title="Refresh profile"
-                  >
-                    <i className={`fas ${isLoadingSelectedProfile ? 'fa-spinner fa-spin' : 'fa-rotate-right'} text-[10px]`}></i>
-                  </button>
-                </div>
-                {isLoadingSelectedProfile && selectedActivityFeed?.userId !== selectedPresence.userId ? (
-                  <div className="flex h-24 items-center justify-center rounded-md bg-[#fffaf1] text-[11px] font-black uppercase tracking-wider text-stone-400">
-                    <i className="fas fa-spinner fa-spin mr-2"></i>
-                    Inspecting
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-[56px_1fr] gap-3">
-                      <div
-                        className="flex h-14 w-14 items-center justify-center rounded-md border border-white/80 shadow-inner"
-                        style={{ background: selectedProfileAppearance.bodyColor }}
-                      >
-                        <div
-                          className="h-8 w-8 rounded-full border-2"
-                          style={{
-                            background: selectedProfileAppearance.skinColor,
-                            borderColor: selectedProfileAppearance.trimColor,
-                          }}
-                        />
-                      </div>
-                      <div className="min-w-0 rounded-md bg-[#fffaf1] px-3 py-2">
-                        <p className="truncate text-[11px] font-black uppercase tracking-wider text-stone-700">
-                          {selectedProfileSummary?.title || selectedPresence.title || 'Explorer'}
-                        </p>
-                        <p className="truncate text-[10px] font-bold text-emerald-700">
-                          {selectedProfileSummary?.activity || selectedPresence.activity}
-                        </p>
-                        <p className="truncate text-[9px] font-bold text-stone-400">
-                          Last seen {formatActionTime(selectedActivityFeed?.presence?.lastSeen || selectedPresence.lastSeen)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {INVENTORY_SLOTS.map(item => (
-                        <div key={item.slot} className="rounded-md bg-[#fffaf1] px-2 py-2">
-                          <p className="truncate text-[8px] font-black uppercase tracking-wider text-stone-400">
-                            <i className={`fas ${item.icon} mr-1 text-amber-600`}></i>
-                            {item.label}
-                          </p>
-                          <p className="mt-1 truncate text-[10px] font-black text-stone-700">{getEquipmentLabel(selectedProfileEquipment[item.slot])}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 rounded-md bg-[#fffaf1] px-3 py-2">
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-400">Palette</p>
-                      <div className="flex shrink-0 gap-1.5">
-                        {[selectedProfileAppearance.bodyColor, selectedProfileAppearance.trimColor, selectedProfileAppearance.hairColor].map(color => (
-                          <span
-                            key={color}
-                            className="h-5 w-5 rounded-full border border-white shadow-sm"
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {selectedPresence.achievements && selectedPresence.achievements.length > 0 ? (
-                      <div className="rounded-md bg-[#fffaf1] px-3 py-2">
-                        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-amber-700">Badges</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {selectedPresence.achievements.slice(0, 5).map(achievement => (
-                            <span
-                              key={achievement.achievementKey}
-                              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-700"
-                              title={achievement.titleReward || achievement.name}
-                            >
-                              <i className={`fas ${achievement.icon}`}></i>
-                              {achievement.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="rounded-md bg-[#fffaf1] px-3 py-3 text-center text-[11px] font-bold text-stone-400">
-                        No visible badges yet.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {isSelectedActivityOpen && (
-              <div className="mt-4 rounded-md bg-white/75 p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-500">Activity Feed</p>
-                  <button
-                    type="button"
-                    onClick={() => loadSelectedActivityFeed(selectedPresence)}
-                    disabled={isLoadingSelectedActivity}
-                    className="h-7 w-7 shrink-0 rounded-md text-stone-500 transition hover:bg-pink-50 hover:text-pink-600 disabled:cursor-wait disabled:opacity-50"
-                    title="Refresh activity"
-                  >
-                    <i className={`fas ${isLoadingSelectedActivity ? 'fa-spinner fa-spin' : 'fa-rotate-right'} text-[10px]`}></i>
-                  </button>
-                </div>
-                {isLoadingSelectedActivity && selectedActivityEntries.length === 0 ? (
-                  <div className="flex h-20 items-center justify-center rounded-md bg-[#fffaf1] text-[11px] font-black uppercase tracking-wider text-stone-400">
-                    <i className="fas fa-spinner fa-spin mr-2"></i>
-                    Loading
-                  </div>
-                ) : selectedActivityEntries.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedActivityEntries.map(entry => (
-                      <div key={entry.id} className="rounded-md bg-[#fffaf1] px-2.5 py-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="min-w-0 truncate text-[11px] font-black text-stone-700">
-                            <i className={`fas ${entry.kind === 'chat' ? 'fa-comment' : 'fa-compass'} mr-1.5 text-pink-500`}></i>
-                            {entry.kind === 'chat' ? `${entry.message.fromName} chatted` : getActivityActionLine(entry.action)}
-                          </p>
-                          <span className="shrink-0 text-[9px] font-black text-stone-400">{formatActionTime(entry.createdAt)}</span>
-                        </div>
-                        {entry.kind === 'chat' && (
-                          <p className="mt-1 line-clamp-2 text-[10px] font-bold text-stone-500">
-                            {entry.message.body}
-                          </p>
-                        )}
-                        {entry.kind === 'action' && typeof entry.action.metadata?.currentZone === 'string' && (
-                          <p className="mt-1 truncate text-[10px] font-bold text-emerald-600">{String(entry.action.metadata.currentZone)}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-md bg-[#fffaf1] px-3 py-4 text-center text-[11px] font-bold text-stone-500">
-                    No visible world activity yet.
-                  </div>
-                )}
-              </div>
-            )}
-            {!isSelectedActivityOpen && recentTargetActions.length > 0 && (
-              <div className="mt-4 rounded-md bg-white/70 p-3">
-                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-stone-400">Recent</p>
-                <div className="space-y-2">
-                  {recentTargetActions.map(action => (
-                    <div key={action.id} className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 truncate text-[11px] font-bold text-stone-700">
-                        {getActionLabel(action)} {action.toName ? `with ${action.toName}` : ''}
-                      </p>
-                      <span className="shrink-0 text-[9px] font-black text-stone-400">{formatActionTime(action.createdAt)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {worldToast && (

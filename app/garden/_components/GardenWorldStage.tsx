@@ -3,6 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import Timeline from '../../../components/Timeline';
 import MemoryFrame from '../../../components/MemoryFrame';
@@ -18,9 +19,13 @@ import TimelineSpreadsheet from '../../../components/TimelineSpreadsheet';
 import UserDropdown from '../../../components/UserDropdown';
 import UserProfileModal from '../../../components/UserProfileModal';
 import Shop from '../../../components/Shop';
-import WorldMMO3D from '../../../components/mmo-world/WorldMMO3D';
 import { purchasedItemsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
+
+const WorldMMO3D = dynamic(() => import('../../../components/mmo-world/WorldMMO3D'), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-slate-950" aria-hidden="true" />,
+});
 
 export const GardenWorldStage: React.FC = () => {
   const { user, logout, authLoading, circles, activeCircleId, setActiveCircle, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount } = useGardenPageContext();

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { isAuthenticated, getUser, logout as authLogout, initAppKit, getUserCircles, AuthRequiredError } from '@/lib/auth';
+import { isAuthenticated, getUser, logout as authLogout, initAppKit, getUserCircles, AuthRequiredError, AuthUnavailableError } from '@/lib/auth';
+import { cacheVerifiedAuthUser, clearCachedAuthUser, readCachedAuthUser, resolveAuthUser } from '@/lib/auth-bootstrap';
 import { getActiveCircleId, setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -47,11 +48,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [token, setToken] = useState<string | null>(null);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [activeCircleId, setActiveCircleIdState] = useState<string | null>(null);
+  const [authUnavailable, setAuthUnavailable] = useState(false);
   const checkingRef = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
 
   const handleLogout = useCallback(() => {
+    clearCachedAuthUser();
     authLogout();
   }, []);
 
@@ -78,7 +81,39 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
 
     if (authenticated) {
-      const userInfo = await getUser();
+      let userInfo = null;
+      let userSource: 'remote' | 'cached' | 'missing' = 'missing';
+
+      try {
+        const remoteUser = await getUser();
+        const resolution = resolveAuthUser({
+          hasSession: true,
+          remoteUser,
+          cachedUser: readCachedAuthUser(),
+          remoteUnavailable: false,
+        });
+        userInfo = resolution.user;
+        userSource = resolution.source;
+      } catch (err) {
+        if (!(err instanceof AuthUnavailableError)) throw err;
+
+        const resolution = resolveAuthUser({
+          hasSession: true,
+          remoteUser: null,
+          cachedUser: readCachedAuthUser(),
+          remoteUnavailable: true,
+        });
+        userInfo = resolution.user;
+        userSource = resolution.source;
+        setAuthUnavailable(true);
+
+        if (!userInfo) {
+          console.warn('AuthProvider: AppKit is unavailable and no verified profile is cached yet.');
+          setLoading(false);
+          checkingRef.current = false;
+          return;
+        }
+      }
 
       // Token expired/invalid — getUser() returns null even though isAuthenticated() = true.
       // Treat as logged out to prevent an infinite redirect loop.
@@ -90,6 +125,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setActiveCircleIdState(null);
         setActiveCircleId(null);
         setToken(null);
+        setAuthUnavailable(false);
+        clearCachedAuthUser();
         
         // --- CRITICAL FIX ---
         // Clear tokens directly from localStorage instead of calling authLogout().
@@ -122,7 +159,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-
+      if (userSource === 'remote') {
+        cacheVerifiedAuthUser(userInfo);
+        setAuthUnavailable(false);
+      }
       setUser(userInfo);
 
       // Fetch circles and determine active circle
@@ -135,6 +175,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           // Clear auth state and redirect to login
           setIsLoggedIn(false);
           setUser(null);
+          setAuthUnavailable(false);
+          clearCachedAuthUser();
           if (typeof window !== 'undefined') {
             // Clear cookies to stop loop
             document.cookie = 'narinyland_is_auth=; Max-Age=0; path=/;';
@@ -209,6 +251,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setUser(null);
       setCircles([]);
       setActiveCircleIdState(null);
+      setAuthUnavailable(false);
+      clearCachedAuthUser();
     }
 
     setToken(null);
@@ -286,6 +330,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     checkAuth();
   }, [checkAuth]);
 
+  useEffect(() => {
+    if (!authUnavailable) return;
+    const retryId = window.setTimeout(() => {
+      void checkAuth();
+    }, 10_000);
+    return () => window.clearTimeout(retryId);
+  }, [authUnavailable, checkAuth]);
+
   // Show loading spinner while checking auth
   if (loading) {
     return (
@@ -293,6 +345,25 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-pink-300 border-t-pink-600 rounded-full animate-spin" />
           <p className="text-pink-600 font-outfit text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authUnavailable && isLoggedIn && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 px-6 text-white">
+        <div className="w-full max-w-sm text-center">
+          <div className="mx-auto mb-5 h-11 w-11 animate-spin rounded-full border-4 border-white/20 border-t-emerald-400" />
+          <h1 className="text-xl font-semibold">Reconnecting to your world</h1>
+          <p className="mt-2 text-sm text-white/65">Your session is still present. We will retry automatically.</p>
+          <button
+            type="button"
+            onClick={() => void checkAuth()}
+            className="mt-6 rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-400"
+          >
+            Retry now
+          </button>
         </div>
       </div>
     );
@@ -315,6 +386,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   return (
     <AuthContext.Provider value={{ isLoggedIn, user, token, logout: handleLogout, refreshUser: checkAuth, loading, circles, activeCircleId, setActiveCircle }}>
       {children}
+      {authUnavailable && (
+        <div className="pointer-events-none fixed bottom-24 left-1/2 z-[200] -translate-x-1/2 rounded-md border border-amber-300/30 bg-slate-950/90 px-3 py-2 text-xs font-semibold text-amber-100 shadow-lg backdrop-blur-md">
+          Reconnecting to AppKit
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

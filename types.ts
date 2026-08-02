@@ -223,6 +223,13 @@ export interface WorldPresence {
   lastSeen: string;
 }
 
+export interface WorldMovementCorrection {
+  corrected: boolean;
+  reason?: 'speed' | 'velocity' | 'vertical';
+  requestedDistance: number;
+  allowedDistance: number;
+}
+
 export type WorldActionType =
   | 'view_profile'
   | 'start_chat'
