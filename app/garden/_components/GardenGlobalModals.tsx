@@ -9,6 +9,11 @@ import TimelineSpreadsheet from '../../../components/TimelineSpreadsheet';
 import Toast from '../../../components/Toast';
 import { useGardenPageContext } from './context';
 
+type GardenToastState = {
+  message: string;
+  isVisible: boolean;
+};
+
 export const GardenGlobalModals: React.FC = () => {
   const {
     hasAcceptedProposal,
@@ -65,7 +70,7 @@ export const GardenGlobalModals: React.FC = () => {
       <Toast
         message={toast.message}
         isVisible={toast.isVisible}
-        onClose={() => setToast((previous) => ({ ...previous, isVisible: false }))}
+        onClose={() => setToast((previous: GardenToastState) => ({ ...previous, isVisible: false }))}
       />
 
       <AnimatePresence>
