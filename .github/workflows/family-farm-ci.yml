@@ -1,0 +1,45 @@
+name: Family Farm CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/api/family-farm/**'
+      - 'app/garden/**'
+      - 'components/family-farm/**'
+      - 'lib/family-farm-*.ts'
+      - 'services/family-farm-api.ts'
+      - 'tests/family-farm-game.test.ts'
+      - '.github/workflows/family-farm-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/narinyland_ci
+      NEXT_PUBLIC_API_URL: /api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Farm engine tests
+        run: node --import tsx --test tests/family-farm-game.test.ts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
