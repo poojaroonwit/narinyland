@@ -15,13 +15,13 @@ async function requestFamilyFarm(
   options: RequestInit = {}
 ): Promise<FamilyFarmApiResponse> {
   const circleId = getActiveCircleId();
+  const headers = new Headers(options.headers);
+  headers.set('Content-Type', 'application/json');
+  if (circleId) headers.set('X-Circle-Id', circleId);
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(circleId ? { 'X-Circle-Id': circleId } : {}),
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
