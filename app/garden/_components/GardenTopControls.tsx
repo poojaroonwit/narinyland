@@ -17,7 +17,6 @@ export const GardenTopControls: React.FC = () => {
     activeCircleId,
     setActiveCircle,
     refreshUser,
-    isEditDrawerOpen,
     setIsEditDrawerOpen,
     isUserProfileModalOpen,
     setIsUserProfileModalOpen,
@@ -34,6 +33,7 @@ export const GardenTopControls: React.FC = () => {
     setIsUserDropdownOpen,
     setConfigLoaded,
     closeFloatingPanels,
+    handleSelectLand,
     showToast,
   } = useGardenPageContext();
 
@@ -115,7 +115,7 @@ export const GardenTopControls: React.FC = () => {
         items: activeCreatedLand.items || [],
       };
 
-      setAppConfig((previous: { lands?: Array<{ id: string; isActive?: boolean }> }) => ({
+      setAppConfig((previous: { lands?: Array<{ id: string; isActive?: boolean }> } & Record<string, unknown>) => ({
         ...previous,
         lands: [
           ...(previous.lands || [])
@@ -135,6 +135,15 @@ export const GardenTopControls: React.FC = () => {
     }
   };
 
+  const selectLand = async (landId: string) => {
+    setIsLandDropdownOpen(false);
+    try {
+      await handleSelectLand(landId);
+    } catch (error) {
+      showToast?.(`Could not switch garden: ${getErrorMessage(error)}`);
+    }
+  };
+
   const userForMenu = user
     ? {
         name: user.name || 'My Account',
@@ -142,6 +151,47 @@ export const GardenTopControls: React.FC = () => {
         picture: user.picture || '',
       }
     : null;
+
+  const renderLandList = () => (
+    <div className="max-h-52 space-y-1 overflow-y-auto">
+      {(appConfig.lands || []).map((land: { id: string; name: string }) => (
+        <button
+          type="button"
+          key={land.id}
+          onClick={() => selectLand(land.id)}
+          className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-black transition ${
+            land.id === activeLand?.id
+              ? 'bg-amber-500 text-white'
+              : 'text-stone-600 hover:bg-amber-50 hover:text-amber-700'
+          }`}
+        >
+          <span className="truncate">{land.name}</span>
+          {land.id === activeLand?.id && <span aria-label="Selected">✓</span>}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderCreateLandForm = () => (
+    <form onSubmit={handleCreateLand} className="mb-2 flex gap-2 rounded-2xl bg-amber-50 p-1.5">
+      <input
+        value={newLandName}
+        onChange={(event) => setNewLandName(event.target.value)}
+        maxLength={40}
+        placeholder={activeCircleId ? 'New garden' : 'Choose world first'}
+        aria-label="New garden name"
+        disabled={!activeCircleId || isCreatingLand}
+        className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs font-bold text-stone-700 outline-none placeholder:text-amber-300"
+      />
+      <button
+        type="submit"
+        disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
+        className="rounded-xl bg-amber-500 px-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {isCreatingLand ? '…' : '+ Add'}
+      </button>
+    </form>
+  );
 
   return (
     <>
@@ -256,45 +306,8 @@ export const GardenTopControls: React.FC = () => {
                 <div className="px-2 pb-2 pt-1">
                   <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Gardens</p>
                 </div>
-                <form onSubmit={handleCreateLand} className="mb-2 flex gap-2 rounded-2xl bg-amber-50 p-1.5">
-                  <input
-                    value={newLandName}
-                    onChange={(event) => setNewLandName(event.target.value)}
-                    maxLength={40}
-                    placeholder={activeCircleId ? 'New garden' : 'Choose world first'}
-                    aria-label="New garden name"
-                    disabled={!activeCircleId || isCreatingLand}
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs font-bold text-stone-700 outline-none placeholder:text-amber-300"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
-                    className="rounded-xl bg-amber-500 px-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isCreatingLand ? '…' : '+ Add'}
-                  </button>
-                </form>
-
-                <div className="max-h-52 space-y-1 overflow-y-auto">
-                  {(appConfig.lands || []).map((land: { id: string; name: string }) => (
-                    <button
-                      type="button"
-                      key={land.id}
-                      onClick={async () => {
-                        setIsLandDropdownOpen(false);
-                        await appConfig && useGardenPageContext;
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-black transition ${
-                        land.id === activeLand?.id
-                          ? 'bg-amber-500 text-white'
-                          : 'text-stone-600 hover:bg-amber-50 hover:text-amber-700'
-                      }`}
-                    >
-                      <span className="truncate">{land.name}</span>
-                      {land.id === activeLand?.id && <span aria-label="Selected">✓</span>}
-                    </button>
-                  ))}
-                </div>
+                {renderCreateLandForm()}
+                {renderLandList()}
               </motion.div>
             )}
           </AnimatePresence>
@@ -314,7 +327,7 @@ export const GardenTopControls: React.FC = () => {
           }}
           onOpenSettings={() => {
             closePanels();
-            setIsEditDrawerOpen(!isEditDrawerOpen || true);
+            setIsEditDrawerOpen(true);
           }}
           loading={authLoading}
         />
@@ -329,6 +342,7 @@ export const GardenTopControls: React.FC = () => {
             setIsLandDropdownOpen(next);
           }}
           className="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-[10px] font-black text-stone-600 shadow-md backdrop-blur-xl"
+          aria-expanded={isLandDropdownOpen}
         >
           🥕 {activeLand?.name || 'Garden'} ▾
         </button>
@@ -340,30 +354,8 @@ export const GardenTopControls: React.FC = () => {
               exit={{ opacity: 0, y: -4 }}
               className="absolute right-0 mt-2 w-[min(280px,calc(100vw-24px))] rounded-[20px] border border-amber-100 bg-white/95 p-2 shadow-xl backdrop-blur-xl"
             >
-              <form onSubmit={handleCreateLand} className="mb-2 flex gap-2 rounded-2xl bg-amber-50 p-1.5">
-                <input
-                  value={newLandName}
-                  onChange={(event) => setNewLandName(event.target.value)}
-                  maxLength={40}
-                  placeholder="New garden"
-                  disabled={!activeCircleId || isCreatingLand}
-                  className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs font-bold outline-none"
-                />
-                <button type="submit" disabled={!newLandName.trim() || isCreatingLand} className="rounded-xl bg-amber-500 px-3 text-xs font-black text-white disabled:opacity-40">+ Add</button>
-              </form>
-              {(appConfig.lands || []).map((land: { id: string; name: string }) => (
-                <button
-                  type="button"
-                  key={land.id}
-                  onClick={() => {
-                    setIsLandDropdownOpen(false);
-                    appConfig.__noop = undefined;
-                  }}
-                  className={`w-full rounded-xl px-3 py-2.5 text-left text-xs font-black ${land.id === activeLand?.id ? 'bg-amber-500 text-white' : 'text-stone-600 hover:bg-amber-50'}`}
-                >
-                  {land.name}
-                </button>
-              ))}
+              {renderCreateLandForm()}
+              {renderLandList()}
             </motion.div>
           )}
         </AnimatePresence>
