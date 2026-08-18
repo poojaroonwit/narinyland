@@ -6,6 +6,17 @@ import FamilyFarm2D from '../../../components/family-farm/FamilyFarm2D';
 import ProposalScreen from '../../../components/ProposalScreen';
 import { useGardenPageContext } from './context';
 
+type GardenLandSummary = {
+  id: string;
+  name: string;
+  isActive?: boolean;
+};
+
+type CircleSummary = {
+  id: string;
+  name: string;
+};
+
 export const GardenWorldStage: React.FC = () => {
   const {
     activeCircleId,
@@ -19,8 +30,10 @@ export const GardenWorldStage: React.FC = () => {
     showToast,
   } = useGardenPageContext();
 
-  const activeLand = appConfig.lands?.find((land) => land.isActive) ?? appConfig.lands?.[0];
-  const circleName = circles.find((circle) => circle.id === activeCircleId)?.name || appConfig.appName;
+  const lands = (appConfig.lands || []) as GardenLandSummary[];
+  const circleList = (circles || []) as CircleSummary[];
+  const activeLand = lands.find((land) => land.isActive) ?? lands[0];
+  const circleName = circleList.find((circle) => circle.id === activeCircleId)?.name || appConfig.appName;
 
   return (
     <>
