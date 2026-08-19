@@ -3,9 +3,11 @@ import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 import { applyFamilyFarmAction, getFamilyFarmSave } from '@/lib/family-farm-store';
 import {
   CROP_KEYS,
+  RECIPE_KEYS,
   RESOURCE_KEYS,
   type CropKey,
   type FarmAction,
+  type RecipeKey,
   type ResourceKey,
 } from '@/lib/family-farm-game';
 
@@ -31,6 +33,10 @@ function isResourceKey(value: unknown): value is ResourceKey {
   return typeof value === 'string' && RESOURCE_KEYS.includes(value as ResourceKey);
 }
 
+function isRecipeKey(value: unknown): value is RecipeKey {
+  return typeof value === 'string' && RECIPE_KEYS.includes(value as RecipeKey);
+}
+
 function isQuantity(value: unknown) {
   return value === undefined || value === 'all' || typeof value === 'number';
 }
@@ -45,13 +51,9 @@ function parseFarmAction(value: unknown): FarmAction | null {
         ? { type: 'plant', plotId: action.plotId, cropKey: action.cropKey }
         : null;
     case 'water':
-      return typeof action.plotId === 'string'
-        ? { type: 'water', plotId: action.plotId }
-        : null;
+      return typeof action.plotId === 'string' ? { type: 'water', plotId: action.plotId } : null;
     case 'harvest':
-      return typeof action.plotId === 'string'
-        ? { type: 'harvest', plotId: action.plotId }
-        : null;
+      return typeof action.plotId === 'string' ? { type: 'harvest', plotId: action.plotId } : null;
     case 'buy_seed':
       return isCropKey(action.cropKey) && (action.quantity === undefined || typeof action.quantity === 'number')
         ? { type: 'buy_seed', cropKey: action.cropKey, quantity: action.quantity as number | undefined }
@@ -68,6 +70,10 @@ function parseFarmAction(value: unknown): FarmAction | null {
       return { type: 'buy_chicken' };
     case 'forage':
       return { type: 'forage' };
+    case 'fish':
+      return { type: 'fish' };
+    case 'cook':
+      return isRecipeKey(action.recipeKey) ? { type: 'cook', recipeKey: action.recipeKey } : null;
     case 'sell_resource':
       return isResourceKey(action.resourceKey) && isQuantity(action.quantity)
         ? {
@@ -85,9 +91,7 @@ function parseFarmAction(value: unknown): FarmAction | null {
     case 'upgrade_home':
       return { type: 'upgrade_home' };
     case 'rename_family':
-      return typeof action.name === 'string'
-        ? { type: 'rename_family', name: action.name }
-        : null;
+      return typeof action.name === 'string' ? { type: 'rename_family', name: action.name } : null;
     default:
       return null;
   }
@@ -99,9 +103,7 @@ export async function GET(request: Request) {
     if (isConfigAccessDenied(access)) return access.response;
 
     const landId = readLandId(request);
-    if (!landId) {
-      return NextResponse.json({ error: 'landId is required' }, { status: 400 });
-    }
+    if (!landId) return NextResponse.json({ error: 'landId is required' }, { status: 400 });
 
     return NextResponse.json(await getFamilyFarmSave(access.configId, landId));
   } catch (error) {
@@ -123,12 +125,8 @@ export async function POST(request: Request) {
       ? parseFarmAction((body as { action?: unknown }).action)
       : null;
 
-    if (!landId) {
-      return NextResponse.json({ error: 'landId is required' }, { status: 400 });
-    }
-    if (!action) {
-      return NextResponse.json({ error: 'A valid farm action is required' }, { status: 400 });
-    }
+    if (!landId) return NextResponse.json({ error: 'landId is required' }, { status: 400 });
+    if (!action) return NextResponse.json({ error: 'A valid farm action is required' }, { status: 400 });
 
     return NextResponse.json(await applyFamilyFarmAction(access.configId, landId, action));
   } catch (error) {
@@ -150,6 +148,9 @@ export async function POST(request: Request) {
       'finish all daily',
       'reward is already claimed',
       'upgrade your home',
+      'reach level',
+      'pond is quiet',
+      'ingredients',
       'need',
     ].some((fragment) => message.toLowerCase().includes(fragment));
     const status = message.includes('not found') ? 404 : isGameRuleError ? 409 : 500;
