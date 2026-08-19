@@ -21,10 +21,20 @@ test('service auth failures preserve AppKit OAuth diagnostics', async () => {
   assert.doesNotMatch(source, /throw new Error\('Missing authentication token'\)/);
 });
 
-test('admin circle requests use the explicit application id rather than assuming the OAuth client id', async () => {
+test('application identity is resolved from client credentials instead of assuming OAuth client id', async () => {
   const source = await readFile(sourceUrl, 'utf8');
 
-  assert.match(source, /const APPKIT_APPLICATION_ID =/);
+  assert.match(source, /record\.application_id \|\| record\.applicationId/);
+  assert.match(source, /resolvedAppKitApplicationId = tokenApplicationId/);
   assert.match(source, /const applicationId = requireApplicationId\(\)/);
-  assert.match(source, /APPKIT_APPLICATION_ID\/branding/);
+  assert.doesNotMatch(source, /process\.env\.UNIBOX_APP_ID \|\|\s*APPKIT_CLIENT_ID/);
+  assert.match(source, /service token is not bound to an application/i);
+});
+
+test('read-only AppKit calls can use the application id learned from the token exchange', async () => {
+  const source = await readFile(sourceUrl, 'utf8');
+
+  assert.match(source, /const applicationId = resolvedAppKitApplicationId/);
+  assert.match(source, /\/api\/v1\/admin\/applications\/\$\{applicationId\}\/branding/);
+  assert.match(source, /\/api\/v1\/admin\/applications\/\$\{applicationId\}\/circles\/\$\{circleId\}\/members/);
 });
