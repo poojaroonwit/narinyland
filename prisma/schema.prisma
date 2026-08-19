@@ -77,6 +77,7 @@ model Land {
   updatedAt DateTime        @updatedAt
   config    AppConfig       @relation(fields: [configId], references: [id], onDelete: Cascade)
   items     PurchasedItem[]
+  hexWorld  HexWorld?
 }
 
 model PurchasedItem {
@@ -91,6 +92,69 @@ model PurchasedItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   land      Land     @relation(fields: [landId], references: [id], onDelete: Cascade)
+}
+
+model HexWorld {
+  id               String         @id @default(uuid())
+  landId           String         @unique
+  schemaVersion    Int            @default(1)
+  generatorVersion Int            @default(1)
+  seed             String
+  expansionLevel   Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  land             Land           @relation(fields: [landId], references: [id], onDelete: Cascade)
+  tiles            HexTile[]
+  buildings        HexBuilding[]
+  expansions       HexExpansion[]
+}
+
+model HexTile {
+  id          String   @id @default(uuid())
+  worldId     String
+  q           Int
+  r           Int
+  terrainType String
+  height      Float    @default(0)
+  unlocked    Boolean  @default(true)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  world       HexWorld @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, q, r])
+  @@index([worldId, unlocked])
+}
+
+model HexBuilding {
+  id          String   @id @default(uuid())
+  worldId     String
+  buildingKey String
+  anchorQ     Int
+  anchorR     Int
+  rotation    Int      @default(0)
+  modelUrl    String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  world       HexWorld @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@index([worldId])
+  @@index([worldId, buildingKey])
+}
+
+model HexExpansion {
+  id           String   @id @default(uuid())
+  worldId      String
+  expansionKey String
+  tier         Int
+  pointCost    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  world        HexWorld @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, expansionKey])
+  @@index([worldId, tier])
 }
 
 model Partner {
@@ -110,24 +174,24 @@ model Partner {
 }
 
 model CharacterProfile {
-  id          String    @id @default(uuid())
-  userId      String
-  configId    String
-  displayName String
-  title       String    @default("Explorer")
-  status      String    @default("online")
-  activity    String    @default("Exploring")
-  emote       String    @default("idle")
-  modelUrl    String?
-  appearance  Json      @default("{}")
-  equipment   Json      @default("{}")
-  cosmetics   Json      @default("{}")
-  lastPosition Json      @default("{}")
-  lastZone     String    @default("Narinyland Commons")
-  lastMapPositions Json   @default("{}")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  config      AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  userId           String
+  configId         String
+  displayName      String
+  title            String    @default("Explorer")
+  status           String    @default("online")
+  activity         String    @default("Exploring")
+  emote            String    @default("idle")
+  modelUrl         String?
+  appearance       Json      @default("{}")
+  equipment        Json      @default("{}")
+  cosmetics        Json      @default("{}")
+  lastPosition     Json      @default("{}")
+  lastZone         String    @default("Narinyland Commons")
+  lastMapPositions Json      @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  config           AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
 
   @@unique([configId, userId])
   @@index([configId, status])
