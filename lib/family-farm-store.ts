@@ -8,14 +8,19 @@ import {
   type FarmAction,
 } from '@/lib/family-farm-game';
 
+// Keep the original key so existing v1 farm saves migrate in place through the
+// normalizer instead of creating a second parallel save record.
 const FARM_SAVE_ITEM_KEY = 'family-farm-state-v1';
 const FARM_SAVE_SLOT = 'system';
-const FARM_SAVE_NAME = 'Family Farm Save';
+const FARM_SAVE_NAME = 'Family Life Save';
+const MAX_TRANSACTION_ATTEMPTS = 3;
 
 type SaveMetadata = {
   revision?: number;
   state?: unknown;
 };
+
+type FarmDb = Pick<Prisma.TransactionClient, 'land' | 'appConfig' | 'worldInventoryItem'>;
 
 export type FamilyFarmSave = {
   landId: string;
@@ -32,13 +37,13 @@ function readMetadata(value: Prisma.JsonValue): SaveMetadata {
   return value as SaveMetadata;
 }
 
-async function getLandContext(configId: string, landId: string) {
+async function getLandContext(db: FarmDb, configId: string, landId: string) {
   const [land, config] = await Promise.all([
-    prisma.land.findFirst({
+    db.land.findFirst({
       where: { id: landId, configId },
       select: { id: true, name: true },
     }),
-    prisma.appConfig.findUnique({
+    db.appConfig.findUnique({
       where: { id: configId },
       select: { appName: true },
     }),
@@ -52,10 +57,10 @@ async function getLandContext(configId: string, landId: string) {
   };
 }
 
-export async function getFamilyFarmSave(configId: string, landId: string): Promise<FamilyFarmSave> {
-  const context = await getLandContext(configId, landId);
+async function readFamilyFarmSave(db: FarmDb, configId: string, landId: string): Promise<FamilyFarmSave> {
+  const context = await getLandContext(db, configId, landId);
   const userId = farmSaveUserId(landId);
-  const existing = await prisma.worldInventoryItem.findUnique({
+  const existing = await db.worldInventoryItem.findUnique({
     where: {
       configId_userId_itemKey: {
         configId,
@@ -84,47 +89,70 @@ export async function getFamilyFarmSave(configId: string, landId: string): Promi
   };
 }
 
+export async function getFamilyFarmSave(configId: string, landId: string): Promise<FamilyFarmSave> {
+  return readFamilyFarmSave(prisma, configId, landId);
+}
+
+function isSerializableRetry(error: unknown) {
+  return !!error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === 'P2034';
+}
+
 export async function applyFamilyFarmAction(
   configId: string,
   landId: string,
   action: FarmAction
 ): Promise<FamilyFarmSave & { message: string }> {
-  const current = await getFamilyFarmSave(configId, landId);
-  const result = performFarmAction(current.state, action);
-  const revision = current.revision + 1;
-  const userId = farmSaveUserId(landId);
-  const metadata = {
-    revision,
-    state: result.state,
-  } as unknown as Prisma.InputJsonValue;
+  let lastError: unknown;
 
-  await prisma.worldInventoryItem.upsert({
-    where: {
-      configId_userId_itemKey: {
-        configId,
-        userId,
-        itemKey: FARM_SAVE_ITEM_KEY,
-      },
-    },
-    create: {
-      configId,
-      userId,
-      slot: FARM_SAVE_SLOT,
-      itemKey: FARM_SAVE_ITEM_KEY,
-      name: FARM_SAVE_NAME,
-      rarity: 'system',
-      icon: 'fa-seedling',
-      metadata,
-    },
-    update: {
-      metadata,
-    },
-  });
+  for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const current = await readFamilyFarmSave(tx, configId, landId);
+        const result = performFarmAction(current.state, action);
+        const revision = current.revision + 1;
+        const userId = farmSaveUserId(landId);
+        const metadata = {
+          revision,
+          state: result.state,
+        } as unknown as Prisma.InputJsonValue;
 
-  return {
-    landId,
-    revision,
-    state: result.state,
-    message: result.message,
-  };
+        await tx.worldInventoryItem.upsert({
+          where: {
+            configId_userId_itemKey: {
+              configId,
+              userId,
+              itemKey: FARM_SAVE_ITEM_KEY,
+            },
+          },
+          create: {
+            configId,
+            userId,
+            slot: FARM_SAVE_SLOT,
+            itemKey: FARM_SAVE_ITEM_KEY,
+            name: FARM_SAVE_NAME,
+            rarity: 'system',
+            icon: 'fa-seedling',
+            metadata,
+          },
+          update: {
+            metadata,
+          },
+        });
+
+        return {
+          landId,
+          revision,
+          state: result.state,
+          message: result.message,
+        };
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
+    } catch (error) {
+      lastError = error;
+      if (!isSerializableRetry(error) || attempt === MAX_TRANSACTION_ATTEMPTS) throw error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Could not save the family world action.');
 }

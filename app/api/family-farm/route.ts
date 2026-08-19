@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 import { applyFamilyFarmAction, getFamilyFarmSave } from '@/lib/family-farm-store';
-import { CROP_KEYS, type CropKey, type FarmAction } from '@/lib/family-farm-game';
+import {
+  CROP_KEYS,
+  RESOURCE_KEYS,
+  type CropKey,
+  type FarmAction,
+  type ResourceKey,
+} from '@/lib/family-farm-game';
 
 function readLandId(request: Request, body?: unknown): string | null {
   if (body && typeof body === 'object' && 'landId' in body) {
@@ -19,6 +25,14 @@ function readLandId(request: Request, body?: unknown): string | null {
 
 function isCropKey(value: unknown): value is CropKey {
   return typeof value === 'string' && CROP_KEYS.includes(value as CropKey);
+}
+
+function isResourceKey(value: unknown): value is ResourceKey {
+  return typeof value === 'string' && RESOURCE_KEYS.includes(value as ResourceKey);
+}
+
+function isQuantity(value: unknown) {
+  return value === undefined || value === 'all' || typeof value === 'number';
 }
 
 function parseFarmAction(value: unknown): FarmAction | null {
@@ -43,11 +57,29 @@ function parseFarmAction(value: unknown): FarmAction | null {
         ? { type: 'buy_seed', cropKey: action.cropKey, quantity: action.quantity as number | undefined }
         : null;
     case 'sell':
-      return isCropKey(action.cropKey) && (
-        action.quantity === undefined || action.quantity === 'all' || typeof action.quantity === 'number'
-      )
+      return isCropKey(action.cropKey) && isQuantity(action.quantity)
         ? { type: 'sell', cropKey: action.cropKey, quantity: action.quantity as number | 'all' | undefined }
         : null;
+    case 'feed_chickens':
+      return { type: 'feed_chickens' };
+    case 'collect_eggs':
+      return { type: 'collect_eggs' };
+    case 'buy_chicken':
+      return { type: 'buy_chicken' };
+    case 'forage':
+      return { type: 'forage' };
+    case 'sell_resource':
+      return isResourceKey(action.resourceKey) && isQuantity(action.quantity)
+        ? {
+            type: 'sell_resource',
+            resourceKey: action.resourceKey,
+            quantity: action.quantity as number | 'all' | undefined,
+          }
+        : null;
+    case 'family_time':
+      return { type: 'family_time' };
+    case 'claim_daily_reward':
+      return { type: 'claim_daily_reward' };
     case 'end_day':
       return { type: 'end_day' };
     case 'upgrade_home':
@@ -108,9 +140,17 @@ export async function POST(request: Request) {
       'nothing to harvest',
       'needs more',
       'do not have',
-      'plant something',
       'fully upgraded',
       'does not exist',
+      'too late',
+      'go home',
+      'no eggs',
+      'feed the chickens',
+      'explored everything',
+      'finish all daily',
+      'reward is already claimed',
+      'upgrade your home',
+      'need',
     ].some((fragment) => message.toLowerCase().includes(fragment));
     const status = message.includes('not found') ? 404 : isGameRuleError ? 409 : 500;
     console.error('Error applying family farm action:', error);
