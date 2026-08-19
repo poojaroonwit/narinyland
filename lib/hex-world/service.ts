@@ -101,7 +101,12 @@ export async function getOrCreateHexWorldSnapshotWithClient(
       tiles: {
         createMany: {
           data: generated.tiles.map(({ q, r, terrainType, height, unlocked, metadata }) => ({
-            q, r, terrainType, height, unlocked, metadata: metadata ?? {},
+            q,
+            r,
+            terrainType,
+            height,
+            unlocked,
+            metadata: (metadata ?? {}) as Prisma.InputJsonValue,
           })),
         },
       },
@@ -111,7 +116,7 @@ export async function getOrCreateHexWorldSnapshotWithClient(
           anchorQ: building.anchorQ,
           anchorR: building.anchorR,
           rotation: building.rotation,
-          metadata: building.metadata ?? {},
+          metadata: (building.metadata ?? {}) as Prisma.InputJsonValue,
         })),
       },
     },
@@ -162,7 +167,7 @@ export async function placeHexBuilding(configId: string, landId: string, input: 
         anchorQ: input.anchorQ,
         anchorR: input.anchorR,
         rotation: input.rotation,
-        metadata: {},
+        metadata: {} as Prisma.InputJsonObject,
       },
     });
     return (await readSnapshot(tx, configId, landId))!;
@@ -230,8 +235,8 @@ export async function expandHexWorld(configId: string, landId: string, expansion
 
     try {
       await spendSharedPoints(tx, configId, definition.pointCost);
-    } catch (error: any) {
-      if (error?.code === 'not_enough_points') {
+    } catch (error: unknown) {
+      if (getErrorField(error, 'code') === 'not_enough_points') {
         throw new HexWorldServiceError('not_enough_points', 400, 'Not enough shared Points for this expansion');
       }
       throw error;
@@ -245,7 +250,7 @@ export async function expandHexWorld(configId: string, landId: string, expansion
         terrainType: 'grass',
         height: 0,
         unlocked: true,
-        metadata: { expansionKey },
+        metadata: { expansionKey } satisfies Prisma.InputJsonObject,
       })),
       skipDuplicates: true,
     });
