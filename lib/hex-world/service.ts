@@ -22,10 +22,10 @@ export class HexWorldServiceError extends Error {
 type HexWorldClient = Prisma.TransactionClient | typeof prisma;
 
 const WORLD_INCLUDE = {
-  tiles: { orderBy: [{ q: 'asc' as const }, { r: 'asc' as const }] },
-  buildings: { orderBy: { createdAt: 'asc' as const } },
-  expansions: { orderBy: { createdAt: 'asc' as const } },
-} as const;
+  tiles: { orderBy: [{ q: 'asc' }, { r: 'asc' }] },
+  buildings: { orderBy: { createdAt: 'asc' } },
+  expansions: { orderBy: { createdAt: 'asc' } },
+} satisfies Prisma.HexWorldInclude;
 
 async function requireLand(client: HexWorldClient, configId: string, landId: string) {
   const land = await client.land.findFirst({ where: { id: landId, configId }, select: { id: true } });
