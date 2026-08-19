@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
 import { hexRotationToRadians, HEX_TILE_DEPTH } from '@/lib/hex-world/rendering';
 import type { HexBuildingDTO, HexCoord, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
+import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexTileInstances } from './HexTileInstances';
@@ -104,6 +105,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
           onHover={props.onHoverTile}
           onSelect={props.onSelectTile}
         />
+        <HexAmbientDecor tiles={snapshot.tiles} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {preview && previewPosition && (
           <group position={[previewPosition.x, previewPosition.y, previewPosition.z]} rotation={[0, hexRotationToRadians(preview.rotation), 0]}>
