@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
-import FamilyFarm2D from '../../../components/family-farm/FamilyFarm2D';
+import FamilyLife2D from '../../../components/family-farm/FamilyLife2D';
 import ProposalScreen from '../../../components/ProposalScreen';
 import { useGardenPageContext } from './context';
 
@@ -38,7 +38,7 @@ export const GardenWorldStage: React.FC = () => {
   return (
     <>
       <div className="fixed inset-0 z-0 overflow-y-auto">
-        <FamilyFarm2D
+        <FamilyLife2D
           activeCircleId={activeCircleId}
           activeLandId={activeLand?.id}
           activeLandName={activeLand?.name}
