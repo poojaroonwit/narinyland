@@ -13,7 +13,6 @@ import { useGardenPageContext } from './context';
 export const GardenAcceptedContent: React.FC = () => {
   const {
     hasAcceptedProposal,
-    worldMode,
     activeTab,
     appConfig,
     galleryViewMode,
@@ -39,9 +38,8 @@ export const GardenAcceptedContent: React.FC = () => {
   } = useGardenPageContext();
 
   const activeLand = appConfig.lands?.find((land: { isActive?: boolean }) => land.isActive) ?? appConfig.lands?.[0];
-  const shouldRenderLegacyTabs = hasAcceptedProposal && worldMode === 'tree';
 
-  if (!shouldRenderLegacyTabs) return null;
+  if (!hasAcceptedProposal) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-10 flex h-full w-full flex-col">
