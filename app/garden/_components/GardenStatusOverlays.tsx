@@ -14,9 +14,6 @@ export const GardenStatusOverlays: React.FC = () => {
     daysTogether,
     flowerCount,
     loveStats,
-    worldMode,
-    setWorldMode,
-    setIsEditMode,
     showInstallPrompt,
     handleInstallApp,
   } = useGardenPageContext();
@@ -72,26 +69,6 @@ export const GardenStatusOverlays: React.FC = () => {
               animate={{ width: `${Math.min(100, ((loveStats.xp || 0) / Math.max(1, (loveStats.level || 1) * 100)) * 100)}%` }}
               className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-yellow-400"
             />
-          </div>
-
-          <div className="pointer-events-auto mt-4 flex items-center rounded-md border border-pink-100 bg-white/80 p-1 shadow-md backdrop-blur-md">
-            <button
-              type="button"
-              onClick={() => setWorldMode('tree')}
-              className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[10px] font-black tracking-widest transition-all ${worldMode === 'tree' ? 'bg-pink-500 text-white shadow-sm' : 'text-gray-400 hover:text-pink-500'}`}
-            >
-              <i className="fas fa-tree text-[9px]" /> LAND
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditMode(false);
-                setWorldMode('globe');
-              }}
-              className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[10px] font-black tracking-widest transition-all ${worldMode === 'globe' ? 'bg-pink-500 text-white shadow-sm' : 'text-gray-400 hover:text-pink-500'}`}
-            >
-              <i className="fas fa-globe-americas text-[9px]" /> WORLD
-            </button>
           </div>
         </div>
       )}
