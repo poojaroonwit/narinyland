@@ -25,6 +25,20 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: narinyland_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d narinyland_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/narinyland_ci
       NEXT_PUBLIC_API_URL: /api
@@ -44,6 +58,9 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
+      - name: Apply migrations to CI Postgres
+        run: npx prisma migrate deploy
+
       - name: Hex Homestead tests
         env:
           NODE_ENV: production
@@ -55,6 +72,7 @@ jobs:
           tests/hex-world-rules.test.ts
           tests/hex-world-schema.test.ts
           tests/hex-world-service.test.ts
+          tests/hex-world-db.test.ts
           tests/hex-world-api-contract.test.ts
           tests/hex-world-rendering.test.ts
           tests/hex-build-state.test.ts
