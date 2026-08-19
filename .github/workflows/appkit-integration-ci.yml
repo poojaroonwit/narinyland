@@ -1,0 +1,36 @@
+name: AppKit Integration CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/appkit-server.ts'
+      - 'tests/appkit-circle-service-auth.test.ts'
+      - '.github/workflows/appkit-integration-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/narinyland_ci
+      NEXT_PUBLIC_API_URL: /api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: AppKit service-auth tests
+        run: node --import tsx --test tests/appkit-circle-service-auth.test.ts
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
