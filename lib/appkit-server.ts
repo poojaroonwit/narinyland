@@ -16,7 +16,7 @@ function getNormalizedAppKitDomain() {
 function getAppKitErrorMessage(payload: unknown, fallback: string) {
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
-    for (const key of ['error', 'message', 'detail']) {
+    for (const key of ['error_description', 'message', 'detail', 'error']) {
       if (typeof record[key] === 'string' && record[key].trim()) {
         return record[key].trim();
       }
@@ -35,13 +35,16 @@ function isLocalLaunchUrl(ssoLaunchUrl: string) {
   }
 }
 
-/**
- * Get a service-level accessToken using client_credentials grant.
- */
-export async function getServiceToken(): Promise<string | null> {
+type ServiceTokenResult = {
+  token: string | null;
+  error?: string;
+};
+
+async function requestServiceToken(): Promise<ServiceTokenResult> {
   if (!APPKIT_CLIENT_ID || !APPKIT_CLIENT_SECRET) {
-    console.warn('AppKit Service Token requested but APPKIT_CLIENT_ID/SECRET missing');
-    return null;
+    const error = 'AppKit service authentication is not configured: missing client ID or client secret';
+    console.warn(error);
+    return { token: null, error };
   }
 
   try {
@@ -49,28 +52,68 @@ export async function getServiceToken(): Promise<string | null> {
       grant_type: 'client_credentials',
       client_id: APPKIT_CLIENT_ID,
       client_secret: APPKIT_CLIENT_SECRET,
-      // Using broad scopes to ensure we have permission for groups/circles
-      scope: 'manage:all manage:groups circles:manage',
+      // AppKit's application admin routes enforce these permission scopes.
+      scope: 'applications:view applications:edit',
     });
 
-    const res = await fetch(`${APPKIT_DOMAIN}/oauth/token`, {
+    const res = await fetch(`${getNormalizedAppKitDomain()}/oauth/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
       body: params.toString(),
     });
 
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error('AppKit service token exchange failed:', err);
-      return null;
+      const error = getAppKitErrorMessage(data, `AppKit service token exchange failed with HTTP ${res.status}`);
+      console.error('AppKit service token exchange failed:', {
+        status: res.status,
+        error,
+      });
+      return { token: null, error };
     }
-    
-    const data = await res.json();
-    return data.access_token || null;
+
+    const token = data && typeof data === 'object' && typeof (data as Record<string, unknown>).access_token === 'string'
+      ? String((data as Record<string, unknown>).access_token)
+      : '';
+
+    if (!token) {
+      const error = 'AppKit service token response did not include an access token';
+      console.error(error);
+      return { token: null, error };
+    }
+
+    return { token };
   } catch (err) {
-    console.error('AppKit getServiceToken error:', err);
-    return null;
+    const error = err instanceof Error ? err.message : 'Unable to reach AppKit token endpoint';
+    console.error('AppKit getServiceToken error:', error);
+    return { token: null, error };
   }
+}
+
+/**
+ * Get a service-level access token using the client_credentials grant.
+ * Read-only callers may treat a missing token as an unavailable integration.
+ */
+export async function getServiceToken(): Promise<string | null> {
+  return (await requestServiceToken()).token;
+}
+
+async function requireServiceToken(): Promise<string> {
+  const result = await requestServiceToken();
+  if (!result.token) {
+    throw new Error(result.error || 'AppKit service authentication failed');
+  }
+  return result.token;
+}
+
+function requireApplicationId(): string {
+  if (!APPKIT_APPLICATION_ID) {
+    throw new Error('AppKit application ID is not configured');
+  }
+  return APPKIT_APPLICATION_ID;
 }
 
 /**
@@ -185,11 +228,11 @@ type AppKitCircleMember = {
  */
 export async function getAppBranding(): Promise<AppBranding | null> {
   const token = await getServiceToken();
-  if (!token) return null;
+  if (!token || !APPKIT_APPLICATION_ID) return null;
 
   try {
     const res = await fetch(
-      `${APPKIT_DOMAIN}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/branding`,
+      `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${APPKIT_APPLICATION_ID}/branding`,
       { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 300 } }
     );
     if (!res.ok) return null;
@@ -202,24 +245,23 @@ export async function getAppBranding(): Promise<AppBranding | null> {
 // ─── Circles (server-side management) ───────────────────────────────
 
 /**
- * Create a circle (world) via the AppKit API.
- * If userToken is provided, it uses the user's context. Otherwise uses service-level admin token.
+ * Circle writes use the application-bound service identity. AppKit's public
+ * user-circle API is read-only; the application admin API is the supported
+ * write surface and enforces applications:edit.
  */
-export async function createCircleViaServer(name: string, description?: string, userToken?: string) {
-  // If the token is one of our name-based pseudo-tokens, treat it as "no token" 
-  // to force a fallback to the service-level admin token.
-  const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
-  
-  const token = effectiveToken || await getServiceToken();
-  if (!token) throw new Error('Missing authentication token');
+export async function createCircleViaServer(name: string, description?: string, _userToken?: string) {
+  const token = await requireServiceToken();
+  const applicationId = requireApplicationId();
   const baseUrl = getNormalizedAppKitDomain();
-  const circleUrl = effectiveToken
-    ? `${baseUrl}/api/v1/circles`
-    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles`;
+  const circleUrl = `${baseUrl}/api/v1/admin/applications/${applicationId}/circles`;
 
   const res = await fetch(circleUrl, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
     body: JSON.stringify({ name, circleType: 'team', description: description || name }),
   });
 
@@ -241,12 +283,12 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
   role: string;
 }>> {
   const token = await getServiceToken();
-  if (!token) return [];
+  if (!token || !APPKIT_APPLICATION_ID) return [];
 
   try {
     const baseUrl = getNormalizedAppKitDomain();
     const res = await fetch(
-      `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}/members`,
+      `${baseUrl}/api/v1/admin/applications/${APPKIT_APPLICATION_ID}/circles/${circleId}/members`,
       {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 30 },
@@ -267,24 +309,21 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
 }
 
 /**
- * Add a member to a circle via the AppKit API.
+ * Add a member to a circle via the AppKit application-admin API.
  */
-export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member', userToken?: string) {
-  // If the token is one of our name-based pseudo-tokens, treat it as "no token" 
-  // to force a fallback to the service-level admin token.
-  const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
-  
-  const token = effectiveToken || await getServiceToken();
-  if (!token) throw new Error('Missing authentication token');
+export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member', _userToken?: string) {
+  const token = await requireServiceToken();
+  const applicationId = requireApplicationId();
   const baseUrl = getNormalizedAppKitDomain();
-
-  const memberUrl = effectiveToken
-    ? `${baseUrl}/api/v1/circles/${circleId}/members`
-    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}/members`;
+  const memberUrl = `${baseUrl}/api/v1/admin/applications/${applicationId}/circles/${circleId}/members`;
 
   const res = await fetch(memberUrl, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
     body: JSON.stringify({ userId, role }),
   });
 
@@ -300,50 +339,51 @@ export async function addCircleMemberViaServer(circleId: string, userId: string,
 }
 
 /**
- * Update a circle (world) via the AppKit API.
+ * Update a circle (world) via the AppKit application-admin API.
  */
-export async function updateCircleViaServer(circleId: string, data: { name?: string; description?: string }, userToken?: string) {
-  const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
-  const token = effectiveToken || await getServiceToken();
-  if (!token) throw new Error('Missing authentication token');
+export async function updateCircleViaServer(circleId: string, data: { name?: string; description?: string }, _userToken?: string) {
+  const token = await requireServiceToken();
+  const applicationId = requireApplicationId();
   const baseUrl = getNormalizedAppKitDomain();
-  const circleUrl = effectiveToken
-    ? `${baseUrl}/api/v1/circles/${circleId}`
-    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}`;
+  const circleUrl = `${baseUrl}/api/v1/admin/applications/${applicationId}/circles/${circleId}`;
 
   const res = await fetch(circleUrl, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(getAppKitErrorMessage(err, 'Failed to update circle: ' + res.status));
+    throw new Error(getAppKitErrorMessage(err, `Failed to update circle: ${res.status}`));
   }
   return res.json();
 }
 
 /**
- * Delete a circle (world) via the AppKit API.
+ * Delete a circle (world) via the AppKit application-admin API.
  */
-export async function deleteCircleViaServer(circleId: string, userToken?: string) {
-  const effectiveToken = (userToken?.startsWith('name_session_')) ? undefined : userToken;
-  const token = effectiveToken || await getServiceToken();
-  if (!token) throw new Error('Missing authentication token');
+export async function deleteCircleViaServer(circleId: string, _userToken?: string) {
+  const token = await requireServiceToken();
+  const applicationId = requireApplicationId();
   const baseUrl = getNormalizedAppKitDomain();
-  const circleUrl = effectiveToken
-    ? `${baseUrl}/api/v1/circles/${circleId}`
-    : `${baseUrl}/api/v1/admin/applications/${APPKIT_CLIENT_ID}/circles/${circleId}`;
+  const circleUrl = `${baseUrl}/api/v1/admin/applications/${applicationId}/circles/${circleId}`;
 
   const res = await fetch(circleUrl, {
     method: 'DELETE',
-    headers: { Authorization: 'Bearer ' + token },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(getAppKitErrorMessage(err, 'Failed to delete circle: ' + res.status));
+    throw new Error(getAppKitErrorMessage(err, `Failed to delete circle: ${res.status}`));
   }
   return true;
 }
