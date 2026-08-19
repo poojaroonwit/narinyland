@@ -7,6 +7,11 @@ export type GeneratedHexWorld = {
   buildings: Array<Omit<HexBuildingDTO, 'id' | 'worldId'>>;
 };
 
+const STARTER_PATH = new Set(['-1:1', '-2:1', '2:-1', '3:-2']);
+const STARTER_TREES = new Set(['-4:-1', '-4:0', '-4:1', '-5:0']);
+const STARTER_ROCKS = new Set(['5:0', '5:-1', '4:1']);
+const STARTER_FLOWERS = new Set(['-1:5', '0:5', '1:4']);
+
 export function hashSeed(seed: string): number {
   let value = 2166136261;
   for (const char of seed) {
@@ -38,6 +43,11 @@ function terrainFor(seed: string, coord: HexCoord): { terrainType: HexTerrainTyp
 
   const garden = new Set(['-3:2', '-2:2', '-3:3', '-2:3']);
   if (garden.has(key)) return { terrainType: 'soil', height: 0.03, metadata: { feature: 'garden' } };
+
+  if (STARTER_PATH.has(key)) return { terrainType: 'grass', height: 0.01, metadata: { feature: 'path' } };
+  if (STARTER_TREES.has(key)) return { terrainType: 'grass', height: 0.04, metadata: { decor: 'tree', feature: 'tree_grove' } };
+  if (STARTER_ROCKS.has(key)) return { terrainType: 'grass', height: 0.06, metadata: { decor: 'rock', feature: 'rock_cluster' } };
+  if (STARTER_FLOWERS.has(key)) return { terrainType: 'grass', height: 0.02, metadata: { decor: 'flower', feature: 'flower_cluster' } };
 
   const noise = seededRatio(seed, key);
   if (distance >= 8 && noise > 0.68) return { terrainType: 'stone', height: 0.08 + noise * 0.12, metadata: { edgeAccent: true } };
