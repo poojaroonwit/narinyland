@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { hexKey } from '@/lib/hex-world/hex-grid';
 import { getHexTileTransform, HEX_TERRAIN_COLORS, HEX_TILE_DEPTH } from '@/lib/hex-world/rendering';
@@ -13,6 +14,7 @@ type Props = {
   validKeys?: Set<string>;
   invalidKeys?: Set<string>;
   expansionKeys?: Set<string>;
+  riseKeys?: Set<string>;
   onHover?: (coord: HexCoord | null) => void;
   onSelect?: (coord: HexCoord) => void;
 };
@@ -30,22 +32,44 @@ function colorFor(tile: HexTileDTO, props: Omit<Props, 'tiles' | 'onHover' | 'on
 function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; tiles: HexTileDTO[] } & Omit<Props, 'tiles'>) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const riseStartedAt = useRef<number | null>(null);
+  const riseSignature = [...(props.riseKeys ?? [])].sort().join('|');
 
-  useLayoutEffect(() => {
+  const applyTransforms = (progress = 1) => {
     const mesh = ref.current;
     if (!mesh) return;
     tiles.forEach((tile, index) => {
       const transform = getHexTileTransform(tile);
-      dummy.position.set(transform.position.x, transform.position.y - HEX_TILE_DEPTH / 2, transform.position.z);
+      const rising = props.riseKeys?.has(hexKey(tile)) ?? false;
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const targetY = transform.position.y - HEX_TILE_DEPTH / 2;
+      const y = rising ? targetY - (1 - eased) * 5 : targetY;
+      const scaleY = rising ? Math.max(0.12, eased) : 1;
+      dummy.position.set(transform.position.x, y, transform.position.z);
       dummy.rotation.set(0, Math.PI / 6, 0);
-      dummy.scale.set(transform.scale.x, 1, transform.scale.z);
+      dummy.scale.set(transform.scale.x, scaleY, transform.scale.z);
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
       mesh.setColorAt(index, new THREE.Color(colorFor(tile, props)));
     });
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [dummy, props, tiles]);
+  };
+
+  useLayoutEffect(() => {
+    riseStartedAt.current = null;
+    applyTransforms(props.riseKeys?.size ? 0 : 1);
+  // riseSignature intentionally represents Set content identity.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiles, terrain, props.hoveredKey, props.selectedKey, props.validKeys, props.invalidKeys, props.expansionKeys, riseSignature]);
+
+  useFrame((state) => {
+    if (!props.riseKeys?.size || !ref.current) return;
+    if (riseStartedAt.current === null) riseStartedAt.current = state.clock.getElapsedTime();
+    const elapsed = state.clock.getElapsedTime() - riseStartedAt.current;
+    const progress = Math.min(1, elapsed / 0.85);
+    applyTransforms(progress);
+  });
 
   if (tiles.length === 0) return null;
   return (

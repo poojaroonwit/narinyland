@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useMemo, useReducer, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { getBuildingDefinition, getBuildingFootprint, type HexBuildingKey } from '@/lib/hex-world/building-catalog';
 import { createInitialHexBuildState, hexBuildReducer } from '@/lib/hex-world/build-state';
 import { hexKey } from '@/lib/hex-world/hex-grid';
 import { validatePlacement } from '@/lib/hex-world/rules';
-import type { HexBuildingDTO, HexCoord, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexWorldSnapshot } from '@/lib/hex-world/types';
 import { hexWorldAPI } from '@/services/hex-world-api';
 import { HexBuildCatalog } from './HexBuildCatalog';
+import { HexExpansionController } from './HexExpansionController';
 import { HexWorld3D } from './HexWorld3D';
 
 export function HexBuildController({
@@ -24,7 +25,15 @@ export function HexBuildController({
   const [state, dispatch] = useReducer(hexBuildReducer, undefined, createInitialHexBuildState);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [newlyAddedKeys, setNewlyAddedKeys] = useState<Set<string>>(new Set());
+  const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (animationTimer.current) clearTimeout(animationTimer.current);
+  }, []);
+
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
+  const activeExpansion = snapshot.expansions.find((item) => item.expansionKey === state.expansionKey) ?? null;
 
   const preview = useMemo(() => {
     if ((state.mode !== 'placing' && state.mode !== 'moving') || !state.buildingKey || !state.anchor) return null;
@@ -42,7 +51,6 @@ export function HexBuildController({
 
   const validKeys = preview?.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
   const invalidKeys = preview && !preview.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
-
   const setAnchor = (coord: HexCoord | null) => dispatch({ type: 'set_anchor', anchor: coord });
 
   const confirmPlacement = async () => {
@@ -102,6 +110,14 @@ export function HexBuildController({
     valid: preview.result.ok,
   } : null;
 
+  const handleExpansionConfirmed = (confirmed: HexWorldSnapshot, newTileKeys: Set<string>) => {
+    setSnapshot(confirmed);
+    setNewlyAddedKeys(newTileKeys);
+    dispatch({ type: 'cancel' });
+    if (animationTimer.current) clearTimeout(animationTimer.current);
+    animationTimer.current = setTimeout(() => setNewlyAddedKeys(new Set()), 1100);
+  };
+
   return (
     <div className="absolute inset-0">
       <HexWorld3D
@@ -110,6 +126,8 @@ export function HexBuildController({
         selectedBuildingId={state.selectedBuildingId}
         validKeys={validKeys}
         invalidKeys={invalidKeys}
+        expansionPreviewTiles={activeExpansion?.tiles}
+        newlyAddedKeys={newlyAddedKeys}
         buildingPreview={scenePreview}
         onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
         onSelectTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
@@ -124,6 +142,16 @@ export function HexBuildController({
         onToggle={() => setCatalogOpen((value) => !value)}
         onClose={() => setCatalogOpen(false)}
         onSelect={(buildingKey: HexBuildingKey) => { dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }}
+      />
+
+      <HexExpansionController
+        landId={landId}
+        snapshot={snapshot}
+        activeExpansionKey={state.expansionKey}
+        onPreview={(expansion: HexExpansionDTO) => dispatch({ type: 'preview_expansion', expansionKey: expansion.expansionKey })}
+        onCancelPreview={() => dispatch({ type: 'cancel' })}
+        onConfirmed={handleExpansionConfirmed}
+        showToast={showToast}
       />
 
       {(state.mode === 'placing' || state.mode === 'moving') && (

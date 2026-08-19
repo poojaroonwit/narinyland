@@ -20,3 +20,11 @@ test('moving retains selected building and current rotation', () => {
   assert.equal(state.selectedBuildingId, 'b1');
   assert.equal(state.rotation, 4);
 });
+
+test('expansion preview is separate from build placement', () => {
+  const state = hexBuildReducer(createInitialHexBuildState(), { type: 'preview_expansion', expansionKey: '1:0:0' });
+  assert.equal(state.mode, 'expanding');
+  assert.equal(state.expansionKey, '1:0:0');
+  assert.equal(state.buildingKey, null);
+  assert.equal(state.selectedBuildingId, null);
+});
