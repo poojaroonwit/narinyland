@@ -58,354 +58,209 @@ export const LoveTreeOverlays: React.FC<LoveTreeOverlaysProps> = ({
   selectedAlbumId,
   setSelectedAlbumId,
   albums,
-}) => createPortal(
-          <>
-        <div className="fixed top-20 left-4 md:left-6 z-[70] w-[min(92vw,360px)] overflow-hidden rounded-md border border-white/60 bg-[#fffaf1]/90 shadow-2xl backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3 border-b border-amber-100/80 px-4 py-3">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-600">Land Controls</p>
-              <h3 className="text-sm font-black text-stone-800">{isEditMode ? 'Build Mode' : cameraMode === 'explore' ? 'Explore Mode' : 'Orbit View'}</h3>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">
-              <i className="fas fa-coins text-[10px]"></i>
-              {points.toLocaleString()}
-            </div>
-          </div>
-  
-          <div className="grid grid-cols-3 gap-1.5 p-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditMode?.(false);
-                setCameraMode('explore');
-              }}
-              disabled={isEditMode}
-              className={`h-12 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
-                cameraMode === 'explore' && !isEditMode
-                  ? 'bg-emerald-700 text-white shadow-sm'
-                  : isEditMode
-                    ? 'cursor-not-allowed bg-stone-100 text-stone-300'
-                    : 'bg-white/70 text-stone-600 hover:bg-emerald-50 hover:text-emerald-700'
-              }`}
-              title="Walk around the land"
-            >
-              <i className="fas fa-shoe-prints mb-1 block"></i>
-              Explore
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditMode?.(false);
-                setCameraMode('orbit');
-              }}
-              className={`h-12 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
-                cameraMode === 'orbit' && !isEditMode
-                  ? 'bg-stone-800 text-white shadow-sm'
-                  : 'bg-white/70 text-stone-600 hover:bg-stone-100'
-              }`}
-              title="Look around the land"
-            >
-              <i className="fas fa-street-view mb-1 block"></i>
-              Orbit
-            </button>
-            <button
-              type="button"
-              onClick={toggleBuildMode}
-              className={`h-12 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
-                isEditMode
-                  ? 'bg-pink-500 text-white shadow-sm'
-                  : 'bg-white/70 text-stone-600 hover:bg-pink-50 hover:text-pink-600'
-              }`}
-              title={isEditMode ? 'Leave Build Mode' : 'Enter Build Mode'}
-            >
-              <i className={`fas ${isEditMode ? 'fa-hammer' : 'fa-seedling'} mb-1 block`}></i>
-              Build
-            </button>
-          </div>
-  
-          <AnimatePresence>
-            {isEditMode && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className="border-t border-amber-100/80 px-3 pb-3 pt-2"
-              >
-                <div className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-3 py-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-stone-500">Placement</span>
-                  <button
-                    type="button"
-                    onClick={() => setSnapToGrid(prev => !prev)}
-                    className={`h-8 rounded-md px-3 text-[10px] font-black uppercase tracking-wider transition-all ${
-                      snapToGrid
-                        ? 'bg-amber-500 text-white shadow-sm'
-                        : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                    }`}
-                    title="Snap to grid"
-                  >
-                    <i className="fas fa-border-all mr-2"></i>
-                    Snap {snapToGrid ? 'On' : 'Off'}
-                  </button>
-                </div>
-                <p className="mt-2 text-[10px] font-bold leading-relaxed text-stone-500">
-                  Drag objects on the land, rotate selected pieces, and open the catalog to place keepsakes.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-  
+}) => {
+  // The March 2026 garden used a single orbit-style 3D garden with an edit FAB.
+  // Keep the newer movement/selection internals dormant so older saved land data
+  // remains compatible without exposing Explore/Orbit game modes in the UI.
+  void setIsEditMode;
+  void cameraMode;
+  void setCameraMode;
+  void snapToGrid;
+  void setSnapToGrid;
+  void pressMovement;
+  void selectedItem;
+  void setSelectedItemId;
+  void rotateSelectedItem;
+
+  return createPortal(
+    <>
+      {/* Classic edit controls from the pre-game-mode garden. */}
+      <div className="fixed bottom-24 left-6 z-[70] flex flex-col items-start gap-3">
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={toggleBuildMode}
+          className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl shadow-2xl transition-all ${
+            isEditMode
+              ? 'border-pink-400 bg-pink-500 text-white shadow-pink-500/40'
+              : 'border-white/50 bg-white/80 text-gray-600 backdrop-blur-md hover:bg-white'
+          }`}
+          title={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+          aria-label={isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+        >
+          <i className={`fas ${isEditMode ? 'fa-times' : 'fa-pencil-alt'}`} />
+        </motion.button>
+
         <AnimatePresence>
-          {cameraMode === 'explore' && !isEditMode && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 16 }}
-              className="fixed bottom-8 right-4 md:right-6 z-[70] grid grid-cols-3 gap-2 rounded-md border border-white/60 bg-white/75 p-2 shadow-2xl backdrop-blur-xl"
+          {isEditMode && (
+            <motion.button
+              type="button"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleShopPopover}
+              className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl shadow-2xl transition-all ${
+                isShopPopoverOpen
+                  ? 'border-amber-400 bg-amber-500 text-white shadow-amber-500/40'
+                  : 'border-white/50 bg-white/80 text-amber-600 backdrop-blur-md hover:bg-white'
+              }`}
+              title="Open Shop"
+              aria-label="Open Shop"
             >
-              <span />
-              <button
-                type="button"
-                onPointerDown={() => pressMovement('forward', true)}
-                onPointerUp={() => pressMovement('forward', false)}
-                onPointerLeave={() => pressMovement('forward', false)}
-                className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
-                title="Move forward"
-              >
-                <i className="fas fa-chevron-up"></i>
-              </button>
-              <span />
-              <button
-                type="button"
-                onPointerDown={() => pressMovement('left', true)}
-                onPointerUp={() => pressMovement('left', false)}
-                onPointerLeave={() => pressMovement('left', false)}
-                className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
-                title="Move left"
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-              <button
-                type="button"
-                onPointerDown={() => pressMovement('back', true)}
-                onPointerUp={() => pressMovement('back', false)}
-                onPointerLeave={() => pressMovement('back', false)}
-                className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
-                title="Move back"
-              >
-                <i className="fas fa-chevron-down"></i>
-              </button>
-              <button
-                type="button"
-                onPointerDown={() => pressMovement('right', true)}
-                onPointerUp={() => pressMovement('right', false)}
-                onPointerLeave={() => pressMovement('right', false)}
-                className="h-12 w-12 rounded-md bg-white/90 text-stone-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
-                title="Move right"
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
-            </motion.div>
+              <i className="fas fa-store" />
+            </motion.button>
           )}
         </AnimatePresence>
-  
-        <AnimatePresence>
-          {isEditMode && selectedItem && (
-            <motion.div
-              initial={{ opacity: 0, x: 20, scale: 0.96 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.96 }}
-              className="fixed bottom-24 right-4 md:right-6 z-[80] w-[min(92vw,320px)] rounded-md border border-white/60 bg-white/90 p-4 shadow-2xl backdrop-blur-xl"
+      </div>
+
+      <AnimatePresence>
+        {isEditMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed bottom-24 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-pink-500/90 px-6 py-2 text-white shadow-lg backdrop-blur-md"
+          >
+            <div className="h-2 w-2 animate-pulse rounded-full bg-white" />
+            <span className="text-xs font-black uppercase tracking-widest">Edit Mode</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isShopPopoverOpen && isEditMode && onPurchase && (
+          <motion.div
+            initial={{ opacity: 0, x: -20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.95 }}
+            className="fixed bottom-24 left-24 z-[80] flex max-h-[60vh] w-80 flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/95 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-amber-100 p-4">
+              <div>
+                <h3 className="flex items-center gap-2 font-black text-amber-700">
+                  <i className="fas fa-store" /> Shop
+                </h3>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-amber-500/80">Add pieces to your garden</p>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-100 px-3 py-1 text-sm text-amber-700 shadow-sm">
+                <i className="fas fa-coins text-xs text-amber-500" />
+                <span className="font-black">{points}</span>
+              </div>
+            </div>
+            <div className="custom-scrollbar space-y-2 overflow-y-auto p-3">
+              <Shop
+                points={points}
+                activeLandId={activeLandId}
+                onPurchase={onPurchase}
+                compact
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showQRCode && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="group fixed bottom-6 left-6 z-[70] hidden flex-col items-center gap-2 md:flex"
+          >
+            <div
+              className="relative cursor-pointer overflow-hidden rounded-[2rem] border border-white/50 bg-white/80 p-3 shadow-2xl backdrop-blur-xl transition-transform hover:scale-105 active:scale-95"
+              onClick={openQRUpload}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') openQRUpload();
+              }}
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-black uppercase tracking-widest text-pink-500">Placed Piece</p>
-                  <h3 className="truncate text-base font-black capitalize text-stone-800">{selectedItem.type.replace(/_/g, ' ')}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedItemId(null)}
-                  className="h-9 w-9 shrink-0 rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
-                  title="Clear selection"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
+              <Image
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`}
+                alt="Upload QR"
+                width={96}
+                height={96}
+                unoptimized
+                className="h-24 w-24 rounded-2xl"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-pink-500/0 transition-colors group-hover:bg-pink-500/5">
+                <i className="fas fa-expand text-pink-500 opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => rotateSelectedItem(-Math.PI / 12)}
-                  className="h-11 rounded-md bg-stone-800 text-sm font-black text-white shadow-sm transition hover:bg-stone-700 active:scale-[0.98]"
-                  title="Rotate left"
-                >
-                  <i className="fas fa-undo mr-2"></i>
-                  Turn Left
-                </button>
-                <button
-                  type="button"
-                  onClick={() => rotateSelectedItem(Math.PI / 12)}
-                  className="h-11 rounded-md bg-stone-800 text-sm font-black text-white shadow-sm transition hover:bg-stone-700 active:scale-[0.98]"
-                  title="Rotate right"
-                >
-                  <i className="fas fa-redo mr-2"></i>
-                  Turn Right
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-  
-  
-          <AnimatePresence>
-            {isEditMode && (
-              <motion.button
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleShopPopover}
-                className={`fixed bottom-24 left-6 z-[80] h-14 rounded-full px-5 shadow-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider transition-all border-2 ${
-                  isShopPopoverOpen
-                    ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
-                    : 'bg-white/80 backdrop-blur-md text-amber-600 border-white/50 hover:bg-white'
-                }`}
-                title="Open build catalog"
-              >
-                <i className="fas fa-store"></i>
-                Catalog
-              </motion.button>
-            )}
-          </AnimatePresence>
-        
-  
-  
-  
-        {/* Floating Shop Popover */}
-        <AnimatePresence>
-          {isShopPopoverOpen && isEditMode && onPurchase && (
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-pink-100 bg-white/90 px-3 py-1 shadow-lg backdrop-blur-md">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-pink-500" />
+              </span>
+              <p className="text-[9px] font-black uppercase leading-none tracking-widest text-pink-500">Scan to Upload 📱</p>
+            </div>
+          </motion.div>
+        )}
+
+        {isQRUploadOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-6 backdrop-blur-sm"
+            onClick={() => setIsQRUploadOpen(false)}
+          >
             <motion.div
-              initial={{ opacity: 0, x: -20, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -20, scale: 0.95 }}
-              className="fixed bottom-24 left-6 z-[80] w-80 max-h-[60vh] bg-white/95 backdrop-blur-xl rounded-md shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50 overflow-hidden flex flex-col"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="flex w-full max-w-md flex-col overflow-hidden rounded-[3rem] bg-white shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
             >
-              <div className="p-4 border-b border-amber-100 flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="font-black text-amber-700 flex items-center gap-2">
-                    <i className="fas fa-store"></i> Build Catalog
-                  </h3>
-                  <p className="text-[9px] font-bold text-amber-500/80 uppercase tracking-widest">Choose a piece for this land</p>
+              <div className="space-y-4 p-8 text-center">
+                <div className="mx-auto mb-2 flex h-20 w-20 items-center justify-center rounded-[2rem] bg-pink-100 text-3xl text-pink-500">
+                  <i className="fas fa-qrcode" />
                 </div>
-                <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-md flex items-center gap-1.5 text-sm shadow-sm border border-amber-200">
-                  <i className="fas fa-coins text-amber-500 text-xs"></i>
-                  <span className="font-black">{points}</span>
-                </div>
-              </div>
-              <div className="overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                <Shop
-                  points={points}
-                  activeLandId={activeLandId}
-                  onPurchase={onPurchase}
-                  compact={true}
+                <h2 className="text-2xl font-black tracking-tight text-gray-800">Upload via Phone</h2>
+                <p className="pb-2 text-sm font-medium text-gray-400">Scan this QR code with your phone camera to open the uploader.</p>
+
+                <Image
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`}
+                  alt="Large Upload QR"
+                  width={192}
+                  height={192}
+                  unoptimized
+                  className="mx-auto h-48 w-48 rounded-3xl border border-pink-50 shadow-sm"
                 />
+
+                {albums.length > 0 && (
+                  <div className="mt-6 rounded-2xl bg-pink-50 p-4 text-left">
+                    <label className="mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-pink-500">Destination Album</label>
+                    <select
+                      value={selectedAlbumId}
+                      onChange={(event) => setSelectedAlbumId(event.target.value)}
+                      className="w-full cursor-pointer rounded-xl border border-pink-100 bg-white p-3 text-sm font-bold text-gray-700 outline-none transition-colors hover:border-pink-300"
+                    >
+                      <option value="">No Album (Global Gallery)</option>
+                      {albums.map((album) => (
+                        <option key={album.id} value={album.id}>{album.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsQRUploadOpen(false)}
+                  className="mt-4 w-full rounded-3xl bg-gray-100 py-4 text-xs font-black uppercase tracking-widest text-gray-500 transition-all hover:bg-gray-200"
+                >
+                  Close
+                </button>
               </div>
+              <div className="bg-pink-500 p-1" />
             </motion.div>
-          )}
-        </AnimatePresence>
-  
-        <AnimatePresence>
-          {showQRCode && (
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="fixed bottom-6 left-6 z-[70] hidden md:flex flex-col items-center gap-2 group"
-            >
-               <div 
-                  className="bg-white/80 backdrop-blur-xl p-3 rounded-md shadow-2xl border border-white/50 cursor-pointer hover:scale-105 transition-transform relative overflow-hidden active:scale-95"
-                  onClick={openQRUpload}
-                >
-                   <Image 
-                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
-                     alt="Upload QR" 
-                     width={96}
-                     height={96}
-                     unoptimized
-                     className="w-24 h-24 rounded-md"
-                   />
-                   <div className="absolute inset-0 bg-pink-500/0 group-hover:bg-pink-500/5 transition-colors flex items-center justify-center">
-                      <i className="fas fa-expand text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                   </div>
-                </div>
-                <div className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full shadow-lg border border-pink-100 flex items-center gap-2">
-                   <span className="flex h-2 w-2 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
-                   </span>
-                   <p className="text-[9px] font-black text-pink-500 uppercase tracking-widest leading-none">Scan to Upload 📱</p>
-                </div>
-            </motion.div>
-          )}
-  
-          {isQRUploadOpen && (
-             <motion.div 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
-               onClick={() => setIsQRUploadOpen(false)}
-             >
-                <motion.div 
-                  initial={{ scale: 0.9, y: 20 }}
-                  animate={{ scale: 1, y: 0 }}
-                  className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
-                  onClick={e => e.stopPropagation()}
-                >
-                   <div className="p-8 text-center space-y-4">
-                      <div className="w-20 h-20 bg-pink-100 rounded-md flex items-center justify-center text-pink-500 text-3xl mx-auto mb-2">
-                         <i className="fas fa-qrcode"></i>
-                      </div>
-                      <h2 className="text-2xl font-black text-gray-800 tracking-tight">Upload via Phone</h2>
-                      <p className="text-sm text-gray-400 font-medium pb-2">Scan this QR code with your phone camera to open the uploader.</p>
-                      
-                      <Image 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/upload${selectedAlbumId ? `?albumId=${selectedAlbumId}` : ''}` : 'https://example.com/upload')}&color=ec4899`} 
-                        alt="Large Upload QR" 
-                        width={192}
-                        height={192}
-                        unoptimized
-                        className="w-48 h-48 mx-auto rounded-md shadow-sm border border-pink-50"
-                      />
-  
-                      {albums.length > 0 && (
-                        <div className="text-left bg-pink-50 rounded-md p-4 mt-6">
-                          <label className="block text-[10px] uppercase font-black text-pink-500 tracking-widest mb-2 ml-1">Destination Album</label>
-                          <select
-                            value={selectedAlbumId}
-                            onChange={(e) => setSelectedAlbumId(e.target.value)}
-                            className="w-full bg-white border border-pink-100 rounded-md p-3 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:border-pink-300 transition-colors"
-                          >
-                            <option value="">No Album (Global Gallery)</option>
-                            {albums.map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-  
-                      <button 
-                        onClick={() => setIsQRUploadOpen(false)}
-                        className="w-full bg-gray-100 text-gray-500 font-black py-4 rounded-md mt-4 hover:bg-gray-200 transition-all uppercase tracking-widest text-xs"
-                      >
-                         Close
-                      </button>
-                   </div>
-                   <div className="bg-pink-500 p-1"></div>
-                </motion.div>
-             </motion.div>
-          )}
-        </AnimatePresence>
-      </>,
-  document.body
-);
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>,
+    document.body
+  );
+};
