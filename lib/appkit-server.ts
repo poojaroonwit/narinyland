@@ -5,12 +5,20 @@ const APPKIT_APPLICATION_ID =
   process.env.APPKIT_APPLICATION_ID ||
   process.env.NEXT_PUBLIC_APPKIT_APPLICATION_ID ||
   process.env.UNIBOX_APP_ID ||
-  APPKIT_CLIENT_ID;
+  '';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let resolvedAppKitApplicationId = normalizeApplicationId(APPKIT_APPLICATION_ID);
 let lastSsoLaunchUrlSync: { url: string; syncedAt: number } | null = null;
 
 function getNormalizedAppKitDomain() {
   return APPKIT_DOMAIN.trim().replace(/\/+$/, '');
+}
+
+function normalizeApplicationId(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  return UUID_REGEX.test(normalized) ? normalized : '';
 }
 
 function getAppKitErrorMessage(payload: unknown, fallback: string) {
@@ -37,6 +45,7 @@ function isLocalLaunchUrl(ssoLaunchUrl: string) {
 
 type ServiceTokenResult = {
   token: string | null;
+  applicationId?: string;
   error?: string;
 };
 
@@ -75,9 +84,8 @@ async function requestServiceToken(): Promise<ServiceTokenResult> {
       return { token: null, error };
     }
 
-    const token = data && typeof data === 'object' && typeof (data as Record<string, unknown>).access_token === 'string'
-      ? String((data as Record<string, unknown>).access_token)
-      : '';
+    const record = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    const token = typeof record.access_token === 'string' ? record.access_token.trim() : '';
 
     if (!token) {
       const error = 'AppKit service token response did not include an access token';
@@ -85,7 +93,15 @@ async function requestServiceToken(): Promise<ServiceTokenResult> {
       return { token: null, error };
     }
 
-    return { token };
+    const tokenApplicationId = normalizeApplicationId(record.application_id || record.applicationId);
+    if (tokenApplicationId) {
+      resolvedAppKitApplicationId = tokenApplicationId;
+    }
+
+    return {
+      token,
+      applicationId: resolvedAppKitApplicationId || undefined,
+    };
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Unable to reach AppKit token endpoint';
     console.error('AppKit getServiceToken error:', error);
@@ -110,10 +126,12 @@ async function requireServiceToken(): Promise<string> {
 }
 
 function requireApplicationId(): string {
-  if (!APPKIT_APPLICATION_ID) {
-    throw new Error('AppKit application ID is not configured');
+  if (!resolvedAppKitApplicationId) {
+    throw new Error(
+      'AppKit service token is not bound to an application. Configure APPKIT_APPLICATION_ID or deploy an AppKit token endpoint that returns application_id.'
+    );
   }
-  return APPKIT_APPLICATION_ID;
+  return resolvedAppKitApplicationId;
 }
 
 /**
@@ -124,17 +142,18 @@ export function getAppKitDomain() {
 }
 
 /**
- * Get the AppKit Client ID (Application ID)
+ * Get the AppKit Client ID.
  */
 export function getAppKitClientId() {
   return APPKIT_CLIENT_ID;
 }
 
 /**
- * Get the AppKit Application ID used by Boundary launch exchanges.
+ * Get the AppKit Application ID resolved from configuration or the latest
+ * application-bound client_credentials token exchange.
  */
 export function getAppKitApplicationId() {
-  return APPKIT_APPLICATION_ID;
+  return resolvedAppKitApplicationId;
 }
 
 /**
@@ -143,7 +162,7 @@ export function getAppKitApplicationId() {
  */
 export async function ensureSsoLaunchUrlConfigured(ssoLaunchUrl: string): Promise<boolean> {
   const normalizedUrl = ssoLaunchUrl.trim();
-  if (!normalizedUrl || !APPKIT_APPLICATION_ID) return false;
+  if (!normalizedUrl) return false;
 
   if (isLocalLaunchUrl(normalizedUrl) && process.env.ALLOW_LOCAL_SSO_LAUNCH_URL_SYNC !== 'true') {
     return false;
@@ -158,14 +177,15 @@ export async function ensureSsoLaunchUrlConfigured(ssoLaunchUrl: string): Promis
   }
 
   const token = await getServiceToken();
-  if (!token) return false;
+  const applicationId = resolvedAppKitApplicationId;
+  if (!token || !applicationId) return false;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 4000);
 
   try {
     const res = await fetch(
-      `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${APPKIT_APPLICATION_ID}`,
+      `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${applicationId}`,
       {
         method: 'PATCH',
         headers: {
@@ -228,11 +248,12 @@ type AppKitCircleMember = {
  */
 export async function getAppBranding(): Promise<AppBranding | null> {
   const token = await getServiceToken();
-  if (!token || !APPKIT_APPLICATION_ID) return null;
+  const applicationId = resolvedAppKitApplicationId;
+  if (!token || !applicationId) return null;
 
   try {
     const res = await fetch(
-      `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${APPKIT_APPLICATION_ID}/branding`,
+      `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${applicationId}/branding`,
       { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 300 } }
     );
     if (!res.ok) return null;
@@ -283,12 +304,13 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
   role: string;
 }>> {
   const token = await getServiceToken();
-  if (!token || !APPKIT_APPLICATION_ID) return [];
+  const applicationId = resolvedAppKitApplicationId;
+  if (!token || !applicationId) return [];
 
   try {
     const baseUrl = getNormalizedAppKitDomain();
     const res = await fetch(
-      `${baseUrl}/api/v1/admin/applications/${APPKIT_APPLICATION_ID}/circles/${circleId}/members`,
+      `${baseUrl}/api/v1/admin/applications/${applicationId}/circles/${circleId}/members`,
       {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 30 },
