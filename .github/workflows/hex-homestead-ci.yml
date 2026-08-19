@@ -45,6 +45,8 @@ jobs:
         run: npx prisma validate
 
       - name: Hex Homestead tests
+        env:
+          NODE_ENV: production
         run: >-
           node --import tsx --test
           tests/hex-grid.test.ts
