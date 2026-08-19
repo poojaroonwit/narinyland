@@ -9,9 +9,9 @@ Primary route: `/garden`
 
 Narinyland `/garden` will be replaced with a **Cozy Floating Homestead** experience. The current classic 3D garden renderer will no longer be the primary world surface once this design is implemented.
 
-The experience is a stylized floating 3D island built from hexagonal tiles. A new Land begins with an organic island generated inside an approximately 20x20 axial-coordinate envelope. Players can decorate the island, place useful structures, move and rotate placed objects, and expand the island over time by unlocking additional hex clusters.
+The experience is a stylized floating 3D island built from hexagonal tiles. Each Land owns one HexWorld. A new world begins from a 20x20 starter axial envelope and exposes an organic connected subset as usable Land. Players decorate the island, place useful structures, move and rotate placed objects, and expand the island by unlocking additional connected hex clusters.
 
-The design deliberately avoids a character-control game mode. There is no LAND/WORLD switch, no WASD exploration mode, and no separate game-mode selector. The camera remains an elevated orbit/isometric-style builder camera.
+The design deliberately avoids a character-control game mode. There is no LAND/WORLD switch, no WASD exploration mode, no Explore/Orbit mode selector, and no separate game-mode selector. The world uses one elevated diorama camera with orbit and constrained zoom.
 
 Existing app-level navigation remains visible and independent of the world renderer. Circle switching, Land switching, profile, settings, proposal flow, and the existing Home / Timeline / Coupons / Letters navigation are preserved.
 
@@ -20,27 +20,27 @@ Existing app-level navigation remains visible and independent of the world rende
 The first release must support:
 
 - a floating hex island rendered in 3D;
-- an initial world footprint of roughly 20x20 coordinates;
-- an organic starter island of about 300 +/- 40 unlocked tiles rather than a visible square grid;
+- a starter coordinate envelope with exactly 400 candidate coordinates;
+- an organic connected starter island containing 260-340 unlocked tiles;
 - build, preview, rotate, place, move, and remove interactions;
-- land expansion by unlocking predefined clusters;
+- Land expansion by unlocking predefined connected clusters;
 - starter structures and decorations;
 - server-authoritative persistence;
 - backward-safe migration from existing Land data;
 - responsive desktop and mobile interaction;
-- no destructive migration of legacy `PurchasedItem` data.
+- no destructive migration of legacy `PurchasedItem` or family-farm data.
 
-The first release is intentionally a **cozy building sandbox**, not a city-economy simulator. Building placement is free in the MVP. Spendable partner Points are used for Land expansion only.
+The first release is intentionally a **cozy building sandbox**, not a city-economy simulator. Building placement is free in the MVP. Spendable shared partner Points are used for Land expansion only.
 
 ## 2. Player Experience
 
 ### 2.1 First load
 
-When a player opens `/garden` for a Land that does not yet have a hex world, the server lazily initializes one. The first view should immediately show a small floating homestead rather than an empty editor.
+When a player opens `/garden` for a Land that does not yet have a HexWorld, the server lazily initializes one. The first view immediately shows a small floating homestead rather than an empty editor.
 
-The starter island contains:
+The starter composition contains:
 
-- one starter Home near the visual center;
+- one starter Home anchored at hex `(0, 0)`;
 - a small garden area;
 - a pond positioned off-center;
 - a loose tree grove on one side;
@@ -48,7 +48,9 @@ The starter island contains:
 - rock and flower clusters around island edges;
 - substantial empty buildable space so the player can shape the world themselves.
 
-The generated composition is deterministic from `landId`; retrying initialization must produce the same world rather than a different random island.
+The generator must guarantee that `(0, 0)` is unlocked and suitable for the starter Home.
+
+The generated composition is deterministic from a persisted seed derived from `landId` and `generatorVersion`. Retrying initialization must produce the same world rather than a different random island.
 
 ### 2.2 Main interaction loop
 
@@ -83,12 +85,12 @@ The camera uses a three-quarter elevated perspective suitable for a diorama/buil
 
 Required camera behaviors:
 
-- orbit around island center;
+- orbit around the island center;
 - constrained zoom;
-- optional light pan where appropriate;
 - smooth damping;
+- no camera pan in the MVP;
 - no player-avatar movement controls;
-- no Explore / Orbit mode switch exposed to the player.
+- no camera/game mode switch exposed to the player.
 
 ## 3. Visual Design
 
@@ -111,29 +113,33 @@ The goal is a familiar cozy-life-sim presentation without copying a specific exi
 
 ### 3.2 Hex tiles
 
-Hexes are 3D prisms, not flat planes. Each tile can have:
+Hexes are 3D prisms, not flat planes. Each tile has:
 
 - axial coordinate `q`, `r`;
 - terrain type;
-- small height variation;
+- small deterministic height variation;
 - unlocked/locked state;
-- build occupancy derived from buildings.
+- build occupancy derived from placed buildings.
 
-Normal view should visually merge adjacent tiles through matching material, vegetation, and lighting. Strong grid borders are avoided outside interaction states.
+Normal view visually merges adjacent tiles through matching materials, vegetation, and lighting. Strong grid borders are avoided outside interaction states.
 
 ### 3.3 Starter island shape
 
-The initial coordinate envelope is approximately 20x20. The generator masks and shapes this envelope so the unlocked island is irregular and natural instead of a visible rectangle.
+The exact starter coordinate envelope is:
 
-Target unlocked count: approximately 260-340 tiles.
+- `q = -10..9`;
+- `r = -10..9`;
+- 400 candidate coordinates total.
 
-The remaining nearby coordinates form future expansion candidates or remain absent until generated by an expansion definition.
+The generator applies a deterministic organic mask and connectivity pass so 260-340 of these coordinates are unlocked while the island remains a single connected component. The remaining starter-envelope coordinates may be retained as locked visual candidates or omitted from normal rendering.
+
+Expansion clusters may extend outside this original 400-coordinate envelope.
 
 ### 3.4 Expansion animation
 
 Expanding Land is a visual reward. Confirmed expansion clusters animate upward from clouds/void and settle into the island.
 
-The animation must not determine state. Server state is committed first; the client animates the confirmed result.
+The animation never determines state. The server commits the expansion first; the client animates only the confirmed result.
 
 ## 4. Hex Coordinate System
 
@@ -177,7 +183,7 @@ A shared catalog is used by both client and server. MVP categories are:
 
 - Garden Patch
 
-The catalog entry for each building defines at minimum:
+Each catalog entry defines:
 
 - stable building key;
 - category;
@@ -186,28 +192,28 @@ The catalog entry for each building defines at minimum:
 - footprint in axial offsets;
 - supported terrain types;
 - allowed rotations;
-- whether duplicates are allowed;
-- optional metadata defaults.
+- duplicate policy;
+- default metadata.
 
 ### 5.2 Footprints
 
-The data model supports multi-hex buildings from the beginning even though most decorative objects are 1-hex in the MVP.
+The data model supports multi-hex buildings from the beginning even though most decorative objects are one hex in the MVP.
 
-A building has an anchor hex and rotation from 0 through 5. The server rotates the catalog footprint and validates every occupied coordinate before placement or movement.
+A building has an anchor hex and a rotation from 0 through 5. The server rotates the catalog footprint and validates every occupied coordinate before placement or movement.
 
 ### 5.3 Server placement rules
 
 A placement is valid only when:
 
-- the Land belongs to the active config/circle;
-- every footprint coordinate exists;
+- the Land belongs to the active authorized config/circle;
+- every footprint coordinate exists in the generated/unlocked world state;
 - every footprint coordinate is unlocked;
 - no other building occupies any required coordinate;
 - terrain constraints are satisfied;
 - the building key exists in the server catalog;
 - the requested rotation is allowed.
 
-The client never supplies a trusted price or trusted footprint.
+The client never supplies a trusted price, footprint, or terrain rule.
 
 ### 5.4 Object editing
 
@@ -219,192 +225,231 @@ Selecting a placed building exposes a compact contextual action menu:
 
 Move enters the same ghost-placement flow as new placement. The old placement remains authoritative until the server accepts the new coordinates.
 
-Remove requires confirmation for main/important structures. Starter Home removal may be disabled in the MVP to ensure each Land retains a home anchor.
+The starter Home can be moved and rotated but **cannot be removed in the MVP**. Removal of other structures requires confirmation when the catalog marks them as important.
 
 ## 6. Expansion System
 
 Land expansion unlocks predefined connected clusters rather than individual tiles.
 
-Initial recommended cluster sizes are:
-
-- first expansion: 7 hexes;
-- second tier: 19 hexes;
-- later tier: 37 hexes.
-
-Expansion definitions are deterministic and connected to the current island edge. The UI shows only eligible clusters.
-
-Recommended point-cost progression:
+The MVP expansion catalog supports these exact cluster sizes and costs:
 
 - 7 hexes: 100 Points;
 - 19 hexes: 250 Points;
-- 37 hexes: 500 Points;
-- later costs scale from expansion level using a server-owned rule.
+- 37 hexes: 500 Points.
 
-The exact catalog may offer multiple edge clusters at the same tier, but a cluster must not be unlockable twice.
+The catalog may contain multiple uniquely keyed clusters of each supported size around different island edges. Costs depend only on cluster size in the MVP; there is no hidden dynamic price multiplier.
 
-### 6.1 Atomic expansion transaction
+An expansion is eligible only when:
+
+- its `expansionKey` has not already been purchased;
+- at least one cluster tile is adjacent to a currently unlocked tile;
+- the cluster does not overlap another purchased expansion in an invalid way;
+- the current shared spendable Points are sufficient.
+
+`expansionLevel` is the count of successfully purchased expansion clusters, not a price tier.
+
+### 6.1 Shared Points deduction
+
+Expansion uses the same shared partner Points pool already represented by current stats logic. Deduction is deterministic:
+
+1. load partners for the config ordered by `points DESC, id ASC`;
+2. deduct from the highest balance first;
+3. continue until the expansion cost is fully covered;
+4. never alter historical/lifetime totals merely because Points are spent.
+
+The implementation should extract/reuse a shared transaction helper rather than duplicate inconsistent deduction logic across features.
+
+### 6.2 Atomic expansion transaction
 
 Expansion is committed in one Serializable transaction:
 
 1. validate config and Land access;
-2. load the target expansion definition;
-3. reject already-unlocked expansion IDs;
-4. verify the cluster is currently eligible/adjacent;
+2. load the target server-owned expansion definition;
+3. return the existing expansion result if `expansionKey` is already purchased;
+4. verify current eligibility/adjacency;
 5. verify spendable Points;
-6. deduct Points;
-7. create or unlock the target tiles;
-8. record expansion ownership/state;
-9. increment expansion progression;
+6. deduct Points using the shared deterministic rule;
+7. create/unlock the target tiles;
+8. create the `HexExpansion` audit record;
+9. increment `expansionLevel`;
 10. commit.
 
-The existing P2034 retry pattern used by stats/farm transactions should be reused.
+The existing P2034 conflict-retry pattern used by current stats/farm transactions is reused.
 
-### 6.2 Idempotency
+### 6.3 Idempotency
 
-Expansion requests carry an idempotency key or stable expansion identifier so double-clicks and network retries cannot charge twice.
+`expansionKey` is the idempotency identity for the MVP. The database unique constraint `(worldId, expansionKey)` guarantees that retries or double-clicks cannot charge twice. A repeated request for an already-purchased expansion returns the already-confirmed world/expansion state without another deduction.
 
 ## 7. Persistence Model
 
-The implementation adds new models rather than overloading legacy `PurchasedItem` coordinates.
+The implementation adds new Prisma models rather than overloading legacy `PurchasedItem` coordinates.
 
 ### 7.1 `HexWorld`
 
 One per `Land`.
 
-Suggested fields:
+Required fields:
 
-- `id` UUID;
-- `landId` unique FK;
-- `schemaVersion` integer;
-- `generatorVersion` integer/string;
-- `seed` string;
-- `expansionLevel` integer;
-- timestamps.
+- `id String @id @default(uuid())`;
+- `landId String @unique`;
+- `schemaVersion Int`;
+- `generatorVersion Int`;
+- `seed String`;
+- `expansionLevel Int @default(0)`;
+- `createdAt DateTime @default(now())`;
+- `updatedAt DateTime @updatedAt`;
+- relation to `Land` with cascade on Land deletion;
+- relations to tiles, buildings, and expansions.
 
 ### 7.2 `HexTile`
 
-Suggested fields:
+Required fields:
 
-- `id` UUID;
-- `worldId` FK;
-- `q` integer;
-- `r` integer;
-- `terrainType` string;
-- `height` float;
-- `unlocked` boolean;
-- optional metadata JSON;
+- `id String @id @default(uuid())`;
+- `worldId String`;
+- `q Int`;
+- `r Int`;
+- `terrainType String`;
+- `height Float`;
+- `unlocked Boolean`;
+- `metadata Json @default("{}")`;
 - timestamps;
-- unique `(worldId, q, r)`.
+- relation to `HexWorld` with cascade on world deletion;
+- unique `(worldId, q, r)`;
+- index `(worldId, unlocked)`.
 
-Only generated/unlocked/candidate tiles need records. The system does not pre-create an unbounded world.
+The starter initialization persists the 400 starter-envelope coordinates so locked candidates have stable state. Expansion tiles outside the envelope are created only when their expansion is purchased.
 
 ### 7.3 `HexBuilding`
 
-Suggested fields:
+Required fields:
 
-- `id` UUID;
-- `worldId` FK;
-- `buildingKey` string;
-- `anchorQ` integer;
-- `anchorR` integer;
-- `rotation` integer 0-5;
-- optional `modelUrl` for supported custom assets;
-- metadata JSON;
-- timestamps.
+- `id String @id @default(uuid())`;
+- `worldId String`;
+- `buildingKey String`;
+- `anchorQ Int`;
+- `anchorR Int`;
+- `rotation Int` constrained in application logic to 0-5;
+- `modelUrl String?` for catalog-supported custom assets only;
+- `metadata Json @default("{}")`;
+- timestamps;
+- relation to `HexWorld` with cascade on world deletion;
+- indexes on `worldId` and `(worldId, anchorQ, anchorR)`.
 
-Occupancy is derived from the catalog footprint plus anchor and rotation; duplicate per-tile occupancy rows are not required for the MVP.
+Occupancy is derived from the server catalog footprint plus anchor and rotation; duplicate per-tile occupancy rows are not required for the MVP.
 
 ### 7.4 `HexExpansion`
 
-Suggested fields:
+Required fields:
 
-- `id` UUID;
-- `worldId` FK;
-- `expansionKey` string;
-- `tier` integer;
-- `pointCost` integer recorded for audit;
+- `id String @id @default(uuid())`;
+- `worldId String`;
+- `expansionKey String`;
+- `tileCount Int`;
+- `pointCost Int` recorded for audit;
 - timestamps;
+- relation to `HexWorld` with cascade on world deletion;
 - unique `(worldId, expansionKey)`.
 
 ## 8. API Design
 
-All routes use the current `requireConfigAccess` authorization pattern and validate that the supplied/active `landId` belongs to the authorized config.
+All routes use the current `requireConfigAccess` authorization pattern and validate that `landId` belongs to the authorized config.
 
-### `GET /api/hex-world`
+### `GET /api/hex-world?landId=<uuid>`
 
-Returns a snapshot for the active/specified Land:
+Returns:
 
 - world metadata;
-- tiles needed for rendering/building;
+- starter/purchased tiles required for rendering/building;
 - placed buildings;
-- eligible expansion summaries;
+- eligible expansion summaries including their preview coordinates;
 - current expansion progression;
-- spendable Points summary needed by the UI.
+- spendable shared Points summary.
 
-If a HexWorld does not exist, the server lazily initializes the deterministic starter world.
+If a HexWorld does not exist, the server lazily initializes the deterministic starter world within a transaction.
 
 ### `POST /api/hex-world/buildings`
 
-Places a building after server-side catalog and collision validation.
+Request body:
+
+- `landId`;
+- `buildingKey`;
+- `anchorQ`;
+- `anchorR`;
+- `rotation`.
+
+The server places the building after catalog, authorization, terrain, footprint, and collision validation.
 
 ### `PATCH /api/hex-world/buildings/[id]`
 
-Moves and/or rotates a building using the same placement validator.
+Request body contains the complete intended transform for the new state:
+
+- `anchorQ`;
+- `anchorR`;
+- `rotation`.
+
+The same placement validator is used while excluding the building being moved.
 
 ### `DELETE /api/hex-world/buildings/[id]`
 
-Removes a building when removal rules permit it.
+Removes a building when catalog removal rules permit it. The starter Home is rejected with `building_not_removable`.
 
 ### `POST /api/hex-world/expand`
 
-Atomically purchases and unlocks one eligible expansion cluster.
+Request body:
 
-Error responses use stable error codes and user-safe messages such as:
+- `landId`;
+- `expansionKey`.
+
+The server resolves all coordinates and cost from its own expansion catalog and atomically purchases/unlocks the cluster.
+
+Stable error codes include:
 
 - `tile_locked`;
 - `tile_occupied`;
 - `invalid_terrain`;
 - `invalid_building`;
 - `invalid_rotation`;
+- `building_not_removable`;
 - `expansion_not_available`;
 - `not_enough_points`;
 - `land_access_denied`.
 
 ## 9. Client Architecture
 
-The new Garden world should be split into focused modules instead of growing one large renderer component.
+The new Garden world is split into focused modules instead of growing one large renderer component.
 
-Recommended boundaries:
+Required boundaries:
 
-- `hex-grid.ts`: coordinates, rotations, geometry math;
-- `hex-world-generator.ts`: deterministic starter/expansion definitions shared by server tests and initialization;
-- `building-catalog.ts`: catalog and footprint definitions safe to share;
-- `hex-world-service.ts`: server persistence/transactions;
-- `HexWorld3D.tsx`: high-level scene composition;
-- `HexTileInstances.tsx`: instanced terrain/selection rendering;
-- `HexBuildings.tsx`: placed-building rendering;
-- `HexBuildController.tsx`: selection/preview/placement local state;
-- `HexBuildCatalog.tsx`: catalog UI;
-- `HexExpansionController.tsx`: expansion preview/confirmation;
-- client API service additions for the new routes.
+- `lib/hex-world/hex-grid.ts`: coordinates, rotations, geometry math;
+- `lib/hex-world/hex-world-generator.ts`: deterministic starter and expansion definitions;
+- `lib/hex-world/building-catalog.ts`: shared safe catalog definitions;
+- `lib/hex-world/hex-world-service.ts`: server persistence and transactions;
+- `components/hex-world/HexWorld3D.tsx`: high-level scene composition;
+- `components/hex-world/HexTileInstances.tsx`: instanced terrain/selection rendering;
+- `components/hex-world/HexBuildings.tsx`: placed-building rendering;
+- `components/hex-world/HexBuildController.tsx`: selection/preview/placement local state;
+- `components/hex-world/HexBuildCatalog.tsx`: catalog UI;
+- `components/hex-world/HexExpansionController.tsx`: expansion preview/confirmation;
+- API client additions in the existing service layer.
 
-The app shell remains outside this renderer. The world must not own Circle switching, Land switching, user profile, settings, or main romantic-feature navigation.
+The app shell remains outside this renderer. The world does not own Circle switching, Land switching, user profile, settings, or main romantic-feature navigation.
 
 ## 10. Rendering and Performance
 
-The starter world contains several hundred hexes, so repeated geometry uses instancing.
+The starter world contains 400 candidate tiles, so repeated geometry uses instancing.
 
 Required rendering strategy:
 
 - `InstancedMesh` or equivalent batching for hex ground blocks;
-- instancing for repeated grass/rocks/flowers where practical;
+- instancing for repeated grass, rocks, and flowers where practical;
 - individual scene nodes only for meaningful placed buildings;
-- limited real-time shadows, focused on important structures;
+- limited real-time shadows focused on important structures;
 - reduced decoration density on low quality/mobile;
 - hover selection through coordinate/raycast lookup rather than React state per tile;
 - no server write on hover, camera movement, or preview movement.
 
-The medium-quality target is smooth interaction on desktop and a typical mid-range mobile device.
+The medium-quality target is smooth interaction on desktop and a typical mid-range mobile device. Existing graphics-quality settings remain the source for low/medium/high density choices.
 
 ## 11. Migration and Backward Safety
 
@@ -413,17 +458,17 @@ Migration is lazy and additive.
 When a Land is opened:
 
 1. load existing Land normally;
-2. if no `HexWorld` exists, create it deterministically;
-3. generate starter tiles;
-4. create one starter Home;
+2. if no `HexWorld` exists, initialize one in a transaction;
+3. persist the 400 starter-envelope tiles using the deterministic generator;
+4. create the starter Home at `(0, 0)` plus deterministic starter decorative composition;
 5. leave all legacy `PurchasedItem` rows untouched;
 6. return the new HexWorld snapshot.
 
 Legacy objects may be imported later only when their type and footprint can be mapped safely. Custom GLB objects that lack a known footprint remain legacy data until a dedicated import design exists.
 
-No production startup script may destructively drop legacy tables or erase rows as part of this feature.
-
 The old 2D family-farm save remains untouched in storage, but the new `/garden` world does not mount that experience.
+
+**Production safety gate:** the deployment/startup path must not drop or recreate `Land`, `PurchasedItem`, `HexWorld`, `HexTile`, `HexBuilding`, or `HexExpansion` tables as routine startup behavior. Any existing destructive cleanup affecting these tables must be removed or disabled before the HexWorld feature is enabled in production.
 
 ## 12. State Ownership and Failure Behavior
 
@@ -432,8 +477,8 @@ The server owns:
 - unlocked tiles;
 - expansion progression;
 - placed buildings;
-- coordinates and rotations;
-- Points deduction for expansion.
+- building coordinates and rotations;
+- shared Points deduction for expansion.
 
 The client owns transient interaction state:
 
@@ -446,14 +491,14 @@ The client owns transient interaction state:
 
 Placement/move/remove interactions do not visually commit as permanent state until the server confirms. If a mutation fails, the ghost/selection remains available and a meaningful toast is shown.
 
-If world loading fails, the client displays a retry state. It does not silently generate a replacement world client-side.
+If world loading fails, the client displays a retry state. It never silently generates a replacement world client-side.
 
 ## 13. Security and Concurrency
 
 - All mutations authorize config and Land ownership/membership.
 - Prices, footprints, terrain rules, expansion clusters, and rotation rules come from server-owned definitions.
-- Expansion transactions use Serializable isolation and conflict retry.
-- Building mutation validation is performed against current database state to prevent overlapping placements from concurrent clients.
+- Expansion and building mutations that depend on occupancy/balances use Serializable transactions with conflict retry.
+- Building mutations re-read current buildings inside the transaction before validating footprint occupancy.
 - Stable mutation errors are returned without exposing database internals.
 
 ## 14. Testing and Release Gates
@@ -461,20 +506,26 @@ If world loading fails, the client displays a retry state. It does not silently 
 Unit/integration coverage must include:
 
 - axial neighbor and distance functions;
-- axial/world-space conversion where deterministic inputs allow it;
-- deterministic starter generation from a fixed `landId`/seed;
-- starter tile-count bounds and connectivity;
+- axial/world-space conversion;
+- exact 400-coordinate starter envelope;
+- deterministic starter generation from a fixed seed;
+- starter unlocked tile-count bounds of 260-340;
+- starter unlocked-tile connectivity;
+- guaranteed unlocked `(0, 0)` Home anchor;
 - six-direction footprint rotation;
 - collision detection;
 - locked-tile rejection;
 - terrain-rule rejection;
 - valid place/move/rotate/remove flows;
-- expansion adjacency/eligibility;
-- expansion point deduction atomicity;
+- starter Home remove rejection;
+- expansion adjacency and eligibility;
+- exact expansion costs for 7/19/37 tile clusters;
+- shared Points deduction order and atomicity;
 - duplicate expansion idempotency;
 - concurrent placement/expansion conflict handling;
 - lazy HexWorld creation;
 - legacy `PurchasedItem` preservation;
+- family-farm save preservation;
 - Circle/config/Land authorization boundaries;
 - Garden world render smoke test;
 - build-preview interaction smoke tests where practical.
@@ -497,9 +548,10 @@ The following are intentionally excluded from the first implementation:
 - multiplayer movement simulation;
 - freeform terrain sculpting;
 - arbitrary user-authored building footprints;
-- converting every legacy GLB object automatically;
+- automatic conversion of every legacy GLB object;
 - seasons, festivals, NPC schedules, or family simulation;
 - charging Points for individual buildings;
+- dynamic expansion pricing;
 - an infinite pre-generated map.
 
 These can build on the HexWorld foundation later without being prerequisites for the first playable floating homestead.
@@ -508,14 +560,18 @@ These can build on the HexWorld foundation later without being prerequisites for
 
 The design is implemented successfully when:
 
-1. opening `/garden` on a new/current Land displays a floating stylized hex island;
+1. opening `/garden` on a new or existing Land displays a floating stylized hex island;
 2. a new HexWorld initializes deterministically without deleting legacy Land data;
-3. the starter island occupies an organic subset of an approximately 20x20 envelope and exposes meaningful free build space;
-4. the player can open Build, preview a catalog object, rotate it, place it on valid unlocked hexes, move it, and remove permitted objects;
-5. overlapping/locked/invalid placement is rejected by the server;
-6. the player can purchase eligible connected expansion clusters using Points with atomic/idempotent transactions;
-7. the island visually grows after a confirmed expansion;
-8. the Garden app shell and main menu remain available independently of the 3D world;
-9. no game-mode/character-control switch is introduced;
-10. legacy `PurchasedItem` and family-farm data remain intact;
-11. tests, lint, production build, and deployment checks pass.
+3. the starter world persists exactly 400 envelope coordinates and unlocks a connected organic subset of 260-340 tiles;
+4. `(0, 0)` is unlocked and contains the starter Home;
+5. the player can open Build, preview a catalog object, rotate it, place it on valid unlocked hexes, move it, and remove permitted objects;
+6. the starter Home cannot be removed;
+7. overlapping, locked, invalid-terrain, and invalid-rotation placement is rejected by the server;
+8. the player can purchase eligible connected 7/19/37-hex expansion clusters for 100/250/500 shared Points respectively;
+9. expansion retries are idempotent and cannot charge twice;
+10. the island visually grows only after a confirmed expansion;
+11. the Garden app shell and main menu remain available independently of the 3D world;
+12. no game-mode or character-control switch is introduced;
+13. legacy `PurchasedItem` and family-farm data remain intact;
+14. production startup does not destructively drop Land/PurchasedItem/HexWorld persistence tables;
+15. tests, lint, production build, and deployment checks pass.
