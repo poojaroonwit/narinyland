@@ -21,7 +21,6 @@ export const GardenTopControls: React.FC = () => {
     isUserProfileModalOpen,
     setIsUserProfileModalOpen,
     isMusicMuted,
-    setIsMusicMuted,
     appConfig,
     setAppConfig,
     setCircleMembers,
@@ -33,8 +32,12 @@ export const GardenTopControls: React.FC = () => {
     setIsUserDropdownOpen,
     setConfigLoaded,
     closeFloatingPanels,
+    toggleVolumePanel,
+    toggleCircleDropdown,
+    toggleLandDropdown,
     handleSelectLand,
     showToast,
+    isMobile,
   } = useGardenPageContext();
 
   const activeLand = appConfig.lands?.find((land: { isActive?: boolean }) => land.isActive) ?? appConfig.lands?.[0];
@@ -42,12 +45,6 @@ export const GardenTopControls: React.FC = () => {
   const [newLandName, setNewLandName] = React.useState('');
   const [isCreatingWorld, setIsCreatingWorld] = React.useState(false);
   const [isCreatingLand, setIsCreatingLand] = React.useState(false);
-
-  const closePanels = React.useCallback(() => {
-    setIsCircleDropdownOpen(false);
-    setIsLandDropdownOpen(false);
-    setIsUserDropdownOpen(false);
-  }, [setIsCircleDropdownOpen, setIsLandDropdownOpen, setIsUserDropdownOpen]);
 
   const handleCreateWorld = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -58,7 +55,7 @@ export const GardenTopControls: React.FC = () => {
     try {
       const result = await circlesAPI.create({ name });
       const circleId = result.circleId || result.id;
-      if (!circleId) throw new Error('The new family world did not return an ID.');
+      if (!circleId) throw new Error('The new world did not return an ID.');
 
       const defaultLand = result.defaultLand
         ? { ...result.defaultLand, isActive: true, items: result.defaultLand.items || [] }
@@ -75,7 +72,6 @@ export const GardenTopControls: React.FC = () => {
         albums: [],
         lands: defaultLand ? [defaultLand] : [],
       }));
-
       setCircleMembers(user?.sub ? [{
         id: user.sub,
         userId: user.sub,
@@ -92,7 +88,7 @@ export const GardenTopControls: React.FC = () => {
         role: result.role || 'member',
       });
       await refreshUser?.();
-      showToast?.(`Created family world “${name}” 🌱`);
+      showToast?.(`Created world “${name}”`);
     } catch (error) {
       showToast?.(`Could not create world: ${getErrorMessage(error)}`);
     } finally {
@@ -109,11 +105,7 @@ export const GardenTopControls: React.FC = () => {
     try {
       const createdLand = await landsAPI.create(name);
       const activeCreatedLand = createdLand.isActive ? createdLand : await landsAPI.setActive(createdLand.id);
-      const normalizedCreatedLand = {
-        ...activeCreatedLand,
-        isActive: true,
-        items: activeCreatedLand.items || [],
-      };
+      const normalizedCreatedLand = { ...activeCreatedLand, isActive: true, items: activeCreatedLand.items || [] };
 
       setAppConfig((previous: { lands?: Array<{ id: string; isActive?: boolean }> } & Record<string, unknown>) => ({
         ...previous,
@@ -127,9 +119,9 @@ export const GardenTopControls: React.FC = () => {
 
       setNewLandName('');
       setIsLandDropdownOpen(false);
-      showToast?.(`Created garden “${name}” 🥕`);
+      showToast?.(`Created land “${name}”`);
     } catch (error) {
-      showToast?.(`Could not create garden: ${getErrorMessage(error)}`);
+      showToast?.(`Could not create land: ${getErrorMessage(error)}`);
     } finally {
       setIsCreatingLand(false);
     }
@@ -140,174 +132,163 @@ export const GardenTopControls: React.FC = () => {
     try {
       await handleSelectLand(landId);
     } catch (error) {
-      showToast?.(`Could not switch garden: ${getErrorMessage(error)}`);
+      showToast?.(`Could not switch land: ${getErrorMessage(error)}`);
     }
   };
 
   const userForMenu = user
-    ? {
-        name: user.name || 'My Account',
-        email: user.email || '',
-        picture: user.picture || '',
-      }
+    ? { name: user.name || 'My Account', email: user.email || '', picture: user.picture || '' }
     : null;
-
-  const renderLandList = () => (
-    <div className="max-h-52 space-y-1 overflow-y-auto">
-      {(appConfig.lands || []).map((land: { id: string; name: string }) => (
-        <button
-          type="button"
-          key={land.id}
-          onClick={() => selectLand(land.id)}
-          className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-black transition ${
-            land.id === activeLand?.id
-              ? 'bg-amber-500 text-white'
-              : 'text-stone-600 hover:bg-amber-50 hover:text-amber-700'
-          }`}
-        >
-          <span className="truncate">{land.name}</span>
-          {land.id === activeLand?.id && <span aria-label="Selected">✓</span>}
-        </button>
-      ))}
-    </div>
-  );
-
-  const renderCreateLandForm = () => (
-    <form onSubmit={handleCreateLand} className="mb-2 flex gap-2 rounded-2xl bg-amber-50 p-1.5">
-      <input
-        value={newLandName}
-        onChange={(event) => setNewLandName(event.target.value)}
-        maxLength={40}
-        placeholder={activeCircleId ? 'New garden' : 'Choose world first'}
-        aria-label="New garden name"
-        disabled={!activeCircleId || isCreatingLand}
-        className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs font-bold text-stone-700 outline-none placeholder:text-amber-300"
-      />
-      <button
-        type="submit"
-        disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
-        className="rounded-xl bg-amber-500 px-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {isCreatingLand ? '…' : '+ Add'}
-      </button>
-    </form>
-  );
 
   return (
     <>
-      <div className="fixed right-3 top-3 z-[70] flex items-center gap-2 sm:right-5 sm:top-4">
+      <div className="fixed right-4 top-4 z-[70] flex items-center gap-3 md:right-6 md:gap-4">
         <button
           type="button"
-          onClick={() => setIsMusicMuted((muted: boolean) => !muted)}
-          className="grid h-10 w-10 place-items-center rounded-full border border-white/80 bg-white/90 text-sm shadow-lg backdrop-blur-xl transition hover:scale-105 hover:bg-white"
-          aria-label={isMusicMuted ? 'Unmute music' : 'Mute music'}
-          title={isMusicMuted ? 'Unmute music' : 'Mute music'}
+          onClick={toggleVolumePanel}
+          className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all hover:scale-110 ${isMusicMuted ? 'border-gray-400/50 bg-gray-500/40 text-white' : 'border-white/50 bg-white/40 text-pink-500'}`}
+          aria-label={isMusicMuted ? 'Open sound controls' : 'Open music controls'}
         >
-          <span aria-hidden="true">{isMusicMuted ? '🔇' : '🎵'}</span>
+          <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`} />
         </button>
 
         <div className="relative">
           <button
             type="button"
-            onClick={() => {
-              const next = !isCircleDropdownOpen;
-              closePanels();
-              setIsCircleDropdownOpen(next);
-            }}
-            className="flex h-10 max-w-[126px] items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 text-[10px] font-black text-stone-700 shadow-lg backdrop-blur-xl transition hover:bg-white sm:max-w-[170px] sm:text-xs"
+            onClick={toggleCircleDropdown}
+            className="flex h-10 items-center gap-2 rounded-full border border-white/50 bg-white/40 px-4 text-gray-700 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:bg-white/60"
             aria-expanded={isCircleDropdownOpen}
           >
-            <span aria-hidden="true">🏘️</span>
-            <span className="truncate">{circles.find((circle: { id: string }) => circle.id === activeCircleId)?.name || 'Family world'}</span>
-            <span className="text-[8px] text-stone-400" aria-hidden="true">▾</span>
+            <i className="fas fa-globe-asia text-xs text-emerald-500" />
+            <span className="max-w-[80px] truncate text-xs font-bold md:max-w-[120px]">
+              {circles.find((circle: { id: string }) => circle.id === activeCircleId)?.name || 'Select World'}
+            </span>
+            <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isCircleDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           <AnimatePresence>
             {isCircleDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                className="absolute right-0 mt-2 w-[min(310px,calc(100vw-24px))] rounded-[22px] border border-emerald-100 bg-[#fffdf8]/95 p-2 shadow-2xl backdrop-blur-xl"
-              >
-                <div className="px-2 pb-2 pt-1">
-                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-600">Family worlds</p>
-                  <p className="mt-0.5 text-[10px] font-semibold text-stone-400">Each world can hold its own family and gardens.</p>
-                </div>
-
-                <form onSubmit={handleCreateWorld} className="mb-2 flex gap-2 rounded-2xl bg-emerald-50 p-1.5">
-                  <input
-                    value={newWorldName}
-                    onChange={(event) => setNewWorldName(event.target.value)}
-                    maxLength={40}
-                    placeholder="New family world"
-                    aria-label="New family world name"
-                    disabled={isCreatingWorld}
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs font-bold text-stone-700 outline-none placeholder:text-emerald-300"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newWorldName.trim() || isCreatingWorld}
-                    className="rounded-xl bg-emerald-600 px-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isCreatingWorld ? '…' : '+ Add'}
-                  </button>
-                </form>
-
-                <div className="max-h-56 space-y-1 overflow-y-auto">
-                  {circles.map((circle: { id: string; name: string }) => (
-                    <button
-                      type="button"
-                      key={circle.id}
-                      onClick={async () => {
-                        setIsCircleDropdownOpen(false);
-                        await setActiveCircle(circle.id, circle);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-black transition ${
-                        circle.id === activeCircleId
-                          ? 'bg-emerald-600 text-white'
-                          : 'text-stone-600 hover:bg-emerald-50 hover:text-emerald-700'
-                      }`}
-                    >
-                      <span className="truncate">{circle.name}</span>
-                      {circle.id === activeCircleId && <span aria-label="Selected">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsCircleDropdownOpen(false)}
+                  className="fixed inset-0 z-[75] bg-black/40 backdrop-blur-sm md:hidden"
+                />
+                <motion.div
+                  initial={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
+                  animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+                  exit={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  className="fixed bottom-0 z-[80] w-full overflow-hidden rounded-t-[2.5rem] border-t border-pink-100 bg-white/95 shadow-2xl backdrop-blur-xl md:absolute md:bottom-auto md:right-0 md:top-full md:mt-3 md:w-64 md:rounded-md md:border"
+                >
+                  <div className="flex justify-center pb-2 pt-4 md:hidden"><div className="h-1.5 w-12 rounded-full bg-gray-200" /></div>
+                  <div className="p-6 md:p-1.5">
+                    <p className="mb-4 ml-4 text-[10px] font-black uppercase tracking-widest text-pink-500 md:hidden">Switch World</p>
+                    <div className="mb-2 hidden items-center justify-between px-2 md:flex">
+                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-pink-400">Create World</span>
+                      <i className="fas fa-circle-plus text-[10px] text-pink-300" />
+                    </div>
+                    <form onSubmit={handleCreateWorld} className="mb-3 flex items-center gap-2 rounded-full border border-pink-100 bg-pink-50/80 p-1.5 md:mb-1.5 md:rounded-md">
+                      <input
+                        value={newWorldName}
+                        onChange={(event) => setNewWorldName(event.target.value)}
+                        maxLength={40}
+                        placeholder="New world"
+                        aria-label="New world name"
+                        disabled={isCreatingWorld}
+                        className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm font-bold text-gray-700 outline-none placeholder:text-pink-300 md:text-xs"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newWorldName.trim() || isCreatingWorld}
+                        className="h-9 w-9 shrink-0 rounded-full bg-pink-500 text-white shadow-md transition-all hover:bg-pink-600 disabled:bg-pink-200"
+                        aria-label="Create world"
+                      >
+                        <i className={`fas ${isCreatingWorld ? 'fa-spinner fa-spin' : 'fa-plus'} text-[11px]`} />
+                      </button>
+                    </form>
+                    <div className="max-h-64 space-y-1 overflow-y-auto md:space-y-0.5">
+                      {circles.map((circle: { id: string; name: string }) => (
+                        <button
+                          type="button"
+                          key={circle.id}
+                          onClick={async () => {
+                            setIsCircleDropdownOpen(false);
+                            await setActiveCircle(circle.id, circle);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-full px-6 py-4 text-left text-sm font-bold transition-all md:rounded-md md:px-4 md:py-2.5 md:text-xs ${circle.id === activeCircleId ? 'bg-pink-500 text-white shadow-md' : 'text-gray-600 hover:bg-pink-50 hover:text-pink-600'}`}
+                        >
+                          <span className="truncate">{circle.name}</span>
+                          {circle.id === activeCircleId && <i className="fas fa-check text-[10px]" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-8 md:hidden" />
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="relative hidden sm:block">
+        <div className="relative">
           <button
             type="button"
-            onClick={() => {
-              const next = !isLandDropdownOpen;
-              closePanels();
-              setIsLandDropdownOpen(next);
-            }}
-            className="flex h-10 max-w-[150px] items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 text-xs font-black text-stone-700 shadow-lg backdrop-blur-xl transition hover:bg-white"
+            onClick={toggleLandDropdown}
+            className="flex h-10 items-center gap-2 rounded-full border border-white/50 bg-white/40 px-4 text-gray-700 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:bg-white/60"
             aria-expanded={isLandDropdownOpen}
           >
-            <span aria-hidden="true">🥕</span>
-            <span className="truncate">{activeLand?.name || 'Garden'}</span>
-            <span className="text-[8px] text-stone-400" aria-hidden="true">▾</span>
+            <i className="fas fa-map-marked-alt text-xs text-amber-500" />
+            <span className="max-w-[80px] truncate text-xs font-bold md:max-w-[120px]">{activeLand?.name || 'Select Land'}</span>
+            <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           <AnimatePresence>
             {isLandDropdownOpen && (
               <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                className="absolute right-0 mt-2 w-64 rounded-[22px] border border-amber-100 bg-[#fffdf8]/95 p-2 shadow-2xl backdrop-blur-xl"
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="absolute right-0 mt-3 w-56 overflow-hidden rounded-md border border-pink-100 bg-white/90 p-1.5 shadow-2xl backdrop-blur-xl"
               >
-                <div className="px-2 pb-2 pt-1">
-                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Gardens</p>
+                <div className="mb-2 flex items-center justify-between px-2 pt-1">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-500">Create Land</span>
+                  <i className="fas fa-circle-plus text-[10px] text-amber-300" />
                 </div>
-                {renderCreateLandForm()}
-                {renderLandList()}
+                <form onSubmit={handleCreateLand} className="mb-1.5 flex items-center gap-2 rounded-md border border-amber-100 bg-amber-50/80 p-1.5">
+                  <input
+                    value={newLandName}
+                    onChange={(event) => setNewLandName(event.target.value)}
+                    maxLength={40}
+                    placeholder={activeCircleId ? 'New land' : 'Select world first'}
+                    aria-label="New land name"
+                    disabled={!activeCircleId || isCreatingLand}
+                    className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs font-bold text-gray-700 outline-none placeholder:text-amber-300"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
+                    className="h-8 w-8 shrink-0 rounded-full bg-amber-500 text-white shadow-md transition-all hover:bg-amber-600 disabled:bg-amber-200"
+                    aria-label="Create land"
+                  >
+                    <i className={`fas ${isCreatingLand ? 'fa-spinner fa-spin' : 'fa-plus'} text-[10px]`} />
+                  </button>
+                </form>
+                <div className="max-h-52 overflow-y-auto">
+                  {(appConfig.lands || []).map((land: { id: string; name: string }) => (
+                    <button
+                      type="button"
+                      key={land.id}
+                      onClick={() => selectLand(land.id)}
+                      className={`flex w-full items-center justify-between rounded-full px-4 py-2.5 text-left text-xs font-bold transition-all ${land.id === activeLand?.id ? 'bg-amber-500 text-white shadow-md' : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'}`}
+                    >
+                      <span className="truncate">{land.name}</span>
+                      {land.id === activeLand?.id && <i className="fas fa-check text-[10px]" />}
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -322,43 +303,15 @@ export const GardenTopControls: React.FC = () => {
             setIsUserDropdownOpen(open);
           }}
           onEditUserInfo={() => {
-            closePanels();
+            closeFloatingPanels();
             setIsUserProfileModalOpen(true);
           }}
           onOpenSettings={() => {
-            closePanels();
+            closeFloatingPanels();
             setIsEditDrawerOpen(true);
           }}
           loading={authLoading}
         />
-      </div>
-
-      <div className="fixed right-[4.75rem] top-[3.6rem] z-[68] sm:hidden">
-        <button
-          type="button"
-          onClick={() => {
-            const next = !isLandDropdownOpen;
-            closePanels();
-            setIsLandDropdownOpen(next);
-          }}
-          className="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-[10px] font-black text-stone-600 shadow-md backdrop-blur-xl"
-          aria-expanded={isLandDropdownOpen}
-        >
-          🥕 {activeLand?.name || 'Garden'} ▾
-        </button>
-        <AnimatePresence>
-          {isLandDropdownOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              className="absolute right-0 mt-2 w-[min(280px,calc(100vw-24px))] rounded-[20px] border border-amber-100 bg-white/95 p-2 shadow-xl backdrop-blur-xl"
-            >
-              {renderCreateLandForm()}
-              {renderLandList()}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <UserProfileModal isOpen={isUserProfileModalOpen} onClose={() => setIsUserProfileModalOpen(false)} />
