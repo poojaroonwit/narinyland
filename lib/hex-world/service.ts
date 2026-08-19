@@ -1,8 +1,9 @@
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { getErrorField } from '@/lib/errors';
+import { spendSharedPoints } from '@/lib/stats-service';
 import { getBuildingDefinition } from './building-catalog';
-import { getEligibleExpansionDefinitions } from './expansions';
+import { getEligibleExpansionDefinitions, getExpansionDefinitions } from './expansions';
 import { generateStarterWorld } from './generator';
 import { validatePlacement } from './rules';
 import type { HexPlacementInput, HexRotation, HexWorldErrorCode, HexWorldSnapshot } from './types';
@@ -210,6 +211,53 @@ export async function removeHexBuilding(configId: string, landId: string, buildi
     const definition = getBuildingDefinition(building.buildingKey);
     if (!definition?.removable) throw new HexWorldServiceError('home_locked', 409, 'Starter Home cannot be removed');
     await tx.hexBuilding.delete({ where: { id: buildingId } });
+    return (await readSnapshot(tx, configId, landId))!;
+  });
+}
+
+export async function expandHexWorld(configId: string, landId: string, expansionKey: string): Promise<HexWorldSnapshot> {
+  return runHexTransaction(async (tx) => {
+    const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
+    const purchased = await tx.hexExpansion.findUnique({
+      where: { worldId_expansionKey: { worldId: snapshot.world.id, expansionKey } },
+    });
+    if (purchased) return (await readSnapshot(tx, configId, landId))!;
+
+    const definition = getExpansionDefinitions(snapshot.world.seed).find((item) => item.expansionKey === expansionKey);
+    if (!definition || !snapshot.expansions.some((item) => item.expansionKey === expansionKey)) {
+      throw new HexWorldServiceError('expansion_not_available', 409, 'This Land expansion is not currently available');
+    }
+
+    try {
+      await spendSharedPoints(tx, configId, definition.pointCost);
+    } catch (error: any) {
+      if (error?.code === 'not_enough_points') {
+        throw new HexWorldServiceError('not_enough_points', 400, 'Not enough shared Points for this expansion');
+      }
+      throw error;
+    }
+
+    await tx.hexTile.createMany({
+      data: definition.tiles.map((tile) => ({
+        worldId: snapshot.world.id,
+        q: tile.q,
+        r: tile.r,
+        terrainType: 'grass',
+        height: 0,
+        unlocked: true,
+        metadata: { expansionKey },
+      })),
+      skipDuplicates: true,
+    });
+    await tx.hexExpansion.create({
+      data: {
+        worldId: snapshot.world.id,
+        expansionKey,
+        tier: definition.tier,
+        pointCost: definition.pointCost,
+      },
+    });
+    await tx.hexWorld.update({ where: { id: snapshot.world.id }, data: { expansionLevel: { increment: 1 } } });
     return (await readSnapshot(tx, configId, landId))!;
   });
 }

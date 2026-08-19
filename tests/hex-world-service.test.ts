@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { getOrCreateHexWorldSnapshotWithClient, HexWorldServiceError } from '@/lib/hex-world/service';
+import { allocateSharedPointSpend, StatsServiceError } from '@/lib/stats-service';
 
 function makeHexWorldFake(input: { land: { id: string; configId: string; items: unknown[] } }) {
   let world: any = null;
@@ -50,5 +51,19 @@ test('wrong-config Land is rejected', async () => {
   await assert.rejects(
     () => getOrCreateHexWorldSnapshotWithClient(fake as any, 'circle-other', 'land-1'),
     (error: unknown) => error instanceof HexWorldServiceError && error.code === 'land_access_denied' && error.status === 403,
+  );
+});
+
+test('shared points spend without going negative', () => {
+  assert.deepEqual(
+    allocateSharedPointSpend([{ id: 'p1', points: 70 }, { id: 'p2', points: 50 }], 100),
+    [{ id: 'p1', amount: 70 }, { id: 'p2', amount: 30 }],
+  );
+});
+
+test('shared points reject a spend above the combined balance', () => {
+  assert.throws(
+    () => allocateSharedPointSpend([{ id: 'p1', points: 10 }, { id: 'p2', points: 5 }], 20),
+    (error: unknown) => error instanceof StatsServiceError && error.code === 'not_enough_points',
   );
 });
