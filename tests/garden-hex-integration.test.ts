@@ -19,6 +19,14 @@ test('garden main navigation remains independent of the renderer', async () => {
   assert.doesNotMatch(source, /worldMode\s*===/);
 });
 
+test('Home tab leaves the HexWorld pointer-interactive while other app panels can capture input', async () => {
+  const source = await readFile(new URL('../app/garden/_components/GardenAcceptedContent.tsx', import.meta.url), 'utf8');
+  assert.match(source, /pointer-events-none relative z-10/);
+  assert.match(source, /activeTab === 'home' \? 'pointer-events-none' : 'pointer-events-auto'/);
+  assert.match(source, /pointer-events-auto fixed bottom-6/);
+  assert.doesNotMatch(source, /MemoryFrame/);
+});
+
 test('proposal flow remains mounted above the new world', async () => {
   const source = await readFile(new URL('../app/garden/_components/GardenWorldStage.tsx', import.meta.url), 'utf8');
   assert.match(source, /ProposalScreen/);
