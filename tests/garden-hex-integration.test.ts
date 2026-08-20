@@ -32,3 +32,11 @@ test('proposal flow remains mounted above the new world', async () => {
   assert.match(source, /ProposalScreen/);
   assert.match(source, /configLoaded && appConfig\.showProposal && !hasAcceptedProposal/);
 });
+
+test('switching active Land aborts stale fetches and replaces the snapshot before rendering the new builder', async () => {
+  const source = await readFile(new URL('../app/garden/_components/GardenWorldStage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /setSnapshot\(null\)/);
+  assert.match(source, /controller\.abort\(\)/);
+  assert.match(source, /\[activeLandId, reloadKey\]/);
+  assert.match(source, /landId=\{snapshot\.world\.landId\}/);
+});
