@@ -76,7 +76,7 @@ export function HexBuildController({
       const confirmed = state.mode === 'moving' && state.selectedBuildingId
         ? await hexWorldAPI.update(landId, state.selectedBuildingId, { anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation })
         : await hexWorldAPI.place(landId, { buildingKey: state.buildingKey, anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation });
-      setSnapshot(confirmed);
+      setSnapshot(confirmed.snapshot);
       showToast(state.mode === 'moving' ? 'Building moved ✨' : 'Building placed ✨');
       dispatch({ type: 'cancel' });
     } catch (error) {
@@ -92,7 +92,7 @@ export function HexBuildController({
     try {
       const nextRotation = ((selectedBuilding.rotation + 1) % 6) as 0 | 1 | 2 | 3 | 4 | 5;
       const confirmed = await hexWorldAPI.update(landId, selectedBuilding.id, { rotation: nextRotation });
-      setSnapshot(confirmed);
+      setSnapshot(confirmed.snapshot);
       dispatch({ type: 'select_existing', buildingId: selectedBuilding.id });
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Could not rotate this building');
@@ -107,7 +107,8 @@ export function HexBuildController({
     if (!definition?.removable) return;
     setBusy(true);
     try {
-      setSnapshot(await hexWorldAPI.remove(landId, selectedBuilding.id));
+      const confirmed = await hexWorldAPI.remove(landId, selectedBuilding.id);
+      setSnapshot(confirmed.snapshot);
       setRemoveOpen(false);
       dispatch({ type: 'select_existing', buildingId: null });
       showToast(`${definition.name} removed`);
