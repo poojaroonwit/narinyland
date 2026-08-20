@@ -22,5 +22,13 @@ test('hex tiles and ambient decor are rendered with instancing and no character 
   assert.match(decor, /instancedMesh/);
   assert.match(scene, /HexAmbientDecor/);
   assert.doesNotMatch(scene, /GameCameraController|WASD|Character/);
-  assert.match(scene, /OrbitControls/);
+});
+
+test('world scene delegates smart camera lighting and atmosphere instead of hard-coded camera', async () => {
+  const scene = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
+  assert.match(scene, /HexDioramaCamera/);
+  assert.match(scene, /HexWorldLighting/);
+  assert.match(scene, /HexSkyAtmosphere/);
+  assert.doesNotMatch(scene, /camera=\{\{ position: \[17, 18, 22\]/);
+  assert.doesNotMatch(scene, /<OrbitControls/);
 });
