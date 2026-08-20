@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import * as THREE from 'three';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
 import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
-import { hexRotationToRadians, HEX_TILE_DEPTH } from '@/lib/hex-world/rendering';
+import { hexRotationToRadians } from '@/lib/hex-world/rendering';
 import type { HexCameraIntent } from '@/lib/hex-world/camera';
-import type { HexBuildingDTO, HexCoord, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
 import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexDioramaCamera } from './HexDioramaCamera';
+import { HexExpansionClusters } from './HexExpansionClusters';
 import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
@@ -35,7 +35,8 @@ type Props = {
   selectedBuildingId?: string | null;
   validKeys?: Set<string>;
   invalidKeys?: Set<string>;
-  expansionPreviewTiles?: HexCoord[];
+  expansionOptions?: HexExpansionDTO[];
+  selectedExpansionKey?: string | null;
   newlyAddedKeys?: Set<string>;
   buildingPreview?: HexBuildingPreview | null;
   cameraIntent?: HexCameraIntent;
@@ -45,39 +46,13 @@ type Props = {
   onHoverTile?: (coord: HexCoord | null) => void;
   onSelectTile?: (coord: HexCoord) => void;
   onSelectBuilding?: (building: HexBuildingDTO | null) => void;
+  onSelectExpansion?: (expansionKey: string) => void;
 };
 
 function FloatingFragments() {
   return <group>{[
     [-9, -2.4, 2, 0.7], [9, -3.1, 4, 0.55], [6, -2.2, -10, 0.45], [-6, -3.5, -9, 0.5],
   ].map(([x, y, z, scale], index) => <mesh key={index} position={[x, y, z]} rotation={[0.2, index * 0.8, 0.12]} scale={scale} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#8e8877" roughness={1} /></mesh>)}</group>;
-}
-
-function HexExpansionPreviewInstances({ tiles }: { tiles: HexCoord[] }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    tiles.forEach((tile, index) => {
-      const position = axialToWorld(tile, 1, -0.08);
-      dummy.position.set(position.x, position.y - HEX_TILE_DEPTH / 2, position.z);
-      dummy.rotation.set(0, Math.PI / 6, 0);
-      dummy.scale.set(0.94, 0.52, 0.94);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(index, dummy.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  }, [dummy, tiles]);
-
-  if (tiles.length === 0) return null;
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, tiles.length]}>
-      <cylinderGeometry args={[1, 1, HEX_TILE_DEPTH, 6]} />
-      <meshStandardMaterial color="#e4b45d" transparent opacity={0.55} roughness={0.86} depthWrite={false} />
-    </instancedMesh>
-  );
 }
 
 export function HexWorld3D({ snapshot, ...props }: Props) {
@@ -110,7 +85,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
         <HexWorldParticles seed={snapshot.world.seed} profile={profile} />
-        <HexExpansionPreviewInstances tiles={props.expansionPreviewTiles ?? []} />
+        {!!props.expansionOptions?.length && <HexExpansionClusters expansions={props.expansionOptions} selectedKey={props.selectedExpansionKey} onSelect={(key) => props.onSelectExpansion?.(key)} />}
         <HexTileInstances
           tiles={snapshot.tiles}
           hoveredKey={hoveredKey}
@@ -130,12 +105,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
             <HexBuildingModel buildingKey={preview.buildingKey} ghost />
           </group>
         )}
-        <HexDioramaCamera
-          tiles={snapshot.tiles}
-          intent={cameraIntent}
-          resetNonce={props.resetNonce ?? 0}
-          reframeCoords={props.reframeCoords ?? []}
-        />
+        <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
       </Canvas>
     </div>
   );
