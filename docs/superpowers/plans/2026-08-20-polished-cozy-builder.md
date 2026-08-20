@@ -52,7 +52,7 @@
 - `components/hex-world/models/HexStructureModels.tsx`
 - `components/hex-world/models/HexNatureModels.tsx`
 - `components/hex-world/models/HexDecorModels.tsx`
-- existing `HexWorld3D.tsx`, `HexAmbientDecor.tsx`, `HexBuildings.tsx`, `HexBuildingModels.tsx`, `HexTileInstances.tsx` become composition/dispatch-focused.
+- Existing `HexWorld3D.tsx`, `HexAmbientDecor.tsx`, `HexBuildings.tsx`, `HexBuildingModels.tsx`, `HexTileInstances.tsx` become composition/dispatch-focused.
 
 ### Builder UI
 - `components/hex-world/HexWorldToolbar.tsx`
@@ -62,7 +62,7 @@
 - `components/hex-world/HexExpansionClusters.tsx`
 - `components/hex-world/HexUndoToast.tsx`
 - `components/hex-world/useHexKeyboardShortcuts.ts`
-- existing `HexBuildCatalog.tsx`, `HexExpansionController.tsx`, `HexBuildController.tsx` remain orchestrators but shrink.
+- Existing `HexBuildCatalog.tsx`, `HexExpansionController.tsx`, `HexBuildController.tsx` remain orchestrators but shrink.
 
 ### Server/API
 - Add `revision Int @default(0)` to `HexWorld` using additive migration `prisma/migrations/20260820010000_add_hex_world_revision/migration.sql`.
@@ -89,23 +89,17 @@
 ```ts
 export type HexIslandBounds = {
   minX: number; maxX: number; minZ: number; maxZ: number;
-  center: [number, number, number];
-  radius: number;
+  center: [number, number, number]; radius: number;
 };
 export type HexCameraPose = {
-  position: [number, number, number];
-  target: [number, number, number];
-  distance: number;
+  position: [number, number, number]; target: [number, number, number]; distance: number;
 };
 export type HexCameraIntent =
   | { kind: 'overview' }
   | { kind: 'focus'; coord: HexCoord }
   | { kind: 'build'; anchor: HexCoord | null };
 export type HexVisualVariation = {
-  rotation: number;
-  scale: number;
-  tone: number;
-  densityRank: number;
+  rotation: number; scale: number; tone: number; densityRank: number;
 };
 ```
 
@@ -150,7 +144,7 @@ const portraitPenalty = aspect < 1 ? 1.22 : 1;
 const distance = Math.max(12, bounds.radius * 2.15 * portraitPenalty);
 ```
 
-Focus never goes closer than `max(10, overview.distance * 0.72)`. Build framing is slightly more top-down than overview and may target current anchor while keeping the whole local footprint context.
+Focus never goes closer than `max(10, overview.distance * 0.72)`. Build framing is slightly more top-down and may target current anchor while retaining local context.
 
 - [ ] **Step 4: Write quality tests RED**
 
@@ -179,13 +173,13 @@ export type HexQualityProfile = {
 };
 ```
 
-Viewport `< 640` resolves to mobile. Desktop honors high/medium; low/unknown maps mobile.
+Viewport `< 640` resolves mobile. Desktop honors high/medium; low/unknown maps mobile.
 
 - [ ] **Step 6: Implement deterministic variation**
 
-`getVisualVariation(seed, coord)` must return stable values with ranges: rotation `[0,2π)`, scale `[0.85,1.15]`, tone `[-0.08,0.08]`, densityRank `[0,1]`. Use existing deterministic hashing style; never `Math.random()`.
+`getVisualVariation(seed, coord)` returns stable ranges: rotation `[0,2π)`, scale `[0.85,1.15]`, tone `[-0.08,0.08]`, densityRank `[0,1]`. Never use `Math.random()`.
 
-- [ ] **Step 7: Implement placement copy + screen clamp tests**
+- [ ] **Step 7: Implement placement copy + clamp tests**
 
 ```ts
 assert.equal(getPlacementMessage('tile_occupied'), 'Occupied');
@@ -218,7 +212,7 @@ git commit -m "feat: add polished hex camera and quality primitives"
 
 **Interfaces:** Consumes Task 1 `HexCameraIntent`, camera math, and quality profile. `HexWorld3D` gains `cameraIntent`, `resetNonce`, `graphicsQuality`, `reframeCoords` props.
 
-- [ ] **Step 1: Add source-contract test RED**
+- [ ] **Step 1: Add source-contract RED test**
 
 ```ts
 assert.match(scene, /HexDioramaCamera/);
@@ -229,7 +223,7 @@ assert.doesNotMatch(scene, /position: \[17, 18, 22\]/);
 
 - [ ] **Step 2: Implement `HexDioramaCamera`**
 
-Use `useThree`, `useFrame`, and a Drei `OrbitControls` ref. Ease camera/target toward Task 1 pose only while scripted motion is active. `OrbitControls.onStart` immediately cancels scripted motion.
+Use `useThree`, `useFrame`, and a Drei `OrbitControls` ref. Ease camera/target only while scripted motion is active. `onStart` cancels scripted motion immediately.
 
 ```tsx
 <OrbitControls ref={controlsRef} makeDefault enablePan={false} enableDamping dampingFactor={0.07}
@@ -238,11 +232,11 @@ Use `useThree`, `useFrame`, and a Drei `OrbitControls` ref. Ease camera/target t
   onStart={() => { scriptedMotion.current = false; }} />
 ```
 
-`resetNonce` restarts Overview. `reframeCoords` only triggers when Task 1 predicate says needed.
+`resetNonce` restarts Overview. `reframeCoords` acts only when Task 1 predicate says needed.
 
 - [ ] **Step 3: Extract light/sky ownership**
 
-`HexWorldLighting(profile)` owns hemisphere/ambient/directional/contact shadows. Only one directional light is the primary real-time shadow source. `HexSkyAtmosphere(profile)` owns background, fog, clouds and no cloud shadows.
+`HexWorldLighting(profile)` owns hemisphere/ambient/directional/contact shadows. Only one directional light is primary real-time shadow source. `HexSkyAtmosphere(profile)` owns background/fog/clouds; clouds never cast shadow.
 
 - [ ] **Step 4: Derive camera intent in controller**
 
@@ -254,7 +248,7 @@ const cameraIntent: HexCameraIntent = state.mode === 'placing' || state.mode ===
     : { kind: 'overview' };
 ```
 
-Pass existing `appConfig.graphicsQuality` from GardenWorldStage. Add reset nonce only; no user-visible camera-mode selector.
+Pass existing `appConfig.graphicsQuality` from GardenWorldStage. Add reset nonce only; no visible camera-mode selector.
 
 - [ ] **Step 5: Preserve Home pointer/shell behavior and verify**
 
@@ -288,19 +282,19 @@ assert.doesNotMatch(scene, /EffectComposer|DepthOfField|Bloom|MeshReflectorMater
 
 - [ ] **Step 2: Implement underside**
 
-Render 8–14 low-poly rock masses derived from island bounds + seed below the logical surface. Use instancing when geometry/material match; no pointer handlers or persistence.
+Render 8–14 low-poly rock masses derived from island bounds + seed below logical surface. Use instancing when geometry/material match; no pointer handlers or persistence.
 
 - [ ] **Step 3: Implement one shared particle field**
 
-One `<points>` buffer; count = `profile.particleCount`; deterministic positions; animate shared buffer/uniform only. No React child per particle.
+One `<points>` buffer; count = `profile.particleCount`; deterministic positions; animate shared buffer/uniform only.
 
 - [ ] **Step 4: Implement water**
 
-Render water-tile overlays with soft turquoise transparent standard material, low metalness, moderate/high roughness and a tiny shared ripple impression. High profile may show sparse ring ripples; reduced/mobile omit rings. No planar reflection.
+Render water-tile overlays with soft turquoise transparent standard material, low metalness, moderate/high roughness and tiny shared ripple impression. High may show sparse ring ripples; reduced/mobile omit rings. No planar reflection.
 
 - [ ] **Step 5: Layer clouds by profile**
 
-3/2/1 deterministic depth layers for High/Medium/Mobile; slow drift; no castShadow.
+3/2/1 deterministic depth layers for High/Medium/Mobile; slow drift; no `castShadow`.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -321,36 +315,39 @@ git commit -m "feat: add premium floating island atmosphere"
 - Modify: `components/hex-world/HexBuildingModels.tsx`
 - Modify: `components/hex-world/HexAmbientDecor.tsx`
 - Modify: `components/hex-world/HexBuildings.tsx`
+- Modify: `components/hex-world/HexWorld3D.tsx`
 - Test: `tests/hex-building-art.test.ts`
 - Test: `tests/hex-world-rendering.test.ts`
 
-- [ ] **Step 1: Write catalog-art coverage RED test**
+**Interfaces:** `HexAmbientDecor({ tiles, seed, profile })`; `HexWorld3D` passes `snapshot.world.seed` and its resolved Task 1 profile.
+
+- [ ] **Step 1: Write catalog-art RED test**
 
 Assert every exact MVP key (`home`, `storage`, `workshop`, `tree`, `flower_patch`, `pond`, `bench`, `lamp`, `fence`, `stone_path`, `garden_patch`) is dispatched once and core visuals do not require remote model URLs.
 
-- [ ] **Step 2: Implement premium structures**
+- [ ] **Step 2: Implement structures**
 
-Home: cream wall, terracotta roof, chimney, porch, warm panes, planter. Storage: matching shed/barn. Workshop: wider/lower moss roof, chimney/tool accents. Catalog footprints remain authoritative and unchanged.
+Home: cream wall, terracotta roof, chimney, porch, warm panes, planter. Storage: matching shed/barn. Workshop: wider/lower moss roof, chimney/tool accents. Catalog footprints remain authoritative.
 
-- [ ] **Step 3: Implement nature/utility + decor modules**
+- [ ] **Step 3: Implement nature/utility/decor modules**
 
-Tree uses clustered rounded canopy; pond uses matching water/reeds/stones; flowers/garden are grouped miniature forms. Bench/lamp/fence/path use common wood/stone palette. Lamp uses emissive material only, no point light per lamp.
+Tree uses clustered rounded canopy; pond matches water/reeds/stones; flowers/garden grouped miniature forms. Bench/lamp/fence/path share wood/stone palette. Lamp uses emissive material only, no point light per lamp.
 
-- [ ] **Step 4: Upgrade ambient decor using exact Task 1 interface**
+- [ ] **Step 4: Upgrade ambient decor with exact deterministic interface**
 
 ```ts
 const variation = getVisualVariation(seed, { q: tile.q, r: tile.r });
 const visible = variation.densityRank <= profile.ambientDensity;
 ```
 
-Use `variation.rotation`, `variation.scale`, and `variation.tone`; never `Math.random()`.
+Use variation rotation/scale/tone. Never `Math.random()`.
 
 - [ ] **Step 5: Verify and commit**
 
 ```bash
 node --import tsx --test tests/hex-building-catalog.test.ts tests/hex-building-art.test.ts tests/hex-visual-variation.test.ts tests/hex-world-rendering.test.ts
 npm run build
-git add components/hex-world/models components/hex-world/HexBuildingModels.tsx components/hex-world/HexAmbientDecor.tsx components/hex-world/HexBuildings.tsx tests/hex-building-art.test.ts tests/hex-world-rendering.test.ts
+git add components/hex-world/models components/hex-world/HexBuildingModels.tsx components/hex-world/HexAmbientDecor.tsx components/hex-world/HexBuildings.tsx components/hex-world/HexWorld3D.tsx tests/hex-building-art.test.ts tests/hex-world-rendering.test.ts
 git commit -m "feat: apply premium miniature homestead art pass"
 ```
 
@@ -363,20 +360,23 @@ git commit -m "feat: apply premium miniature homestead art pass"
 - Modify: `components/hex-world/HexTileInstances.tsx`
 - Modify: `components/hex-world/HexBuildings.tsx`
 - Modify: `components/hex-world/HexBuildController.tsx`
+- Modify: `components/hex-world/HexWorld3D.tsx`
 - Test: `tests/hex-build-state.test.ts`
 - Test: `tests/hex-world-rendering.test.ts`
 
+**Interfaces:** `HexWorld3D` mounts `HexSelectionEffects` using selected building/anchor and validation footprint; it never imports the browser API.
+
 - [ ] **Step 1: Add RED reducer/renderer tests**
 
-Assert hover/selection components have no API/network imports; cancel/move/expansion states remain isolated.
+Assert selection/tile components have no API/network imports; cancel/move/expansion states remain isolated; scene contains `HexSelectionEffects`.
 
-- [ ] **Step 2: Implement idle vs build tile treatment**
+- [ ] **Step 2: Implement idle vs build treatment**
 
-Idle: subtle seams. Placing/moving: valid emerald, invalid muted coral, anchor white/cream, selected building cream rim/lift. Do not expose the whole grid strongly when idle.
+Idle: subtle seams. Placing/moving: valid emerald, invalid muted coral, anchor white/cream, selected building cream rim/lift. Do not expose entire grid strongly when idle.
 
 - [ ] **Step 3: Show invalid reason**
 
-Use `getPlacementMessage(preview.result.code)` whenever invalid. Keep reason visible when Place disabled.
+Use `getPlacementMessage(preview.result.code)` when invalid and keep text visible when Place disabled.
 
 - [ ] **Step 4: Centralize motion constants**
 
@@ -384,13 +384,11 @@ Use `getPlacementMessage(preview.result.code)` whenever invalid. Keep reason vis
 export const HEX_MOTION = { fastMs: 180, settleMs: 280, expansionMs: 950 } as const;
 ```
 
-Use soft settle/select/remove transitions; no exaggerated bounce.
-
 - [ ] **Step 5: Verify and commit**
 
 ```bash
 node --import tsx --test tests/hex-build-state.test.ts tests/hex-builder-primitives.test.ts tests/hex-world-rendering.test.ts
-git add components/hex-world/HexSelectionEffects.tsx components/hex-world/HexTileInstances.tsx components/hex-world/HexBuildings.tsx components/hex-world/HexBuildController.tsx tests/hex-build-state.test.ts tests/hex-world-rendering.test.ts
+git add components/hex-world/HexSelectionEffects.tsx components/hex-world/HexTileInstances.tsx components/hex-world/HexBuildings.tsx components/hex-world/HexBuildController.tsx components/hex-world/HexWorld3D.tsx tests/hex-build-state.test.ts tests/hex-world-rendering.test.ts
 git commit -m "feat: polish hex selection and placement feedback"
 ```
 
@@ -412,19 +410,19 @@ git commit -m "feat: polish hex selection and placement feedback"
 
 - [ ] **Step 1: Write RED UI contract test**
 
-Assert source contains Build/Expand/Reset View and contextual Move/Rotate/Remove while `window.confirm` is absent.
+Assert Build/Expand/Reset View and contextual Move/Rotate/Remove exist while `window.confirm` is absent.
 
-- [ ] **Step 2: Implement `HexWorldToolbar`**
+- [ ] **Step 2: Implement world toolbar**
 
-Normal toolbar = Build · Expand · Reset View. Targets >=44px and bottom padding includes `env(safe-area-inset-bottom)`.
+Normal toolbar = Build · Expand · Reset View. Targets >=44px; safe-area bottom padding.
 
 - [ ] **Step 3: Redesign catalog tray**
 
-Map catalog categories `main/nature/utility/decor` to labels `Home/Nature/Utility/Decor`. Each item shows display name and footprint-cell count, no price. Desktop horizontal tray; mobile bottom sheet <50vh.
+Map `main/nature/utility/decor` to `Home/Nature/Utility/Decor`. Item shows name + footprint-cell count, no price. Desktop horizontal tray; mobile bottom sheet <50vh.
 
-- [ ] **Step 4: Implement contextual toolbar + mobile fallback**
+- [ ] **Step 4: Context toolbar + mobile fallback**
 
-Desktop/tablet: Drei `<Html>` above selected building with Task 1 clamp. Small screens: fixed bottom action bar. Stop DOM pointer propagation to camera.
+Desktop/tablet Drei `<Html>` above selected building with Task 1 clamp; small screens fixed bottom bar. Stop DOM pointer propagation.
 
 - [ ] **Step 5: Replace browser confirmation**
 
@@ -432,7 +430,7 @@ Desktop/tablet: Drei `<Html>` above selected building with Task 1 clamp. Small s
 
 - [ ] **Step 6: Add keyboard hook**
 
-R clockwise rotates preview, Escape cancels, Enter confirms only when valid/not busy. Ignore input/textarea/select/contentEditable targets.
+R rotates preview clockwise; Escape cancels; Enter confirms only valid/not busy. Ignore input/textarea/select/contentEditable.
 
 - [ ] **Step 7: Verify and commit**
 
@@ -465,21 +463,21 @@ assert.equal(state.mode, 'expanding');
 assert.equal(state.expansionKey, null);
 ```
 
-- [ ] **Step 2: Add `start_expansion` interaction action**
+- [ ] **Step 2: Add `start_expansion` reducer action**
 
-It is reducer interaction state only, not a product/game mode.
+Interaction state only, not product/game mode.
 
 - [ ] **Step 3: Render eligible clusters in world**
 
-`HexExpansionClusters({expansions, selectedKey, onSelect})` renders one clickable instanced cluster mesh per eligible expansion. Unselected = translucent amber; selected = stronger amber/cream.
+`HexExpansionClusters({ expansions, selectedKey, onSelect })`: one clickable instanced cluster mesh per eligible expansion. Unselected translucent amber; selected stronger amber/cream.
 
-- [ ] **Step 4: Replace list-centric panel**
+- [ ] **Step 4: Replace list panel**
 
-Compact selected copy `+N hexes · cost Points`, affordability reason, Confirm/Cancel only. No long 6–18 item list.
+Compact `+N hexes · cost Points`, affordability reason, Confirm/Cancel only.
 
-- [ ] **Step 5: Preserve server-confirmed rise and conditional reframe**
+- [ ] **Step 5: Preserve server-confirmed rise + conditional reframe**
 
-After `hexWorldAPI.expand()` confirms, derive new coords, animate rise, and set camera `reframeCoords` only when Task 1 says needed.
+After `hexWorldAPI.expand()` confirms, derive new coords, animate rise, set `reframeCoords` only when Task 1 says needed.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -506,7 +504,7 @@ git commit -m "feat: make hex expansion world-first"
 
 - [ ] **Step 1: Write schema RED test**
 
-Assert `revision Int @default(0)` and migration is additive only.
+Assert `revision Int @default(0)` and migration additive only.
 
 - [ ] **Step 2: Add field/migration**
 
@@ -517,25 +515,25 @@ ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 0;
 
 - [ ] **Step 3: Extract existing transaction helper**
 
-Move current Serializable + `P2034`/`P2002` retry behavior unchanged to `transaction.ts` and import it from service.
+Move current Serializable + `P2034`/`P2002` retry behavior unchanged to `transaction.ts`.
 
 - [ ] **Step 4: Serialize revision**
 
-Add `revision` to `HexWorldMetadata` and `serializeSnapshot`.
+Add `revision` to `HexWorldMetadata` and snapshot serialization.
 
-- [ ] **Step 5: Increment revision exactly once per reversible building mutation**
+- [ ] **Step 5: Increment once per reversible building mutation**
 
-After Place, each PATCH update, and Remove, inside the same transaction:
+After Place, every PATCH, and Remove inside same transaction:
 
 ```ts
 await tx.hexWorld.update({ where: { id: snapshot.world.id }, data: { revision: { increment: 1 } } });
 ```
 
-GET does not increment. Expansion remains non-undoable and keeps its existing transaction behavior.
+GET does not increment. Expansion keeps existing transaction behavior.
 
 - [ ] **Step 6: DB test**
 
-Initialize, record revision, then Place/PATCH/Remove and assert each successful call increments by exactly one. Repeated GET stays unchanged.
+Initialize, record revision, Place/PATCH/Remove each +1; repeated GET unchanged.
 
 - [ ] **Step 7: Verify and commit**
 
@@ -570,7 +568,9 @@ export type HexUndoDescriptor =
   | { action: 'move'; expectedRevision: number; before: HexUndoBuildingState; expected: HexUndoBuildingState }
   | { action: 'rotate'; expectedRevision: number; before: HexUndoBuildingState; expected: HexUndoBuildingState }
   | { action: 'remove'; expectedRevision: number; before: HexUndoBuildingState };
-
+export type HexUndoClaim = {
+  scope: HexUndoScope; token: string; claimId: string; descriptor: HexUndoDescriptor;
+};
 export interface HexUndoRedisAdapter {
   get(key: string): Promise<string | null>;
   mget(...keys: string[]): Promise<(string | null)[]>;
@@ -596,7 +596,7 @@ export async function redisEval<T>(operation: string, fallback: T, script: strin
 export async function closeRedisConnection(): Promise<void>;
 ```
 
-Use existing private client. `redisSetNxPx` calls `SET key value PX ttl NX`; `redisEval` uses current safe-fallback policy.
+Use existing private client. SET uses `PX ttl NX`; eval follows current safe-fallback behavior.
 
 - [ ] **Step 2: Implement scope-safe keys**
 
@@ -608,19 +608,17 @@ Base64url-encode config/land/user parts. Keys: `hexundo:latest:<scope>`, `hexund
 local previous = redis.call('GET', KEYS[1])
 redis.call('SET', KEYS[2], ARGV[1], 'PX', ARGV[2])
 redis.call('SET', KEYS[1], ARGV[3], 'PX', ARGV[2])
-if previous and previous ~= ARGV[3] then
-  redis.call('DEL', ARGV[4] .. previous)
-end
+if previous and previous ~= ARGV[3] then redis.call('DEL', ARGV[4] .. previous) end
 return previous or ''
 ```
 
 - [ ] **Step 4: Implement claim/consume/release**
 
-Claim lock = `SET NX PX 5000`, then re-read payload/latest and require latest==token. Consume conditionally deletes latest only if still token, then payload+claim. Release conditionally deletes claim only if claim id still matches.
+Claim lock `SET NX PX 5000`, then re-read payload/latest and require latest==token. Consume conditionally deletes latest only if still token, then payload+claim. Release conditionally deletes claim only if claimId matches.
 
 - [ ] **Step 5: Unit test with injected in-memory `HexUndoRedisAdapter`**
 
-Assert TTL 12,000, same scope stable key, new save supersedes prior token, mismatched scope fails claim, claim ids distinct, consume one-time.
+Assert TTL 12,000, stable scope key, save supersedes prior token, mismatched scope fails claim, claim ids distinct, consume one-time.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -658,13 +656,13 @@ export async function finalizeReversibleMutation(
 
 - [ ] **Step 1: Write API contract RED**
 
-POST/PATCH/DELETE browser methods must expect `HexReversibleMutationResponse`; GET/Expand still `HexWorldSnapshot`.
+POST/PATCH/DELETE browser methods expect `HexReversibleMutationResponse`; GET/Expand remain `HexWorldSnapshot`.
 
-- [ ] **Step 2: Capture descriptor inside DB transaction**
+- [ ] **Step 2: Capture descriptor inside transaction**
 
-Place → action `place`. PATCH with any `anchorQ` or `anchorR` → action `move` (even if rotation changes too), before and expected include anchor+rotation. PATCH with rotation only → action `rotate`. Remove → action `remove`. All descriptors use fresh snapshot revision after Task 8 increment.
+Place → `place`. PATCH with any `anchorQ` or `anchorR` → `move` even when rotation changes too; before/expected contain anchor+rotation. PATCH rotation-only → `rotate`. Remove → `remove`. Descriptor expectedRevision = fresh snapshot revision after Task 8 increment.
 
-- [ ] **Step 3: Implement finalizer degradation behavior**
+- [ ] **Step 3: Implement finalizer degradation**
 
 ```ts
 export async function finalizeReversibleMutation(scope, result, store = redisHexUndoStore) {
@@ -678,17 +676,13 @@ export async function finalizeReversibleMutation(scope, result, store = redisHex
 
 - [ ] **Step 4: Update authenticated routes**
 
-Use `access.configId` and `access.userId`; client body never provides them.
+Use `access.configId`/`access.userId`; client never supplies them.
 
-- [ ] **Step 5: Update browser API**
+- [ ] **Step 5: Update browser API + degradation test**
 
-Place/update/remove return reversible response. Expand remains unchanged.
+Place/update/remove return reversible response. Fake store throws on save; committed snapshot still returns with `undo:null`.
 
-- [ ] **Step 6: Test Redis-store failure does not fail committed mutation**
-
-Fake store `save()` throws; finalizer returns exact committed snapshot and `undo:null`.
-
-- [ ] **Step 7: Verify and commit**
+- [ ] **Step 6: Verify and commit**
 
 ```bash
 node --import tsx --test tests/hex-world-api-contract.test.ts tests/hex-world-db.test.ts tests/hex-undo-store.test.ts
@@ -706,11 +700,25 @@ git commit -m "feat: return one-step undo opportunities from hex mutations"
 - Modify: `lib/hex-world/types.ts`
 - Create: `tests/hex-world-undo-db.test.ts`
 
-**Interfaces:** Add `undo_unavailable` and `undo_conflict` to `HexWorldErrorCode`. Produce `undoHexWorldMutation(scope, token, store = redisHexUndoStore): Promise<HexWorldSnapshot>`.
+**Interfaces:** Add `undo_unavailable` and `undo_conflict` to `HexWorldErrorCode`.
 
-- [ ] **Step 1: Write real Postgres+Redis Place→Undo integration RED test**
+```ts
+export async function undoHexWorldMutation(
+  scope: HexUndoScope,
+  token: string,
+  store?: HexUndoStore,
+): Promise<HexWorldSnapshot>;
 
-Create isolated config/partner/Land, initialize world, Place, save real token, Undo, assert building gone and revision advanced.
+async function applyInverseAndIncrementRevision(
+  tx: Prisma.TransactionClient,
+  current: HexWorldSnapshot,
+  descriptor: HexUndoDescriptor,
+): Promise<HexWorldSnapshot>;
+```
+
+- [ ] **Step 1: Write real Postgres+Redis Place→Undo RED test**
+
+Create isolated config/partner/Land, initialize, Place, obtain token, Undo, assert building removed and revision advanced.
 
 - [ ] **Step 2: Implement claim + revision gate**
 
@@ -734,29 +742,27 @@ try {
 }
 ```
 
-If inverse DB commit succeeds but post-commit Redis cleanup cannot complete, log cleanup failure and still return the authoritative successful snapshot; revision mismatch prevents replay. Do not report the DB inverse as failed after it has committed.
+Redis claim/load failure must never report successful Undo. If the DB inverse commits, that DB snapshot is authoritative; cleanup uses idempotent consume and revision prevents replay.
 
-- [ ] **Step 3: Place inverse**
+- [ ] **Step 3: Implement Place inverse**
 
-Require current building equals descriptor `expected`, delete, increment world revision once.
+Require building equals descriptor expected; delete; increment world revision once.
 
-- [ ] **Step 4: Move/Rotate inverse**
+- [ ] **Step 4: Implement Move/Rotate inverse**
 
-Require current building equals descriptor `expected`; validate `before` placement with `ignoreBuildingId`; restore before anchor/rotation; increment revision.
+Require current building equals expected; validate before placement with `ignoreBuildingId`; restore before anchor/rotation; increment revision.
 
-- [ ] **Step 5: Remove inverse**
+- [ ] **Step 5: Implement Remove inverse**
 
-Require old id absent; validate old footprint; recreate exact id/key/anchor/rotation/modelUrl/metadata; increment revision. Occupied/invalid → `undo_conflict` with DB unchanged.
+Require old id absent; validate old footprint; recreate exact id/key/anchor/rotation/modelUrl/metadata; increment revision. Invalid/occupied → `undo_conflict`, DB unchanged.
 
 - [ ] **Step 6: Implement API**
 
-`POST /api/hex-world/undo` body = `{landId, undoToken}` only. Scope from `requireConfigAccess`.
+`POST /api/hex-world/undo` body only `{ landId, undoToken }`; scope from `requireConfigAccess`.
 
 - [ ] **Step 7: Complete real integration matrix**
 
-Cover Place/Move/Rotate/Remove undo; user/config/Land mismatch; newer reversible mutation → old token conflict; expired/unknown/reused → unavailable; parallel same-token calls at most one success; inverse placement conflict unchanged; expansion response has no undo.
-
-At test end call `closeRedisConnection()` and clean test DB rows.
+Place/Move/Rotate/Remove undo; scope mismatch; newer reversible mutation → conflict; expired/unknown/reused → unavailable; two parallel same-token calls at most one success; inverse conflict unchanged; expansion response no undo. Close Redis connection and clean test rows.
 
 - [ ] **Step 8: Verify and commit**
 
@@ -782,9 +788,9 @@ git commit -m "feat: add authoritative one-step hex undo"
 
 - [ ] **Step 1: Write UI contract RED**
 
-Assert `HexUndoToast`, `hexWorldAPI.undo`, `undo_unavailable`, `undo_conflict` are wired. Expansion confirmation clears client-visible undo opportunity because expansion itself is non-undoable.
+Assert `HexUndoToast`, `hexWorldAPI.undo`, `undo_unavailable`, `undo_conflict` wired. Expansion confirmation clears client-visible undo because expansion itself is non-undoable.
 
-- [ ] **Step 2: Capture mutation result only after confirmation**
+- [ ] **Step 2: Capture mutation response only after server confirmation**
 
 ```ts
 const result = await hexWorldAPI.place(...);
@@ -792,19 +798,19 @@ setSnapshot(result.snapshot);
 setUndo(result.undo);
 ```
 
-Use same pattern Move/Rotate/Remove.
+Same for Move/Rotate/Remove.
 
-- [ ] **Step 3: Implement server-expiry-based toast**
+- [ ] **Step 3: Implement expiry from server `expiresAt`**
 
-Use returned `expiresAt`; dismiss/disable after expiry. Copy examples `Bench placed · Undo`, `Workshop moved · Undo`.
+Dismiss/disable after expiry. Copy examples `Bench placed · Undo`, `Workshop moved · Undo`.
 
 - [ ] **Step 4: Implement Undo click**
 
-Call `hexWorldAPI.undo(landId, token)` once while busy. On success replace snapshot and clear invalid selection/transient state. `undo_conflict` → `Land changed — undo unavailable`; `undo_unavailable` → dismiss with concise message.
+Call `hexWorldAPI.undo(landId, token)` once while busy; success replaces snapshot and clears invalid transient selection. Conflict → `Land changed — undo unavailable`; unavailable → concise dismissal.
 
-- [ ] **Step 5: Clear transient state on Land switch**
+- [ ] **Step 5: Clear Land-owned transient state on switch**
 
-Reset reducer, catalog/remove confirmation, new-tile animation, camera transient focus, and client undo metadata; keep existing stale-fetch AbortController behavior.
+Reset reducer, catalog/remove confirmation, new-tile animation, camera transient focus, client undo metadata; preserve existing AbortController stale-fetch guard.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -838,11 +844,11 @@ redis:
     --health-retries 10
 ```
 
-Keep existing Postgres 16 service.
+Keep Postgres 16 service.
 
 - [ ] **Step 2: Keep pure tests Redis-free**
 
-Do not set `REDIS_URL` globally. Existing pure Hex step uses `NODE_ENV: production` only and adds Task 1–7/12 source+logic tests.
+Do not set `REDIS_URL` globally. Pure Hex step uses `NODE_ENV: production` only and includes new Task 1–7/12 source+logic tests.
 
 - [ ] **Step 3: Add dedicated DB+Redis Undo step**
 
@@ -856,11 +862,11 @@ Do not set `REDIS_URL` globally. Existing pure Hex step uses `NODE_ENV: producti
 
 - [ ] **Step 4: Add Phase 2 acceptance contract**
 
-Assert implemented surface has smart camera + Reset View, Build tray, contextual controls, Home no Remove, in-world expansion clusters, Undo route/client, safe-area mobile classes, no WASD/game-mode labels, no heavy required post-processing.
+Assert smart camera + Reset View, Build tray, contextual controls, Home no Remove, in-world expansion clusters, Undo route/client, mobile safe-area classes, no WASD/game-mode labels, no heavy required post-processing.
 
 - [ ] **Step 5: Add render-budget guards**
 
-Assert one primary directional shadow owner, particles use one `<points>`, repeated ambient geometry uses instancing, no `MeshReflectorMaterial`/`EffectComposer`/required Bloom/DOF, High DPR cap <=1.75.
+One primary directional shadow owner; particles use one `<points>`; repeated ambient geometry instanced; no `MeshReflectorMaterial`/`EffectComposer`/required Bloom/DOF; High DPR <=1.75.
 
 - [ ] **Step 6: Run full local-equivalent verification**
 
@@ -871,25 +877,19 @@ npm run lint
 npm run build
 ```
 
-Then run Task 11 DB+Redis command. Expected: zero test failures, Prisma valid, lint exit 0 under current warning policy, build exit 0.
+Then Task 11 DB+Redis command. Expected zero test failures, valid Prisma, lint exit 0 under current warning policy, build exit 0.
 
 - [ ] **Step 7: Open implementation PR; current-head CI must be green before merge**
 
-PR body calls out Visual Wow > Builder UX, camera/quality/art pass, world-first Build/Expand, additive revision migration, Redis Undo/degradation, legacy preservation, and explicit non-goals.
+PR body: Visual Wow > Builder UX, camera/quality/art pass, world-first Build/Expand, additive revision migration, Redis Undo/degradation, legacy preservation, explicit non-goals.
 
 - [ ] **Step 8: Railway verification after merge**
 
-Using Railway connector verify:
-1. deployed commit hash = merged `main` SHA;
-2. `prisma migrate deploy` applies `20260820010000_add_hex_world_revision`;
-3. no destructive cleanup/drop behavior;
-4. Narinyland/Postgres/Redis all `SUCCESS`;
-5. authenticated safe-Land smoke: GET twice stable revision without mutation, Place, Move, Rotate, Undo, Remove, Undo where valid, Expand, Reset View, switch Land, reload;
-6. legacy `PurchasedItem` count not reduced.
+Using Railway connector verify deployed hash = merged main SHA; migration `20260820010000_add_hex_world_revision` applies; no destructive cleanup; app/Postgres/Redis `SUCCESS`; authenticated safe-Land smoke covers stable GET revision, Place/Move/Rotate/Undo/Remove/Undo, Expand, Reset View, Land switch, reload; legacy PurchasedItem count not reduced.
 
 - [ ] **Step 9: Visual/mobile acceptance**
 
-Desktop 1440 Medium: island ~70–80% safe viewport, Home focal, responsive orbit/build. Portrait ~390x844: >=44px targets, safe-area, sheets <~50vh, bottom toolbar fallback, pinch/orbit do not place. Landscape ~844x390: no horizontal overflow. High/Medium/Mobile preserve identity while reducing shadows/clouds/particles/density.
+Desktop 1440 Medium: island ~70–80% safe viewport, Home focal, responsive orbit/build. Portrait ~390x844: >=44px targets, safe-area, sheets <~50vh, bottom toolbar fallback, pinch/orbit do not place. Landscape ~844x390: no horizontal overflow. Quality profiles preserve identity while reducing effects.
 
 - [ ] **Step 10: Commit CI gate**
 
