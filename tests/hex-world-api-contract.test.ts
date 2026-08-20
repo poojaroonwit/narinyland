@@ -7,6 +7,7 @@ test('all hex mutation routes require config access', async () => {
     '../app/api/hex-world/buildings/route.ts',
     '../app/api/hex-world/buildings/[id]/route.ts',
     '../app/api/hex-world/expand/route.ts',
+    '../app/api/hex-world/undo/route.ts',
   ]) {
     const source = await readFile(new URL(path, import.meta.url), 'utf8');
     assert.match(source, /requireConfigAccess/);
@@ -49,4 +50,12 @@ test('reversible building mutations expose typed undo opportunities scoped to th
 
   const expand = await readFile(new URL('../app/api/hex-world/expand/route.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(expand, /finalizeReversibleMutation|HexReversibleMutationResponse/);
+});
+
+test('undo route trusts only authenticated config and user scope', async () => {
+  const source = await readFile(new URL('../app/api/hex-world/undo/route.ts', import.meta.url), 'utf8');
+  assert.match(source, /landId,\s*undoToken/);
+  assert.match(source, /configId:\s*access\.configId/);
+  assert.match(source, /userId:\s*access\.userId/);
+  assert.doesNotMatch(source, /body\.userId|body\.configId/);
 });
