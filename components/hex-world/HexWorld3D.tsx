@@ -1,16 +1,24 @@
 "use client";
 
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows, OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
-import { hexRotationToRadians, HEX_TILE_DEPTH } from '@/lib/hex-world/rendering';
-import type { HexBuildingDTO, HexCoord, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
+import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
+import { hexRotationToRadians } from '@/lib/hex-world/rendering';
+import type { HexCameraIntent } from '@/lib/hex-world/camera';
+import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
 import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
+import { HexDioramaCamera } from './HexDioramaCamera';
+import { HexExpansionClusters } from './HexExpansionClusters';
+import { HexIslandUnderside } from './HexIslandUnderside';
+import { HexSelectionEffects } from './HexSelectionEffects';
+import { HexSkyAtmosphere } from './HexSkyAtmosphere';
 import { HexTileInstances } from './HexTileInstances';
+import { HexWaterSurface } from './HexWaterSurface';
+import { HexWorldLighting } from './HexWorldLighting';
+import { HexWorldParticles } from './HexWorldParticles';
 
 export type HexBuildingPreview = {
   buildingKey: string;
@@ -27,21 +35,19 @@ type Props = {
   selectedBuildingId?: string | null;
   validKeys?: Set<string>;
   invalidKeys?: Set<string>;
-  expansionPreviewTiles?: HexCoord[];
+  expansionOptions?: HexExpansionDTO[];
+  selectedExpansionKey?: string | null;
   newlyAddedKeys?: Set<string>;
   buildingPreview?: HexBuildingPreview | null;
+  cameraIntent?: HexCameraIntent;
+  resetNonce?: number;
+  reframeCoords?: HexCoord[];
+  graphicsQuality?: string;
   onHoverTile?: (coord: HexCoord | null) => void;
   onSelectTile?: (coord: HexCoord) => void;
   onSelectBuilding?: (building: HexBuildingDTO | null) => void;
+  onSelectExpansion?: (expansionKey: string) => void;
 };
-
-function CloudField() {
-  const clouds = [
-    [-9, -4.2, -8, 3.4], [-2, -5.1, -11, 4.1], [8, -4.7, -7, 3.6],
-    [11, -5.4, 3, 4.5], [5, -4.4, 11, 3.1], [-6, -5.2, 10, 4.2], [-12, -4.8, 2, 3.7],
-  ] as const;
-  return <group>{clouds.map(([x, y, z, scale], index) => <mesh key={index} position={[x, y, z]} scale={[scale, scale * 0.42, scale * 0.72]}><sphereGeometry args={[1, 14, 10]} /><meshStandardMaterial color="#f8fbf7" transparent opacity={0.58} roughness={1} depthWrite={false} /></mesh>)}</group>;
-}
 
 function FloatingFragments() {
   return <group>{[
@@ -49,52 +55,37 @@ function FloatingFragments() {
   ].map(([x, y, z, scale], index) => <mesh key={index} position={[x, y, z]} rotation={[0.2, index * 0.8, 0.12]} scale={scale} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#8e8877" roughness={1} /></mesh>)}</group>;
 }
 
-function HexExpansionPreviewInstances({ tiles }: { tiles: HexCoord[] }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    tiles.forEach((tile, index) => {
-      const position = axialToWorld(tile, 1, -0.08);
-      dummy.position.set(position.x, position.y - HEX_TILE_DEPTH / 2, position.z);
-      dummy.rotation.set(0, Math.PI / 6, 0);
-      dummy.scale.set(0.94, 0.52, 0.94);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(index, dummy.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  }, [dummy, tiles]);
-
-  if (tiles.length === 0) return null;
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, tiles.length]}>
-      <cylinderGeometry args={[1, 1, HEX_TILE_DEPTH, 6]} />
-      <meshStandardMaterial color="#e4b45d" transparent opacity={0.55} roughness={0.86} depthWrite={false} />
-    </instancedMesh>
-  );
-}
-
 export function HexWorld3D({ snapshot, ...props }: Props) {
+  const [device, setDevice] = useState({ viewportWidth: 1280, devicePixelRatio: 1 });
+  useEffect(() => {
+    const update = () => setDevice({ viewportWidth: window.innerWidth, devicePixelRatio: window.devicePixelRatio || 1 });
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const profile = resolveHexQualityProfile({
+    graphicsQuality: props.graphicsQuality ?? 'medium',
+    viewportWidth: device.viewportWidth,
+    devicePixelRatio: device.devicePixelRatio,
+  });
   const tileHeight = new Map(snapshot.tiles.map((tile) => [hexKey(tile), tile.height]));
   const hoveredKey = props.hoveredCoord ? hexKey(props.hoveredCoord) : null;
   const selectedKey = props.selectedCoord ? hexKey(props.selectedCoord) : null;
   const preview = props.buildingPreview;
   const previewHeight = preview ? (tileHeight.get(`${preview.anchorQ}:${preview.anchorR}`) ?? 0) : 0;
   const previewPosition = preview ? axialToWorld({ q: preview.anchorQ, r: preview.anchorR }, 1, previewHeight + 0.03) : null;
+  const cameraIntent = props.cameraIntent ?? ({ kind: 'overview' } as const);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-[#edf6e9] to-[#d7ead6]">
-      <Canvas shadows dpr={[1, 1.6]} camera={{ position: [17, 18, 22], fov: 42, near: 0.1, far: 120 }} onPointerMissed={() => props.onSelectBuilding?.(null)}>
-        <color attach="background" args={['#dfeff0']} />
-        <fog attach="fog" args={['#dfeff0', 28, 62]} />
-        <hemisphereLight intensity={1.05} color="#fff7df" groundColor="#78946f" />
-        <directionalLight position={[10, 20, 8]} intensity={2.2} color="#fff0ce" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0002} />
-        <ambientLight intensity={0.35} />
-        <CloudField />
+      <Canvas shadows dpr={[1, profile.maxDpr]} camera={{ fov: 42, near: 0.1, far: 160 }} onPointerMissed={() => props.onSelectBuilding?.(null)}>
+        <HexSkyAtmosphere profile={profile} />
+        <HexWorldLighting profile={profile} />
+        <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
-        <HexExpansionPreviewInstances tiles={props.expansionPreviewTiles ?? []} />
+        <HexWorldParticles seed={snapshot.world.seed} profile={profile} />
+        {!!props.expansionOptions?.length && <HexExpansionClusters expansions={props.expansionOptions} selectedKey={props.selectedExpansionKey} onSelect={(key) => props.onSelectExpansion?.(key)} />}
         <HexTileInstances
           tiles={snapshot.tiles}
           hoveredKey={hoveredKey}
@@ -105,6 +96,8 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
           onHover={props.onHoverTile}
           onSelect={props.onSelectTile}
         />
+        <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} />
+        <HexWaterSurface tiles={snapshot.tiles} profile={profile} />
         <HexAmbientDecor tiles={snapshot.tiles} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {preview && previewPosition && (
@@ -112,8 +105,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
             <HexBuildingModel buildingKey={preview.buildingKey} ghost />
           </group>
         )}
-        <ContactShadows position={[0, -0.55, 0]} opacity={0.2} scale={38} blur={2.8} far={12} resolution={512} />
-        <OrbitControls makeDefault target={[0, 0, 0]} enableDamping dampingFactor={0.07} minDistance={12} maxDistance={40} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 2.35} enablePan={false} />
+        <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
       </Canvas>
     </div>
   );

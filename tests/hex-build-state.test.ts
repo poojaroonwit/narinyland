@@ -21,6 +21,13 @@ test('moving retains selected building and current rotation', () => {
   assert.equal(state.rotation, 4);
 });
 
+test('expansion can start before an edge cluster is selected', () => {
+  const state = hexBuildReducer(createInitialHexBuildState(), { type: 'start_expansion' });
+  assert.equal(state.mode, 'expanding');
+  assert.equal(state.expansionKey, null);
+  assert.equal(state.buildingKey, null);
+});
+
 test('expansion preview is separate from build placement', () => {
   const state = hexBuildReducer(createInitialHexBuildState(), { type: 'preview_expansion', expansionKey: '1:0:0' });
   assert.equal(state.mode, 'expanding');

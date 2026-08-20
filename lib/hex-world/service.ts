@@ -5,8 +5,11 @@ import { spendSharedPoints } from '@/lib/stats-service';
 import { getBuildingDefinition } from './building-catalog';
 import { getEligibleExpansionDefinitions, getExpansionDefinitions } from './expansions';
 import { generateStarterWorld } from './generator';
+import type { HexMutationPersistenceResult } from './reversible-mutation';
 import { validatePlacement } from './rules';
-import type { HexPlacementInput, HexRotation, HexWorldErrorCode, HexWorldSnapshot } from './types';
+import { runHexTransaction } from './transaction';
+import type { HexBuildingDTO, HexPlacementInput, HexRotation, HexWorldErrorCode, HexWorldSnapshot } from './types';
+import type { HexUndoBuildingState } from './undo-types';
 
 export class HexWorldServiceError extends Error {
   constructor(
@@ -47,6 +50,7 @@ function serializeSnapshot(world: any, points: number): HexWorldSnapshot {
       generatorVersion: world.generatorVersion,
       seed: world.seed,
       expansionLevel: world.expansionLevel,
+      revision: world.revision ?? 0,
     },
     tiles: world.tiles.map((tile: any) => ({
       id: tile.id,
@@ -125,16 +129,6 @@ export async function getOrCreateHexWorldSnapshotWithClient(
   return serializeSnapshot(created, await getSharedPoints(client, configId));
 }
 
-async function runHexTransaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>, retries = 2): Promise<T> {
-  try {
-    return await prisma.$transaction(callback, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  } catch (error) {
-    const code = getErrorField(error, 'code');
-    if (retries > 0 && (code === 'P2034' || code === 'P2002')) return runHexTransaction(callback, retries - 1);
-    throw error;
-  }
-}
-
 export async function getOrCreateHexWorldSnapshot(configId: string, landId: string): Promise<HexWorldSnapshot> {
   return runHexTransaction((tx) => getOrCreateHexWorldSnapshotWithClient(tx, configId, landId));
 }
@@ -145,7 +139,23 @@ function throwPlacement(result: ReturnType<typeof validatePlacement>): never {
   throw new HexWorldServiceError(result.code, status, result.code.replaceAll('_', ' '));
 }
 
-export async function placeHexBuilding(configId: string, landId: string, input: HexPlacementInput): Promise<HexWorldSnapshot> {
+async function incrementWorldRevision(tx: Prisma.TransactionClient, worldId: string) {
+  await tx.hexWorld.update({ where: { id: worldId }, data: { revision: { increment: 1 } } });
+}
+
+function toUndoBuildingState(building: HexBuildingDTO): HexUndoBuildingState {
+  return {
+    id: building.id,
+    buildingKey: building.buildingKey,
+    anchorQ: building.anchorQ,
+    anchorR: building.anchorR,
+    rotation: building.rotation,
+    modelUrl: building.modelUrl ?? null,
+    metadata: building.metadata ?? {},
+  };
+}
+
+export async function placeHexBuilding(configId: string, landId: string, input: HexPlacementInput): Promise<HexMutationPersistenceResult> {
   return runHexTransaction(async (tx) => {
     const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
     const result = validatePlacement({
@@ -160,7 +170,7 @@ export async function placeHexBuilding(configId: string, landId: string, input: 
     if (!definition.duplicates && snapshot.buildings.some((item) => item.buildingKey === input.buildingKey)) {
       throw new HexWorldServiceError('invalid_building', 409, `${definition.name} already exists on this Land`);
     }
-    await tx.hexBuilding.create({
+    const created = await tx.hexBuilding.create({
       data: {
         worldId: snapshot.world.id,
         buildingKey: input.buildingKey,
@@ -170,7 +180,18 @@ export async function placeHexBuilding(configId: string, landId: string, input: 
         metadata: {} as Prisma.InputJsonObject,
       },
     });
-    return (await readSnapshot(tx, configId, landId))!;
+    await incrementWorldRevision(tx, snapshot.world.id);
+    const fresh = (await readSnapshot(tx, configId, landId))!;
+    const expected = fresh.buildings.find((item) => item.id === created.id);
+    if (!expected) throw new Error('Placed building missing from committed snapshot');
+    return {
+      snapshot: fresh,
+      undoDescriptor: {
+        action: 'place',
+        expectedRevision: fresh.world.revision,
+        expected: toUndoBuildingState(expected),
+      },
+    };
   });
 }
 
@@ -179,11 +200,12 @@ export async function updateHexBuilding(
   landId: string,
   buildingId: string,
   patch: { anchorQ?: number; anchorR?: number; rotation?: number },
-): Promise<HexWorldSnapshot> {
+): Promise<HexMutationPersistenceResult> {
   return runHexTransaction(async (tx) => {
     const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
     const building = snapshot.buildings.find((item) => item.id === buildingId);
     if (!building) throw new HexWorldServiceError('building_not_found', 404, 'Building not found');
+    const before = toUndoBuildingState(building);
 
     const nextRotation = patch.rotation ?? building.rotation;
     const result = validatePlacement({
@@ -204,19 +226,36 @@ export async function updateHexBuilding(
         ...(patch.rotation !== undefined ? { rotation: patch.rotation } : {}),
       },
     });
-    return (await readSnapshot(tx, configId, landId))!;
+    await incrementWorldRevision(tx, snapshot.world.id);
+    const fresh = (await readSnapshot(tx, configId, landId))!;
+    const expected = fresh.buildings.find((item) => item.id === buildingId);
+    if (!expected) throw new Error('Updated building missing from committed snapshot');
+    const expectedState = toUndoBuildingState(expected);
+    const moved = patch.anchorQ !== undefined || patch.anchorR !== undefined;
+    return {
+      snapshot: fresh,
+      undoDescriptor: moved
+        ? { action: 'move', expectedRevision: fresh.world.revision, before, expected: expectedState }
+        : { action: 'rotate', expectedRevision: fresh.world.revision, before, expected: expectedState },
+    };
   });
 }
 
-export async function removeHexBuilding(configId: string, landId: string, buildingId: string): Promise<HexWorldSnapshot> {
+export async function removeHexBuilding(configId: string, landId: string, buildingId: string): Promise<HexMutationPersistenceResult> {
   return runHexTransaction(async (tx) => {
     const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
     const building = snapshot.buildings.find((item) => item.id === buildingId);
     if (!building) throw new HexWorldServiceError('building_not_found', 404, 'Building not found');
     const definition = getBuildingDefinition(building.buildingKey);
     if (!definition?.removable) throw new HexWorldServiceError('home_locked', 409, 'Starter Home cannot be removed');
+    const before = toUndoBuildingState(building);
     await tx.hexBuilding.delete({ where: { id: buildingId } });
-    return (await readSnapshot(tx, configId, landId))!;
+    await incrementWorldRevision(tx, snapshot.world.id);
+    const fresh = (await readSnapshot(tx, configId, landId))!;
+    return {
+      snapshot: fresh,
+      undoDescriptor: { action: 'remove', expectedRevision: fresh.world.revision, before },
+    };
   });
 }
 

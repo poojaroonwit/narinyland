@@ -12,7 +12,9 @@ export type HexWorldErrorCode =
   | 'home_locked'
   | 'expansion_not_available'
   | 'not_enough_points'
-  | 'land_access_denied';
+  | 'land_access_denied'
+  | 'undo_unavailable'
+  | 'undo_conflict';
 
 export type HexTileDTO = HexCoord & {
   id?: string;
@@ -49,6 +51,7 @@ export type HexWorldMetadata = {
   generatorVersion: number;
   seed: string;
   expansionLevel: number;
+  revision: number;
 };
 
 export type HexWorldSnapshot = {

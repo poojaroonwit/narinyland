@@ -1,4 +1,5 @@
 import { getActiveCircleId } from '@/lib/circle-store';
+import type { HexReversibleMutationResponse } from '@/lib/hex-world/reversible-mutation';
 import type { HexPlacementInput, HexWorldErrorCode, HexWorldSnapshot } from '@/lib/hex-world/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -30,21 +31,27 @@ export const hexWorldAPI = {
     request<HexWorldSnapshot>(`/hex-world?landId=${encodeURIComponent(landId)}`, { signal }),
 
   place: (landId: string, input: HexPlacementInput) =>
-    request<HexWorldSnapshot>('/hex-world/buildings', {
+    request<HexReversibleMutationResponse>('/hex-world/buildings', {
       method: 'POST',
       body: JSON.stringify({ landId, ...input }),
     }),
 
   update: (landId: string, id: string, patch: { anchorQ?: number; anchorR?: number; rotation?: number }) =>
-    request<HexWorldSnapshot>(`/hex-world/buildings/${encodeURIComponent(id)}`, {
+    request<HexReversibleMutationResponse>(`/hex-world/buildings/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify({ landId, ...patch }),
     }),
 
   remove: (landId: string, id: string) =>
-    request<HexWorldSnapshot>(`/hex-world/buildings/${encodeURIComponent(id)}`, {
+    request<HexReversibleMutationResponse>(`/hex-world/buildings/${encodeURIComponent(id)}`, {
       method: 'DELETE',
       body: JSON.stringify({ landId }),
+    }),
+
+  undo: (landId: string, undoToken: string) =>
+    request<HexWorldSnapshot>('/hex-world/undo', {
+      method: 'POST',
+      body: JSON.stringify({ landId, undoToken }),
     }),
 
   expand: (landId: string, expansionKey: string) =>
