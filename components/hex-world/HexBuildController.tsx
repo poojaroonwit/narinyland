@@ -3,14 +3,20 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { getBuildingDefinition, getBuildingFootprint, type HexBuildingKey } from '@/lib/hex-world/building-catalog';
 import { createInitialHexBuildState, hexBuildReducer } from '@/lib/hex-world/build-state';
-import type { HexCameraIntent } from '@/lib/hex-world/camera';
+import { getUnlockedIslandBounds, shouldReframeForCoords, type HexCameraIntent } from '@/lib/hex-world/camera';
 import { hexKey } from '@/lib/hex-world/hex-grid';
+import { getPlacementMessage } from '@/lib/hex-world/placement-message';
 import { validatePlacement } from '@/lib/hex-world/rules';
-import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexBuildingDTO, HexCoord, HexWorldSnapshot } from '@/lib/hex-world/types';
 import { hexWorldAPI } from '@/services/hex-world-api';
 import { HexBuildCatalog } from './HexBuildCatalog';
+import { HexBuildingContextToolbar } from './HexBuildingContextToolbar';
 import { HexExpansionController } from './HexExpansionController';
+import { HexPlacementBar } from './HexPlacementBar';
+import { HexRemovalConfirm } from './HexRemovalConfirm';
 import { HexWorld3D } from './HexWorld3D';
+import { HexWorldToolbar } from './HexWorldToolbar';
+import { useHexKeyboardShortcuts } from './useHexKeyboardShortcuts';
 
 export function HexBuildController({
   landId,
@@ -28,7 +34,10 @@ export function HexBuildController({
   const [state, dispatch] = useReducer(hexBuildReducer, undefined, createInitialHexBuildState);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [resetNonce, setResetNonce] = useState(0);
   const [newlyAddedKeys, setNewlyAddedKeys] = useState<Set<string>>(new Set());
+  const [reframeCoords, setReframeCoords] = useState<HexCoord[]>([]);
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -36,8 +45,6 @@ export function HexBuildController({
   }, []);
 
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
-  const activeExpansion = snapshot.expansions.find((item) => item.expansionKey === state.expansionKey) ?? null;
-
   const preview = useMemo(() => {
     if ((state.mode !== 'placing' && state.mode !== 'moving') || !state.buildingKey || !state.anchor) return null;
     const result = validatePlacement({
@@ -54,6 +61,7 @@ export function HexBuildController({
 
   const validKeys = preview?.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
   const invalidKeys = preview && !preview.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
+  const placementReason = preview && !preview.result.ok ? getPlacementMessage(preview.result.code) : null;
   const setAnchor = (coord: HexCoord | null) => dispatch({ type: 'set_anchor', anchor: coord });
   const cameraIntent: HexCameraIntent = state.mode === 'placing' || state.mode === 'moving'
     ? { kind: 'build', anchor: state.anchor }
@@ -97,10 +105,10 @@ export function HexBuildController({
     if (!selectedBuilding || busy) return;
     const definition = getBuildingDefinition(selectedBuilding.buildingKey);
     if (!definition?.removable) return;
-    if (definition.category === 'main' && typeof window !== 'undefined' && !window.confirm(`Remove ${definition.name}?`)) return;
     setBusy(true);
     try {
       setSnapshot(await hexWorldAPI.remove(landId, selectedBuilding.id));
+      setRemoveOpen(false);
       dispatch({ type: 'select_existing', buildingId: null });
       showToast(`${definition.name} removed`);
     } catch (error) {
@@ -109,6 +117,15 @@ export function HexBuildController({
       setBusy(false);
     }
   };
+
+  useHexKeyboardShortcuts({
+    enabled: state.mode === 'placing' || state.mode === 'moving',
+    canConfirm: !!preview?.result.ok,
+    busy,
+    onRotate: () => dispatch({ type: 'rotate_clockwise' }),
+    onCancel: () => dispatch({ type: 'cancel' }),
+    onConfirm: confirmPlacement,
+  });
 
   const scenePreview = preview && state.anchor && state.buildingKey ? {
     buildingKey: state.buildingKey,
@@ -119,68 +136,113 @@ export function HexBuildController({
   } : null;
 
   const handleExpansionConfirmed = (confirmed: HexWorldSnapshot, newTileKeys: Set<string>) => {
+    const newCoords = confirmed.tiles.filter((tile) => newTileKeys.has(hexKey(tile))).map(({ q, r }) => ({ q, r }));
+    const bounds = getUnlockedIslandBounds(snapshot.tiles);
     setSnapshot(confirmed);
     setNewlyAddedKeys(newTileKeys);
+    setReframeCoords(shouldReframeForCoords(bounds, newCoords) ? newCoords : []);
     dispatch({ type: 'cancel' });
     if (animationTimer.current) clearTimeout(animationTimer.current);
-    animationTimer.current = setTimeout(() => setNewlyAddedKeys(new Set()), 1100);
+    animationTimer.current = setTimeout(() => {
+      setNewlyAddedKeys(new Set());
+      setReframeCoords([]);
+    }, 1100);
   };
+
+  const openBuild = () => {
+    dispatch({ type: 'cancel' });
+    setCatalogOpen(true);
+    setRemoveOpen(false);
+  };
+  const openExpand = () => {
+    setCatalogOpen(false);
+    setRemoveOpen(false);
+    dispatch({ type: 'start_expansion' });
+  };
+
+  const selectedDefinition = selectedBuilding ? getBuildingDefinition(selectedBuilding.buildingKey) : null;
 
   return (
     <div className="absolute inset-0">
       <HexWorld3D
         snapshot={snapshot}
         cameraIntent={cameraIntent}
-        resetNonce={0}
+        resetNonce={resetNonce}
+        reframeCoords={reframeCoords}
         graphicsQuality={graphicsQuality}
         selectedCoord={state.anchor}
         selectedBuildingId={state.selectedBuildingId}
         validKeys={validKeys}
         invalidKeys={invalidKeys}
-        expansionPreviewTiles={activeExpansion?.tiles}
+        expansionOptions={state.mode === 'expanding' ? snapshot.expansions : undefined}
+        selectedExpansionKey={state.expansionKey}
         newlyAddedKeys={newlyAddedKeys}
         buildingPreview={scenePreview}
         onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
         onSelectTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
+        onSelectExpansion={(expansionKey) => dispatch({ type: 'preview_expansion', expansionKey })}
         onSelectBuilding={(building: HexBuildingDTO | null) => {
           if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null });
         }}
       />
 
+      {state.mode === 'idle' && !selectedBuilding && !catalogOpen && (
+        <HexWorldToolbar onBuild={openBuild} onExpand={openExpand} onResetView={() => setResetNonce((value) => value + 1)} />
+      )}
+
       <HexBuildCatalog
         open={catalogOpen}
         activeBuildingKey={state.buildingKey}
-        onToggle={() => setCatalogOpen((value) => !value)}
         onClose={() => setCatalogOpen(false)}
-        onSelect={(buildingKey: HexBuildingKey) => { dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }}
-      />
-
-      <HexExpansionController
-        landId={landId}
-        snapshot={snapshot}
-        activeExpansionKey={state.expansionKey}
-        onPreview={(expansion: HexExpansionDTO) => dispatch({ type: 'preview_expansion', expansionKey: expansion.expansionKey })}
-        onCancelPreview={() => dispatch({ type: 'cancel' })}
-        onConfirmed={handleExpansionConfirmed}
-        showToast={showToast}
+        onSelect={(buildingKey: HexBuildingKey) => {
+          dispatch({ type: 'select_building', buildingKey });
+          setCatalogOpen(false);
+        }}
       />
 
       {(state.mode === 'placing' || state.mode === 'moving') && (
-        <div className="fixed bottom-24 left-1/2 z-[92] flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/80 bg-white/90 p-2 shadow-2xl backdrop-blur-xl">
-          <button type="button" onClick={() => dispatch({ type: 'rotate_counterclockwise' })} className="h-10 w-10 rounded-full bg-stone-100 text-stone-600">↺</button>
-          <button type="button" onClick={confirmPlacement} disabled={!preview?.result.ok || busy} className="rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-stone-300">{busy ? 'Saving…' : state.mode === 'moving' ? 'Move here' : 'Place'}</button>
-          <button type="button" onClick={() => dispatch({ type: 'rotate_clockwise' })} className="h-10 w-10 rounded-full bg-stone-100 text-stone-600">↻</button>
-          <button type="button" onClick={() => dispatch({ type: 'cancel' })} className="h-10 w-10 rounded-full bg-stone-100 text-stone-500">×</button>
-        </div>
+        <HexPlacementBar
+          mode={state.mode}
+          busy={busy}
+          valid={!!preview?.result.ok}
+          reason={placementReason}
+          onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })}
+          onRotateRight={() => dispatch({ type: 'rotate_clockwise' })}
+          onConfirm={confirmPlacement}
+          onCancel={() => dispatch({ type: 'cancel' })}
+        />
       )}
 
-      {state.mode === 'idle' && selectedBuilding && (
-        <div className="fixed bottom-24 right-6 z-[92] flex items-center gap-2 rounded-2xl border border-white/80 bg-white/92 p-2 shadow-2xl backdrop-blur-xl">
-          <button type="button" onClick={() => dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation })} className="rounded-xl bg-stone-100 px-3 py-2 text-xs font-black text-stone-700">Move</button>
-          <button type="button" onClick={rotateSelected} disabled={busy} className="rounded-xl bg-stone-100 px-3 py-2 text-xs font-black text-stone-700">Rotate</button>
-          {getBuildingDefinition(selectedBuilding.buildingKey)?.removable && <button type="button" onClick={removeSelected} disabled={busy} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600">Remove</button>}
-          <button type="button" onClick={() => dispatch({ type: 'select_existing', buildingId: null })} className="h-8 w-8 rounded-full text-stone-400">×</button>
-        </div>
+      {state.mode === 'idle' && selectedBuilding && selectedDefinition && (
+        <HexBuildingContextToolbar
+          removable={selectedDefinition.removable}
+          busy={busy}
+          onMove={() => dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation })}
+          onRotate={rotateSelected}
+          onRemove={() => setRemoveOpen(true)}
+          onClose={() => dispatch({ type: 'select_existing', buildingId: null })}
+        />
+      )}
+
+      {state.mode === 'expanding' && (
+        <HexExpansionController
+          landId={landId}
+          snapshot={snapshot}
+          activeExpansionKey={state.expansionKey}
+          onCancelPreview={() => dispatch({ type: 'cancel' })}
+          onConfirmed={handleExpansionConfirmed}
+          showToast={showToast}
+        />
+      )}
+
+      {removeOpen && selectedBuilding && selectedDefinition?.removable && (
+        <HexRemovalConfirm
+          name={selectedDefinition.name}
+          important={selectedDefinition.category === 'main'}
+          busy={busy}
+          onConfirm={removeSelected}
+          onCancel={() => setRemoveOpen(false)}
+        />
       )}
     </div>
   );
