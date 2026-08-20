@@ -1,6 +1,8 @@
 "use client";
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 
 const CLOUDS = [
@@ -9,18 +11,39 @@ const CLOUDS = [
 ] as const;
 
 export function HexSkyAtmosphere({ profile }: { profile: HexQualityProfile }) {
-  const visibleClouds = CLOUDS.slice(0, profile.cloudLayers === 3 ? 7 : profile.cloudLayers === 2 ? 5 : 3);
+  const groupRef = useRef<THREE.Group>(null);
+  const visibleCount = profile.cloudLayers === 3 ? 7 : profile.cloudLayers === 2 ? 5 : 3;
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    groupRef.current.position.x = Math.sin(clock.elapsedTime * 0.035) * 0.45;
+    groupRef.current.position.z = Math.cos(clock.elapsedTime * 0.028) * 0.25;
+  });
+
   return (
     <>
       <color attach="background" args={['#dfeff0']} />
       <fog attach="fog" args={['#dfeff0', 28, 64]} />
-      <group>
-        {visibleClouds.map(([x, y, z, scale], index) => (
-          <mesh key={index} position={[x, y, z]} scale={[scale, scale * 0.42, scale * 0.72]}>
-            <sphereGeometry args={[1, 14, 10]} />
-            <meshStandardMaterial color="#f8fbf7" transparent opacity={0.56} roughness={1} depthWrite={false} />
-          </mesh>
-        ))}
+      <group ref={groupRef}>
+        {CLOUDS.slice(0, visibleCount).map(([x, y, z, scale], index) => {
+          const layer = index % Math.max(1, profile.cloudLayers);
+          return (
+            <mesh
+              key={index}
+              position={[x * (1 + layer * 0.04), y - layer * 0.5, z * (1 + layer * 0.04)]}
+              scale={[scale, scale * (0.38 + layer * 0.03), scale * 0.72]}
+            >
+              <sphereGeometry args={[1, 14, 10]} />
+              <meshStandardMaterial
+                color="#f8fbf7"
+                transparent
+                opacity={0.5 - layer * 0.05}
+                roughness={1}
+                depthWrite={false}
+              />
+            </mesh>
+          );
+        })}
       </group>
     </>
   );
