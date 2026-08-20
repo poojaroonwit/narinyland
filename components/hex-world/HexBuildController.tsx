@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { getBuildingDefinition, getBuildingFootprint, type HexBuildingKey } from '@/lib/hex-world/building-catalog';
 import { createInitialHexBuildState, hexBuildReducer } from '@/lib/hex-world/build-state';
+import type { HexCameraIntent } from '@/lib/hex-world/camera';
 import { hexKey } from '@/lib/hex-world/hex-grid';
 import { validatePlacement } from '@/lib/hex-world/rules';
 import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexWorldSnapshot } from '@/lib/hex-world/types';
@@ -16,11 +17,13 @@ export function HexBuildController({
   snapshot,
   setSnapshot,
   showToast,
+  graphicsQuality = 'medium',
 }: {
   landId: string;
   snapshot: HexWorldSnapshot;
   setSnapshot: (snapshot: HexWorldSnapshot) => void;
   showToast: (message: string) => void;
+  graphicsQuality?: string;
 }) {
   const [state, dispatch] = useReducer(hexBuildReducer, undefined, createInitialHexBuildState);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -52,6 +55,11 @@ export function HexBuildController({
   const validKeys = preview?.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
   const invalidKeys = preview && !preview.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
   const setAnchor = (coord: HexCoord | null) => dispatch({ type: 'set_anchor', anchor: coord });
+  const cameraIntent: HexCameraIntent = state.mode === 'placing' || state.mode === 'moving'
+    ? { kind: 'build', anchor: state.anchor }
+    : selectedBuilding
+      ? { kind: 'focus', coord: { q: selectedBuilding.anchorQ, r: selectedBuilding.anchorR } }
+      : { kind: 'overview' };
 
   const confirmPlacement = async () => {
     if (!state.anchor || !state.buildingKey || !preview?.result.ok || busy) return;
@@ -122,6 +130,9 @@ export function HexBuildController({
     <div className="absolute inset-0">
       <HexWorld3D
         snapshot={snapshot}
+        cameraIntent={cameraIntent}
+        resetNonce={0}
+        graphicsQuality={graphicsQuality}
         selectedCoord={state.anchor}
         selectedBuildingId={state.selectedBuildingId}
         validKeys={validKeys}
