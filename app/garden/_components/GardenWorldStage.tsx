@@ -24,6 +24,7 @@ export const GardenWorldStage: React.FC = () => {
   const lands = (appConfig.lands || []) as Land[];
   const activeLand = lands.find((land) => land.isActive) ?? lands[0];
   const activeLandId = activeLand?.id;
+  const graphicsQuality = (appConfig as { graphicsQuality?: string }).graphicsQuality ?? 'medium';
   const [snapshot, setSnapshot] = React.useState<HexWorldSnapshot | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
@@ -68,9 +69,10 @@ export const GardenWorldStage: React.FC = () => {
             snapshot={snapshot}
             setSnapshot={setSnapshot}
             showToast={showToast}
+            graphicsQuality={graphicsQuality}
           />
         ) : (
-          <HexWorld3D snapshot={snapshot} />
+          <HexWorld3D snapshot={snapshot} graphicsQuality={graphicsQuality} />
         )}
       </div>
 
