@@ -39,3 +39,11 @@ test('switching Land clears builder transient and undo state', async () => {
   assert.match(controller, /setRemoveOpen\(false\)/);
   assert.match(controller, /setNewlyAddedKeys\(new Set\(\)\)/);
 });
+
+test('stale mutation and undo responses cannot write a previous Land snapshot after a switch', async () => {
+  const controller = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
+  assert.match(controller, /activeLandRef/);
+  assert.match(controller, /activeLandRef\.current\s*=\s*landId/);
+  assert.match(controller, /activeLandRef\.current\s*!==\s*landId/);
+  assert.match(controller, /return \(\) => \{[\s\S]*activeLandRef\.current\s*=\s*null/);
+});
