@@ -43,12 +43,14 @@ export function HexBuildController({
   const [undo, setUndo] = useState<HexUndoMeta | null>(null);
   const [undoLabel, setUndoLabel] = useState('');
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeLandRef = useRef<string | null>(landId);
 
   useEffect(() => () => {
     if (animationTimer.current) clearTimeout(animationTimer.current);
   }, []);
 
   useEffect(() => {
+    activeLandRef.current = landId;
     dispatch({ type: 'cancel' });
     setCatalogOpen(false);
     setRemoveOpen(false);
@@ -61,6 +63,10 @@ export function HexBuildController({
       clearTimeout(animationTimer.current);
       animationTimer.current = null;
     }
+
+    return () => {
+      if (activeLandRef.current === landId) activeLandRef.current = null;
+    };
   }, [landId]);
 
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
@@ -88,11 +94,6 @@ export function HexBuildController({
       ? { kind: 'focus', coord: { q: selectedBuilding.anchorQ, r: selectedBuilding.anchorR } }
       : { kind: 'overview' };
 
-  const rememberUndo = (meta: HexUndoMeta | null, label: string) => {
-    setUndo(meta);
-    setUndoLabel(meta ? label : '');
-  };
-
   const confirmPlacement = async () => {
     if (!state.anchor || !state.buildingKey || !preview?.result.ok || busy) return;
     setBusy(true);
@@ -102,15 +103,17 @@ export function HexBuildController({
       const confirmed = isMove && state.selectedBuildingId
         ? await hexWorldAPI.update(landId, state.selectedBuildingId, { anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation })
         : await hexWorldAPI.place(landId, { buildingKey: state.buildingKey, anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation });
+      if (activeLandRef.current !== landId) return;
       setSnapshot(confirmed.snapshot);
       setUndo(confirmed.undo);
       setUndoLabel(confirmed.undo ? `${definition?.name ?? 'Building'} ${isMove ? 'moved' : 'placed'}` : '');
       showToast(isMove ? 'Building moved ✨' : 'Building placed ✨');
       dispatch({ type: 'cancel' });
     } catch (error) {
+      if (activeLandRef.current !== landId) return;
       showToast(error instanceof Error ? error.message : 'Could not save this placement');
     } finally {
-      setBusy(false);
+      if (activeLandRef.current === landId) setBusy(false);
     }
   };
 
@@ -120,14 +123,16 @@ export function HexBuildController({
     try {
       const nextRotation = ((selectedBuilding.rotation + 1) % 6) as 0 | 1 | 2 | 3 | 4 | 5;
       const confirmed = await hexWorldAPI.update(landId, selectedBuilding.id, { rotation: nextRotation });
+      if (activeLandRef.current !== landId) return;
       setSnapshot(confirmed.snapshot);
       setUndo(confirmed.undo);
       setUndoLabel(confirmed.undo ? `${getBuildingDefinition(selectedBuilding.buildingKey)?.name ?? 'Building'} rotated` : '');
       dispatch({ type: 'select_existing', buildingId: selectedBuilding.id });
     } catch (error) {
+      if (activeLandRef.current !== landId) return;
       showToast(error instanceof Error ? error.message : 'Could not rotate this building');
     } finally {
-      setBusy(false);
+      if (activeLandRef.current === landId) setBusy(false);
     }
   };
 
@@ -138,6 +143,7 @@ export function HexBuildController({
     setBusy(true);
     try {
       const confirmed = await hexWorldAPI.remove(landId, selectedBuilding.id);
+      if (activeLandRef.current !== landId) return;
       setSnapshot(confirmed.snapshot);
       setUndo(confirmed.undo);
       setUndoLabel(confirmed.undo ? `${definition.name} removed` : '');
@@ -145,9 +151,10 @@ export function HexBuildController({
       dispatch({ type: 'select_existing', buildingId: null });
       showToast(`${definition.name} removed`);
     } catch (error) {
+      if (activeLandRef.current !== landId) return;
       showToast(error instanceof Error ? error.message : 'Could not remove this building');
     } finally {
-      setBusy(false);
+      if (activeLandRef.current === landId) setBusy(false);
     }
   };
 
@@ -160,6 +167,7 @@ export function HexBuildController({
     setBusy(true);
     try {
       const confirmed = await hexWorldAPI.undo(landId, token);
+      if (activeLandRef.current !== landId) return;
       setSnapshot(confirmed);
       setUndo(null);
       setUndoLabel('');
@@ -168,6 +176,7 @@ export function HexBuildController({
       dispatch({ type: 'cancel' });
       showToast('Last change undone');
     } catch (error) {
+      if (activeLandRef.current !== landId) return;
       setUndo(null);
       setUndoLabel('');
       dispatch({ type: 'cancel' });
@@ -179,7 +188,7 @@ export function HexBuildController({
         showToast(error instanceof Error ? error.message : 'Could not undo this change');
       }
     } finally {
-      setBusy(false);
+      if (activeLandRef.current === landId) setBusy(false);
     }
   };
 
@@ -201,6 +210,7 @@ export function HexBuildController({
   } : null;
 
   const handleExpansionConfirmed = (confirmed: HexWorldSnapshot, newTileKeys: Set<string>) => {
+    if (activeLandRef.current !== landId) return;
     const newCoords = confirmed.tiles.filter((tile) => newTileKeys.has(hexKey(tile))).map(({ q, r }) => ({ q, r }));
     const bounds = getUnlockedIslandBounds(snapshot.tiles);
     setSnapshot(confirmed);
@@ -211,6 +221,7 @@ export function HexBuildController({
     dispatch({ type: 'cancel' });
     if (animationTimer.current) clearTimeout(animationTimer.current);
     animationTimer.current = setTimeout(() => {
+      if (activeLandRef.current !== landId) return;
       setNewlyAddedKeys(new Set());
       setReframeCoords([]);
     }, 1100);
