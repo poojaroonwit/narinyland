@@ -25,3 +25,17 @@ test('keyboard shortcuts ignore editable controls', async () => {
   assert.match(hook, /Escape/);
   assert.match(hook, /Enter/);
 });
+
+test('build mode places on valid tile click while move mode keeps explicit confirmation', async () => {
+  const controller = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
+  const placementBar = await readFile(new URL('../components/hex-world/HexPlacementBar.tsx', import.meta.url), 'utf8');
+
+  assert.match(controller, /const confirmPlacementAt = async \(coord: HexCoord\)/);
+  assert.match(controller, /state\.mode === 'placing'[\s\S]*confirmPlacementAt\(coord\)/);
+  assert.match(controller, /state\.mode === 'moving'[\s\S]*setAnchor\(coord\)/);
+  assert.match(controller, /onSelectTile=\{handleTileSelect\}/);
+
+  assert.doesNotMatch(placementBar, />Place</);
+  assert.match(placementBar, /mode === 'moving'/);
+  assert.match(placementBar, /Move here/);
+});
