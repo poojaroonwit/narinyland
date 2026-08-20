@@ -48,6 +48,12 @@ export const hexWorldAPI = {
       body: JSON.stringify({ landId }),
     }),
 
+  undo: (landId: string, undoToken: string) =>
+    request<HexWorldSnapshot>('/hex-world/undo', {
+      method: 'POST',
+      body: JSON.stringify({ landId, undoToken }),
+    }),
+
   expand: (landId: string, expansionKey: string) =>
     request<HexWorldSnapshot>('/hex-world/expand', {
       method: 'POST',
