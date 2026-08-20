@@ -40,6 +40,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/narinyland_ci
       NEXT_PUBLIC_API_URL: /api
@@ -62,10 +71,18 @@ jobs:
       - name: Apply migrations to CI Postgres
         run: npx prisma migrate deploy
 
-      - name: Hex Homestead tests
+      - name: Hex Homestead pure tests
         env:
           NODE_ENV: production
-        run: node --import tsx --test tests/hex-*.test.ts tests/garden-hex-integration.test.ts tests/production-startup.test.ts
+        run: |
+          PURE_HEX_TESTS=$(find tests -maxdepth 1 -name 'hex-*.test.ts' ! -name 'hex-world-undo-db.test.ts' -print | sort | tr '\n' ' ')
+          node --import tsx --test $PURE_HEX_TESTS tests/garden-hex-integration.test.ts tests/production-startup.test.ts
+
+      - name: Hex Undo DB and Redis integration
+        env:
+          NODE_ENV: production
+          REDIS_URL: redis://127.0.0.1:6379
+        run: node --import tsx --test tests/hex-world-undo-db.test.ts
 
       - name: Existing farm regression
         run: node --import tsx --test tests/family-farm-game.test.ts
