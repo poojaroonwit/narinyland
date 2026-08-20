@@ -21,15 +21,7 @@ The implementation must preserve the current server-authoritative HexWorld archi
 
 When `/garden` opens, the island is the hero. The design should prioritize silhouette, composition, lighting, materials, depth, and focal hierarchy before adding expensive effects.
 
-Visual polish must come primarily from:
-
-- deliberate scene composition;
-- strong miniature silhouettes;
-- cohesive materials;
-- warm directional light and soft shadowing;
-- atmospheric depth;
-- restrained magical motion;
-- consistent building and vegetation art direction.
+Visual polish must come primarily from deliberate scene composition, strong miniature silhouettes, cohesive materials, warm directional light and soft shadowing, atmospheric depth, restrained magical motion, and consistent building/vegetation art direction.
 
 The experience must not depend on heavy bloom, depth-of-field, full-screen postprocessing, or particle density to look premium.
 
@@ -53,26 +45,11 @@ The desktop/high-quality experience defines the visual target. Mobile may reduce
 
 ### 3.1 Combined style
 
-Phase 2 combines two approved directions:
+Phase 2 combines two approved directions.
 
-**Magical Floating Garden**
+**Magical Floating Garden** contributes floating clouds and mist, layered sky depth, floating rock fragments, subtle pollen/dust/sparkle, vegetation motion, water life, and expansion reveal effects.
 
-- floating clouds and mist;
-- layered sky depth;
-- floating rock fragments;
-- subtle pollen, dust, and sparkle;
-- vegetation motion;
-- water life and expansion reveal effects.
-
-**Premium Miniature Diorama**
-
-- chunky, readable forms;
-- rounded low-poly silhouettes;
-- refined muted palette;
-- soft, controlled shadows;
-- simple material families;
-- clean visual hierarchy;
-- restrained detail density around buildable areas.
+**Premium Miniature Diorama** contributes chunky readable forms, rounded low-poly silhouettes, a refined muted palette, soft controlled shadows, simple material families, clean visual hierarchy, and restrained detail density around buildable areas.
 
 The resulting world should feel magical but not fantasy-heavy, premium but not realistic, and cozy without becoming visually flat.
 
@@ -231,18 +208,9 @@ The server catalog remains authoritative for the actual footprint.
 
 ### 6.3 Workshop and Storage
 
-Workshop:
+Workshop uses a wider/lower silhouette than Home, moss-green roof, chimney/tool accents, and warm structural materials matching Home.
 
-- wider/lower silhouette than Home;
-- moss-green roof;
-- chimney/tool accents;
-- warm structural materials matching Home.
-
-Storage:
-
-- small shed/barn identity;
-- clear door/roof silhouette;
-- material palette matching the Home/Workshop family.
+Storage uses a small shed/barn identity, clear door/roof silhouette, and the same Home/Workshop material family.
 
 ### 6.4 Decorations and utility objects
 
@@ -254,24 +222,9 @@ Tree, Flower Patch, Pond, Bench, Lamp, Fence, Stone Path, and Garden Patch must 
 
 Trees use clustered rounded low-poly canopies rather than simple identical foliage balls.
 
-Deterministic visual variation may include:
+Deterministic visual variation may include rotation, approximately ±10–15% scale variation, canopy grouping, and small green-tone variation. Variation must be seed/coordinate-derived so it remains stable after reload.
 
-- rotation;
-- approximately ±10–15% scale variation;
-- canopy grouping;
-- small green-tone variation.
-
-Variation must be seed/coordinate-derived so it remains stable after reload.
-
-Ambient visual-only vegetation may include:
-
-- grass tufts;
-- tiny flowers;
-- mushrooms;
-- small rocks;
-- edge shrubs.
-
-These are rendering details, not HexBuilding rows.
+Ambient visual-only vegetation may include grass tufts, tiny flowers, mushrooms, small rocks, and edge shrubs. These are rendering details, not `HexBuilding` rows.
 
 ### 7.2 Water
 
@@ -289,23 +242,9 @@ No real-time planar reflection is required.
 
 Magic should occupy roughly 15–20% of visual attention rather than dominate the scene.
 
-Allowed effects:
+Allowed effects include drifting pollen/dust, occasional subtle sparkle near flowers/water, slow cloud drift, selective foliage wind motion, warm window glow, and expansion dust/mist/sparkle.
 
-- drifting pollen/dust;
-- occasional subtle sparkle near flowers/water;
-- slow cloud drift;
-- selective foliage wind motion;
-- warm window glow;
-- expansion dust/mist/sparkle.
-
-Avoid:
-
-- full-scene bloom dependence;
-- glowing outline on all objects;
-- constant particle rain;
-- neon crystal language;
-- heavy lens flare;
-- deep DOF blur during normal building interaction.
+Avoid full-scene bloom dependence, glowing outline on all objects, constant particle rain, neon crystal language, heavy lens flare, or deep DOF blur during normal building interaction.
 
 ### 7.4 Island underside
 
@@ -336,17 +275,9 @@ Categories:
 - Utility
 - Decor
 
-Each item shows:
+Each item shows thumbnail/silhouette, display name, and compact footprint cue. Buildings remain free to place in Phase 2, so price is not displayed for building items.
 
-- thumbnail/silhouette;
-- display name;
-- compact footprint cue.
-
-Buildings remain free to place in Phase 2, so price is not displayed for building items.
-
-Desktop may use a horizontal floating tray. Mobile uses a larger bottom sheet that respects safe-area padding.
-
-Selecting an item closes/collapses the catalog and returns focus to the world.
+Desktop may use a horizontal floating tray. Mobile uses a larger bottom sheet that respects safe-area padding. Selecting an item closes/collapses the catalog and returns focus to the world.
 
 ### 8.3 Placement visualization
 
@@ -360,11 +291,7 @@ During placement/move:
 - selected/anchor tile: higher-contrast white/cream emphasis;
 - ghost model: translucent but still preserves readable silhouette/material grouping.
 
-Invalid placement should expose a short reason such as:
-
-- `Occupied`
-- `Needs grass`
-- `Outside unlocked land`
+Invalid placement should expose a short reason such as `Occupied`, `Needs grass`, or `Outside unlocked land`.
 
 The client preview is advisory; server rejection remains authoritative.
 
@@ -427,7 +354,7 @@ Entering Expand:
 - compact UI shows `+N hexes · Cost Points`;
 - confirm happens from the shared action area.
 
-Users should not need to reason through a long list of 6–18 expansion definitions when the geometry is easier to understand directly on the island.
+Users should not need to reason through a long list of expansion definitions when the geometry is easier to understand directly on the island.
 
 ### 9.2 Confirmed expansion animation
 
@@ -448,9 +375,7 @@ Expansion remains non-undoable in Phase 2 because it changes the shared Points e
 
 ## 10. Motion Language
 
-All major motion follows one language:
-
-**soft, weighted, slightly springy, short, and interruptible.**
+All major motion follows one language: **soft, weighted, slightly springy, short, and interruptible.**
 
 Typical durations:
 
@@ -458,21 +383,13 @@ Typical durations:
 - camera ease: slightly slower than UI and immediately interruptible;
 - expansion reveal: 700–1100 ms.
 
-Examples:
-
-- place: slight descend + settle;
-- move: source fade/ghost transition + settle;
-- rotate: 60° spring rotation;
-- remove: shrink/fade;
-- select: soft highlight + small lift impression;
-- panel: short slide/fade;
-- expansion: staggered tile rise.
+Examples include slight descend + settle for Place, source fade/ghost transition + settle for Move, 60° spring rotation, shrink/fade for Remove, soft highlight + small lift impression for Select, short panel slide/fade, and staggered tile rise for expansion.
 
 Avoid exaggerated cartoon bounce.
 
 ## 11. One-Step Undo
 
-### 11.1 Scope
+### 11.1 Scope and ownership
 
 Undo is supported for the latest successful action only:
 
@@ -483,7 +400,9 @@ Undo is supported for the latest successful action only:
 
 Undo is not supported for expansion.
 
-Only one undo opportunity is exposed at a time. A newer successful reversible mutation invalidates/replaces the previous token for that client/user context.
+The existing `requireConfigAccess` boundary provides `configId` and authenticated `userId`. Undo ownership is therefore scoped explicitly by **`(configId, landId, userId)`**.
+
+Only one undo opportunity is valid for that scope at a time. A newer successful reversible mutation for the same authenticated user on the same Land replaces and invalidates the previous one.
 
 ### 11.2 User experience
 
@@ -499,9 +418,16 @@ The server returns an opaque random `undoToken`, action type, and expiry metadat
 
 The client does not receive or control the trusted inverse-state payload.
 
-Preferred storage is Redis because it is already part of the production stack and the undo history is intentionally ephemeral. No long-lived database history table is introduced for Phase 2.
+Redis is the Phase 2 storage mechanism because it is already part of the production stack and the undo history is intentionally ephemeral. No long-lived database history table is introduced.
 
-Suggested key scope includes authorized config/Land and token identity. Payload contains only the minimum inverse data required for the action.
+The server maintains:
+
+- a token payload keyed by opaque token identity;
+- a latest-token pointer keyed by `(configId, landId, userId)`.
+
+Creating a newer reversible action atomically replaces the latest pointer and invalidates the previous token payload for that scope.
+
+Token payload contains only the minimum trusted inverse data and expected post-action state required for validation.
 
 ### 11.4 Undo safety rules
 
@@ -518,7 +444,7 @@ Examples:
 
 If semantic state changed, return `undo_conflict` and invalidate the stale undo opportunity.
 
-If the token is missing/expired/already used, return `undo_unavailable`.
+If the token is missing, expired, superseded, or already used, return `undo_unavailable`.
 
 Transient transaction/Redis failure must not be reported as successful undo.
 
@@ -526,11 +452,13 @@ Transient transaction/Redis failure must not be reported as successful undo.
 
 Undo must be one-time and concurrency-safe. A double click or two parallel requests using the same token must produce at most one successful inverse mutation.
 
-The implementation must use an atomic claim/consume strategy around the token plus a serializable database transaction for the inverse mutation. If the database transaction fails before commit, token handling must not silently claim a success that did not happen.
+Implementation uses a short-lived Redis claim/lock for the token while leaving the trusted payload available until the database outcome is known. The inverse world mutation runs in a Serializable transaction. On successful commit, the token payload/latest pointer are consumed. If the database transaction fails before commit, the claim is released and no successful undo is reported.
+
+This avoids both double execution and token loss caused by consuming Redis state before the database result is known.
 
 ### 11.6 API
 
-Add a dedicated authenticated endpoint, conceptually:
+Add a dedicated authenticated endpoint:
 
 `POST /api/hex-world/undo`
 
@@ -539,7 +467,7 @@ Request body contains only:
 - `landId`
 - `undoToken`
 
-The server resolves all inverse state from trusted server-side token storage and validates Land/config access before mutation.
+The server resolves all inverse state from trusted server-side storage and uses the caller's `configId` and `userId` from `requireConfigAccess`. It verifies the token belongs to the same `(configId, landId, userId)` scope before mutation.
 
 Stable error codes introduced by Phase 2:
 
@@ -552,9 +480,7 @@ Existing HexWorld error codes remain unchanged.
 
 The visual pass must not turn `HexWorld3D.tsx` or `HexBuildController.tsx` into monoliths.
 
-Target responsibilities:
-
-### Rendering
+Target rendering responsibilities:
 
 - `HexWorld3D` — scene composition and public renderer props only.
 - `HexDioramaCamera` — bounds, camera intent, entry/reset/focus/reframe behavior.
@@ -566,13 +492,13 @@ Target responsibilities:
 - `HexSelectionEffects` — selected/hovered/build footprint visualization.
 - `HexBuildings` / building model modules — placed objects and premium model compositions.
 
-### Interaction
+Interaction responsibilities:
 
 - `HexBuildController` remains orchestration for build interaction but delegates catalog, contextual toolbar, placement bar, expansion controls, undo toast state, and camera intent through focused child components/hooks.
 - Pure `validatePlacement` remains the client preview engine.
 - API service remains the only browser boundary for persistent HexWorld mutations.
 
-### Server
+Server responsibilities:
 
 - Existing HexWorld service remains authoritative for placement, move, rotate, remove, expansion.
 - Reversible mutations gain creation of short-lived undo state.
@@ -616,7 +542,7 @@ These are target budgets, not promises that require exact values if device testi
 
 ### 13.3 Performance success target
 
-Desktop Medium should feel smooth during orbit, zoom, hover, and placement on the supported production island sizes.
+Desktop Medium should feel smooth during orbit, zoom, hover, and placement on supported production island sizes.
 
 Mobile fallback must remain usable in portrait and landscape without catastrophic frame drops caused by clouds, particles, vegetation, or shadow resolution.
 
@@ -688,7 +614,7 @@ Cover:
 
 ### 16.2 Component/integration smoke
 
-Cover source/runtime smoke for:
+Cover:
 
 - Home tab remains pointer-interactive with world;
 - Build catalog opens/closes without changing app-shell navigation;
@@ -701,13 +627,15 @@ Cover source/runtime smoke for:
 
 ### 16.3 Server/DB integration
 
-Use real Postgres in CI for:
+Use real Postgres plus a controlled Redis/test adapter in CI for:
 
-- reversible Place returns valid undo metadata when Redis test adapter is available;
+- reversible Place returns valid undo metadata;
 - Place undo removes the expected building;
 - Move undo restores the previous anchor/rotation;
 - Rotate undo restores previous rotation;
 - Remove undo recreates the expected building;
+- token ownership rejects a different `userId`, `configId`, or `landId`;
+- a newer mutation supersedes the prior token for the same `(configId, landId, userId)` scope;
 - stale-state undo returns `undo_conflict` without overwriting newer state;
 - expired/unknown/reused token returns `undo_unavailable`;
 - double concurrent undo succeeds at most once;
@@ -821,7 +749,7 @@ Phase 2 does not add:
 - Selected-object controls become contextual.
 - Expansion selection becomes in-world first.
 - One-step Undo covers Place/Move/Rotate/Remove only.
-- Undo uses short-lived trusted server-side state, preferably Redis, with one-time/concurrency-safe semantics.
+- Undo is scoped by authenticated `(configId, landId, userId)` and uses short-lived trusted Redis state with one-time/concurrency-safe semantics.
 - Core mutations remain available if Undo storage is temporarily unavailable.
 - Expansion remains transactional, server-authoritative, and non-undoable.
 - Rendering quality scales by profile, not continuous FPS adaptation.
