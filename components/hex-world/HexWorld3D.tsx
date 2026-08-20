@@ -13,6 +13,7 @@ import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexIslandUnderside } from './HexIslandUnderside';
+import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
 import { HexTileInstances } from './HexTileInstances';
 import { HexWaterSurface } from './HexWaterSurface';
@@ -120,6 +121,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
           onHover={props.onHoverTile}
           onSelect={props.onSelectTile}
         />
+        <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} />
         <HexAmbientDecor tiles={snapshot.tiles} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} onSelect={(building) => props.onSelectBuilding?.(building)} />
