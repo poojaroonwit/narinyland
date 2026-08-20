@@ -34,6 +34,9 @@ type StatsResponse = {
   leveledUp?: boolean;
 };
 
+type SharedPointPartner = { id: string; points: number };
+export type SharedPointDeduction = { id: string; amount: number };
+
 function getStatsCacheKey(configId: string): string {
   return `app_stats:${configId}`;
 }
@@ -46,6 +49,41 @@ export function calculateLevel(totalXP: number): {
   const level = Math.min(50, Math.floor(totalXP / 100) + 1);
   const xpInCurrentLevel = totalXP % 100;
   return { level, xpInCurrentLevel, xpForNextLevel: 100 };
+}
+
+export function allocateSharedPointSpend(partners: SharedPointPartner[], amount: number): SharedPointDeduction[] {
+  if (!Number.isFinite(amount) || amount < 0) throw new StatsServiceError('invalid_amount', 400, 'Invalid point amount');
+  const ordered = [...partners].sort((a, b) => b.points - a.points || a.id.localeCompare(b.id));
+  const total = ordered.reduce((sum, partner) => sum + Math.max(0, partner.points), 0);
+  if (total < amount) throw new StatsServiceError('not_enough_points', 400, 'Not enough points (combined)');
+
+  let remaining = amount;
+  const deductions: SharedPointDeduction[] = [];
+  for (const partner of ordered) {
+    if (remaining <= 0) break;
+    const spendable = Math.max(0, partner.points);
+    const deduction = Math.min(spendable, remaining);
+    if (deduction > 0) deductions.push({ id: partner.id, amount: deduction });
+    remaining -= deduction;
+  }
+  return deductions;
+}
+
+export async function spendSharedPoints(client: StatsClient, configId: string, amount: number): Promise<SharedPointDeduction[]> {
+  const partners = await client.partner.findMany({
+    where: { configId },
+    orderBy: [{ points: 'desc' }, { id: 'asc' }],
+    select: { id: true, points: true },
+  });
+  const deductions = allocateSharedPointSpend(partners, amount);
+  for (const deduction of deductions) {
+    await client.partner.update({
+      where: { id: deduction.id },
+      data: { points: { decrement: deduction.amount } },
+    });
+  }
+  await invalidateStatsCache(configId);
+  return deductions;
 }
 
 async function getPartnerTotals(client: StatsClient, configId: string) {

@@ -3,7 +3,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Timeline from '../../../components/Timeline';
-import MemoryFrame from '../../../components/MemoryFrame';
 import LoveCoupons from '../../../components/LoveCoupons';
 import LoveLetter from '../../../components/LoveLetter';
 import Shop from '../../../components/Shop';
@@ -15,8 +14,6 @@ export const GardenAcceptedContent: React.FC = () => {
     hasAcceptedProposal,
     activeTab,
     appConfig,
-    galleryViewMode,
-    setGalleryViewMode,
     combinedInteractions,
     handleUpdateTimeline,
     handleDeleteTimeline,
@@ -42,31 +39,8 @@ export const GardenAcceptedContent: React.FC = () => {
   if (!hasAcceptedProposal) return null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-10 flex h-full w-full flex-col">
-      <div className="flex-1 overflow-x-hidden overflow-y-auto pb-28">
-        {activeTab === 'home' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex min-h-full w-full flex-col items-center pt-20"
-          >
-            <MemoryFrame
-              isVisible
-              items={appConfig.gallery}
-              albums={appConfig.albums}
-              style={appConfig.galleryStyle}
-              source={appConfig.gallerySource}
-              username={appConfig.instagramUsername}
-              viewMode={galleryViewMode}
-              onViewModeChange={setGalleryViewMode}
-              variant="sky"
-              timelineItems={appConfig.timeline}
-              includeTimelineInGallery={appConfig.includeTimelineInGallery}
-            />
-            <div className="h-24" />
-          </motion.div>
-        )}
-
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pointer-events-none relative z-10 flex h-full w-full flex-col">
+      <div className={`flex-1 overflow-x-hidden overflow-y-auto pb-28 ${activeTab === 'home' ? 'pointer-events-none' : 'pointer-events-auto'}`}>
         {activeTab === 'timeline' && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -160,7 +134,7 @@ export const GardenAcceptedContent: React.FC = () => {
       </div>
 
       <nav
-        className="fixed bottom-6 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-6 rounded-full border border-white/50 bg-white/80 px-5 py-3 shadow-2xl backdrop-blur-md md:gap-8 md:px-6"
+        className="pointer-events-auto fixed bottom-6 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-6 rounded-full border border-white/50 bg-white/80 px-5 py-3 shadow-2xl backdrop-blur-md md:gap-8 md:px-6"
         aria-label="Garden navigation"
       >
         <button
