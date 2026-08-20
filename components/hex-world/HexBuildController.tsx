@@ -44,6 +44,7 @@ export function HexBuildController({
   const [undoLabel, setUndoLabel] = useState('');
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeLandRef = useRef<string | null>(landId);
+  const placementLockRef = useRef(false);
 
   useEffect(() => () => {
     if (animationTimer.current) clearTimeout(animationTimer.current);
@@ -51,6 +52,7 @@ export function HexBuildController({
 
   useEffect(() => {
     activeLandRef.current = landId;
+    placementLockRef.current = false;
     dispatch({ type: 'cancel' });
     setCatalogOpen(false);
     setRemoveOpen(false);
@@ -94,20 +96,57 @@ export function HexBuildController({
       ? { kind: 'focus', coord: { q: selectedBuilding.anchorQ, r: selectedBuilding.anchorR } }
       : { kind: 'overview' };
 
-  const confirmPlacement = async () => {
-    if (!state.anchor || !state.buildingKey || !preview?.result.ok || busy) return;
+  const confirmPlacementAt = async (coord: HexCoord) => {
+    if (state.mode !== 'placing' || !state.buildingKey || busy || placementLockRef.current) return;
+    const placement = validatePlacement({
+      buildingKey: state.buildingKey,
+      anchor: coord,
+      rotation: state.rotation,
+      tiles: snapshot.tiles,
+      buildings: snapshot.buildings,
+    });
+    if (!placement.ok) return;
+
+    placementLockRef.current = true;
     setBusy(true);
-    const isMove = state.mode === 'moving' && !!state.selectedBuildingId;
     const definition = getBuildingDefinition(state.buildingKey);
     try {
-      const confirmed = isMove && state.selectedBuildingId
-        ? await hexWorldAPI.update(landId, state.selectedBuildingId, { anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation })
-        : await hexWorldAPI.place(landId, { buildingKey: state.buildingKey, anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation });
+      const confirmed = await hexWorldAPI.place(landId, {
+        buildingKey: state.buildingKey,
+        anchorQ: coord.q,
+        anchorR: coord.r,
+        rotation: state.rotation,
+      });
       if (activeLandRef.current !== landId) return;
       setSnapshot(confirmed.snapshot);
       setUndo(confirmed.undo);
-      setUndoLabel(confirmed.undo ? `${definition?.name ?? 'Building'} ${isMove ? 'moved' : 'placed'}` : '');
-      showToast(isMove ? 'Building moved ✨' : 'Building placed ✨');
+      setUndoLabel(confirmed.undo ? `${definition?.name ?? 'Building'} placed` : '');
+      showToast('Building placed ✨');
+      dispatch({ type: 'cancel' });
+    } catch (error) {
+      if (activeLandRef.current !== landId) return;
+      showToast(error instanceof Error ? error.message : 'Could not save this placement');
+    } finally {
+      placementLockRef.current = false;
+      if (activeLandRef.current === landId) setBusy(false);
+    }
+  };
+
+  const confirmMove = async () => {
+    if (state.mode !== 'moving' || !state.anchor || !state.buildingKey || !state.selectedBuildingId || !preview?.result.ok || busy) return;
+    setBusy(true);
+    const definition = getBuildingDefinition(state.buildingKey);
+    try {
+      const confirmed = await hexWorldAPI.update(landId, state.selectedBuildingId, {
+        anchorQ: state.anchor.q,
+        anchorR: state.anchor.r,
+        rotation: state.rotation,
+      });
+      if (activeLandRef.current !== landId) return;
+      setSnapshot(confirmed.snapshot);
+      setUndo(confirmed.undo);
+      setUndoLabel(confirmed.undo ? `${definition?.name ?? 'Building'} moved` : '');
+      showToast('Building moved ✨');
       dispatch({ type: 'cancel' });
     } catch (error) {
       if (activeLandRef.current !== landId) return;
@@ -115,6 +154,16 @@ export function HexBuildController({
     } finally {
       if (activeLandRef.current === landId) setBusy(false);
     }
+  };
+
+  const handleTileSelect = (coord: HexCoord) => {
+    if (state.mode === 'placing') {
+      if (busy || placementLockRef.current) return;
+      setAnchor(coord);
+      void confirmPlacementAt(coord);
+      return;
+    }
+    if (state.mode === 'moving') setAnchor(coord);
   };
 
   const rotateSelected = async () => {
@@ -192,13 +241,22 @@ export function HexBuildController({
     }
   };
 
+  const confirmFromKeyboard = () => {
+    if (!state.anchor) return;
+    if (state.mode === 'placing') {
+      void confirmPlacementAt(state.anchor);
+      return;
+    }
+    if (state.mode === 'moving') void confirmMove();
+  };
+
   useHexKeyboardShortcuts({
     enabled: state.mode === 'placing' || state.mode === 'moving',
     canConfirm: !!preview?.result.ok,
     busy,
     onRotate: () => dispatch({ type: 'rotate_clockwise' }),
     onCancel: () => dispatch({ type: 'cancel' }),
-    onConfirm: confirmPlacement,
+    onConfirm: confirmFromKeyboard,
   });
 
   const scenePreview = preview && state.anchor && state.buildingKey ? {
@@ -261,7 +319,7 @@ export function HexBuildController({
         newlyAddedKeys={newlyAddedKeys}
         buildingPreview={scenePreview}
         onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
-        onSelectTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
+        onSelectTile={handleTileSelect}
         onSelectExpansion={(expansionKey) => dispatch({ type: 'preview_expansion', expansionKey })}
         onSelectBuilding={(building: HexBuildingDTO | null) => {
           if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null });
@@ -290,7 +348,7 @@ export function HexBuildController({
           reason={placementReason}
           onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })}
           onRotateRight={() => dispatch({ type: 'rotate_clockwise' })}
-          onConfirm={confirmPlacement}
+          onConfirm={confirmMove}
           onCancel={() => dispatch({ type: 'cancel' })}
         />
       )}
