@@ -28,3 +28,25 @@ test('hex browser API preserves stable error codes', async () => {
   assert.match(source, /payload\.code/);
   assert.match(source, /X-Circle-Id/);
 });
+
+test('reversible building mutations expose typed undo opportunities scoped to the authenticated user', async () => {
+  const client = await readFile(new URL('../services/hex-world-api.ts', import.meta.url), 'utf8');
+  assert.match(client, /HexReversibleMutationResponse/);
+  assert.match(client, /place:[\s\S]*HexReversibleMutationResponse/);
+  assert.match(client, /update:[\s\S]*HexReversibleMutationResponse/);
+  assert.match(client, /remove:[\s\S]*HexReversibleMutationResponse/);
+  assert.match(client, /expand:[\s\S]*HexWorldSnapshot/);
+
+  for (const path of [
+    '../app/api/hex-world/buildings/route.ts',
+    '../app/api/hex-world/buildings/[id]/route.ts',
+  ]) {
+    const source = await readFile(new URL(path, import.meta.url), 'utf8');
+    assert.match(source, /finalizeReversibleMutation/);
+    assert.match(source, /userId:\s*access\.userId/);
+    assert.doesNotMatch(source, /body\.userId|body\.configId/);
+  }
+
+  const expand = await readFile(new URL('../app/api/hex-world/expand/route.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(expand, /finalizeReversibleMutation|HexReversibleMutationResponse/);
+});
