@@ -70,13 +70,13 @@ test('reversible building mutations increment world revision exactly once', asyn
   assert.equal(before.world.revision, 0);
   const tile = findFreeBenchCell(before);
   const placed = await placeHexBuilding(fixture.configId, fixture.landId, { buildingKey: 'bench', anchorQ: tile.q, anchorR: tile.r, rotation: 0 });
-  assert.equal(placed.world.revision, 1);
-  const bench = placed.buildings.find((building) => building.buildingKey === 'bench');
+  assert.equal(placed.snapshot.world.revision, 1);
+  const bench = placed.snapshot.buildings.find((building) => building.buildingKey === 'bench');
   assert.ok(bench);
   const rotated = await updateHexBuilding(fixture.configId, fixture.landId, bench.id, { rotation: 1 });
-  assert.equal(rotated.world.revision, 2);
+  assert.equal(rotated.snapshot.world.revision, 2);
   const removed = await removeHexBuilding(fixture.configId, fixture.landId, bench.id);
-  assert.equal(removed.world.revision, 3);
+  assert.equal(removed.snapshot.world.revision, 3);
   const readAgain = await getOrCreateHexWorldSnapshot(fixture.configId, fixture.landId);
   assert.equal(readAgain.world.revision, 3);
 });
