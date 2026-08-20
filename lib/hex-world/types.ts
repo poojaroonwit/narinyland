@@ -49,6 +49,7 @@ export type HexWorldMetadata = {
   generatorVersion: number;
   seed: string;
   expansionLevel: number;
+  revision: number;
 };
 
 export type HexWorldSnapshot = {
