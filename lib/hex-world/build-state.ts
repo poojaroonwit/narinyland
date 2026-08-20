@@ -19,6 +19,7 @@ export type HexBuildAction =
   | { type: 'start_move'; buildingId: string; buildingKey: HexBuildingKey; rotation: HexRotation }
   | { type: 'rotate_clockwise' }
   | { type: 'rotate_counterclockwise' }
+  | { type: 'start_expansion' }
   | { type: 'preview_expansion'; expansionKey: string }
   | { type: 'cancel' };
 
@@ -44,6 +45,8 @@ export function hexBuildReducer(state: HexBuildState, action: HexBuildAction): H
       return state.mode === 'placing' || state.mode === 'moving' ? { ...state, rotation: wrapRotation(state.rotation + 1) } : state;
     case 'rotate_counterclockwise':
       return state.mode === 'placing' || state.mode === 'moving' ? { ...state, rotation: wrapRotation(state.rotation - 1) } : state;
+    case 'start_expansion':
+      return { ...createInitialHexBuildState(), mode: 'expanding' };
     case 'preview_expansion':
       return { ...createInitialHexBuildState(), mode: 'expanding', expansionKey: action.expansionKey };
     case 'cancel':
