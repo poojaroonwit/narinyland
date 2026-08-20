@@ -32,3 +32,10 @@ test('world scene delegates smart camera lighting and atmosphere instead of hard
   assert.doesNotMatch(scene, /camera=\{\{ position: \[17, 18, 22\]/);
   assert.doesNotMatch(scene, /<OrbitControls/);
 });
+
+test('selection feedback is a visual-only scene responsibility', async () => {
+  const scene = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
+  const tiles = await readFile(new URL('../components/hex-world/HexTileInstances.tsx', import.meta.url), 'utf8');
+  assert.match(scene, /HexSelectionEffects/);
+  assert.doesNotMatch(tiles, /hexWorldAPI|fetch\(/);
+});
