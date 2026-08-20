@@ -21,15 +21,16 @@ export function HexBuildings({
   return <>{buildings.map((building) => {
     const height = tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0;
     const position = axialToWorld({ q: building.anchorQ, r: building.anchorR }, 1, height + 0.02);
+    const selected = selectedBuildingId === building.id;
     return (
       <group
         key={building.id}
-        position={[position.x, position.y, position.z]}
+        position={[position.x, position.y + (selected ? 0.04 : 0), position.z]}
         rotation={[0, hexRotationToRadians(building.rotation), 0]}
-        scale={selectedBuildingId === building.id ? 1.06 : 1}
+        scale={selected ? 1.035 : 1}
         onClick={(event) => { event.stopPropagation(); onSelect?.(building); }}
       >
-        <HexBuildingModel buildingKey={building.buildingKey} />
+        <HexBuildingModel buildingKey={building.buildingKey} selected={selected} />
       </group>
     );
   })}</>;
