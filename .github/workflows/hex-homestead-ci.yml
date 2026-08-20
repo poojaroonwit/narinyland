@@ -9,9 +9,10 @@ on:
       - 'components/hex-world/**'
       - 'lib/hex-world/**'
       - 'lib/stats-service.ts'
+      - 'lib/redis.ts'
       - 'services/hex-world-api.ts'
       - 'prisma/schema.prisma'
-      - 'prisma/migrations/20260820000000_add_hex_homestead/**'
+      - 'prisma/migrations/**'
       - 'Dockerfile'
       - 'tests/hex-*.test.ts'
       - 'tests/garden-hex-integration.test.ts'
@@ -64,24 +65,7 @@ jobs:
       - name: Hex Homestead tests
         env:
           NODE_ENV: production
-        run: >-
-          node --import tsx --test
-          tests/hex-grid.test.ts
-          tests/hex-building-catalog.test.ts
-          tests/hex-world-generator.test.ts
-          tests/hex-world-rules.test.ts
-          tests/hex-world-schema.test.ts
-          tests/hex-world-service.test.ts
-          tests/hex-world-db.test.ts
-          tests/hex-world-api-contract.test.ts
-          tests/hex-world-rendering.test.ts
-          tests/hex-build-state.test.ts
-          tests/hex-camera.test.ts
-          tests/hex-quality.test.ts
-          tests/hex-visual-variation.test.ts
-          tests/hex-builder-primitives.test.ts
-          tests/garden-hex-integration.test.ts
-          tests/production-startup.test.ts
+        run: node --import tsx --test tests/hex-*.test.ts tests/garden-hex-integration.test.ts tests/production-startup.test.ts
 
       - name: Existing farm regression
         run: node --import tsx --test tests/family-farm-game.test.ts
