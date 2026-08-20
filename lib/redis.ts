@@ -34,7 +34,7 @@ function warnRedisFailure(operation: string, error: unknown) {
 function createRedisClient(): RedisClient | null {
   if (!shouldCreateClient) return null;
 
-  const client =
+  const redisClient =
     globalForRedis.redisClient ??
     new Redis(redisUrl || 'redis://localhost:6379', {
       enableOfflineQueue: false,
@@ -44,10 +44,10 @@ function createRedisClient(): RedisClient | null {
       },
     });
 
-  client.on('error', (error) => warnRedisFailure('connection', error));
+  redisClient.on('error', (error) => warnRedisFailure('connection', error));
 
-  if (process.env.NODE_ENV !== 'production') globalForRedis.redisClient = client;
-  return client;
+  if (process.env.NODE_ENV !== 'production') globalForRedis.redisClient = redisClient;
+  return redisClient;
 }
 
 const client = createRedisClient();
@@ -79,6 +79,38 @@ async function safeRedisCommand<T>(
   } catch (error) {
     warnRedisFailure(operation, error);
     return fallback;
+  }
+}
+
+export async function redisSetNxPx(key: string, value: string, ttlMs: number): Promise<boolean> {
+  return safeRedisCommand('set nx px', false, async (redisClient) => {
+    const result = await redisClient.set(key, value, 'PX', ttlMs, 'NX');
+    return result === 'OK';
+  });
+}
+
+export async function redisEval<T>(
+  operation: string,
+  fallback: T,
+  script: string,
+  keys: string[],
+  args: Array<string | number>,
+): Promise<T> {
+  return safeRedisCommand(operation, fallback, async (redisClient) => {
+    const result = await redisClient.eval(script, keys.length, ...keys, ...args.map(String));
+    return result as T;
+  });
+}
+
+export async function closeRedisConnection(): Promise<void> {
+  if (!client) return;
+  try {
+    if (client.status !== 'end') await client.quit();
+  } catch (error) {
+    warnRedisFailure('close', error);
+    client.disconnect();
+  } finally {
+    if (globalForRedis.redisClient === client) globalForRedis.redisClient = null;
   }
 }
 
