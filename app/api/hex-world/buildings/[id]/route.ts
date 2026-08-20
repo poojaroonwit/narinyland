@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { finalizeReversibleMutation } from '@/lib/hex-world/reversible-mutation';
 import { HexWorldServiceError, removeHexBuilding, updateHexBuilding } from '@/lib/hex-world/service';
 
 function errorResponse(error: unknown) {
@@ -19,7 +20,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (anchorQ !== undefined && !Number.isInteger(anchorQ)) return NextResponse.json({ error: 'anchorQ must be an integer' }, { status: 400 });
     if (anchorR !== undefined && !Number.isInteger(anchorR)) return NextResponse.json({ error: 'anchorR must be an integer' }, { status: 400 });
     if (rotation !== undefined && !Number.isInteger(rotation)) return NextResponse.json({ error: 'rotation must be an integer' }, { status: 400 });
-    return NextResponse.json(await updateHexBuilding(access.configId, landId, id, { anchorQ, anchorR, rotation }));
+    const persisted = await updateHexBuilding(access.configId, landId, id, { anchorQ, anchorR, rotation });
+    return NextResponse.json(await finalizeReversibleMutation(
+      { configId: access.configId, landId, userId: access.userId },
+      persisted,
+    ));
   } catch (error) {
     return errorResponse(error);
   }
@@ -33,7 +38,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     const body = await request.json().catch(() => ({}));
     const landId = body.landId;
     if (!landId) return NextResponse.json({ error: 'landId is required' }, { status: 400 });
-    return NextResponse.json(await removeHexBuilding(access.configId, landId, id));
+    const persisted = await removeHexBuilding(access.configId, landId, id);
+    return NextResponse.json(await finalizeReversibleMutation(
+      { configId: access.configId, landId, userId: access.userId },
+      persisted,
+    ));
   } catch (error) {
     return errorResponse(error);
   }
