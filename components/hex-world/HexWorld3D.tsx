@@ -12,9 +12,12 @@ import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexDioramaCamera } from './HexDioramaCamera';
+import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
 import { HexTileInstances } from './HexTileInstances';
+import { HexWaterSurface } from './HexWaterSurface';
 import { HexWorldLighting } from './HexWorldLighting';
+import { HexWorldParticles } from './HexWorldParticles';
 
 export type HexBuildingPreview = {
   buildingKey: string;
@@ -103,7 +106,9 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <Canvas shadows dpr={[1, profile.maxDpr]} camera={{ fov: 42, near: 0.1, far: 160 }} onPointerMissed={() => props.onSelectBuilding?.(null)}>
         <HexSkyAtmosphere profile={profile} />
         <HexWorldLighting profile={profile} />
+        <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
+        <HexWorldParticles seed={snapshot.world.seed} profile={profile} />
         <HexExpansionPreviewInstances tiles={props.expansionPreviewTiles ?? []} />
         <HexTileInstances
           tiles={snapshot.tiles}
@@ -115,6 +120,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
           onHover={props.onHoverTile}
           onSelect={props.onSelectTile}
         />
+        <HexWaterSurface tiles={snapshot.tiles} profile={profile} />
         <HexAmbientDecor tiles={snapshot.tiles} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {preview && previewPosition && (
