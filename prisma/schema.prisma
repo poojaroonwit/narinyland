@@ -101,6 +101,7 @@ model HexWorld {
   generatorVersion Int            @default(1)
   seed             String
   expansionLevel   Int            @default(0)
+  revision         Int            @default(0)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   land             Land           @relation(fields: [landId], references: [id], onDelete: Cascade)
@@ -395,8 +396,8 @@ model WorldVoiceRoom {
   metadata  Json               @default("{}")
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
-  config    AppConfig          @relation(fields: [configId], references: [id], onDelete: Cascade)
-  members   WorldVoiceMember[]
+  config     AppConfig          @relation(fields: [configId], references: [id], onDelete: Cascade)
+  members    WorldVoiceMember[]
 
   @@index([configId, kind, status])
   @@index([configId, scopeKey, status])
