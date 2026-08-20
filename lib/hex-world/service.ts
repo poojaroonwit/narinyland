@@ -6,6 +6,7 @@ import { getBuildingDefinition } from './building-catalog';
 import { getEligibleExpansionDefinitions, getExpansionDefinitions } from './expansions';
 import { generateStarterWorld } from './generator';
 import { validatePlacement } from './rules';
+import { runHexTransaction } from './transaction';
 import type { HexPlacementInput, HexRotation, HexWorldErrorCode, HexWorldSnapshot } from './types';
 
 export class HexWorldServiceError extends Error {
@@ -47,6 +48,7 @@ function serializeSnapshot(world: any, points: number): HexWorldSnapshot {
       generatorVersion: world.generatorVersion,
       seed: world.seed,
       expansionLevel: world.expansionLevel,
+      revision: world.revision ?? 0,
     },
     tiles: world.tiles.map((tile: any) => ({
       id: tile.id,
@@ -125,16 +127,6 @@ export async function getOrCreateHexWorldSnapshotWithClient(
   return serializeSnapshot(created, await getSharedPoints(client, configId));
 }
 
-async function runHexTransaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>, retries = 2): Promise<T> {
-  try {
-    return await prisma.$transaction(callback, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  } catch (error) {
-    const code = getErrorField(error, 'code');
-    if (retries > 0 && (code === 'P2034' || code === 'P2002')) return runHexTransaction(callback, retries - 1);
-    throw error;
-  }
-}
-
 export async function getOrCreateHexWorldSnapshot(configId: string, landId: string): Promise<HexWorldSnapshot> {
   return runHexTransaction((tx) => getOrCreateHexWorldSnapshotWithClient(tx, configId, landId));
 }
@@ -143,6 +135,10 @@ function throwPlacement(result: ReturnType<typeof validatePlacement>): never {
   if (result.ok) throw new Error('Expected invalid placement');
   const status = result.code === 'tile_occupied' ? 409 : 400;
   throw new HexWorldServiceError(result.code, status, result.code.replaceAll('_', ' '));
+}
+
+async function incrementWorldRevision(tx: Prisma.TransactionClient, worldId: string) {
+  await tx.hexWorld.update({ where: { id: worldId }, data: { revision: { increment: 1 } } });
 }
 
 export async function placeHexBuilding(configId: string, landId: string, input: HexPlacementInput): Promise<HexWorldSnapshot> {
@@ -170,6 +166,7 @@ export async function placeHexBuilding(configId: string, landId: string, input: 
         metadata: {} as Prisma.InputJsonObject,
       },
     });
+    await incrementWorldRevision(tx, snapshot.world.id);
     return (await readSnapshot(tx, configId, landId))!;
   });
 }
@@ -204,6 +201,7 @@ export async function updateHexBuilding(
         ...(patch.rotation !== undefined ? { rotation: patch.rotation } : {}),
       },
     });
+    await incrementWorldRevision(tx, snapshot.world.id);
     return (await readSnapshot(tx, configId, landId))!;
   });
 }
@@ -216,6 +214,7 @@ export async function removeHexBuilding(configId: string, landId: string, buildi
     const definition = getBuildingDefinition(building.buildingKey);
     if (!definition?.removable) throw new HexWorldServiceError('home_locked', 409, 'Starter Home cannot be removed');
     await tx.hexBuilding.delete({ where: { id: buildingId } });
+    await incrementWorldRevision(tx, snapshot.world.id);
     return (await readSnapshot(tx, configId, landId))!;
   });
 }
