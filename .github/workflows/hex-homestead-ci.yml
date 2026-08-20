@@ -76,6 +76,10 @@ jobs:
           tests/hex-world-api-contract.test.ts
           tests/hex-world-rendering.test.ts
           tests/hex-build-state.test.ts
+          tests/hex-camera.test.ts
+          tests/hex-quality.test.ts
+          tests/hex-visual-variation.test.ts
+          tests/hex-builder-primitives.test.ts
           tests/garden-hex-integration.test.ts
           tests/production-startup.test.ts
 
