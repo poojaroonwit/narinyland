@@ -11,6 +11,7 @@ import type { HexConfirmedVisualEvent } from '@/lib/hex-world/visual-events';
 const MAX_PARTICLES = 20;
 
 function effectOrigin(event: NonNullable<HexConfirmedVisualEvent>) {
+  if (event.kind === 'rotated') return null;
   if (event.kind !== 'expanded') return axialToWorld(event.coord, 1, 0.35);
   if (event.coords.length === 0) return null;
   const positions = event.coords.map((coord) => axialToWorld(coord, 1, 0.25));
