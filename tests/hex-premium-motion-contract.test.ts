@@ -76,3 +76,24 @@ test('confirmed expansion uses deterministic stagger and visual-only mist', asyn
   assert.match(controller, /setUndo\(null\)/);
   assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
 });
+
+test('world resolves reduced motion once and children consume the resolved profile', async () => {
+  const world = await source('../components/hex-world/HexWorld3D.tsx');
+  const childPaths = [
+    '../components/hex-world/HexDioramaCamera.tsx',
+    '../components/hex-world/HexTileInstances.tsx',
+    '../components/hex-world/HexSelectionEffects.tsx',
+    '../components/hex-world/HexAmbientDecor.tsx',
+    '../components/hex-world/HexSkyAtmosphere.tsx',
+    '../components/hex-world/HexWaterSurface.tsx',
+    '../components/hex-world/HexBuildings.tsx',
+    '../components/hex-world/HexPlacementEffects.tsx',
+  ];
+  assert.match(world, /useReducedHexMotion/);
+  assert.match(world, /resolveHexMotionProfile/);
+  assert.doesNotMatch(world, /const reducedMotion = false/);
+  for (const path of childPaths) {
+    const child = await source(path);
+    assert.doesNotMatch(child, /matchMedia\(/);
+  }
+});
