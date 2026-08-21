@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { FamilyFarmState, FarmAction } from '@/lib/family-farm-game';
-import { familyFarmAPI } from '@/services/family-farm-api';
+import type { ProgressionFamilyFarmState, ProgressionFarmAction } from '@/lib/family-farm-progression';
+import { livingFamilyFarmAPI } from '@/services/living-family-farm-api';
 
 export type LivingHomesteadController = {
-  state: FamilyFarmState | null;
+  state: ProgressionFamilyFarmState | null;
   revision: number;
   loading: boolean;
   error: string | null;
   busy: boolean;
-  act: (action: FarmAction) => Promise<boolean>;
+  act: (action: ProgressionFarmAction) => Promise<boolean>;
   retry: () => void;
 };
 
@@ -18,7 +18,7 @@ export function useLivingHomestead(
   landId: string,
   showToast: (message: string) => void,
 ): LivingHomesteadController {
-  const [state, setState] = useState<FamilyFarmState | null>(null);
+  const [state, setState] = useState<ProgressionFamilyFarmState | null>(null);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export function useLivingHomestead(
     setError(null);
     setBusy(false);
 
-    void familyFarmAPI.get(landId)
+    void livingFamilyFarmAPI.get(landId)
       .then((response) => {
         if (activeLandRef.current !== landId || requestNonceRef.current !== requestNonce) return;
         setState(response.state);
@@ -60,13 +60,13 @@ export function useLivingHomestead(
     };
   }, [landId, reloadNonce]);
 
-  const act = useCallback(async (action: FarmAction) => {
+  const act = useCallback(async (action: ProgressionFarmAction) => {
     if (!state || busy || actionLockRef.current) return false;
     const requestNonce = ++requestNonceRef.current;
     actionLockRef.current = true;
     setBusy(true);
     try {
-      const response = await familyFarmAPI.act(landId, action);
+      const response = await livingFamilyFarmAPI.act(landId, action);
       if (activeLandRef.current !== landId || requestNonceRef.current !== requestNonce) return false;
       setState(response.state);
       setRevision(response.revision);

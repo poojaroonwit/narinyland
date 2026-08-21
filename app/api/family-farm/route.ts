@@ -2,14 +2,16 @@ import { NextResponse } from 'next/server';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
 import { applyFamilyFarmAction, getFamilyFarmSave } from '@/lib/family-farm-store';
 import {
-  CROP_KEYS,
+  PROGRESSION_CROP_KEYS,
   RECIPE_KEYS,
   RESOURCE_KEYS,
-  type CropKey,
-  type FarmAction,
+  WORKSHOP_UPGRADE_KEYS,
+  type ProgressionCropKey,
+  type ProgressionFarmAction,
   type RecipeKey,
   type ResourceKey,
-} from '@/lib/family-farm-game';
+  type WorkshopUpgradeKey,
+} from '@/lib/family-farm-progression';
 
 function readLandId(request: Request, body?: unknown): string | null {
   if (body && typeof body === 'object' && 'landId' in body) {
@@ -25,8 +27,8 @@ function readLandId(request: Request, body?: unknown): string | null {
   }
 }
 
-function isCropKey(value: unknown): value is CropKey {
-  return typeof value === 'string' && CROP_KEYS.includes(value as CropKey);
+function isCropKey(value: unknown): value is ProgressionCropKey {
+  return typeof value === 'string' && PROGRESSION_CROP_KEYS.includes(value as ProgressionCropKey);
 }
 
 function isResourceKey(value: unknown): value is ResourceKey {
@@ -37,11 +39,15 @@ function isRecipeKey(value: unknown): value is RecipeKey {
   return typeof value === 'string' && RECIPE_KEYS.includes(value as RecipeKey);
 }
 
+function isWorkshopUpgradeKey(value: unknown): value is WorkshopUpgradeKey {
+  return typeof value === 'string' && WORKSHOP_UPGRADE_KEYS.includes(value as WorkshopUpgradeKey);
+}
+
 function isQuantity(value: unknown) {
   return value === undefined || value === 'all' || typeof value === 'number';
 }
 
-function parseFarmAction(value: unknown): FarmAction | null {
+function parseFarmAction(value: unknown): ProgressionFarmAction | null {
   if (!value || typeof value !== 'object') return null;
   const action = value as Record<string, unknown>;
 
@@ -92,6 +98,12 @@ function parseFarmAction(value: unknown): FarmAction | null {
       return { type: 'upgrade_home' };
     case 'rename_family':
       return typeof action.name === 'string' ? { type: 'rename_family', name: action.name } : null;
+    case 'craft':
+      return isWorkshopUpgradeKey(action.upgradeKey)
+        ? { type: 'craft', upgradeKey: action.upgradeKey }
+        : null;
+    case 'tend_flowers':
+      return { type: 'tend_flowers' };
     default:
       return null;
   }
@@ -152,6 +164,10 @@ export async function POST(request: Request) {
       'pond is quiet',
       'ingredients',
       'need',
+      'not in season',
+      'workshop',
+      'crafted',
+      'flowers',
     ].some((fragment) => message.toLowerCase().includes(fragment));
     const status = message.includes('not found') ? 404 : isGameRuleError ? 409 : 500;
     console.error('Error applying family farm action:', error);

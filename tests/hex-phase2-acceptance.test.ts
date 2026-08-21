@@ -13,8 +13,10 @@ test('phase 2 keeps the approved smart diorama and world-first builder flow', as
   const catalog = await source('../lib/hex-world/building-catalog.ts');
 
   assert.match(world, /HexDioramaCamera/);
-  assert.match(world, /HexExpansionClusters/);
-  assert.match(world, /onSelectExpansion/);
+  assert.match(world, /ExpansionPlacementGhost/);
+  assert.match(world, /ExpansionPlacementPlane/);
+  assert.match(world, /onSelectExpansionAnchor/);
+  assert.doesNotMatch(world, /HexExpansionClusters/);
   assert.match(controller, /HexBuildCatalog/);
   assert.match(controller, /HexBuildingContextToolbar/);
   assert.match(controller, /HexRemovalConfirm/);

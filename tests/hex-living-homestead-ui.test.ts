@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-test('living homestead hook uses the existing Family Farm API and guards Land switches', async () => {
+test('living homestead hook uses progression-typed Family Farm API and guards Land switches', async () => {
   const source = await readFile(new URL('../components/hex-world/useLivingHomestead.ts', import.meta.url), 'utf8');
 
-  assert.match(source, /familyFarmAPI\.get\(landId\)/);
-  assert.match(source, /familyFarmAPI\.act\(landId, action\)/);
+  assert.match(source, /livingFamilyFarmAPI\.get\(landId\)/);
+  assert.match(source, /livingFamilyFarmAPI\.act\(landId, action\)/);
+  assert.match(source, /ProgressionFamilyFarmState/);
+  assert.match(source, /ProgressionFarmAction/);
   assert.match(source, /activeLandRef/);
   assert.match(source, /requestNonceRef/);
   assert.match(source, /actionLockRef/);
@@ -17,11 +19,14 @@ test('living homestead hook uses the existing Family Farm API and guards Land sw
   assert.doesNotMatch(source, /fetch\(/);
 });
 
-test('living HUD shows the authoritative daily loop without becoming a full-screen dashboard', async () => {
+test('living HUD exposes season progression Journey and end-of-season payoff without becoming a dashboard', async () => {
   const source = await readFile(new URL('../components/hex-world/HexLivingHUD.tsx', import.meta.url), 'utf8');
 
   assert.match(source, /formatFarmTime/);
-  assert.match(source, /getDailyGoals/);
+  assert.match(source, /getProgressionDailyGoals/);
+  assert.match(source, /getNextLevelUnlock/);
+  assert.match(source, /getHomesteadJourney/);
+  assert.match(source, /getSeasonPresentation/);
   assert.match(source, /xpToNextLevel/);
   assert.match(source, /Day \{state\.day\}/);
   assert.match(source, /Energy/);
@@ -29,22 +34,29 @@ test('living HUD shows the authoritative daily loop without becoming a full-scre
   assert.match(source, /Hearts/);
   assert.match(source, /Points/);
   assert.match(source, /Goals/);
+  assert.match(source, /Homestead Journey/);
+  assert.match(source, /Next unlock/);
+  assert.match(source, /Season complete/);
+  assert.match(source, /setDismissedSeasonDay/);
   assert.match(source, /claim_daily_reward/);
   assert.doesNotMatch(source, /fixed inset-0.*bg-white/s);
 });
 
-test('living action panel maps real buildings to existing Family Farm actions', async () => {
+test('living action panel maps buildings to progression actions and market utility', async () => {
   const source = await readFile(new URL('../components/hex-world/HexLivingActionPanel.tsx', import.meta.url), 'utf8');
 
-  for (const copy of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Cook', 'Family Time', 'Care Chickens', 'Upgrade Home', 'Sleep', 'Inventory']) {
+  for (const copy of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Cook', 'Family Time', 'Care Chickens', 'Upgrade Home', 'Sleep', 'Inventory', 'Workshop', 'Craft', 'Tend Flowers', 'Buy seed', 'Sell all']) {
     assert.match(source, new RegExp(copy));
   }
-  for (const action of ['plant', 'water', 'harvest', 'fish', 'forage', 'cook', 'family_time', 'feed_chickens', 'collect_eggs', 'buy_chicken', 'upgrade_home', 'end_day']) {
+  for (const action of ['plant', 'water', 'harvest', 'buy_seed', 'sell', 'sell_resource', 'fish', 'forage', 'cook', 'family_time', 'feed_chickens', 'collect_eggs', 'buy_chicken', 'upgrade_home', 'end_day', 'craft', 'tend_flowers']) {
     assert.match(source, new RegExp(`type: '${action}'`));
   }
-  assert.match(source, /CROP_CATALOG/);
-  assert.match(source, /RECIPE_CATALOG/);
-  assert.match(source, /canCookRecipe/);
+  for (const crop of ['corn', 'pumpkin', 'potato', 'cabbage']) assert.match(source, new RegExp(crop));
+  assert.match(source, /PROGRESSION_CROP_CATALOG/);
+  assert.match(source, /PROGRESSION_CROP_KEYS/);
+  assert.match(source, /WORKSHOP_UPGRADES/);
+  assert.match(source, /canCookProgressionRecipe/);
+  assert.match(source, /getCropAvailabilityCopy/);
   assert.match(source, /getGardenActionTarget/);
 });
 
@@ -60,16 +72,20 @@ test('HexBuildController integrates Living Homestead without replacing builder c
   assert.match(source, /HexExpansionController/);
 });
 
-test('HexWorld living presentation is bounded visual-only state', async () => {
+test('HexWorld living presentation covers four seasons and remains bounded visual-only state', async () => {
   const world = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
   const layer = await readFile(new URL('../components/hex-world/HexLivingWorldLayer.tsx', import.meta.url), 'utf8');
 
-  assert.match(world, /livingState\?: FamilyFarmState \| null/);
+  assert.match(world, /livingState\?: ProgressionFamilyFarmState \| null/);
   assert.match(world, /HexLivingWorldLayer/);
+  assert.match(layer, /ProgressionFamilyFarmState/);
   assert.match(layer, /getCropVisualSamples/);
+  assert.match(layer, /SEASON_PARTICLE_COUNT/);
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) assert.match(layer, new RegExp(`'${season}'`));
+  for (const crop of ['corn', 'pumpkin', 'potato', 'cabbage']) assert.match(layer, new RegExp(`${crop}:`));
   assert.match(layer, /Math\.min\(6, state\.livestock\.chickens\)/);
   assert.match(layer, /state\.weather === 'rainy'/);
-  assert.match(layer, /useReducedHexMotion/);
+  assert.match(layer, /reducedMotion/);
   assert.doesNotMatch(layer, /familyFarmAPI/);
   assert.doesNotMatch(layer, /hexWorldAPI/);
   assert.doesNotMatch(layer, /fetch\(/);

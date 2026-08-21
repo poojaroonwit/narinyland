@@ -1,8 +1,11 @@
-import { axialToWorld, hexKey, hexNeighbors } from './hex-grid';
+import { axialToWorld, hexKey, hexNeighbors, isConnectedHexSet } from './hex-grid';
 import { generateStarterWorld } from './generator';
-import type { HexCoord, HexExpansionDTO, HexWorldSnapshot } from './types';
+import type { HexCoord, HexExpansionDTO, HexTileDTO, HexWorldSnapshot } from './types';
 
 export type HexExpansionDefinition = Omit<HexExpansionDTO, 'eligible'> & { directionIndex: number };
+export type HexExpansionPlacementResult =
+  | { ok: true }
+  | { ok: false; code: 'expansion_overlap' | 'expansion_disconnected' | 'expansion_disconnects_island' };
 
 const DIRECTIONS: HexCoord[] = [
   { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
@@ -15,6 +18,10 @@ const TIERS = [
   { tier: 3 as const, radius: 3, pointCost: 500 as const },
 ];
 
+export function getExpansionTierConfig(tier: 1 | 2 | 3) {
+  return TIERS.find((item) => item.tier === tier) ?? TIERS[0];
+}
+
 function hexDisc(center: HexCoord, radius: number): HexCoord[] {
   const cells: HexCoord[] = [];
   for (let dq = -radius; dq <= radius; dq += 1) {
@@ -23,6 +30,45 @@ function hexDisc(center: HexCoord, radius: number): HexCoord[] {
     for (let dr = minR; dr <= maxR; dr += 1) cells.push({ q: center.q + dq, r: center.r + dr });
   }
   return cells;
+}
+
+export function getExpansionPlacementTiles(tier: 1 | 2 | 3, anchor: HexCoord): HexCoord[] {
+  return hexDisc(anchor, getExpansionTierConfig(tier).radius);
+}
+
+function tileExpansionKey(tile: Pick<HexTileDTO, 'metadata'>): string | null {
+  const value = tile.metadata?.expansionKey;
+  return typeof value === 'string' && value ? value : null;
+}
+
+export function validateExpansionPlacement(
+  cells: HexCoord[],
+  worldTiles: HexTileDTO[],
+  options: { ignoreExpansionKey?: string } = {},
+): HexExpansionPlacementResult {
+  const remainingPersisted = worldTiles.filter((tile) =>
+    !options.ignoreExpansionKey || tileExpansionKey(tile) !== options.ignoreExpansionKey,
+  );
+  const persistedCoords = new Set(remainingPersisted.map(hexKey));
+  if (cells.some((cell) => persistedCoords.has(hexKey(cell)))) {
+    return { ok: false, code: 'expansion_overlap' };
+  }
+
+  const remainingUnlocked = remainingPersisted.filter((tile) => tile.unlocked);
+  const unlockedCoords = new Set(remainingUnlocked.map(hexKey));
+  if (!touches(cells, unlockedCoords)) return { ok: false, code: 'expansion_disconnected' };
+
+  if (options.ignoreExpansionKey) {
+    const resultingUnlocked = [
+      ...remainingUnlocked.map(({ q, r }) => ({ q, r })),
+      ...cells,
+    ];
+    if (!isConnectedHexSet(resultingUnlocked)) {
+      return { ok: false, code: 'expansion_disconnects_island' };
+    }
+  }
+
+  return { ok: true };
 }
 
 function projection(coord: HexCoord, direction: HexCoord): number {
@@ -82,11 +128,12 @@ export function getEligibleExpansionDefinitions(
   purchasedExpansionKeys: Iterable<string> = [],
 ): HexExpansionDTO[] {
   const purchased = new Set(purchasedExpansionKeys);
-  const unlocked = new Set(snapshot.tiles.filter((tile) => tile.unlocked).map(hexKey));
 
+  // Free-placement expansion definitions are server-owned catalog identities and
+  // prices. Their deterministic coordinates remain only a backward-compatible
+  // default for older callers; the player selects and validates exact placement
+  // separately, so catalog availability must not depend on those old coordinates.
   return getExpansionDefinitions(snapshot.world.seed)
     .filter((definition) => !purchased.has(definition.expansionKey))
-    .filter((definition) => definition.tiles.every((cell) => !unlocked.has(hexKey(cell))))
-    .filter((definition) => touches(definition.tiles, unlocked))
     .map(({ directionIndex: _directionIndex, ...definition }) => ({ ...definition, eligible: true }));
 }
