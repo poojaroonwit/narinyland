@@ -14,6 +14,7 @@ export type HexWorldErrorCode =
   | 'expansion_not_found'
   | 'expansion_overlap'
   | 'expansion_disconnected'
+  | 'expansion_disconnects_island'
   | 'expansion_has_buildings'
   | 'not_enough_points'
   | 'land_access_denied'
