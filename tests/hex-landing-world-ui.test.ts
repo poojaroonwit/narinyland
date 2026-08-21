@@ -54,6 +54,22 @@ test('landing scroll story is continuous with the HexWorld atmosphere', async ()
   assert.doesNotMatch(source, /fixed bottom-\[calc\(1\.15rem\+env\(safe-area-inset-bottom\)\)\]/);
 });
 
+test('cinematic living world adds restrained ambient motion and a direct signup path', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /useReducedMotion/);
+  assert.match(source, /CINEMATIC_MOTES/);
+  assert.match(source, /livingWorldDrift/);
+  assert.match(source, /atmosphereY/);
+  assert.match(source, /sunlightX/);
+  assert.match(source, /Create your world/);
+  assert.match(source, /href="\/signup"/);
+  assert.match(source, /Live homestead/);
+  assert.match(source, /repeat:\s*Infinity/);
+  assert.match(source, /prefersReducedMotion/);
+  assert.doesNotMatch(source, /filter:\s*blur\(/);
+});
+
 test('HexWorld loading keeps the real world renderer visible behind product-aligned loading chrome', async () => {
   const source = await readFile(new URL('../components/hex-world/HexWorldLoading.tsx', import.meta.url), 'utf8');
 
