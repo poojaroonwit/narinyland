@@ -3,7 +3,7 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { FamilyFarmState } from '@/lib/family-farm-game';
+import type { FarmSeason, ProgressionFamilyFarmState } from '@/lib/family-farm-progression';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
 import { getCropVisualSamples } from '@/lib/hex-world/living-homestead';
 import type { HexBuildingDTO, HexTileDTO } from '@/lib/hex-world/types';
@@ -14,6 +14,10 @@ const CROP_COLORS: Record<string, { leaf: string; fruit: string }> = {
   lettuce: { leaf: '#84aa64', fruit: '#a9c982' },
   tomato: { leaf: '#6f9a58', fruit: '#d85f50' },
   strawberry: { leaf: '#6f9a58', fruit: '#d65f72' },
+  corn: { leaf: '#78924f', fruit: '#e8c85a' },
+  pumpkin: { leaf: '#6b8b50', fruit: '#d88135' },
+  potato: { leaf: '#748b55', fruit: '#b99a6b' },
+  cabbage: { leaf: '#789b72', fruit: '#9fbe97' },
 };
 
 const CROP_OFFSETS: Array<[number, number]> = [
@@ -23,18 +27,18 @@ const CROP_OFFSETS: Array<[number, number]> = [
 const RAIN_POSITIONS = Array.from({ length: 28 }, (_, index) => {
   const column = index % 7;
   const row = Math.floor(index / 7);
-  return {
-    x: -7.2 + column * 2.35 + (row % 2) * 0.45,
-    y: 4.6 + (index % 4) * 0.75,
-    z: -5.2 + row * 3.25 + (column % 2) * 0.35,
-  };
+  return { x: -7.2 + column * 2.35 + (row % 2) * 0.45, y: 4.6 + (index % 4) * 0.75, z: -5.2 + row * 3.25 + (column % 2) * 0.35 };
 });
 
-function CropVisual({
-  sample,
-  baseY,
-  reducedMotion,
-}: {
+export const SEASON_PARTICLE_COUNT = 22;
+const SEASON_POSITIONS = Array.from({ length: SEASON_PARTICLE_COUNT }, (_, index) => ({
+  x: -8 + ((index * 37) % 160) / 10,
+  y: 1.8 + ((index * 17) % 45) / 10,
+  z: -7 + ((index * 53) % 140) / 10,
+  phase: (index * 0.73) % (Math.PI * 2),
+}));
+
+function CropVisual({ sample, baseY, reducedMotion }: {
   sample: ReturnType<typeof getCropVisualSamples>[number];
   baseY: number;
   reducedMotion: boolean;
@@ -53,70 +57,31 @@ function CropVisual({
 
   return (
     <group ref={ref} position={[world.x + offsetX, world.y, world.z + offsetZ]} scale={[0.82, 0.82, 0.82]}>
-      {sample.watered && (
-        <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.22, 12]} />
-          <meshStandardMaterial color="#7eb6bd" transparent opacity={0.34} roughness={1} />
-        </mesh>
-      )}
-      <mesh position={[0, height * 0.45, 0]} castShadow>
-        <cylinderGeometry args={[0.035, 0.055, height, 6]} />
-        <meshStandardMaterial color={palette.leaf} roughness={1} />
-      </mesh>
-      <mesh position={[-0.09, height * 0.72, 0]} rotation={[0.15, 0, -0.7]} castShadow>
-        <sphereGeometry args={[0.1 + progress * 0.035, 7, 5]} />
-        <meshStandardMaterial color={palette.leaf} roughness={1} />
-      </mesh>
-      <mesh position={[0.09, height * 0.76, 0.02]} rotation={[-0.12, 0, 0.7]} castShadow>
-        <sphereGeometry args={[0.1 + progress * 0.035, 7, 5]} />
-        <meshStandardMaterial color={palette.leaf} roughness={1} />
-      </mesh>
-      {progress >= 0.72 && (
-        <mesh position={[0.02, height * 0.58, 0.08]} castShadow>
-          <sphereGeometry args={[0.075 + progress * 0.035, 8, 6]} />
-          <meshStandardMaterial color={palette.fruit} roughness={0.9} />
-        </mesh>
-      )}
+      {sample.watered && <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.22, 12]} /><meshStandardMaterial color="#7eb6bd" transparent opacity={0.34} roughness={1} /></mesh>}
+      <mesh position={[0, height * 0.45, 0]} castShadow><cylinderGeometry args={[0.035, 0.055, height, 6]} /><meshStandardMaterial color={palette.leaf} roughness={1} /></mesh>
+      <mesh position={[-0.09, height * 0.72, 0]} rotation={[0.15, 0, -0.7]} castShadow><sphereGeometry args={[0.1 + progress * 0.035, 7, 5]} /><meshStandardMaterial color={palette.leaf} roughness={1} /></mesh>
+      <mesh position={[0.09, height * 0.76, 0.02]} rotation={[-0.12, 0, 0.7]} castShadow><sphereGeometry args={[0.1 + progress * 0.035, 7, 5]} /><meshStandardMaterial color={palette.leaf} roughness={1} /></mesh>
+      {progress >= 0.72 && <mesh position={[0.02, height * 0.58, 0.08]} castShadow><sphereGeometry args={[0.075 + progress * 0.035, 8, 6]} /><meshStandardMaterial color={palette.fruit} roughness={0.9} /></mesh>}
     </group>
   );
 }
 
-function ChickenVisual({ index, home, baseY, fed, reducedMotion }: {
-  index: number;
-  home: HexBuildingDTO;
-  baseY: number;
-  fed: boolean;
-  reducedMotion: boolean;
-}) {
+function ChickenVisual({ index, home, baseY, fed, reducedMotion }: { index: number; home: HexBuildingDTO; baseY: number; fed: boolean; reducedMotion: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const world = axialToWorld({ q: home.anchorQ, r: home.anchorR }, 1, baseY + 0.1);
   const angle = (index / 6) * Math.PI * 2 + 0.45;
   const radius = 1.45 + (index % 2) * 0.25;
-
   useFrame(({ clock }) => {
     if (!ref.current || reducedMotion || document.visibilityState === 'hidden') return;
     ref.current.position.y = world.y + 0.11 + Math.sin(clock.elapsedTime * 2.1 + index) * 0.025;
     ref.current.rotation.y = Math.sin(clock.elapsedTime * 0.45 + index) * 0.35;
   });
-
   return (
     <group ref={ref} position={[world.x + Math.cos(angle) * radius, world.y + 0.11, world.z + Math.sin(angle) * radius]} scale={0.72}>
-      <mesh castShadow>
-        <sphereGeometry args={[0.22, 9, 7]} />
-        <meshStandardMaterial color={fed ? '#f6e6bd' : '#f3efdf'} roughness={1} />
-      </mesh>
-      <mesh position={[0.13, 0.18, 0.02]} castShadow>
-        <sphereGeometry args={[0.13, 8, 6]} />
-        <meshStandardMaterial color="#fffaf0" roughness={1} />
-      </mesh>
-      <mesh position={[0.245, 0.18, 0.02]} rotation={[0, 0, -Math.PI / 2]}>
-        <coneGeometry args={[0.055, 0.12, 5]} />
-        <meshStandardMaterial color="#d9964c" roughness={1} />
-      </mesh>
-      <mesh position={[0.1, 0.3, 0.02]}>
-        <sphereGeometry args={[0.045, 6, 5]} />
-        <meshStandardMaterial color="#d86b5d" roughness={1} />
-      </mesh>
+      <mesh castShadow><sphereGeometry args={[0.22, 9, 7]} /><meshStandardMaterial color={fed ? '#f6e6bd' : '#f3efdf'} roughness={1} /></mesh>
+      <mesh position={[0.13, 0.18, 0.02]} castShadow><sphereGeometry args={[0.13, 8, 6]} /><meshStandardMaterial color="#fffaf0" roughness={1} /></mesh>
+      <mesh position={[0.245, 0.18, 0.02]} rotation={[0, 0, -Math.PI / 2]}><coneGeometry args={[0.055, 0.12, 5]} /><meshStandardMaterial color="#d9964c" roughness={1} /></mesh>
+      <mesh position={[0.1, 0.3, 0.02]}><sphereGeometry args={[0.045, 6, 5]} /><meshStandardMaterial color="#d86b5d" roughness={1} /></mesh>
     </group>
   );
 }
@@ -127,28 +92,51 @@ function RainField({ reducedMotion }: { reducedMotion: boolean }) {
     if (!ref.current || reducedMotion || document.visibilityState === 'hidden') return;
     ref.current.position.y = -((clock.elapsedTime * 4.2) % 3.2);
   });
+  return <group ref={ref}>{RAIN_POSITIONS.map((drop, index) => <mesh key={index} position={[drop.x, drop.y, drop.z]} rotation={[0, 0, 0.08]}><cylinderGeometry args={[0.012, 0.012, reducedMotion ? 0.16 : 0.34, 4]} /><meshBasicMaterial color="#9ac8d5" transparent opacity={0.42} /></mesh>)}</group>;
+}
+
+function SeasonAtmosphere({ season, reducedMotion }: { season: FarmSeason; reducedMotion: boolean }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!ref.current || reducedMotion || document.visibilityState === 'hidden') return;
+    const t = clock.elapsedTime;
+    ref.current.children.forEach((child, index) => {
+      const seed = SEASON_POSITIONS[index];
+      if (season === 'summer') {
+        child.position.y = seed.y + Math.sin(t * 0.7 + seed.phase) * 0.16;
+        child.position.x = seed.x + Math.sin(t * 0.25 + seed.phase) * 0.18;
+      } else {
+        const speed = season === 'winter' ? 0.42 : 0.24;
+        child.position.y = 5.8 - ((t * speed + seed.phase) % 5.2);
+        child.position.x = seed.x + Math.sin(t * 0.55 + seed.phase) * (season === 'autumn' ? 0.5 : 0.22);
+        child.rotation.z = t * (season === 'autumn' ? 0.8 : 0.24) + seed.phase;
+      }
+    });
+  });
+
+  const style = season === 'spring'
+    ? { color: '#e8aabd', opacity: 0.34, kind: 'petal' as const }
+    : season === 'summer'
+      ? { color: '#f2d985', opacity: 0.25, kind: 'mote' as const }
+      : season === 'autumn'
+        ? { color: '#c77b45', opacity: 0.38, kind: 'leaf' as const }
+        : { color: '#f5fbff', opacity: 0.54, kind: 'snow' as const };
 
   return (
     <group ref={ref}>
-      {RAIN_POSITIONS.map((drop, index) => (
-        <mesh key={index} position={[drop.x, drop.y, drop.z]} rotation={[0, 0, 0.08]}>
-          <cylinderGeometry args={[0.012, 0.012, reducedMotion ? 0.16 : 0.34, 4]} />
-          <meshBasicMaterial color="#9ac8d5" transparent opacity={0.42} />
+      {SEASON_POSITIONS.map((particle, index) => (
+        <mesh key={`${season}-${index}`} position={[particle.x, particle.y, particle.z]} rotation={[0, 0, particle.phase]}>
+          {style.kind === 'snow' || style.kind === 'mote'
+            ? <sphereGeometry args={[style.kind === 'snow' ? 0.045 : 0.035, 5, 4]} />
+            : <circleGeometry args={[style.kind === 'leaf' ? 0.07 : 0.055, 5]} />}
+          <meshBasicMaterial color={style.color} transparent opacity={style.opacity} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
   );
 }
 
-export function HexLivingWorldLayer({
-  state,
-  buildings,
-  tiles,
-}: {
-  state: FamilyFarmState;
-  buildings: HexBuildingDTO[];
-  tiles: HexTileDTO[];
-}) {
+export function HexLivingWorldLayer({ state, buildings, tiles }: { state: ProgressionFamilyFarmState; buildings: HexBuildingDTO[]; tiles: HexTileDTO[] }) {
   const reducedMotion = useReducedHexMotion();
   const gardenBuildings = useMemo(() => buildings.filter((building) => building.buildingKey === 'garden_patch'), [buildings]);
   const home = useMemo(() => buildings.find((building) => building.buildingKey === 'home') ?? null, [buildings]);
@@ -158,24 +146,9 @@ export function HexLivingWorldLayer({
 
   return (
     <group>
-      {crops.map((sample) => (
-        <CropVisual
-          key={sample.plotId}
-          sample={sample}
-          baseY={tileHeight.get(`${sample.anchorQ}:${sample.anchorR}`) ?? 0}
-          reducedMotion={reducedMotion}
-        />
-      ))}
-      {home && Array.from({ length: chickenCount }, (_, index) => (
-        <ChickenVisual
-          key={`living-chicken-${index}`}
-          index={index}
-          home={home}
-          baseY={tileHeight.get(`${home.anchorQ}:${home.anchorR}`) ?? 0}
-          fed={state.livestock.fedToday}
-          reducedMotion={reducedMotion}
-        />
-      ))}
+      <SeasonAtmosphere season={state.season} reducedMotion={reducedMotion} />
+      {crops.map((sample) => <CropVisual key={sample.plotId} sample={sample} baseY={tileHeight.get(`${sample.anchorQ}:${sample.anchorR}`) ?? 0} reducedMotion={reducedMotion} />)}
+      {home && Array.from({ length: chickenCount }, (_, index) => <ChickenVisual key={`living-chicken-${index}`} index={index} home={home} baseY={tileHeight.get(`${home.anchorQ}:${home.anchorR}`) ?? 0} fed={state.livestock.fedToday} reducedMotion={reducedMotion} />)}
       {state.weather === 'rainy' && <RainField reducedMotion={reducedMotion} />}
     </group>
   );
