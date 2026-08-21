@@ -26,9 +26,11 @@ export function useLivingHomestead(
   const [reloadNonce, setReloadNonce] = useState(0);
   const activeLandRef = useRef<string | null>(landId);
   const requestNonceRef = useRef(0);
+  const actionLockRef = useRef(false);
 
   useEffect(() => {
     activeLandRef.current = landId;
+    actionLockRef.current = false;
     const requestNonce = ++requestNonceRef.current;
     setState(null);
     setRevision(0);
@@ -54,12 +56,14 @@ export function useLivingHomestead(
     return () => {
       if (activeLandRef.current === landId) activeLandRef.current = null;
       requestNonceRef.current += 1;
+      actionLockRef.current = false;
     };
   }, [landId, reloadNonce]);
 
   const act = useCallback(async (action: FarmAction) => {
-    if (!state || busy) return false;
+    if (!state || busy || actionLockRef.current) return false;
     const requestNonce = ++requestNonceRef.current;
+    actionLockRef.current = true;
     setBusy(true);
     try {
       const response = await familyFarmAPI.act(landId, action);
@@ -74,7 +78,10 @@ export function useLivingHomestead(
       showToast(actionError instanceof Error ? actionError.message : 'Could not update homestead life');
       return false;
     } finally {
-      if (activeLandRef.current === landId && requestNonceRef.current === requestNonce) setBusy(false);
+      if (activeLandRef.current === landId && requestNonceRef.current === requestNonce) {
+        actionLockRef.current = false;
+        setBusy(false);
+      }
     }
   }, [busy, landId, showToast, state]);
 
