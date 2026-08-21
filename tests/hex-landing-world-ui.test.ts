@@ -25,7 +25,7 @@ test('premium landing composition keeps the world dominant and UI editorial', as
   assert.match(source, /from 'framer-motion'/);
   assert.match(source, /Explore the world/);
   assert.match(source, /pointer-events-none/);
-  assert.match(source, /initial=\{\{ opacity: 0, y: 16 \}\}/);
+  assert.match(source, /initial=\{\{ opacity: 0, y: prefersReducedMotion \? 0 : 16 \}\}/);
   assert.match(source, /whileHover=\{\{ scale: 1\.03 \}\}/);
   assert.doesNotMatch(source, /bg-gradient-to-r from-white\/35/);
   assert.doesNotMatch(source, /bg-white\/72/);
@@ -52,6 +52,26 @@ test('landing scroll story is continuous with the HexWorld atmosphere', async ()
   assert.doesNotMatch(source, /border-t/);
   assert.doesNotMatch(source, /divide-y/);
   assert.doesNotMatch(source, /fixed bottom-\[calc\(1\.15rem\+env\(safe-area-inset-bottom\)\)\]/);
+});
+
+test('cinematic living world adds restrained ambient motion and a direct signup path', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /useReducedMotion/);
+  assert.match(source, /CINEMATIC_MOTES/);
+  assert.match(source, /livingWorldDrift/);
+  assert.match(source, /atmosphereY/);
+  assert.match(source, /sunlightX/);
+  assert.match(source, /Create your world/);
+  assert.match(source, /href="\/signup"/);
+  assert.match(source, /Live homestead/);
+  assert.match(source, /repeat:\s*Infinity/);
+  assert.match(source, /prefersReducedMotion/);
+  assert.match(source, /style=\{\{ y: prefersReducedMotion \? 0 : atmosphereY \}\}/);
+  assert.match(source, /style=\{\{ x: prefersReducedMotion \? 0 : sunlightX \}\}/);
+  assert.match(source, /style=\{\{ opacity: prefersReducedMotion \? 1 : heroWorldOpacity, scale: prefersReducedMotion \? 1 : heroWorldScale \}\}/);
+  assert.match(source, /style=\{\{ opacity: prefersReducedMotion \? 1 : heroUiOpacity, y: prefersReducedMotion \? 0 : heroUiY \}\}/);
+  assert.doesNotMatch(source, /filter:\s*blur\(/);
 });
 
 test('HexWorld loading keeps the real world renderer visible behind product-aligned loading chrome', async () => {
