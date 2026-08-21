@@ -3,6 +3,7 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { HexMotionProfile } from '@/lib/hex-world/motion';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 
 function hashRatio(value: string): number {
@@ -14,7 +15,7 @@ function hashRatio(value: string): number {
   return (hash >>> 0) / 0xffffffff;
 }
 
-export function HexWorldParticles({ seed, profile }: { seed: string; profile: HexQualityProfile }) {
+export function HexWorldParticles({ seed, profile, motionProfile }: { seed: string; profile: HexQualityProfile; motionProfile: HexMotionProfile }) {
   const ref = useRef<THREE.Points>(null);
   const positions = useMemo(() => {
     const array = new Float32Array(profile.particleCount * 3);
@@ -30,9 +31,9 @@ export function HexWorldParticles({ seed, profile }: { seed: string; profile: He
 
   useFrame(({ clock }) => {
     const points = ref.current;
-    if (!points) return;
-    points.rotation.y = clock.elapsedTime * 0.012 * profile.windStrength;
-    points.position.y = Math.sin(clock.elapsedTime * 0.22) * 0.08;
+    if (!points || motionProfile.ambientScale <= 0 || document.visibilityState === 'hidden') return;
+    points.rotation.y = clock.elapsedTime * 0.012 * profile.windStrength * motionProfile.ambientScale;
+    points.position.y = Math.sin(clock.elapsedTime * 0.22) * 0.08 * motionProfile.ambientScale;
   });
 
   return (
