@@ -78,6 +78,20 @@ test('crop visual samples are deterministic bounded and anchored to visible gard
   assert.ok(first.every((sample) => sample.progress >= 0 && sample.progress <= 1));
 });
 
+test('crop presentation never stacks more than six samples on one visible garden patch', () => {
+  let state = createInitialFamilyFarmState();
+  const crops = ['carrot', 'carrot', 'carrot', 'carrot', 'carrot', 'carrot', 'lettuce', 'lettuce'] as const;
+  crops.forEach((cropKey, index) => {
+    state = performFarmAction(state, { type: 'plant', plotId: `plot-${index + 1}`, cropKey }).state;
+  });
+
+  const garden: HexBuildingDTO = { id: 'garden-one', worldId: 'world', buildingKey: 'garden_patch', anchorQ: 0, anchorR: 1, rotation: 0 };
+  const samples = getCropVisualSamples(state, [garden], 12);
+
+  assert.equal(samples.length, 6);
+  assert.deepEqual(samples.map((sample) => sample.slot), [0, 1, 2, 3, 4, 5]);
+});
+
 test('weather presentation stays small stable and UI ready', () => {
   assert.deepEqual(getWeatherPresentation('sunny'), { label: 'Sunny', emoji: '☀️' });
   assert.deepEqual(getWeatherPresentation('cloudy'), { label: 'Cloudy', emoji: '☁️' });
