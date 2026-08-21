@@ -10,6 +10,11 @@ export type HexQualityProfile = {
   particleCount: 180 | 90 | 36;
   windStrength: 1 | 0.55 | 0.2;
   waterDetail: 'full' | 'reduced' | 'basic';
+  vegetationMotion: 'full' | 'reduced' | 'minimal';
+  placementParticleCount: 20 | 10 | 4;
+  waterGlintCount: 3 | 1 | 0;
+  cloudParallaxScale: 1 | 0.6 | 0.25;
+  materialVariation: 'full' | 'reduced';
 };
 
 const HIGH: HexQualityProfile = {
@@ -22,6 +27,11 @@ const HIGH: HexQualityProfile = {
   particleCount: 180,
   windStrength: 1,
   waterDetail: 'full',
+  vegetationMotion: 'full',
+  placementParticleCount: 20,
+  waterGlintCount: 3,
+  cloudParallaxScale: 1,
+  materialVariation: 'full',
 };
 
 const MEDIUM: HexQualityProfile = {
@@ -34,6 +44,11 @@ const MEDIUM: HexQualityProfile = {
   particleCount: 90,
   windStrength: 0.55,
   waterDetail: 'reduced',
+  vegetationMotion: 'reduced',
+  placementParticleCount: 10,
+  waterGlintCount: 1,
+  cloudParallaxScale: 0.6,
+  materialVariation: 'reduced',
 };
 
 const MOBILE: HexQualityProfile = {
@@ -46,6 +61,11 @@ const MOBILE: HexQualityProfile = {
   particleCount: 36,
   windStrength: 0.2,
   waterDetail: 'basic',
+  vegetationMotion: 'minimal',
+  placementParticleCount: 4,
+  waterGlintCount: 0,
+  cloudParallaxScale: 0.25,
+  materialVariation: 'reduced',
 };
 
 export function resolveHexQualityProfile(input: {
