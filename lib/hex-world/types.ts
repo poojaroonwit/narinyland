@@ -11,6 +11,10 @@ export type HexWorldErrorCode =
   | 'building_not_found'
   | 'home_locked'
   | 'expansion_not_available'
+  | 'expansion_not_found'
+  | 'expansion_overlap'
+  | 'expansion_disconnected'
+  | 'expansion_has_buildings'
   | 'not_enough_points'
   | 'land_access_denied'
   | 'undo_unavailable'
@@ -44,6 +48,23 @@ export type HexExpansionDTO = {
   eligible: boolean;
 };
 
+export type HexPurchasedExpansionDTO = {
+  expansionKey: string;
+  tier: 1 | 2 | 3;
+  pointCost: number;
+  tiles: HexCoord[];
+  hasBuildings: boolean;
+  movable: boolean;
+};
+
+export type HexExpansionPlacementPreview = {
+  expansionKey: string;
+  tier: 1 | 2 | 3;
+  tiles: HexCoord[];
+  valid: boolean;
+  mode: 'purchase' | 'move';
+};
+
 export type HexWorldMetadata = {
   id: string;
   landId: string;
@@ -59,6 +80,7 @@ export type HexWorldSnapshot = {
   tiles: HexTileDTO[];
   buildings: HexBuildingDTO[];
   expansions: HexExpansionDTO[];
+  purchasedExpansions?: HexPurchasedExpansionDTO[];
   points: number;
 };
 
