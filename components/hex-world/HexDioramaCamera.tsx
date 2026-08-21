@@ -7,20 +7,26 @@ import * as THREE from 'three';
 import {
   getBuildCameraPose,
   getFocusCameraPose,
+  getOpeningCameraPose,
   getOverviewCameraPose,
   getUnlockedIslandBounds,
   type HexCameraIntent,
 } from '@/lib/hex-world/camera';
+import { expSmoothingAlpha, type HexMotionProfile } from '@/lib/hex-world/motion';
 import type { HexCoord, HexTileDTO } from '@/lib/hex-world/types';
 
 export function HexDioramaCamera({
   tiles,
   intent,
+  motionProfile,
+  reducedMotion,
   resetNonce = 0,
   reframeCoords = [],
 }: {
   tiles: HexTileDTO[];
   intent: HexCameraIntent;
+  motionProfile: HexMotionProfile;
+  reducedMotion: boolean;
   resetNonce?: number;
   reframeCoords?: HexCoord[];
 }) {
@@ -32,27 +38,33 @@ export function HexDioramaCamera({
   const pose = useMemo(() => {
     const aspect = size.height > 0 ? size.width / size.height : 1;
     if (intent.kind === 'focus') return getFocusCameraPose(bounds, intent.coord, aspect);
-    if (intent.kind === 'build') return getBuildCameraPose(bounds, intent.anchor, aspect);
+    if (intent.kind === 'build') return getBuildCameraPose(bounds, aspect);
     return getOverviewCameraPose(bounds, aspect);
   }, [bounds, intent, size.height, size.width, resetNonce, reframeCoords]);
 
   useLayoutEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
-    scriptedMotion.current = true;
+
     if (!mounted.current) {
-      camera.position.set(...pose.position);
+      const aspect = size.height > 0 ? size.width / size.height : 1;
+      const overview = getOverviewCameraPose(bounds, aspect);
+      const initial = reducedMotion ? pose : getOpeningCameraPose(overview);
+      camera.position.set(...initial.position);
       controls.target.set(...pose.target);
       controls.update();
       mounted.current = true;
-      scriptedMotion.current = false;
+      scriptedMotion.current = !reducedMotion;
+      return;
     }
-  }, [camera, pose]);
+
+    scriptedMotion.current = true;
+  }, [bounds, camera, pose, reducedMotion, size.height, size.width]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
     if (!controls || !scriptedMotion.current) return;
-    const alpha = 1 - Math.exp(-delta * 5.2);
+    const alpha = expSmoothingAlpha(delta, motionProfile.cameraResponse);
     const desiredPosition = new THREE.Vector3(...pose.position);
     const desiredTarget = new THREE.Vector3(...pose.target);
     camera.position.lerp(desiredPosition, alpha);

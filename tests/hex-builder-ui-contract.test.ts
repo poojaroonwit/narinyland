@@ -39,3 +39,11 @@ test('build mode places on valid tile click while move mode keeps explicit confi
   assert.match(placementBar, /mode === 'moving'/);
   assert.match(placementBar, /Move here/);
 });
+
+test('confirmed building mutations create presentation-only visual events', async () => {
+  const controller = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
+  assert.match(controller, /new Set\(snapshot\.buildings\.map\(\(building\) => building\.id\)\)/);
+  assert.match(controller, /confirmed\.snapshot\.buildings\.find/);
+  assert.match(controller, /setVisualEvent/);
+  assert.match(controller, /invalidPulseNonce/);
+});

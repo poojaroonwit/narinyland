@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { axialToWorld } from '@/lib/hex-world/hex-grid';
-import { getHexTileTransform, hexRotationToRadians } from '@/lib/hex-world/rendering';
+import { getHexTileTransform, getTerrainDisplayColor, hexRotationToRadians } from '@/lib/hex-world/rendering';
 
 test('tile transform uses axial coordinate and stored height', () => {
   const transform = getHexTileTransform({ q: 2, r: -1, height: 0.3 });
@@ -12,6 +12,14 @@ test('tile transform uses axial coordinate and stored height', () => {
 
 test('rotation 3 maps to half-turn yaw', () => {
   assert.equal(hexRotationToRadians(3), Math.PI);
+});
+
+test('terrain display variation is deterministic and subtle', () => {
+  const a = getTerrainDisplayColor({ terrainType: 'grass', q: 2, r: 3, state: 'normal', materialVariation: 'full' });
+  const b = getTerrainDisplayColor({ terrainType: 'grass', q: 2, r: 3, state: 'normal', materialVariation: 'full' });
+  const c = getTerrainDisplayColor({ terrainType: 'grass', q: 8, r: -3, state: 'normal', materialVariation: 'full' });
+  assert.equal(a, b);
+  assert.notEqual(a, c);
 });
 
 test('hex tiles and ambient decor are rendered with instancing and no character controller', async () => {

@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { axialToWorld } from '@/lib/hex-world/hex-grid';
+import { deterministicMotionBucket, type HexMotionProfile } from '@/lib/hex-world/motion';
+import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
 
 type Placement = { x: number; y: number; z: number; scale?: number; rotation?: number };
@@ -12,20 +15,9 @@ function getPlacement(tile: HexTileDTO, yOffset = 0): Placement {
   return { x: world.x, y: world.y, z: world.z, rotation: ((tile.q * 17 + tile.r * 11) % 12) * 0.17 };
 }
 
-function InstanceBatch({
-  placements,
-  children,
-  castShadow = false,
-  receiveShadow = false,
-}: {
-  placements: Placement[];
-  children: React.ReactNode;
-  castShadow?: boolean;
-  receiveShadow?: boolean;
-}) {
+function InstanceBatch({ placements, children, castShadow = false, receiveShadow = false }: { placements: Placement[]; children: React.ReactNode; castShadow?: boolean; receiveShadow?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
@@ -38,19 +30,74 @@ function InstanceBatch({
     });
     mesh.instanceMatrix.needsUpdate = true;
   }, [dummy, placements]);
+  if (placements.length === 0) return null;
+  return <instancedMesh ref={ref} args={[undefined, undefined, placements.length]} castShadow={castShadow} receiveShadow={receiveShadow}>{children}</instancedMesh>;
+}
+
+function SwayInstanceBatch({
+  placements,
+  children,
+  bucketIndex,
+  amplitude,
+  speed,
+  motionProfile,
+  castShadow = false,
+  receiveShadow = false,
+}: {
+  placements: Placement[];
+  children: React.ReactNode;
+  bucketIndex: number;
+  amplitude: number;
+  speed: number;
+  motionProfile: HexMotionProfile;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const applyTransforms = (sway = 0) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    placements.forEach((placement, index) => {
+      dummy.position.set(placement.x, placement.y, placement.z);
+      dummy.rotation.set(sway * 0.35, placement.rotation ?? 0, sway);
+      dummy.scale.setScalar(placement.scale ?? 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+
+  useLayoutEffect(() => {
+    applyTransforms(0);
+  // applyTransforms intentionally derives from stable placement and dummy refs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placements]);
+
+  useFrame(({ clock }) => {
+    if (motionProfile.ambientScale <= 0 || document.visibilityState === 'hidden') return;
+    const phase = bucketIndex * 1.73;
+    const sway = Math.sin(clock.elapsedTime * speed + phase) * amplitude * motionProfile.ambientScale;
+    applyTransforms(sway);
+  });
 
   if (placements.length === 0) return null;
   return <instancedMesh ref={ref} args={[undefined, undefined, placements.length]} castShadow={castShadow} receiveShadow={receiveShadow}>{children}</instancedMesh>;
 }
 
-export function HexAmbientDecor({ tiles }: { tiles: HexTileDTO[] }) {
+function tileBuckets(tiles: HexTileDTO[], prefix: string, count: number) {
+  const buckets = Array.from({ length: count }, () => [] as HexTileDTO[]);
+  for (const tile of tiles) buckets[deterministicMotionBucket(`${prefix}:${tile.q}:${tile.r}`, count)].push(tile);
+  return buckets;
+}
+
+export function HexAmbientDecor({ tiles, profile, motionProfile }: { tiles: HexTileDTO[]; profile: HexQualityProfile; motionProfile: HexMotionProfile }) {
   const decor = useMemo(() => {
     const trees: HexTileDTO[] = [];
     const rocks: HexTileDTO[] = [];
     const flowers: HexTileDTO[] = [];
     const paths: HexTileDTO[] = [];
     const gardens: HexTileDTO[] = [];
-
     for (const tile of tiles) {
       const decorType = tile.metadata?.decor;
       const feature = tile.metadata?.feature;
@@ -63,32 +110,31 @@ export function HexAmbientDecor({ tiles }: { tiles: HexTileDTO[] }) {
     return { trees, rocks, flowers, paths, gardens };
   }, [tiles]);
 
-  const treeTrunks = decor.trees.map((tile) => ({ ...getPlacement(tile, 0.46), scale: 0.9 }));
-  const treeCanopies = decor.trees.map((tile) => ({ ...getPlacement(tile, 1.25), scale: 0.68 + ((Math.abs(tile.q + tile.r) % 3) * 0.06) }));
+  const bucketCount = profile.vegetationMotion === 'full' ? 4 : profile.vegetationMotion === 'reduced' ? 2 : 1;
+  const treeBuckets = tileBuckets(decor.trees, 'tree', bucketCount);
+  const flowerBuckets = tileBuckets(decor.flowers, 'flower', bucketCount);
+  const gardenBuckets = tileBuckets(decor.gardens, 'garden', bucketCount);
   const rockPlacements = decor.rocks.map((tile) => ({ ...getPlacement(tile, 0.25), scale: 0.32 + ((Math.abs(tile.q * 3 + tile.r) % 4) * 0.05) }));
-  const flowerStems = decor.flowers.flatMap((tile) => [-0.22, 0, 0.22].map((offset, index) => {
-    const position = getPlacement(tile, 0.18);
-    return { ...position, x: position.x + offset, z: position.z + (index - 1) * 0.08, scale: 0.85 };
-  }));
-  const flowerHeads = decor.flowers.flatMap((tile) => [-0.22, 0, 0.22].map((offset, index) => {
-    const position = getPlacement(tile, 0.43);
-    return { ...position, x: position.x + offset, z: position.z + (index - 1) * 0.08, scale: 0.12 };
-  }));
   const pathPlacements = decor.paths.map((tile) => ({ ...getPlacement(tile, 0.08), scale: 0.7 }));
-  const gardenSprouts = decor.gardens.flatMap((tile) => [-0.24, 0, 0.24].map((offset, index) => {
-    const position = getPlacement(tile, 0.2);
-    return { ...position, x: position.x + offset, z: position.z + (index - 1) * 0.12, scale: 0.16 };
-  }));
 
   return (
     <group>
-      <InstanceBatch placements={treeTrunks} castShadow><cylinderGeometry args={[0.13, 0.2, 0.92, 7]} /><meshStandardMaterial color="#876548" roughness={0.98} /></InstanceBatch>
-      <InstanceBatch placements={treeCanopies} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#789b63" roughness={0.94} /></InstanceBatch>
+      {treeBuckets.map((bucket, index) => {
+        const trunks = bucket.map((tile) => ({ ...getPlacement(tile, 0.46), scale: 0.9 }));
+        const canopies = bucket.map((tile) => ({ ...getPlacement(tile, 1.25), scale: 0.68 + ((Math.abs(tile.q + tile.r) % 3) * 0.06) }));
+        return <React.Fragment key={`tree-${index}`}><SwayInstanceBatch placements={trunks} bucketIndex={index} amplitude={0.005} speed={0.75} motionProfile={motionProfile} castShadow><cylinderGeometry args={[0.13, 0.2, 0.92, 7]} /><meshStandardMaterial color="#876548" roughness={0.96} /></SwayInstanceBatch><SwayInstanceBatch placements={canopies} bucketIndex={index} amplitude={0.018} speed={0.75} motionProfile={motionProfile} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#789b63" roughness={0.9} /></SwayInstanceBatch></React.Fragment>;
+      })}
+      {flowerBuckets.map((bucket, index) => {
+        const stems = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.18); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.85 }; }));
+        const heads = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.43); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.12 }; }));
+        return <React.Fragment key={`flower-${index}`}><SwayInstanceBatch placements={stems} bucketIndex={index} amplitude={0.009} speed={1.1} motionProfile={motionProfile}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color="#658653" roughness={1} /></SwayInstanceBatch><SwayInstanceBatch placements={heads} bucketIndex={index} amplitude={0.012} speed={1.1} motionProfile={motionProfile}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color="#e9a3b0" roughness={0.88} /></SwayInstanceBatch></React.Fragment>;
+      })}
+      {gardenBuckets.map((bucket, index) => {
+        const sprouts = bucket.flatMap((tile) => [-0.24, 0, 0.24].map((offset, itemIndex) => { const p = getPlacement(tile, 0.2); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.12, scale: 0.16 }; }));
+        return <SwayInstanceBatch key={`garden-${index}`} placements={sprouts} bucketIndex={index} amplitude={0.01} speed={0.95} motionProfile={motionProfile}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color="#6d9659" roughness={0.92} /></SwayInstanceBatch>;
+      })}
       <InstanceBatch placements={rockPlacements} castShadow receiveShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#94948b" roughness={1} /></InstanceBatch>
-      <InstanceBatch placements={flowerStems}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color="#658653" roughness={1} /></InstanceBatch>
-      <InstanceBatch placements={flowerHeads}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color="#e9a3b0" roughness={0.9} /></InstanceBatch>
       <InstanceBatch placements={pathPlacements} receiveShadow><cylinderGeometry args={[0.55, 0.6, 0.12, 8]} /><meshStandardMaterial color="#b5b1a6" roughness={1} /></InstanceBatch>
-      <InstanceBatch placements={gardenSprouts}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color="#6d9659" roughness={1} /></InstanceBatch>
     </group>
   );
 }
