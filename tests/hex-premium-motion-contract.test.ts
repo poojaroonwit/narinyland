@@ -97,6 +97,13 @@ test('placement effect origin narrows rotation-only events before reading coord'
   assert.match(helper, /event\.kind === 'rotated'/);
 });
 
+test('reduced motion preference is resolved synchronously on the first client render', async () => {
+  const hook = await source('../components/hex-world/useReducedHexMotion.ts');
+  assert.match(hook, /useState\(\(\) =>/);
+  assert.match(hook, /typeof window !== ['"]undefined['"]/);
+  assert.match(hook, /matchMedia\(['"]\(prefers-reduced-motion: reduce\)['"]\)\.matches/);
+});
+
 test('world resolves reduced motion once and children consume the resolved profile', async () => {
   const world = await source('../components/hex-world/HexWorld3D.tsx');
   const childPaths = [
