@@ -1,3 +1,4 @@
+// Progression v2 contracts intentionally land before production implementation.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
