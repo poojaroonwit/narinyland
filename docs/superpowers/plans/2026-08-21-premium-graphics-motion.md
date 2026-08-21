@@ -4,7 +4,7 @@
 
 **Goal:** Upgrade the existing `/garden` floating HexWorld into a more premium, alive miniature-diorama experience with richer materials, restrained world motion, tactile placement feedback, stable camera behavior, and preserved mobile performance.
 
-**Architecture:** Extend the existing Phase 2 scene modules rather than rewriting the renderer. Keep animation inside focused Three scene components via `useFrame`, refs, deterministic helpers, and semantic triggers from `HexBuildController`; keep server authority, click-to-place, Undo, Land isolation, and persistence unchanged.
+**Architecture:** Extend the existing Phase 2 scene modules rather than rewriting the renderer. Keep frame animation inside focused Three scene components via `useFrame`, refs, deterministic helpers, and semantic visual events from `HexBuildController`; keep server authority, click-to-place, Undo, Land isolation, persistence, and existing backend APIs unchanged.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript, Three.js 0.182, `@react-three/fiber` 9.5, `@react-three/drei` 10.7, Node test runner + `tsx`, Prisma/Postgres, Redis integration CI.
 
@@ -33,6 +33,7 @@
 ### New files
 
 - `lib/hex-world/motion.ts` — pure motion constants, interpolation helpers, deterministic phase/bucket helpers, reduced-motion profile resolution.
+- `lib/hex-world/visual-events.ts` — typed presentation-only confirmed visual events shared between controller and scene.
 - `components/hex-world/useReducedHexMotion.ts` — one client media-query resolver for reduced motion.
 - `components/hex-world/HexPlacementEffects.tsx` — bounded visual-only confirmed Place/Move/Expand particle/mist effects.
 - `tests/hex-motion.test.ts` — pure motion helper tests.
@@ -104,7 +105,7 @@
 
 - [ ] **Step 1: Write failing pure motion tests**
 
-Add `tests/hex-motion.test.ts`:
+Create `tests/hex-motion.test.ts`:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -124,6 +125,10 @@ test('motion buckets are deterministic and bounded', () => {
   assert.ok(bucket >= 0 && bucket < 4);
 });
 
+test('motion bucket rejects an invalid bucket count', () => {
+  assert.throws(() => deterministicMotionBucket('tree:0:0', 0), /bucketCount/);
+});
+
 test('reduced motion collapses decorative travel but keeps feedback response', () => {
   const quality = resolveHexQualityProfile({ graphicsQuality: 'high', viewportWidth: 1440 });
   const profile = resolveHexMotionProfile({ quality, reducedMotion: true });
@@ -139,7 +144,7 @@ test('exponential smoothing alpha is frame-rate safe', () => {
 });
 ```
 
-Extend `tests/hex-quality.test.ts` high/mobile assertions:
+Extend `tests/hex-quality.test.ts` with high/mobile assertions:
 
 ```ts
 assert.equal(profile.vegetationMotion, 'full');
@@ -147,7 +152,7 @@ assert.equal(profile.placementParticleCount, 20);
 assert.equal(profile.waterGlintCount, 3);
 ```
 
-and for mobile:
+and:
 
 ```ts
 assert.equal(profile.vegetationMotion, 'minimal');
@@ -157,19 +162,17 @@ assert.ok(profile.placementParticleCount <= 4);
 
 - [ ] **Step 2: Run RED**
 
-Run:
-
 ```bash
 node --import tsx --test tests/hex-motion.test.ts tests/hex-quality.test.ts
 ```
 
-Expected: FAIL because `lib/hex-world/motion.ts` and new quality fields do not exist.
+Expected: FAIL because `lib/hex-world/motion.ts` and the new quality fields do not exist.
 
-- [ ] **Step 3: Implement minimal pure motion module and quality fields**
+- [ ] **Step 3: Implement minimal motion module and quality fields**
 
-Use a stable FNV-style integer hash similar to existing particle seeding; phase is `(hash >>> 0) / 0xffffffff * Math.PI * 2`. `deterministicMotionBucket` must throw for `bucketCount < 1` and return `Math.floor(ratio * bucketCount) % bucketCount`.
+Use a stable FNV-style integer hash similar to existing particle seeding. Phase is `(hash >>> 0) / 0xffffffff * Math.PI * 2`. `deterministicMotionBucket` must throw for `bucketCount < 1` and return a value in `[0, bucketCount)`.
 
-Use:
+Implement:
 
 ```ts
 export function expSmoothingAlpha(delta: number, response: number) {
@@ -177,7 +180,7 @@ export function expSmoothingAlpha(delta: number, response: number) {
 }
 ```
 
-Recommended normal profile values:
+Normal profile values:
 
 ```ts
 {
@@ -193,7 +196,7 @@ Recommended normal profile values:
 }
 ```
 
-Reduced profile keeps quick state response but removes decorative travel:
+Reduced profile:
 
 ```ts
 {
@@ -209,7 +212,7 @@ Reduced profile keeps quick state response but removes decorative travel:
 }
 ```
 
-`useReducedHexMotion()` should subscribe to `window.matchMedia('(prefers-reduced-motion: reduce)')`, support modern `addEventListener('change', ...)`, and clean up on unmount.
+`useReducedHexMotion()` subscribes to `window.matchMedia('(prefers-reduced-motion: reduce)')`, reads `.matches`, handles `change`, and removes the listener on unmount.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -228,34 +231,52 @@ git commit -m "feat: add hex motion profiles"
 
 ---
 
-### Task 2: Premium Camera Settle and Build-Stable Framing
+### Task 2: Premium Opening Camera and Build-Stable Framing
 
 **Files:**
 - Modify: `lib/hex-world/camera.ts`
 - Modify: `components/hex-world/HexDioramaCamera.tsx`
 - Modify: `tests/hex-camera.test.ts`
-- Modify: `tests/hex-premium-motion-contract.test.ts` (create in this task)
+- Create: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- `getBuildCameraPose(bounds, aspect)` must no longer depend on the hover anchor.
+- Change build helper to:
+  ```ts
+  export function getBuildCameraPose(bounds: HexIslandBounds, aspect: number): HexCameraPose;
+  ```
+- Add:
+  ```ts
+  export function getOpeningCameraPose(overview: HexCameraPose): HexCameraPose;
+  ```
 - `HexDioramaCamera` consumes `motionProfile: HexMotionProfile` and `reducedMotion: boolean`.
 
 - [ ] **Step 1: Write RED camera tests**
 
-In `tests/hex-camera.test.ts`, add:
+In `tests/hex-camera.test.ts`, add explicit sample data locally:
 
 ```ts
-test('build framing is stable across hover coordinates', () => {
-  const bounds = getUnlockedIslandBounds(sampleTiles);
-  const first = getBuildCameraPose(bounds, 16 / 9);
-  const second = getBuildCameraPose(bounds, 16 / 9);
-  assert.deepEqual(first, second);
+import type { HexTileDTO } from '@/lib/hex-world/types';
+
+const motionTiles = [
+  { q: 0, r: 0, height: 0, unlocked: true, terrainType: 'grass' },
+  { q: 4, r: -2, height: 0.15, unlocked: true, terrainType: 'grass' },
+] as HexTileDTO[];
+
+test('build framing is derived from island bounds instead of hover anchor', () => {
+  const bounds = getUnlockedIslandBounds(motionTiles);
+  const pose = getBuildCameraPose(bounds, 16 / 9);
+  assert.deepEqual(pose.target, getOverviewCameraPose(bounds, 16 / 9).target);
+});
+
+test('opening pose starts wider and higher than final overview', () => {
+  const overview = getOverviewCameraPose(getUnlockedIslandBounds(motionTiles), 16 / 9);
+  const opening = getOpeningCameraPose(overview);
+  assert.ok(opening.distance > overview.distance);
+  assert.ok(opening.position[1] > overview.position[1]);
 });
 ```
 
-Update imports/signature so `getBuildCameraPose(bounds, aspect)` is the desired API.
-
-Create `tests/hex-premium-motion-contract.test.ts` with:
+Create `tests/hex-premium-motion-contract.test.ts`:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -267,8 +288,9 @@ const source = (path: string) => readFile(new URL(path, import.meta.url), 'utf8'
 test('build camera does not chase hovered placement anchor', async () => {
   const camera = await source('../components/hex-world/HexDioramaCamera.tsx');
   const math = await source('../lib/hex-world/camera.ts');
-  assert.doesNotMatch(math, /getBuildCameraPose\([^)]*anchor/);
+  assert.doesNotMatch(math, /function getBuildCameraPose\([^)]*anchor/);
   assert.match(camera, /motionProfile/);
+  assert.match(camera, /getOpeningCameraPose/);
 });
 ```
 
@@ -278,35 +300,35 @@ test('build camera does not chase hovered placement anchor', async () => {
 node --import tsx --test tests/hex-camera.test.ts tests/hex-premium-motion-contract.test.ts
 ```
 
-Expected: FAIL because current build camera accepts `anchor` and camera has no motion profile.
+Expected: FAIL because current Build camera accepts `anchor`, opening pose does not exist, and camera has no motion profile.
 
-- [ ] **Step 3: Implement stable Build framing**
+- [ ] **Step 3: Implement stable Build framing and opening reveal**
 
-Change `HexCameraIntent` to keep semantic `anchor` if other UI relies on it, but `HexDioramaCamera` must call:
-
-```ts
-getBuildCameraPose(bounds, aspect)
-```
-
-Build pose should start from Overview and tighten slightly without changing target per hover:
+Build pose starts from Overview and tightens slightly without changing target per hover:
 
 ```ts
-const overview = getOverviewCameraPose(bounds, aspect);
-const distance = Math.max(11, overview.distance * 0.9);
-return {
-  target: overview.target,
-  position: [
-    overview.target[0] + distance * 0.52,
-    overview.target[1] + distance * 0.72,
-    overview.target[2] + distance * 0.66,
-  ],
-  distance,
-};
+export function getBuildCameraPose(bounds: HexIslandBounds, aspect: number): HexCameraPose {
+  const overview = getOverviewCameraPose(bounds, aspect);
+  const distance = Math.max(11, overview.distance * 0.9);
+  return {
+    target: overview.target,
+    position: [
+      overview.target[0] + distance * 0.52,
+      overview.target[1] + distance * 0.72,
+      overview.target[2] + distance * 0.66,
+    ],
+    distance,
+  };
+}
 ```
 
-Use `expSmoothingAlpha(delta, motionProfile.cameraResponse)` in `useFrame` instead of hard-coded `5.2`.
+Opening pose scales the overview camera vector away from target by about `1.12` and adds about `0.8` world units to Y. `distance` must be `overview.distance * 1.12`.
 
-For reduced motion, set initial and subsequent scripted poses directly or use the high response from the resolved profile. User orbit `onStart` must still cancel scripted travel.
+On first mount:
+- reduced motion: set final pose immediately;
+- normal motion: set camera to opening pose, controls target to final overview target, leave `scriptedMotion.current = true`, and interpolate into final pose.
+
+Use `expSmoothingAlpha(delta, motionProfile.cameraResponse)` instead of hard-coded `5.2`. User orbit `onStart` still cancels scripted travel.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -320,7 +342,7 @@ Expected: PASS.
 
 ```bash
 git add lib/hex-world/camera.ts components/hex-world/HexDioramaCamera.tsx tests/hex-camera.test.ts tests/hex-premium-motion-contract.test.ts
-git commit -m "feat: stabilize premium build camera"
+git commit -m "feat: refine premium hex camera"
 ```
 
 ---
@@ -334,7 +356,7 @@ git commit -m "feat: stabilize premium build camera"
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- Add pure helper in `rendering.ts`:
+- Add:
   ```ts
   export function getTerrainDisplayColor(input: {
     terrainType: HexTerrainType;
@@ -344,24 +366,28 @@ git commit -m "feat: stabilize premium build camera"
     materialVariation: 'full' | 'reduced';
   }): string;
   ```
-- `HexTileInstances` consumes `motionProfile` and quality profile.
+- `HexTileInstances` consumes `motionProfile: HexMotionProfile` and `profile: HexQualityProfile`.
 
-- [ ] **Step 1: Write RED tests for deterministic color variation and instancing preservation**
+- [ ] **Step 1: Write RED tests**
 
 Add to `tests/hex-world-rendering.test.ts`:
 
 ```ts
+import { getTerrainDisplayColor } from '@/lib/hex-world/rendering';
+
 test('terrain display variation is deterministic and subtle', () => {
   const a = getTerrainDisplayColor({ terrainType: 'grass', q: 2, r: 3, state: 'normal', materialVariation: 'full' });
   const b = getTerrainDisplayColor({ terrainType: 'grass', q: 2, r: 3, state: 'normal', materialVariation: 'full' });
+  const c = getTerrainDisplayColor({ terrainType: 'grass', q: 8, r: -3, state: 'normal', materialVariation: 'full' });
   assert.equal(a, b);
-  assert.notEqual(a, getTerrainDisplayColor({ terrainType: 'grass', q: 8, r: -3, state: 'normal', materialVariation: 'full' }));
+  assert.notEqual(a, c);
 });
 ```
 
 Add source contract:
 
 ```ts
+const tiles = await source('../components/hex-world/HexTileInstances.tsx');
 assert.match(tiles, /hoverResponse/);
 assert.match(tiles, /InstancedMesh/);
 assert.doesNotMatch(tiles, /<mesh\s+key=\{.*tile/);
@@ -373,15 +399,15 @@ assert.doesNotMatch(tiles, /<mesh\s+key=\{.*tile/);
 node --import tsx --test tests/hex-world-rendering.test.ts tests/hex-premium-motion-contract.test.ts
 ```
 
-Expected: FAIL because helper and animated hover response do not exist.
+Expected: FAIL because color helper and hover interpolation do not exist.
 
 - [ ] **Step 3: Implement deterministic material color and targeted instance animation**
 
-Keep one instanced mesh per terrain group. Store per-instance current Y/scale feedback in refs or recompute only the affected group. Hover target lift is `0.055`; selected target lift `0.035`; normal target `0`.
+Keep one instanced mesh per terrain group. Tone variation uses stable q/r hashing and stays within the spec envelopes: grass ±4–7%, soil ±4–6%, stone ±3–5% lightness/value. Interactive state colors override normal variation.
 
-Use `expSmoothingAlpha(delta, motionProfile.hoverResponse)` and mutate only matrices for the terrain batches while maintaining `instanceMatrix.needsUpdate` once per active frame.
+Hover target lift is `0.055`; selected target lift `0.035`; normal target `0`. Use `expSmoothingAlpha(delta, motionProfile.hoverResponse)`.
 
-Valid/invalid breathing may be a small color/selection-layer pulse rather than matrix scale. Do not animate every normal tile indefinitely.
+Do not animate every normal tile indefinitely. Keep frame work active only while a batch has hover/selection/rise state that is still converging.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -410,8 +436,8 @@ git commit -m "feat: polish hex terrain feedback"
 
 **Interfaces:**
 - Remove local `HEX_MOTION` timing constants from `HexSelectionEffects`.
-- `HexSelectionEffects` consumes `motionProfile` and `reducedMotion`.
-- Ghost preview group uses `motionProfile.ghostBobScale` and keeps `ghost` material semantics.
+- `HexSelectionEffects` consumes `motionProfile` and `invalidPulseNonce`.
+- Ghost preview uses `motionProfile.ghostBobScale` and retains existing `ghost` material semantics.
 
 - [ ] **Step 1: Write RED source contracts**
 
@@ -435,15 +461,15 @@ Expected: FAIL on shared motion ownership/ghost animation.
 
 - [ ] **Step 3: Implement ring and ghost animation**
 
-Selection ring uses one `group` ref. Pulse only opacity/scale in a restrained range, e.g. scale `1 → 1.025`; invalid pulse can be slightly faster. Use `useFrame`, no React state per frame.
+Selection ring uses one group/material ref. Pulse only opacity/scale in a restrained range, e.g. scale `1 → 1.025`; invalid pulse may be slightly faster. Use `useFrame`, not React state per frame.
 
-Move ghost preview into a small internal component inside `HexWorld3D` or focused file if it becomes >50 lines. Apply vertical bob:
+Move ghost preview into a focused internal `AnimatedBuildingPreview` component in `HexWorld3D.tsx`, or a new file only if it exceeds ~50 lines. Apply:
 
 ```ts
 const y = baseY + Math.sin(clock.elapsedTime * 1.6 + phase) * 0.02 * motionProfile.ghostBobScale;
 ```
 
-Invalid ghost keeps muted coral tint through existing ghost material path; do not add lights.
+Invalid ghost keeps muted coral tint through existing ghost material path; no dynamic light.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -462,9 +488,10 @@ git commit -m "feat: animate selection and build ghost"
 
 ---
 
-### Task 5: Smooth Building Selection, Rotation, and Server-Confirmed Placement Trigger
+### Task 5: Smooth Building Selection, Rotation, and Confirmed Visual Events
 
 **Files:**
+- Create: `lib/hex-world/visual-events.ts`
 - Modify: `components/hex-world/HexBuildings.tsx`
 - Modify: `components/hex-world/HexBuildController.tsx`
 - Modify: `components/hex-world/HexWorld3D.tsx`
@@ -472,15 +499,18 @@ git commit -m "feat: animate selection and build ghost"
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- `HexBuildController` adds presentation-only state:
+- Create shared type:
   ```ts
-  type HexConfirmedVisualEvent =
+  import type { HexCoord } from './types';
+
+  export type HexConfirmedVisualEvent =
     | { kind: 'placed'; buildingId: string; coord: HexCoord; nonce: number }
     | { kind: 'moved'; buildingId: string; coord: HexCoord; nonce: number }
     | { kind: 'rotated'; buildingId: string; nonce: number }
+    | { kind: 'expanded'; coords: HexCoord[]; nonce: number }
     | null;
   ```
-- It derives newly placed building id by comparing pre-request `snapshot.buildings` ids with `confirmed.snapshot.buildings` ids after server success. No API response change.
+- `HexBuildController` owns `visualEvent: HexConfirmedVisualEvent` and `visualEventNonceRef`.
 - `HexBuildings` consumes `visualEvent`, `motionProfile`, and `reducedMotion`.
 
 - [ ] **Step 1: Write RED contract tests**
@@ -490,15 +520,17 @@ In `tests/hex-builder-ui-contract.test.ts`, add:
 ```ts
 assert.match(controller, /new Set\(snapshot\.buildings\.map\(\(building\) => building\.id\)\)/);
 assert.match(controller, /confirmed\.snapshot\.buildings\.find/);
+assert.match(controller, /setVisualEvent/);
 ```
 
 In premium contract test:
 
 ```ts
 const buildings = await source('../components/hex-world/HexBuildings.tsx');
+const events = await source('../lib/hex-world/visual-events.ts').catch(() => '');
 assert.match(buildings, /useFrame/);
 assert.match(buildings, /visualEvent/);
-assert.doesNotMatch(buildings, /position=\{\[position\.x, position\.y \+ \(selected \? 0\.04 : 0\)/);
+assert.match(events, /HexConfirmedVisualEvent/);
 ```
 
 - [ ] **Step 2: Run RED**
@@ -507,19 +539,35 @@ assert.doesNotMatch(buildings, /position=\{\[position\.x, position\.y \+ \(selec
 node --import tsx --test tests/hex-builder-ui-contract.test.ts tests/hex-premium-motion-contract.test.ts
 ```
 
-Expected: FAIL because immediate transforms and no semantic event exist.
+Expected: FAIL because shared event type and animated building wrapper do not exist.
 
-- [ ] **Step 3: Implement smooth building transform ownership**
+- [ ] **Step 3: Implement semantic events after server confirmation**
 
-Create a focused per-building wrapper inside `HexBuildings.tsx`, e.g. `AnimatedHexBuilding`, with refs for current position/scale/yaw. Interpolate selection lift/scale using `motionProfile.selectResponse`.
+For Place, capture IDs before request:
 
-For server-confirmed placement event, initialize the new building visual at `targetY + 0.65` unless reduced motion, then settle over `placementDurationMs`. Rotation uses shortest 60° wrap and `rotationDurationMs`.
+```ts
+const previousIds = new Set(snapshot.buildings.map((building) => building.id));
+```
 
-On Land switch, `HexBuildController` already resets transient state; also set visual event to `null` in the same effect.
+After confirmed success, derive:
 
-Do not delay snapshot updates. Persistence state updates immediately after success; animation is only presentation.
+```ts
+const placed = confirmed.snapshot.buildings.find((building) => !previousIds.has(building.id));
+```
 
-- [ ] **Step 4: Run GREEN**
+Only then set `{ kind: 'placed', buildingId: placed.id, coord, nonce }`.
+
+Move/Rotate set their visual events only after their server calls succeed. Expansion event is set in `handleExpansionConfirmed`, also only after server success. Land-switch effect sets visual event to `null`.
+
+- [ ] **Step 4: Implement smooth building transform ownership**
+
+Create focused `AnimatedHexBuilding` inside `HexBuildings.tsx`, with refs for current position/scale/yaw. Selection uses `motionProfile.selectResponse`.
+
+For `placed`, initialize the visual at `targetY + 0.65` unless reduced motion and settle over `placementDurationMs`. For `moved`, use a smaller `+0.25` settle. Rotation interpolates the shortest expected 60° transition over `rotationDurationMs`.
+
+Do not delay snapshot updates: persisted state updates immediately after confirmed response; motion is presentation only.
+
+- [ ] **Step 5: Run GREEN**
 
 ```bash
 node --import tsx --test tests/hex-builder-ui-contract.test.ts tests/hex-premium-motion-contract.test.ts tests/hex-undo-ui-contract.test.ts
@@ -527,10 +575,10 @@ node --import tsx --test tests/hex-builder-ui-contract.test.ts tests/hex-premium
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add components/hex-world/HexBuildings.tsx components/hex-world/HexBuildController.tsx components/hex-world/HexWorld3D.tsx tests/hex-builder-ui-contract.test.ts tests/hex-premium-motion-contract.test.ts tests/hex-undo-ui-contract.test.ts
+git add lib/hex-world/visual-events.ts components/hex-world/HexBuildings.tsx components/hex-world/HexBuildController.tsx components/hex-world/HexWorld3D.tsx tests/hex-builder-ui-contract.test.ts tests/hex-premium-motion-contract.test.ts tests/hex-undo-ui-contract.test.ts
 git commit -m "feat: animate confirmed building actions"
 ```
 
@@ -556,12 +604,10 @@ git commit -m "feat: animate confirmed building actions"
     seed: string;
   }
   ```
-- Use one `points` draw call for transient dust/sparkle positions.
-- Invalid click does not produce a confirmed event and does not call API; it only bumps an `invalidPulseNonce` presentation value.
+- One `points` draw call for transient Place/Move particles.
+- Invalid clicks increment `invalidPulseNonce` but do not create a confirmed event and do not call API.
 
 - [ ] **Step 1: Write RED render-budget tests**
-
-Add:
 
 ```ts
 const placement = await source('../components/hex-world/HexPlacementEffects.tsx').catch(() => '');
@@ -572,6 +618,8 @@ assert.doesNotMatch(placement, /hexWorldAPI|fetch\(|prisma/);
 Premium contract:
 
 ```ts
+const world = await source('../components/hex-world/HexWorld3D.tsx');
+const controller = await source('../components/hex-world/HexBuildController.tsx');
 assert.match(world, /HexPlacementEffects/);
 assert.match(controller, /invalidPulseNonce/);
 ```
@@ -582,15 +630,19 @@ assert.match(controller, /invalidPulseNonce/);
 node --import tsx --test tests/hex-render-budget.test.ts tests/hex-premium-motion-contract.test.ts
 ```
 
-Expected: FAIL because placement effect module does not exist.
+Expected: FAIL because placement effect module and invalid pulse nonce do not exist.
 
-- [ ] **Step 3: Implement bounded effect pool**
+- [ ] **Step 3: Implement invalid pulse without mutation**
 
-Allocate a single `Float32Array` sized to the maximum High count (`20 * 3`). On each confirmed event, deterministically populate only `quality.placementParticleCount` positions around the action coordinate and animate elapsed life via one points material opacity/scale update. Do not create one React element per particle.
+Inside `confirmPlacementAt(coord)`, perform the existing client validation. On `!placement.ok`, increment `invalidPulseNonce` and return before `placementLockRef.current = true` or `hexWorldAPI.place`.
 
-Invalid pulse is rendered in `HexSelectionEffects` as a short opacity/scale pulse keyed by nonce; no camera shake.
+- [ ] **Step 4: Implement bounded effect pool**
 
-- [ ] **Step 4: Run GREEN**
+Allocate one `Float32Array` sized for High maximum (`20 * 3`). On confirmed Place/Move event, deterministically populate `quality.placementParticleCount` points around the action coordinate. Animate one points material opacity/size over event lifetime. Do not create one React element per particle.
+
+For `expanded`, this component may later render a low-count mist group in Task 10; keep the event switch exhaustive.
+
+- [ ] **Step 5: Run GREEN**
 
 ```bash
 node --import tsx --test tests/hex-render-budget.test.ts tests/hex-premium-motion-contract.test.ts tests/hex-builder-ui-contract.test.ts
@@ -598,7 +650,7 @@ node --import tsx --test tests/hex-render-budget.test.ts tests/hex-premium-motio
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add components/hex-world/HexPlacementEffects.tsx components/hex-world/HexWorld3D.tsx components/hex-world/HexBuildController.tsx components/hex-world/HexSelectionEffects.tsx tests/hex-render-budget.test.ts tests/hex-premium-motion-contract.test.ts tests/hex-builder-ui-contract.test.ts
@@ -615,8 +667,8 @@ git commit -m "feat: add tactile placement effects"
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- `HexAmbientDecor` consumes `profile` and `motionProfile`.
-- Trees/flowers/sprouts are assigned deterministic buckets with `deterministicMotionBucket(key, bucketCount)`.
+- `HexAmbientDecor` consumes `profile: HexQualityProfile` and `motionProfile: HexMotionProfile`.
+- Trees/flowers/sprouts use `deterministicMotionBucket(key, bucketCount)`.
 - Rocks/paths remain static.
 
 - [ ] **Step 1: Write RED contracts**
@@ -626,7 +678,8 @@ const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
 assert.match(ambient, /deterministicMotionBucket/);
 assert.match(ambient, /vegetationMotion/);
 assert.match(ambient, /motionProfile/);
-assert.doesNotMatch(ambient, /rocks[\s\S]*useFrame[\s\S]*rocks/);
+assert.match(ambient, /rocks/);
+assert.match(ambient, /paths/);
 ```
 
 - [ ] **Step 2: Run RED**
@@ -635,13 +688,15 @@ assert.doesNotMatch(ambient, /rocks[\s\S]*useFrame[\s\S]*rocks/);
 node --import tsx --test tests/hex-render-budget.test.ts tests/hex-premium-motion-contract.test.ts
 ```
 
-Expected: FAIL because ambient decor is currently static and has no quality-aware buckets.
+Expected: FAIL because ambient decor is static and has no quality-aware buckets.
 
 - [ ] **Step 3: Implement phase-bucket vegetation**
 
-Use 3–4 deterministic buckets for High, 2 for Medium, and 1 minimal/static bucket for Mobile. Prefer animating bucket parent groups where possible. Keep tree canopy amplitude larger than trunk; target canopy about `0.5°–1.5°`, trunk much smaller. Flowers/sprouts use lower amplitude.
+Use 4 deterministic motion buckets for High, 2 for Medium, and 1 minimal/static bucket for Mobile. Prefer grouping instanced batches by bucket so each bucket can rotate/translate as one parent rather than rebuilding every instance every frame.
 
-No motion for rocks or path placements. No random values during render.
+Tree canopy amplitude: roughly `0.5°–1.5°`; trunk much smaller. Flowers/sprouts lower amplitude. Rocks and paths stay outside animated groups.
+
+No `Math.random()` during render.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -673,9 +728,10 @@ git commit -m "feat: add bounded vegetation motion"
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- `HexSkyAtmosphere` consumes `motionProfile`; each bounded layer gets its own deterministic drift multiplier.
-- Keep exactly one directional light.
-- Model material changes remain local Three materials; no remote GLB requirement.
+- `HexSkyAtmosphere` consumes `motionProfile` and existing `profile`.
+- Each bounded cloud layer receives a separate deterministic drift multiplier.
+- Exactly one directional light remains.
+- Model material changes remain local Three materials; no mandatory remote model loading.
 
 - [ ] **Step 1: Write RED contracts**
 
@@ -688,7 +744,7 @@ assert.equal((lighting.match(/<directionalLight\b/g) ?? []).length, 1);
 assert.doesNotMatch(`${sky}\n${lighting}`, /EffectComposer|Bloom|DepthOfField|volumetric/i);
 ```
 
-Extend building-art test to require all existing catalog keys remain locally dispatched after material edits.
+Keep existing `tests/hex-building-art.test.ts` exact catalog/local-dispatch assertions and add no remote URL requirement.
 
 - [ ] **Step 2: Run RED**
 
@@ -698,13 +754,13 @@ node --import tsx --test tests/hex-building-art.test.ts tests/hex-render-budget.
 
 Expected: FAIL on new cloud/motion profile contract.
 
-- [ ] **Step 3: Implement visual tune**
+- [ ] **Step 3: Implement bounded parallax and material tune**
 
-Cloud layers retain current bounded count but use separate group refs/drift rates. Scale drift by `profile.cloudParallaxScale * motionProfile.ambientScale`.
+Retain current cloud count. Split cloud meshes into their existing layer identity and move layers at separate horizontal rates; add tiny vertical drift. Scale by `profile.cloudParallaxScale * motionProfile.ambientScale`. Reduced motion naturally drives ambient scale to zero.
 
-Tune lighting without new lights: warm directional key, cooler hemisphere fill, softer contact shadow balance. Keep emissive-only warm windows where already appropriate; do not add point lights.
+Tune lighting without adding lights: warm directional key, slightly cooler hemisphere fill, restrained contact shadow. Keep emissive-only warm windows; no point lights.
 
-Model materials should remain muted/coherent: cream/terracotta/moss/warm wood/stone. Adjust roughness/value rather than adding high-cost shaders.
+Adjust model material colors/roughness for coherent cream/terracotta/moss/warm wood/stone. Do not add shader dependencies.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -731,8 +787,8 @@ git commit -m "feat: refine sky lighting and materials"
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- `HexWaterSurface` consumes `motionProfile` and extended quality fields.
-- Use deterministic phase buckets; do not update each water tile with arbitrary phase every frame when a small number of bucket groups can create the impression.
+- `HexWaterSurface` consumes `motionProfile` and extended quality profile.
+- Uses deterministic phase buckets.
 - `waterGlintCount` is 3/1/0 for High/Medium/Mobile.
 
 - [ ] **Step 1: Write RED contracts**
@@ -754,7 +810,7 @@ Expected: FAIL because current water moves as one slab and does not use quality 
 
 - [ ] **Step 3: Implement asynchronous bounded water**
 
-Split water tiles into a small deterministic number of motion buckets. Apply tiny Y offset/scale or material opacity variation per bucket. Keep translucent turquoise, moderately high roughness, `depthWrite={false}`.
+Split water tiles into 3 motion buckets High, 2 Medium, 1 Mobile. Apply tiny Y/scale or opacity variation per bucket, not arbitrary per-tile frame updates. Keep translucent turquoise, moderately high roughness, `depthWrite={false}`.
 
 Render at most `profile.waterGlintCount` ring/glint meshes. Mobile renders zero glints and minimal motion.
 
@@ -786,19 +842,25 @@ git commit -m "feat: polish bounded pond motion"
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 
 **Interfaces:**
-- Existing `newlyAddedKeys` stays the semantic trigger for confirmed expansion.
-- Stagger order is deterministic from sorted `(q,r)` or stable phase helper.
+- Existing `newlyAddedKeys` remains the server-confirmed tile trigger.
+- `HexConfirmedVisualEvent` uses `{ kind: 'expanded', coords, nonce }` for mist effects.
+- Stagger order is deterministic from sorted `(q,r)`.
 - Expansion remains non-undoable.
 
-- [ ] **Step 1: Write RED expansion motion contracts**
+- [ ] **Step 1: Write RED expansion contracts**
 
-Add:
+In `tests/hex-premium-motion-contract.test.ts` add:
 
 ```ts
-assert.match(tiles, /stagger/);
-assert.match(effects, /expansion/);
-assert.match(controller, /setUndo\(null\)/);
-assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
+test('confirmed expansion uses deterministic stagger and visual-only mist', async () => {
+  const tiles = await source('../components/hex-world/HexTileInstances.tsx');
+  const effects = await source('../components/hex-world/HexPlacementEffects.tsx');
+  const controller = await source('../components/hex-world/HexBuildController.tsx');
+  assert.match(tiles, /stagger/i);
+  assert.match(effects, /expanded|expansion/i);
+  assert.match(controller, /setUndo\(null\)/);
+  assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
+});
 ```
 
 - [ ] **Step 2: Run RED**
@@ -807,13 +869,13 @@ assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
 node --import tsx --test tests/hex-expansion-ui-contract.test.ts tests/hex-premium-motion-contract.test.ts
 ```
 
-Expected: FAIL because rise animation has no deterministic per-tile stagger/mist effect contract.
+Expected: FAIL because rise animation has no deterministic per-tile stagger/mist contract.
 
 - [ ] **Step 3: Implement confirmed expansion sequence**
 
-Keep server success as the trigger. For each rise tile calculate a stable delay within roughly `0–180ms`; then use existing ease-out rise over remaining `motionProfile.expansionDurationMs`.
+After server success, sort new coords by `q` then `r`; derive each tile index delay in `0–180ms`. Existing rise uses that delay plus the remaining `motionProfile.expansionDurationMs` for ease-out.
 
-`HexPlacementEffects` may render a low-count mist/dust edge effect keyed by expansion event. Existing bounds-aware reframe remains; camera does not reframe when new tiles stay within safe bounds.
+`HexPlacementEffects` handles the `expanded` event with a low-count mist/dust effect at expansion edge. Existing bounds-aware `shouldReframeForCoords` remains the only reframe decision; no reframe when new tiles remain within safe bounds.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -832,14 +894,15 @@ git commit -m "feat: polish confirmed expansion motion"
 
 ---
 
-### Task 11: Wire Reduced Motion, Quality Profiles, and Page Visibility Across the Scene
+### Task 11: Central Reduced-Motion, Quality, and Visibility Wiring
 
 **Files:**
 - Modify: `components/hex-world/HexWorld3D.tsx`
-- Modify: all scene components touched above to receive shared profile rather than re-query media state
+- Modify: scene components touched above to receive the resolved profiles rather than querying media state independently
 - Modify: `tests/hex-premium-motion-contract.test.ts`
 - Modify: `tests/hex-render-budget.test.ts`
 - Modify: `tests/hex-phase2-acceptance.test.ts`
+- Modify: `tests/hex-builder-ui-contract.test.ts`
 
 **Interfaces:**
 - `HexWorld3D` is the single owner of:
@@ -847,21 +910,34 @@ git commit -m "feat: polish confirmed expansion motion"
   const reducedMotion = useReducedHexMotion();
   const motionProfile = resolveHexMotionProfile({ quality: profile, reducedMotion });
   ```
-- Child components receive resolved profiles via props.
-- Scene decorative loops should early-return or scale to zero when document is hidden/reduced motion as appropriate.
+- Child components receive `profile` / `motionProfile` via props.
+- Decorative frame loops may early-return when `document.visibilityState === 'hidden'`.
 
 - [ ] **Step 1: Write RED ownership/accessibility contracts**
 
 ```ts
-const world = await source('../components/hex-world/HexWorld3D.tsx');
-assert.match(world, /useReducedHexMotion/);
-assert.match(world, /resolveHexMotionProfile/);
-assert.equal((`${world}`.match(/matchMedia/g) ?? []).length, 0);
+test('world resolves reduced motion once and children consume the resolved profile', async () => {
+  const world = await source('../components/hex-world/HexWorld3D.tsx');
+  const childPaths = [
+    '../components/hex-world/HexDioramaCamera.tsx',
+    '../components/hex-world/HexTileInstances.tsx',
+    '../components/hex-world/HexSelectionEffects.tsx',
+    '../components/hex-world/HexAmbientDecor.tsx',
+    '../components/hex-world/HexSkyAtmosphere.tsx',
+    '../components/hex-world/HexWaterSurface.tsx',
+    '../components/hex-world/HexBuildings.tsx',
+    '../components/hex-world/HexPlacementEffects.tsx',
+  ];
+  assert.match(world, /useReducedHexMotion/);
+  assert.match(world, /resolveHexMotionProfile/);
+  for (const path of childPaths) {
+    const child = await source(path);
+    assert.doesNotMatch(child, /matchMedia\(/);
+  }
+});
 ```
 
-Search touched scene components and assert they do not independently call `matchMedia`.
-
-Add acceptance assertion that click-to-place contract still exists and there is still no `Place` confirm button.
+Extend `tests/hex-builder-ui-contract.test.ts` to keep the click-to-place assertions and `assert.doesNotMatch(placementBar, />Place</)`.
 
 - [ ] **Step 2: Run RED**
 
@@ -869,15 +945,15 @@ Add acceptance assertion that click-to-place contract still exists and there is 
 node --import tsx --test tests/hex-premium-motion-contract.test.ts tests/hex-render-budget.test.ts tests/hex-phase2-acceptance.test.ts tests/hex-builder-ui-contract.test.ts
 ```
 
-Expected: FAIL until ownership is centralized.
+Expected: FAIL until profile ownership is centralized.
 
 - [ ] **Step 3: Centralize profile wiring**
 
-Resolve quality + reduced motion once in `HexWorld3D`. Pass the same `motionProfile` to camera, tiles, selection, ambient decor, water, sky, buildings, ghost, placement effects.
+Resolve quality + reduced motion once in `HexWorld3D`. Pass `motionProfile` to camera, tiles, selection, ambient decor, water, sky, buildings, ghost, placement effects. Pass quality profile only where visual budget decisions are required.
 
-Do not introduce context unless prop threading becomes genuinely wider than these Hex scene modules; props are preferred for this phase.
+Do not add React Context unless prop threading exceeds these current scene modules; props are the default for this phase.
 
-Use `document.visibilityState === 'hidden'` only as a cheap early-return condition inside long-running decorative frame loops; do not add a global event bus.
+In long-running decorative loops, use a cheap hidden-page early return if needed; do not add a global event bus.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -899,13 +975,13 @@ git commit -m "feat: centralize accessible hex motion"
 ### Task 12: Full Regression, Visual QA, PR, and Production Release Gate
 
 **Files:**
-- Modify tests only if a discovered bug requires a RED regression first.
-- Do not weaken assertions to make CI green.
+- Modify tests only when a discovered issue is first reproduced with a RED regression.
+- Never weaken an assertion to make CI green.
 
 **Interfaces:**
-- No new runtime interfaces; this task verifies the complete system.
+- No new runtime interfaces; this task verifies the complete feature.
 
-- [ ] **Step 1: Run the complete pure Hex suite**
+- [ ] **Step 1: Run complete pure Hex suite**
 
 ```bash
 PURE_HEX_TESTS=$(find tests -maxdepth 1 -name 'hex-*.test.ts' ! -name 'hex-world-undo-db.test.ts' -print | sort | tr '\n' ' ')
@@ -916,7 +992,7 @@ Expected: PASS, zero failures.
 
 - [ ] **Step 2: Run authoritative Undo DB + Redis integration**
 
-With local Postgres matching CI and Redis 7:
+With a local Postgres matching CI and Redis 7:
 
 ```bash
 REDIS_URL=redis://127.0.0.1:6379 node --import tsx --test tests/hex-world-undo-db.test.ts
@@ -941,20 +1017,20 @@ npm run build
 
 Expected: both exit 0.
 
-- [ ] **Step 5: Manual visual acceptance on desktop High**
+- [ ] **Step 5: Desktop High visual acceptance**
 
-Verify this exact flow:
+Verify exactly:
 
 ```text
 Open Garden
-→ island is immediately visible
-→ opening camera settles softly and can be interrupted
+→ island visible immediately
+→ opening camera settles softly and is interruptible
 → clouds drift independently
-→ vegetation does not sway in lockstep
-→ pond ripples are asynchronous and restrained
+→ vegetation does not move in lockstep
+→ pond motion is asynchronous and restrained
 → Build
 → choose component
-→ hover valid and invalid cells
+→ hover valid/invalid cells
 → camera does not chase hover
 → valid hex click places immediately
 → confirmed building drops/settles only after server response
@@ -976,39 +1052,39 @@ Open Garden
 → no stale effect/snapshot leaks into new Land
 ```
 
-- [ ] **Step 6: Manual reduced-motion acceptance**
+- [ ] **Step 6: Reduced-motion visual acceptance**
 
-Enable OS/browser reduced motion and verify:
+Enable reduced motion and verify:
 
 ```text
 No cinematic opening travel
 No placement drop/overshoot
 No ghost bob
-Vegetation/cloud decorative motion effectively absent or minimal
-State colors, selection, valid/invalid feedback remain clear
-Camera still reaches correct framing quickly
+Vegetation/cloud decorative motion absent or minimal
+State colors and valid/invalid feedback remain clear
+Camera reaches correct framing quickly
 Click-to-place/Undo/Move/Expand semantics unchanged
 ```
 
-- [ ] **Step 7: Manual Mobile acceptance**
+- [ ] **Step 7: Mobile visual acceptance**
 
-At ~390px viewport / DPR 3 verify resolved Mobile profile:
+At approximately 390px viewport / DPR 3 verify Mobile profile:
 
 ```text
 No horizontal overflow
-Toolbar/placement controls remain safe-area aware
+Safe-area controls remain usable
 No optional water glints
-Particle count is visibly restrained
+Particle count restrained
 World remains readable
-Touch click-to-place remains reliable
+Touch click-to-place reliable
 Orbit/pinch does not accidentally place during camera gestures
 ```
 
-If gesture conflict is discovered, write a failing regression before changing pointer behavior.
+If a gesture conflict appears, first write a failing regression before modifying pointer behavior.
 
 - [ ] **Step 8: Open PR with release checklist**
 
-PR body must state:
+PR body must contain:
 
 ```text
 - No DB/API schema changes
@@ -1026,7 +1102,7 @@ PR body must state:
 
 - [ ] **Step 9: Review changed files for architecture violations**
 
-Reject/repair before merge if any of these appear:
+Reject/repair before readiness if any appear:
 
 ```text
 EffectComposer / Bloom / DepthOfField / MeshReflectorMaterial
@@ -1040,25 +1116,25 @@ Build camera tied to hover anchor
 independent matchMedia calls scattered across scene files
 ```
 
-- [ ] **Step 10: Merge only exact verified head**
+- [ ] **Step 10: Integrate only after owner approval**
 
-Use squash merge with expected head SHA after all GitHub Actions are green.
+When the invoking user explicitly authorizes merge, squash-merge only the exact verified PR head SHA. If merge is not authorized, stop at a ready PR and report verification evidence.
 
-- [ ] **Step 11: Verify Railway production**
+- [ ] **Step 11: Verify Railway only after merge/deploy authorization**
 
-Verify Railway deployment source is the merged `main` commit. Check build and runtime logs for:
+For an authorized production deploy, verify Railway source is the merged `main` commit. Check build/runtime logs for:
 
 ```text
-npm/Next production build success
-npx prisma migrate deploy reports no destructive migration requirement
+Next production build success
+npx prisma migrate deploy reports existing migrations already applied
 Next server starts successfully
 /api/health passes
-Redis service reachable for Undo
+Redis remains reachable for Undo
 no destructive cleanup command
 ```
 
-Because this feature has no schema migration, production migration output should report existing migrations as already applied rather than introducing a new graphics-related migration.
+This graphics pass introduces no migration; any new graphics-related Prisma migration is a scope violation.
 
-- [ ] **Step 12: Commit any final test-only release guard if needed, re-run full verification, then merge**
+- [ ] **Step 12: Re-run gates after any late fix**
 
-Any discovered bug must follow RED → GREEN; do not patch after the final gate without re-running Tasks 12 Steps 1–4.
+Any issue discovered after Steps 1–4 must follow RED → GREEN and then repeat Steps 1–4 before the feature can be called verified.
