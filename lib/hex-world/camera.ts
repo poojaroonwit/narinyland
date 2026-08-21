@@ -77,6 +77,24 @@ export function getOverviewCameraPose(bounds: HexIslandBounds, aspect: number): 
   };
 }
 
+export function getOpeningCameraPose(overview: HexCameraPose): HexCameraPose {
+  const scale = 1.12;
+  const vector: [number, number, number] = [
+    overview.position[0] - overview.target[0],
+    overview.position[1] - overview.target[1],
+    overview.position[2] - overview.target[2],
+  ];
+  return {
+    target: overview.target,
+    position: [
+      overview.target[0] + vector[0] * scale,
+      overview.target[1] + vector[1] * scale + 0.8,
+      overview.target[2] + vector[2] * scale,
+    ],
+    distance: overview.distance * scale,
+  };
+}
+
 export function getFocusCameraPose(bounds: HexIslandBounds, focus: HexCoord, aspect: number): HexCameraPose {
   const overview = getOverviewCameraPose(bounds, aspect);
   const focusWorld = axialToWorld(focus);
@@ -93,12 +111,12 @@ export function getFocusCameraPose(bounds: HexIslandBounds, focus: HexCoord, asp
   };
 }
 
-export function getBuildCameraPose(bounds: HexIslandBounds, anchor: HexCoord | null, aspect: number): HexCameraPose {
-  const base = anchor ? getFocusCameraPose(bounds, anchor, aspect) : getOverviewCameraPose(bounds, aspect);
-  const distance = Math.max(11, base.distance * 0.9);
+export function getBuildCameraPose(bounds: HexIslandBounds, aspect: number): HexCameraPose {
+  const overview = getOverviewCameraPose(bounds, aspect);
+  const distance = Math.max(11, overview.distance * 0.9);
   return {
-    target: base.target,
-    position: [base.target[0] + distance * 0.52, base.target[1] + distance * 0.72, base.target[2] + distance * 0.66],
+    target: overview.target,
+    position: [overview.target[0] + distance * 0.52, overview.target[1] + distance * 0.72, overview.target[2] + distance * 0.66],
     distance,
   };
 }
