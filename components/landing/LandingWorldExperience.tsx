@@ -209,7 +209,7 @@ export function LandingWorldExperience() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-              {STORY_ITEMS.map((item, index) => (
+              {STORY_ITEMS.map((item) => (
                 <motion.button
                   key={item.label}
                   type="button"
@@ -309,7 +309,7 @@ export function LandingWorldExperience() {
                 <motion.div
                   key={title}
                   whileHover={{ x: index % 2 === 0 ? 6 : -6 }}
-                  className={`flex items-center gap-4 rounded-[1.75rem] bg-white/${index === 1 ? '38' : '46'} p-5 shadow-xl shadow-purple-950/[0.05] backdrop-blur-xl ${index === 1 ? 'ml-auto w-[88%]' : 'w-[94%]'}`}
+                  className={`flex items-center gap-4 rounded-[1.75rem] p-5 shadow-xl shadow-purple-950/[0.05] backdrop-blur-xl ${index === 1 ? 'ml-auto w-[88%] bg-white/[0.38]' : 'w-[94%] bg-white/[0.46]'}`}
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-100/70 text-purple-600">
                     <i className={`fas ${icon} text-sm`} />
