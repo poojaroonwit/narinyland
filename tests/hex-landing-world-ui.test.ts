@@ -19,59 +19,40 @@ test('landing hero message card has no visible border', async () => {
   assert.doesNotMatch(source, /rounded-\[2rem\]\s+border\s+border-white\/70\s+bg-white\/72/);
 });
 
-test('premium landing composition keeps the world dominant and UI editorial', async () => {
+test('single hero landing autoplays a fast end-to-end gameplay loop', async () => {
   const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
 
-  assert.match(source, /from 'framer-motion'/);
-  assert.match(source, /Explore the world/);
-  assert.match(source, /pointer-events-none/);
-  assert.match(source, /initial=\{\{ opacity: 0, y: prefersReducedMotion \? 0 : 16 \}\}/);
-  assert.match(source, /whileHover=\{\{ scale: 1\.03 \}\}/);
-  assert.doesNotMatch(source, /bg-gradient-to-r from-white\/35/);
-  assert.doesNotMatch(source, /bg-white\/72/);
-  assert.doesNotMatch(source, /Live world preview/);
+  assert.match(source, /GAMEPLAY_LOOP_MS\s*=\s*11000/);
+  assert.match(source, /GAMEPLAY_STAGES/);
+  assert.match(source, /Arrive/);
+  assert.match(source, /Build/);
+  assert.match(source, /Grow/);
+  assert.match(source, /Expand/);
+  assert.match(source, /Together/);
+  assert.match(source, /setInterval/);
+  assert.match(source, /createLandingGameplaySnapshots/);
+  assert.match(source, /prefersReducedMotion\s*\?\s*GAMEPLAY_STAGES\.length\s*-\s*1/);
+  assert.match(source, /href="\/signup"/);
+  assert.match(source, /Enter Narinyland/);
+  assert.doesNotMatch(source, /id="story"/);
+  assert.doesNotMatch(source, /Your world grows with your story\./);
+  assert.doesNotMatch(source, /Keep every little moment\./);
+  assert.doesNotMatch(source, /Say the things worth keeping\./);
+  assert.doesNotMatch(source, /Little promises, made together\./);
 });
 
-test('landing scroll story is continuous with the HexWorld atmosphere', async () => {
+test('single hero keeps the real world dominant and avoids scroll-story mechanics', async () => {
   const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
 
-  assert.match(source, /useScroll/);
-  assert.match(source, /useTransform/);
-  assert.match(source, /fixed inset-0/);
-  assert.match(source, /overflow-x-hidden/);
-  assert.match(source, /bg-transparent/);
-  assert.match(source, /Your world grows with your story\./);
-  assert.match(source, /Keep every little moment\./);
-  assert.match(source, /Say the things worth keeping\./);
-  assert.match(source, /Little promises, made together\./);
-  assert.match(source, /Build a world that is only yours\./);
-  assert.match(source, />Timeline</);
-  assert.match(source, />Coupons</);
-  assert.match(source, />Letters</);
-  assert.doesNotMatch(source, /<main[^>]*overflow-hidden/);
-  assert.doesNotMatch(source, /border-t/);
-  assert.doesNotMatch(source, /divide-y/);
-  assert.doesNotMatch(source, /fixed bottom-\[calc\(1\.15rem\+env\(safe-area-inset-bottom\)\)\]/);
-});
-
-test('cinematic living world adds restrained ambient motion and a direct signup path', async () => {
-  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
-
+  assert.match(source, /HexWorld3D/);
   assert.match(source, /useReducedMotion/);
   assert.match(source, /CINEMATIC_MOTES/);
-  assert.match(source, /livingWorldDrift/);
-  assert.match(source, /atmosphereY/);
-  assert.match(source, /sunlightX/);
-  assert.match(source, /Create your world/);
-  assert.match(source, /href="\/signup"/);
-  assert.match(source, /Live homestead/);
-  assert.match(source, /repeat:\s*Infinity/);
-  assert.match(source, /prefersReducedMotion/);
-  assert.match(source, /style=\{\{ y: prefersReducedMotion \? 0 : atmosphereY \}\}/);
-  assert.match(source, /style=\{\{ x: prefersReducedMotion \? 0 : sunlightX \}\}/);
-  assert.match(source, /style=\{\{ opacity: prefersReducedMotion \? 1 : heroWorldOpacity, scale: prefersReducedMotion \? 1 : heroWorldScale \}\}/);
-  assert.match(source, /style=\{\{ opacity: prefersReducedMotion \? 1 : heroUiOpacity, y: prefersReducedMotion \? 0 : heroUiY \}\}/);
-  assert.doesNotMatch(source, /filter:\s*blur\(/);
+  assert.match(source, /pointer-events-none/);
+  assert.match(source, /whileHover=\{\{ scale: 1\.03 \}\}/);
+  assert.doesNotMatch(source, /useScroll/);
+  assert.doesNotMatch(source, /useTransform/);
+  assert.doesNotMatch(source, /Explore the world/);
+  assert.doesNotMatch(source, /<section[^>]+min-h-\[8[2468]svh\]/);
 });
 
 test('HexWorld loading keeps the real world renderer visible behind product-aligned loading chrome', async () => {
