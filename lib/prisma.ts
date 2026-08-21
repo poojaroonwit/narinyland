@@ -20,7 +20,7 @@ function buildDatabaseUrl(): string | undefined {
   return url;
 }
 
-function createPrismaClient() {
+function createPrismaClient(): PrismaClient {
   const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
@@ -30,7 +30,7 @@ function createPrismaClient() {
     },
   });
 
-  return client.$extends({
+  const extended = client.$extends({
     name: 'railway-read-recovery',
     query: {
       $allModels: {
@@ -44,12 +44,15 @@ function createPrismaClient() {
       },
     },
   });
+
+  // This extension only intercepts query execution; it does not add or alter
+  // client/model APIs. Keep the public type as PrismaClient so existing
+  // Prisma.TransactionClient contracts remain compatible.
+  return extended as unknown as PrismaClient;
 }
 
-type PrismaWithReadRecovery = ReturnType<typeof createPrismaClient>;
-
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaWithReadRecovery | undefined;
+  prisma: PrismaClient | undefined;
 };
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
