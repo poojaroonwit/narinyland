@@ -79,6 +79,14 @@ export function LandingWorldExperience() {
   const livingWorldDrift = prefersReducedMotion
     ? { x: 0, y: 0, scale: 1 }
     : { x: [0, 6, -4, 0], y: [0, -4, 3, 0], scale: [1, 1.006, 1.003, 1] };
+  const sectionReveal = prefersReducedMotion
+    ? {
+        initial: { opacity: 0 },
+        whileInView: { opacity: 1 },
+        viewport: reveal.viewport,
+        transition: { duration: 0.2 },
+      }
+    : reveal;
 
   const enterWorld = async () => {
     if (entering) return;
@@ -94,11 +102,11 @@ export function LandingWorldExperience() {
     <main className="relative min-h-[100svh] overflow-x-hidden bg-[#edf6e9] text-stone-800">
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#edf6e9]">
         <motion.div
-          style={{ y: atmosphereY }}
+          style={{ y: prefersReducedMotion ? 0 : atmosphereY }}
           className="absolute -inset-x-10 -inset-y-32"
         >
           <motion.div
-            style={{ x: sunlightX }}
+            style={{ x: prefersReducedMotion ? 0 : sunlightX }}
             className="absolute -right-[12vw] -top-[8vh] h-[52vw] min-h-[28rem] w-[52vw] min-w-[28rem] rounded-full bg-white/55 blur-3xl"
           />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_13%,rgba(255,255,255,0.9),transparent_31%),radial-gradient(circle_at_14%_45%,rgba(219,244,216,0.76),transparent_31%),radial-gradient(circle_at_76%_76%,rgba(205,236,211,0.68),transparent_35%)]" />
@@ -110,7 +118,7 @@ export function LandingWorldExperience() {
 
       <motion.div
         aria-hidden="true"
-        style={{ y: storyHazeY }}
+        style={{ y: prefersReducedMotion ? 0 : storyHazeY }}
         className="pointer-events-none fixed inset-x-0 top-[62svh] z-[1] h-[55svh]"
       >
         <div className="absolute left-[4%] top-[22%] h-24 w-[38%] rounded-[50%] bg-white/20 blur-3xl" />
@@ -121,10 +129,10 @@ export function LandingWorldExperience() {
       <section ref={heroRef} className="relative z-10 h-[100svh] min-h-[42rem] bg-transparent">
         <motion.div
           className="absolute -inset-3"
-          style={{ opacity: heroWorldOpacity, scale: heroWorldScale }}
-          initial={{ opacity: 0, scale: 1.035 }}
+          style={{ opacity: prefersReducedMotion ? 1 : heroWorldOpacity, scale: prefersReducedMotion ? 1 : heroWorldScale }}
+          initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 1.035 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: prefersReducedMotion ? 0.25 : 1.35, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: prefersReducedMotion ? 0.2 : 1.35, ease: [0.22, 1, 0.36, 1] }}
         >
           <motion.div
             className="h-full w-full"
@@ -159,12 +167,15 @@ export function LandingWorldExperience() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-[34svh] bg-gradient-to-b from-transparent via-[#edf6e9]/38 to-[#edf6e9]" />
         <div className="pointer-events-none absolute inset-x-[12%] bottom-[12svh] z-30 h-16 rounded-[50%] bg-white/25 blur-3xl" />
 
-        <motion.div style={{ opacity: heroUiOpacity, y: heroUiY }} className="absolute inset-0 z-[60]">
+        <motion.div
+          style={{ opacity: prefersReducedMotion ? 1 : heroUiOpacity, y: prefersReducedMotion ? 0 : heroUiY }}
+          className="absolute inset-0 z-[60]"
+        >
           <motion.div
             className="pointer-events-auto absolute left-4 top-4 md:left-6 md:top-6"
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: prefersReducedMotion ? 0 : 0.58 }}
+            transition={{ duration: prefersReducedMotion ? 0.2 : 0.55, delay: prefersReducedMotion ? 0 : 0.58 }}
           >
             <div className="flex h-10 items-center gap-2 rounded-full bg-white/38 px-3.5 shadow-md backdrop-blur-lg">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-500 text-[11px] text-white shadow-sm">♥</span>
@@ -174,9 +185,9 @@ export function LandingWorldExperience() {
 
           <motion.div
             className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2 md:right-6 md:top-6 md:gap-3"
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: prefersReducedMotion ? 0 : 0.66 }}
+            transition={{ duration: prefersReducedMotion ? 0.2 : 0.55, delay: prefersReducedMotion ? 0 : 0.66 }}
           >
             <div className="hidden h-9 items-center gap-2 rounded-full bg-white/24 px-3.5 text-gray-700 shadow-sm backdrop-blur-lg sm:flex">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.1)]" />
@@ -197,9 +208,9 @@ export function LandingWorldExperience() {
 
           <motion.div
             className="pointer-events-none absolute bottom-[calc(6.9rem+env(safe-area-inset-bottom))] left-4 w-[min(38rem,calc(100vw-2rem))] md:bottom-28 md:left-8"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.78, delay: prefersReducedMotion ? 0 : 0.82, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: prefersReducedMotion ? 0.2 : 0.78, delay: prefersReducedMotion ? 0 : 0.82, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="max-w-[35rem]">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.34] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800 shadow-sm backdrop-blur-lg">
@@ -247,9 +258,9 @@ export function LandingWorldExperience() {
           <motion.nav
             className="pointer-events-auto absolute bottom-[calc(1.15rem+env(safe-area-inset-bottom))] left-1/2 flex -translate-x-1/2 items-center gap-4 rounded-full border border-white/30 bg-white/[0.52] px-4 py-2.5 shadow-xl shadow-emerald-950/[0.06] backdrop-blur-xl sm:gap-5 sm:px-5 md:bottom-6 md:gap-8 md:px-6 md:py-3"
             aria-label="Narinyland preview navigation"
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.62, delay: prefersReducedMotion ? 0 : 0.94 }}
+            transition={{ duration: prefersReducedMotion ? 0.2 : 0.62, delay: prefersReducedMotion ? 0 : 0.94 }}
           >
             {NAV_ITEMS.map((item, index) => (
               <button
@@ -275,7 +286,7 @@ export function LandingWorldExperience() {
             transition={prefersReducedMotion ? { duration: 0 } : { duration: 14, repeat: Infinity, ease: 'easeInOut' }}
             className="pointer-events-none absolute right-[7%] top-[15%] h-24 w-44 rounded-[50%] bg-white/24 blur-3xl"
           />
-          <motion.div {...reveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <motion.div {...sectionReveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="max-w-xl">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-700">One world, many little things</p>
               <h2 className="mt-4 text-4xl font-black leading-[1.02] tracking-[-0.045em] text-stone-950 md:text-6xl">
@@ -311,7 +322,7 @@ export function LandingWorldExperience() {
         </section>
 
         <section className="relative flex min-h-[88svh] items-center bg-transparent px-5 py-28 md:px-10 md:py-36">
-          <motion.div {...reveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
+          <motion.div {...sectionReveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
             <div className="order-2 grid grid-cols-2 gap-4 lg:order-1">
               <motion.div whileHover={{ y: -5, rotate: -0.8 }} className="mt-10 rounded-[2rem] bg-white/46 p-5 shadow-2xl shadow-blue-950/[0.05] backdrop-blur-xl">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Timeline</p>
@@ -355,7 +366,7 @@ export function LandingWorldExperience() {
             transition={prefersReducedMotion ? { duration: 0 } : { duration: 16, repeat: Infinity, ease: 'easeInOut' }}
             className="pointer-events-none absolute left-[10%] top-[18%] h-28 w-52 rounded-[50%] bg-rose-100/26 blur-3xl"
           />
-          <motion.div {...reveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <motion.div {...sectionReveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="max-w-xl">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-rose-700">Letters</p>
               <h2 className="mt-4 text-4xl font-black leading-[1.02] tracking-[-0.045em] text-stone-950 md:text-6xl">
@@ -383,7 +394,7 @@ export function LandingWorldExperience() {
         </section>
 
         <section className="relative flex min-h-[84svh] items-center bg-transparent px-5 py-28 md:px-10 md:py-36">
-          <motion.div {...reveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
+          <motion.div {...sectionReveal} className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
             <div className="order-2 flex flex-col gap-4 lg:order-1">
               {[
                 ['Dinner is on me', 'Use whenever you want a cozy night out.', 'fa-utensils'],
@@ -426,7 +437,7 @@ export function LandingWorldExperience() {
             transition={prefersReducedMotion ? { duration: 0 } : { duration: 13, repeat: Infinity, ease: 'easeInOut' }}
             className="pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/28 blur-3xl"
           />
-          <motion.div {...reveal} className="relative mx-auto max-w-4xl">
+          <motion.div {...sectionReveal} className="relative mx-auto max-w-4xl">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/42 text-xl text-pink-500 shadow-xl backdrop-blur-xl">♥</div>
             <p className="mt-7 text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">Your Narinyland</p>
             <h2 className="mt-4 text-4xl font-black leading-[1.01] tracking-[-0.05em] text-stone-950 sm:text-5xl md:text-7xl">
