@@ -34,15 +34,55 @@ function InstanceBatch({ placements, children, castShadow = false, receiveShadow
   return <instancedMesh ref={ref} args={[undefined, undefined, placements.length]} castShadow={castShadow} receiveShadow={receiveShadow}>{children}</instancedMesh>;
 }
 
-function MotionBucket({ index, amplitude, speed, motionProfile, children }: { index: number; amplitude: number; speed: number; motionProfile: HexMotionProfile; children: React.ReactNode }) {
-  const ref = useRef<THREE.Group>(null);
+function SwayInstanceBatch({
+  placements,
+  children,
+  bucketIndex,
+  amplitude,
+  speed,
+  motionProfile,
+  castShadow = false,
+  receiveShadow = false,
+}: {
+  placements: Placement[];
+  children: React.ReactNode;
+  bucketIndex: number;
+  amplitude: number;
+  speed: number;
+  motionProfile: HexMotionProfile;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const applyTransforms = (sway = 0) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    placements.forEach((placement, index) => {
+      dummy.position.set(placement.x, placement.y, placement.z);
+      dummy.rotation.set(sway * 0.35, placement.rotation ?? 0, sway);
+      dummy.scale.setScalar(placement.scale ?? 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+
+  useLayoutEffect(() => {
+    applyTransforms(0);
+  // applyTransforms intentionally derives from stable placement and dummy refs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placements]);
+
   useFrame(({ clock }) => {
-    if (!ref.current || motionProfile.ambientScale <= 0 || document.visibilityState === 'hidden') return;
-    const phase = index * 1.73;
-    ref.current.rotation.z = Math.sin(clock.elapsedTime * speed + phase) * amplitude * motionProfile.ambientScale;
-    ref.current.rotation.x = Math.cos(clock.elapsedTime * speed * 0.73 + phase) * amplitude * 0.35 * motionProfile.ambientScale;
+    if (motionProfile.ambientScale <= 0 || document.visibilityState === 'hidden') return;
+    const phase = bucketIndex * 1.73;
+    const sway = Math.sin(clock.elapsedTime * speed + phase) * amplitude * motionProfile.ambientScale;
+    applyTransforms(sway);
   });
-  return <group ref={ref}>{children}</group>;
+
+  if (placements.length === 0) return null;
+  return <instancedMesh ref={ref} args={[undefined, undefined, placements.length]} castShadow={castShadow} receiveShadow={receiveShadow}>{children}</instancedMesh>;
 }
 
 function tileBuckets(tiles: HexTileDTO[], prefix: string, count: number) {
@@ -82,16 +122,16 @@ export function HexAmbientDecor({ tiles, profile, motionProfile }: { tiles: HexT
       {treeBuckets.map((bucket, index) => {
         const trunks = bucket.map((tile) => ({ ...getPlacement(tile, 0.46), scale: 0.9 }));
         const canopies = bucket.map((tile) => ({ ...getPlacement(tile, 1.25), scale: 0.68 + ((Math.abs(tile.q + tile.r) % 3) * 0.06) }));
-        return <MotionBucket key={`tree-${index}`} index={index} amplitude={0.018} speed={0.75} motionProfile={motionProfile}><InstanceBatch placements={trunks} castShadow><cylinderGeometry args={[0.13, 0.2, 0.92, 7]} /><meshStandardMaterial color="#876548" roughness={0.96} /></InstanceBatch><InstanceBatch placements={canopies} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#789b63" roughness={0.9} /></InstanceBatch></MotionBucket>;
+        return <React.Fragment key={`tree-${index}`}><SwayInstanceBatch placements={trunks} bucketIndex={index} amplitude={0.005} speed={0.75} motionProfile={motionProfile} castShadow><cylinderGeometry args={[0.13, 0.2, 0.92, 7]} /><meshStandardMaterial color="#876548" roughness={0.96} /></SwayInstanceBatch><SwayInstanceBatch placements={canopies} bucketIndex={index} amplitude={0.018} speed={0.75} motionProfile={motionProfile} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#789b63" roughness={0.9} /></SwayInstanceBatch></React.Fragment>;
       })}
       {flowerBuckets.map((bucket, index) => {
         const stems = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.18); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.85 }; }));
         const heads = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.43); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.12 }; }));
-        return <MotionBucket key={`flower-${index}`} index={index} amplitude={0.012} speed={1.1} motionProfile={motionProfile}><InstanceBatch placements={stems}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color="#658653" roughness={1} /></InstanceBatch><InstanceBatch placements={heads}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color="#e9a3b0" roughness={0.88} /></InstanceBatch></MotionBucket>;
+        return <React.Fragment key={`flower-${index}`}><SwayInstanceBatch placements={stems} bucketIndex={index} amplitude={0.009} speed={1.1} motionProfile={motionProfile}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color="#658653" roughness={1} /></SwayInstanceBatch><SwayInstanceBatch placements={heads} bucketIndex={index} amplitude={0.012} speed={1.1} motionProfile={motionProfile}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color="#e9a3b0" roughness={0.88} /></SwayInstanceBatch></React.Fragment>;
       })}
       {gardenBuckets.map((bucket, index) => {
         const sprouts = bucket.flatMap((tile) => [-0.24, 0, 0.24].map((offset, itemIndex) => { const p = getPlacement(tile, 0.2); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.12, scale: 0.16 }; }));
-        return <MotionBucket key={`garden-${index}`} index={index} amplitude={0.01} speed={0.95} motionProfile={motionProfile}><InstanceBatch placements={sprouts}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color="#6d9659" roughness={0.92} /></InstanceBatch></MotionBucket>;
+        return <SwayInstanceBatch key={`garden-${index}`} placements={sprouts} bucketIndex={index} amplitude={0.01} speed={0.95} motionProfile={motionProfile}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color="#6d9659" roughness={0.92} /></SwayInstanceBatch>;
       })}
       <InstanceBatch placements={rockPlacements} castShadow receiveShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#94948b" roughness={1} /></InstanceBatch>
       <InstanceBatch placements={pathPlacements} receiveShadow><cylinderGeometry args={[0.55, 0.6, 0.12, 8]} /><meshStandardMaterial color="#b5b1a6" roughness={1} /></InstanceBatch>
