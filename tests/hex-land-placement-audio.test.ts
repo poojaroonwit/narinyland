@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import {
+  getEligibleExpansionDefinitions,
   getExpansionPlacementTiles,
   validateExpansionPlacement,
 } from '../lib/hex-world/expansions';
-import type { HexTileDTO } from '../lib/hex-world/types';
+import type { HexTileDTO, HexWorldSnapshot } from '../lib/hex-world/types';
 
 function tile(q: number, r: number, expansionKey?: string, unlocked = true): HexTileDTO {
   return {
@@ -23,6 +24,28 @@ test('expansion placement shapes are translated discs with stable 7/19/37 sizes'
   assert.equal(getExpansionPlacementTiles(2, { q: 10, r: -4 }).length, 19);
   assert.equal(getExpansionPlacementTiles(3, { q: 10, r: -4 }).length, 37);
   assert.ok(getExpansionPlacementTiles(1, { q: 10, r: -4 }).some((coord) => coord.q === 10 && coord.r === -4));
+});
+
+test('free placement catalog exposes every land size independent of deterministic edge coordinates', () => {
+  const snapshot: HexWorldSnapshot = {
+    world: {
+      id: 'world',
+      landId: 'land',
+      schemaVersion: 1,
+      generatorVersion: 1,
+      seed: 'free-placement-catalog',
+      expansionLevel: 0,
+      revision: 0,
+    },
+    tiles: [tile(0, 0)],
+    buildings: [],
+    expansions: [],
+    purchasedExpansions: [],
+    points: 999,
+  };
+
+  const available = getEligibleExpansionDefinitions(snapshot);
+  assert.deepEqual([...new Set(available.map((item) => item.tier))], [1, 2, 3]);
 });
 
 test('free expansion placement must touch unlocked land and cannot overlap it', () => {
