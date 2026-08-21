@@ -24,6 +24,7 @@ function AnimatedHexBuilding({ building, height, selected, visualEvent, motionPr
   onSelect?: (building: HexBuildingDTO) => void;
 }) {
   const ref = useRef<THREE.Group>(null);
+  const initializedRef = useRef(false);
   const lastEventNonce = useRef<number | null>(null);
   const target = axialToWorld({ q: building.anchorQ, r: building.anchorR }, 1, height + 0.02);
   const targetYaw = hexRotationToRadians(building.rotation);
@@ -31,17 +32,18 @@ function AnimatedHexBuilding({ building, height, selected, visualEvent, motionPr
   useLayoutEffect(() => {
     const group = ref.current;
     if (!group) return;
-    if (lastEventNonce.current === null) {
-      group.position.set(target.x, target.y + (selected ? 0.04 : 0), target.z);
+    if (!initializedRef.current) {
+      group.position.set(target.x, target.y, target.z);
       group.rotation.set(0, targetYaw, 0);
-      group.scale.setScalar(selected ? 1.035 : 1);
+      group.scale.setScalar(1);
+      initializedRef.current = true;
     }
     const confirmed = visualEvent && 'buildingId' in visualEvent && visualEvent.buildingId === building.id ? visualEvent : null;
     if (!confirmed || confirmed.nonce === lastEventNonce.current) return;
     if (!reducedMotion && confirmed.kind === 'placed') group.position.y = target.y + 0.65;
     if (!reducedMotion && confirmed.kind === 'moved') group.position.y = target.y + 0.25;
     lastEventNonce.current = confirmed.nonce;
-  }, [building.id, reducedMotion, selected, target.x, target.y, target.z, targetYaw, visualEvent]);
+  }, [building.id, reducedMotion, target.x, target.y, target.z, targetYaw, visualEvent]);
 
   useFrame((_, delta) => {
     const group = ref.current;
