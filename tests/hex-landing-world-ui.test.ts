@@ -12,6 +12,13 @@ test('landing page is a world-first experience instead of a separate marketing s
   assert.doesNotMatch(source, /<video/);
 });
 
+test('landing hero message card has no visible border', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /A little world that belongs to both of you\./);
+  assert.doesNotMatch(source, /rounded-\[2rem\]\s+border\s+border-white\/70\s+bg-white\/72/);
+});
+
 test('HexWorld loading keeps the real world renderer visible behind product-aligned loading chrome', async () => {
   const source = await readFile(new URL('../components/hex-world/HexWorldLoading.tsx', import.meta.url), 'utf8');
 
