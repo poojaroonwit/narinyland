@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, ThreeEvent, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ProgressionFamilyFarmState } from '@/lib/family-farm-progression';
 import { axialToWorld, hexKey, worldToAxial } from '@/lib/hex-world/hex-grid';
@@ -88,13 +88,13 @@ function ExpansionPlacementGhost({ preview }: { preview: HexExpansionPlacementPr
 }
 
 function ExpansionPlacementPlane({ onHover, onSelect }: { onHover: (coord: HexCoord) => void; onSelect: (coord: HexCoord) => void }) {
-  const coordFromEvent = (event: ThreeEvent<PointerEvent>) => worldToAxial(event.point.x, event.point.z);
+  const coordFromPoint = (point: THREE.Vector3) => worldToAxial(point.x, point.z);
   return (
     <mesh
       position={[0, 0.38, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
-      onPointerMove={(event) => { event.stopPropagation(); onHover(coordFromEvent(event)); }}
-      onClick={(event) => { event.stopPropagation(); onSelect(coordFromEvent(event)); }}
+      onPointerMove={(event) => { event.stopPropagation(); onHover(coordFromPoint(event.point)); }}
+      onClick={(event) => { event.stopPropagation(); onSelect(coordFromPoint(event.point)); }}
     >
       <planeGeometry args={[90, 90]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} />
