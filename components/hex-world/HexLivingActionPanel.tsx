@@ -32,6 +32,7 @@ import type { HexBuildingDTO } from '@/lib/hex-world/types';
 
 type PanelMode = 'root' | 'plant' | 'cook' | 'chickens';
 const actionButton = 'min-h-[42px] rounded-xl px-3 text-[10px] font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400';
+const ADVANCED_CROP_KEYS = new Set<ProgressionCropKey>(['corn', 'pumpkin', 'potato', 'cabbage']);
 
 export function HexLivingActionPanel({
   building,
@@ -102,11 +103,14 @@ export function HexLivingActionPanel({
             const crop = PROGRESSION_CROP_CATALOG[cropKey];
             const seeds = state.inventory.seeds[cropKey];
             const availability = getCropAvailability(state, cropKey);
+            const availabilityCopy = getCropAvailabilityCopy(state, cropKey);
             return (
               <div key={cropKey} className="rounded-2xl bg-white p-2.5 shadow-sm">
                 <div className="flex items-center justify-between"><span className="text-lg">{crop.emoji}</span><span className="text-[9px] font-black text-stone-400">{seeds} seeds</span></div>
                 <p className="mt-1 text-xs font-black text-stone-800">{crop.name}</p>
-                <p className={`mt-0.5 min-h-[24px] text-[8px] font-bold ${availability.available ? 'text-emerald-600' : 'text-stone-400'}`}>{getCropAvailabilityCopy(state, cropKey)}</p>
+                <p className={`mt-0.5 min-h-[24px] text-[8px] font-bold ${availability.available ? 'text-emerald-600' : 'text-stone-400'}`}>
+                  {availabilityCopy ?? (ADVANCED_CROP_KEYS.has(cropKey) ? 'Progression crop · in season' : 'In season')}
+                </p>
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
                   <button type="button" disabled={!plantTarget || seeds <= 0 || busy || !availability.available} onClick={() => plant(cropKey)} className="min-h-[34px] rounded-lg bg-emerald-700 px-2 text-[8px] font-black text-white disabled:bg-stone-200">Plant</button>
                   <button type="button" disabled={busy || !availability.available || state.coins < crop.seedCost} onClick={() => run({ type: 'buy_seed', cropKey })} className="min-h-[34px] rounded-lg bg-amber-100 px-2 text-[8px] font-black text-amber-800 disabled:bg-stone-100 disabled:text-stone-300">Buy seed · {crop.seedCost}</button>
