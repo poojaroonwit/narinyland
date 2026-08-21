@@ -23,6 +23,7 @@ import { HexTileInstances } from './HexTileInstances';
 import { HexWaterSurface } from './HexWaterSurface';
 import { HexWorldLighting } from './HexWorldLighting';
 import { HexWorldParticles } from './HexWorldParticles';
+import { useReducedHexMotion } from './useReducedHexMotion';
 
 export type HexBuildingPreview = {
   buildingKey: string;
@@ -77,6 +78,8 @@ function AnimatedBuildingPreview({ preview, position, motionProfile }: {
 
 export function HexWorld3D({ snapshot, ...props }: Props) {
   const [device, setDevice] = useState({ viewportWidth: 1280, devicePixelRatio: 1 });
+  const reducedMotion = useReducedHexMotion();
+
   useEffect(() => {
     const update = () => setDevice({ viewportWidth: window.innerWidth, devicePixelRatio: window.devicePixelRatio || 1 });
     update();
@@ -85,7 +88,6 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   }, []);
 
   const profile = resolveHexQualityProfile({ graphicsQuality: props.graphicsQuality ?? 'medium', viewportWidth: device.viewportWidth, devicePixelRatio: device.devicePixelRatio });
-  const reducedMotion = false;
   const motionProfile = resolveHexMotionProfile({ quality: profile, reducedMotion });
   const tileHeight = new Map(snapshot.tiles.map((tile) => [hexKey(tile), tile.height]));
   const hoveredKey = props.hoveredCoord ? hexKey(props.hoveredCoord) : null;
@@ -102,7 +104,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexWorldLighting profile={profile} />
         <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
-        <HexWorldParticles seed={snapshot.world.seed} profile={profile} />
+        <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
         <HexPlacementEffects event={props.visualEvent ?? null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
         {!!props.expansionOptions?.length && <HexExpansionClusters expansions={props.expansionOptions} selectedKey={props.selectedExpansionKey} onSelect={(key) => props.onSelectExpansion?.(key)} />}
         <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
