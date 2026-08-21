@@ -3,816 +3,735 @@
 **Date:** 2026-08-21  
 **Status:** Design approved in chat; written-spec review pending  
 **Scope:** `/garden` floating HexWorld only  
-**Baseline:** `main` after click-to-place merge (`663c4a89f278159c49f1a3d62ab09db01c77030d`)
+**Baseline:** `main@663c4a89f278159c49f1a3d62ab09db01c77030d`
 
 ## 1. Objective
 
-Upgrade the existing Cozy Floating Hex Homestead from a functional polished 3D builder into a more premium, alive, miniature-diorama experience without rewriting the renderer or weakening mobile performance.
+Upgrade the existing Cozy Floating Hex Homestead into a more premium, alive miniature-diorama experience without rewriting the renderer or weakening mobile performance.
 
-The visual direction remains:
+Art direction remains:
 
 - Magical Floating Garden
 - Premium Miniature Diorama
-- Cozy, soft, tactile, playful
-- Strong silhouette and material readability before expensive effects
-- Motion used to communicate state and delight, not as constant spectacle
+- cozy, soft, tactile, playful
+- strong silhouettes and material readability before expensive effects
+- motion that communicates state and adds delight without becoming constant spectacle
 
-The upgrade is a presentation-layer polish pass. It does not add gameplay systems, persistence schema, economy rules, NPCs, character control, crafting, weather gameplay, or multiplayer building.
+This phase is a presentation-layer polish pass. It does not add gameplay systems, persistence, economy changes, NPCs, character control, crafting, weather gameplay, or multiplayer building.
 
-## 2. Current Architecture to Preserve
+## 2. Architecture to Preserve
 
-The current Phase 2 scene is already split into focused modules and this design must extend those boundaries instead of collapsing them into one animation-heavy scene component.
+The existing Phase 2 scene already has the right boundaries and this phase extends them rather than rebuilding them.
 
-Existing major responsibilities:
+Preserve these responsibilities:
 
-- `components/hex-world/HexWorld3D.tsx`
-  - scene composition
-  - quality-profile resolution
-  - mounting lighting, sky, tiles, decor, water, particles, buildings, preview, camera
-- `components/hex-world/HexDioramaCamera.tsx`
-  - Overview / Focus / Build camera intents
-  - interruptible scripted camera interpolation
-  - user-controlled orbit with no free pan
-- `components/hex-world/HexWorldLighting.tsx`
-  - hemisphere + ambient + one directional shadow owner + contact shadows
-- `components/hex-world/HexSkyAtmosphere.tsx`
-  - background, fog, layered clouds
-- `components/hex-world/HexTileInstances.tsx`
-  - instanced terrain geometry
-  - hover/selected/valid/invalid color states
-  - server-confirmed expansion rise animation
-- `components/hex-world/HexSelectionEffects.tsx`
-  - visual-only footprint/selection ring
-- `components/hex-world/HexWaterSurface.tsx`
-  - instanced water surfaces and optional ripple detail
-- `components/hex-world/HexAmbientDecor.tsx`
-  - instanced visual-only trees, rocks, flowers, paths, garden sprouts
-- `components/hex-world/HexBuildings.tsx`
-  - persisted building transform/rendering/selection
-- `components/hex-world/HexBuildingModels.tsx` and model modules
-  - local Three geometry, no mandatory remote model loading
-- `components/hex-world/HexWorldParticles.tsx`
-  - one shared ambient point-particle batch
-- `lib/hex-world/quality.ts`
-  - High / Medium / Mobile render envelopes
-- `components/hex-world/HexBuildController.tsx`
-  - semantic builder state, click-to-place, move/rotate/remove, Undo, expansion wiring
+- `HexWorld3D.tsx` — scene composition and resolved quality/motion profiles
+- `HexDioramaCamera.tsx` — Overview / Focus / Build camera intents and interruptible orbit
+- `HexWorldLighting.tsx` — hemisphere + ambient + one directional shadow owner + contact shadows
+- `HexSkyAtmosphere.tsx` — background, fog, bounded cloud layers
+- `HexTileInstances.tsx` — instanced terrain, hover/valid/invalid states, expansion rise
+- `HexSelectionEffects.tsx` — visual-only selection/footprint feedback
+- `HexWaterSurface.tsx` — instanced water and bounded ripple detail
+- `HexAmbientDecor.tsx` — instanced visual-only trees, rocks, flowers, paths, sprouts
+- `HexBuildings.tsx` — persisted building transforms and selection
+- local building model modules — no mandatory remote model dependency
+- `HexWorldParticles.tsx` — one shared ambient particle batch
+- `quality.ts` — High / Medium / Mobile envelopes
+- `HexBuildController.tsx` — semantic builder state, click-to-place, Move/Rotate/Remove, Undo, expansion
 
-These separation boundaries are part of the design and must be preserved.
+Frame-by-frame animation belongs in Three scene components through refs, pure interpolation utilities, and `useFrame`. Do not update React state every frame.
 
-## 3. Architectural Principle
+`HexBuildController` may emit confirmed semantic animation triggers, but it must not become a timeline/animation engine.
 
-The renderer should receive semantic state and derive presentation locally.
-
-The build controller may expose semantic animation triggers such as:
-
-- newly placed building id
-- recently rotated building id
-- recently removed building id before removal transition if needed
-- confirmed expansion tile keys
-
-It must not become a general animation timeline engine.
-
-Frame-by-frame animation belongs inside Three scene components through `useFrame`, refs, pure interpolation utilities, and deterministic phase helpers. Avoid React state updates every frame.
-
-## 4. New Shared Motion Module
+## 3. New Motion Foundation
 
 Create:
 
 `lib/hex-world/motion.ts`
 
-This pure module centralizes motion language and prevents durations/easing values from being scattered across JSX.
+Responsibilities:
 
-It should export a small typed API such as:
+- shared motion durations
+- exponential response/spring constants
+- deterministic phase helper from stable ids/coordinates
+- reduced-motion resolver
+- quality-aware animation density
+- pure interpolation helpers where useful
+
+Suggested shape:
 
 ```ts
 export type HexMotionProfile = {
   hoverResponse: number;
   selectResponse: number;
+  cameraResponse: number;
   placementDurationMs: number;
   rotationDurationMs: number;
   removalDurationMs: number;
   expansionDurationMs: number;
-  cameraResponse: number;
   ambientScale: number;
+  reduced: boolean;
 };
 ```
 
-The exact implementation may differ, but responsibilities are fixed:
+Exact names may change, but the responsibilities above are fixed. The module must be deterministic and unit tested.
 
-- motion duration constants
-- exponential-response values for frame interpolation
-- overshoot/spring constants for placement settlement
-- deterministic phase helper from stable ids/coordinates
-- reduced-motion resolver
-- quality-aware animation density
+Move timing constants currently living in `HexSelectionEffects.tsx` into this shared module.
 
-The module must be deterministic and unit tested.
+## 4. Reduced Motion
 
-## 5. Reduced Motion
+Respect `prefers-reduced-motion: reduce` globally for the HexWorld.
 
-Respect `prefers-reduced-motion: reduce`.
+Prefer resolving the media preference once and deriving one motion profile that is passed down. Do not independently query the media preference throughout many components.
 
-Reduced motion does not remove feedback; it removes unnecessary travel and looping motion.
-
-With reduced motion enabled:
+With reduced motion:
 
 - no cinematic opening camera travel
 - no building drop from height
-- no overshoot/squash effect
-- ghost preview does not bob
-- tree/flower idle sway becomes nearly static
-- expansion tile travel becomes a short opacity/height transition or immediate state change
-- cloud drift is reduced substantially
-- selection/valid/invalid color feedback remains
-- success/error UI remains readable
-- camera still updates to correct framing, but with near-immediate or very short interpolation
+- no overshoot/squash
+- ghost does not bob
+- vegetation becomes nearly static
+- cloud drift is strongly reduced
+- expansion travel becomes short/minimal
+- camera reaches correct framing immediately or with a very short transition
+- selection/valid/invalid state feedback remains visible
+- success/error/Undo UI remains fully readable
 
-Create a small client hook only if needed, for example:
+Motion cannot be the only state indicator.
 
-`components/hex-world/useReducedHexMotion.ts`
+## 5. Quality Profiles
 
-Do not query media preferences inside many scene components independently if a single resolved motion profile can be passed down.
+Retain `high | medium | mobile` in `lib/hex-world/quality.ts`.
 
-## 6. Quality Profiles
+Extend only with fields required by this polish pass, such as:
 
-Retain the existing `high | medium | mobile` model in `lib/hex-world/quality.ts`.
-
-Extend the quality profile only with fields needed by this polish pass, for example:
-
-- `vegetationMotion: 'full' | 'reduced' | 'minimal'`
+- `vegetationMotion`
 - `placementParticleCount`
 - `waterGlintCount`
 - `cloudParallaxScale`
-- `materialVariation: 'full' | 'reduced'`
+- `materialVariation`
 
-Do not introduce live FPS-based quality switching in this phase.
+Do not add dynamic FPS-driven quality switching in this phase.
 
 ### High
 
-- max DPR remains bounded at approximately current 1.75 ceiling
-- current one primary directional shadow architecture remains
-- full deterministic vegetation sway
-- full cloud parallax among existing cloud budget
-- placement dust/sparkle burst
+- DPR remains bounded near the current 1.75 ceiling
+- current 2048 shadow class remains
+- full deterministic vegetation motion
+- full cloud parallax within the existing cloud budget
+- small placement dust/leaf/sparkle burst
 - optional subtle water glints
-- highest terrain tone variation
+- richest terrain tone variation
 
 ### Medium
 
-- fewer placement particles
+- DPR and 1024 shadow class remain bounded
+- reduced placement particles
 - reduced vegetation amplitude
-- simpler water highlight behavior
-- current 1024 shadow class preserved
-- material identity remains the same as High
+- simpler water highlights
+- same silhouettes/material identity as High
 
 ### Mobile
 
 - DPR remains approximately 1.0
-- no expensive per-object animated effects
-- minimal vegetation motion
+- current low shadow envelope remains
+- minimal vegetation movement
 - smallest particle budget
 - no optional water glints
-- clouds move slowly with one layer
-- terrain/material silhouettes remain visually consistent with High
+- one slow cloud layer
+- same art identity with less detail
 
-The quality system should remove detail, not change the artistic identity of the world.
+Quality removes cost, not artistic identity.
 
-## 7. Terrain Graphics
+## 6. Terrain Graphics and Interaction
 
-### 7.1 Preserve Instancing
+`HexTileInstances` remains instanced by terrain type. Do not create a React component or mesh per tile.
 
-`HexTileInstances` remains instanced by terrain type.
+### Deterministic color variation
 
-Do not replace the tile renderer with hundreds of individual meshes.
+Use coordinate/seed-based variation, never render-time randomness.
 
-### 7.2 Tone Variation
+Target envelope:
 
-Normal tiles should no longer look like a uniform grid of identical colors.
+- grass: about ±4–7% lightness/value
+- soil: about ±4–6%
+- stone: about ±3–5%
 
-Use deterministic variation based on coordinate/seed, not random values created during render.
+Variation must remain subtle enough that the island reads as one palette.
 
-Suggested variation envelope:
+### Top/side readability
 
-- grass: approximately ±4–7% lightness/value variation
-- soil: approximately ±4–6%
-- stone: approximately ±3–5%
-- water base terrain should defer visual identity to `HexWaterSurface`
+Keep the low-poly hex silhouette, but improve miniature depth through lighting/material value separation. Avoid black outlines and high-contrast grid borders in normal view.
 
-Variation must be subtle enough that the island still reads as one palette.
+### Hover motion
 
-### 7.3 Top/Side Readability
+Hover should gain a physical response:
 
-The island should feel more like a miniature sculpted landmass.
-
-Preferred approach:
-
-- preserve low-poly hex silhouette
-- strengthen light-vs-side value separation using material/lighting rather than an additional full mesh per tile when possible
-- underside stone/soil depth remains handled primarily by `HexIslandUnderside`
-- avoid black outlines or high-contrast cell borders in normal view
-
-### 7.4 Hover Motion
-
-Hover should gain a small physical response:
-
-- target vertical lift: approximately 0.04–0.07 world units
-- fast eased response, approximately 120–180ms perceptually
-- no scale explosion
+- vertical lift around `0.04–0.07`
+- perceptual response around `120–180ms`
+- no large scale change
 - no camera movement
 
-Because tiles are instanced, the implementation should update only required instance transforms while preserving batching.
+Because terrain is instanced, update only the previously hovered/current hovered transform when possible rather than rewriting all instance matrices every frame.
 
-### 7.5 Build Feedback
+### Build footprint
 
-In Build mode:
+- valid = soft emerald emphasis with slow restrained breathing
+- invalid = muted coral with a short pulse
+- anchor may be slightly stronger than footprint cells
+- normal seams remain minimized outside Build/Expand
 
-- valid footprint: soft emerald emphasis with slow subtle breathing
-- invalid footprint: muted coral emphasis with a short restrained pulse
-- selected anchor may be slightly stronger than footprint cells
-- normal seams remain minimized outside Build/Expand interaction
+Invalid click must send no mutation and must never shake the whole camera.
 
-Invalid click must not send an API request and must not shake the whole camera.
+## 7. Selection Effects
 
-## 8. Selection Effects
+`HexSelectionEffects` remains visual-only.
 
-Move current timing constants out of `HexSelectionEffects.tsx` into the shared motion module.
+Upgrade the static ring with restrained motion:
 
-Upgrade the ring from static-only feedback to a restrained animated visual:
-
-- opacity pulse within a small range
+- small opacity pulse
 - optional tiny scale breathing
-- deterministic or time-based but low amplitude
-- no extra network behavior
+- valid/invalid/selected colors remain distinct
+- no network activity
 - no dynamic light
 
-Valid, invalid, and selected states retain distinct accessible colors.
+Reduced motion keeps the ring static but visible.
 
-## 9. Building Motion
+## 8. Building Motion
 
-### 9.1 Persisted Buildings Stay Individual
+Placed buildings remain individual scene groups.
 
-Placed buildings remain individual scene groups. They are few enough that individual transform interpolation is acceptable and improves quality.
+### Selection
 
-### 9.2 Selection
+Replace immediate selected transform snapping with interpolation:
 
-Current immediate selected lift/scale becomes smooth interpolation:
+- scale target roughly `1.025–1.04`
+- vertical lift roughly `0.03–0.05`
+- `180–220ms` feel
+- smooth return on deselect
 
-- scale target about 1.025–1.04
-- vertical lift about 0.03–0.05
-- response approximately 180–220ms
-- deselection returns smoothly
+Structural buildings such as Home/Workshop/Storage do not perpetually bob.
 
-No perpetual idle bob for Home/Workshop/Storage. Structural buildings should feel grounded.
+### Rotation
 
-### 9.3 Rotation
+Confirmed rotation should animate the expected 60-degree step:
 
-Persisted rotation changes should animate through the shortest expected 60-degree turn.
-
-- approximately 200–260ms
-- ease-out or critically damped interpolation
+- around `200–260ms`
+- shortest 60-degree path
 - server state remains authoritative
-- rejected server rotation preserves/returns to authoritative orientation
+- failure leaves/returns to authoritative orientation
 
-### 9.4 Placement Celebration
+### Click-to-place celebration
 
-New click-to-place flow remains:
+The current interaction is a hard requirement:
 
 `Build → component → ghost → click/tap valid hex → server mutation → success`
 
-Only after server success should the persisted building perform the placement celebration.
+Only after server success may the committed building celebrate.
 
-Recommended animation:
+Recommended settle:
 
-1. appear approximately 0.5–0.8 units above target
+1. begin `0.5–0.8` units above final target
 2. descend quickly
 3. subtle overshoot/compression impression
 4. settle to final transform
-5. emit small shared dust/leaf/sparkle burst
+5. emit a small bounded dust/leaf/sparkle effect
 
-Total perceived duration approximately 320–480ms.
+Target duration: `320–480ms`.
 
-Do not show a committed building before server confirmation.
+Do not render a committed building before server confirmation.
 
-### 9.5 Ghost Preview
+### Identifying the newly placed building
 
-Ghost preview remains clearly non-persisted:
+Do not change the Place API merely for animation metadata.
 
-- transparent material identity remains
-- optional vertical bob about 0.015–0.03 units
-- very slow opacity or scale breath
-- movement disabled/reduced under reduced-motion
-- invalid ghost may use muted coral tint
+`HexBuildController` should capture pre-mutation building ids and compare them with the confirmed snapshot to find the newly created id. That id may be passed to the scene as a short-lived semantic trigger.
 
-The ghost must remain responsive to hover and click-to-place.
+If no new id can be identified safely, show only a coordinate-based placement effect; do not weaken API or persistence contracts.
 
-### 9.6 Move
+### Ghost preview
 
-Move retains explicit `Move here` confirmation.
+- transparent/non-persisted identity remains obvious
+- optional bob only `0.015–0.03`
+- slow opacity/scale breath
+- invalid ghost uses muted coral treatment
+- reduced motion disables bob
+- remains responsive to click-to-place
 
-Before confirmation:
+### Move
 
-- original building remains authoritative at source
-- proposed target uses ghost preview
+Move keeps explicit `Move here` confirmation.
 
-After server success:
+Before confirmation the original building remains authoritative and the target is a ghost. After server success, target may use a smaller settle effect. Undo behavior is unchanged.
 
-- source presentation may fade quickly
-- target building settles with smaller placement motion than a new build
-- Undo token behavior is unchanged
+### Remove
 
-### 9.7 Remove
+Removal remains server authoritative. Prefer a small location-based dust effect after confirmed removal. Only keep a transient removed model for fade/scale-out if it can be done without complicating persisted ownership.
 
-Removal stays server authoritative.
+No persistence change is allowed merely to support an exit animation.
 
-After confirmed remove, use a short visual exit only if the local architecture can preserve the removed model briefly without lying about persisted state.
-
-Preferred visual:
-
-- scale 1 → approximately 0.86
-- opacity fade if model materials allow it cleanly
-- optional tiny dust particles
-- approximately 180–260ms
-
-If preserving a transient removed render complicates model ownership, skip model fade and use a location-based particle effect instead. Do not introduce persistence complexity just for exit animation.
-
-## 10. Placement Effects
+## 9. Placement Effects Layer
 
 Create:
 
 `components/hex-world/HexPlacementEffects.tsx`
 
-Responsibility:
+Responsibilities:
 
-- visual-only transient effects at confirmed action coordinates
-- one shared small particle system or bounded pool
+- visual-only confirmed action effects
+- bounded particle pool/shared batch
 - no one-particle React components
-- no network requests
 - quality/reduced-motion aware
+- no network requests
 
 Effects:
 
-- new building: tiny dust + leaf/sparkle burst
-- successful move: smaller dust burst
-- invalid click: footprint pulse only; no particle burst needed
+- new building = small dust + leaf/sparkle burst
+- successful Move = smaller burst
+- confirmed Remove = optional small dust at old position
+- invalid click = footprint pulse only
 
-High quality should still remain restrained. The effect should read as tactile, not magical fireworks.
+Effects should feel tactile, not like fireworks.
 
-## 11. Ambient Vegetation Motion
+All transient effect state must be cleared when `landId` changes so no animation from the previous Land leaks into the new Land.
 
-`HexAmbientDecor` remains instanced.
+## 10. Ambient Vegetation Motion
 
-Add deterministic phase offsets so repeated objects do not sway in sync.
+`HexAmbientDecor` stays instanced.
+
+Do not update every vegetation instance matrix every frame merely to create asynchronous wind.
+
+Preferred architecture:
+
+- assign deterministic coordinates into a small fixed number of phase buckets, e.g. 3–4
+- render each vegetation type as a small bounded number of instanced batches
+- animate the batch/group transforms with different phases
+- reduce bucket count/amplitude by quality profile
 
 ### Trees
 
-- canopy motion is more visible than trunk motion
-- trunk rotation/motion tiny
-- canopy approximately ±0.5–1.5 degrees depending quality
-- slow cycle roughly 3–6 seconds with coordinate-based phase
+- canopy motion more visible than trunk
+- trunk movement tiny
+- canopy roughly ±`0.5–1.5°` depending quality
+- slow `3–6s` cycles with deterministic phase
 
-### Flowers / Sprouts
+### Flowers/sprouts
 
-- smaller/faster response than trees
+- smaller, slightly faster movement
 - extremely low amplitude
-- enough to avoid a frozen scene
 
-### Rocks / Paths
+### Rocks/paths
 
-Static.
+Static. They visually anchor the scene.
 
-These objects visually anchor the scene and should not move.
+## 11. Sky and Clouds
 
-### Implementation Constraint
+Keep the current bounded cloud count and layer limits.
 
-Do not iterate and rewrite large instance matrices unnecessarily if the same impression can be achieved with parent-batch motion or compact instance updates.
+Current clouds must stop moving as one rigid group.
 
-If per-instance wind transforms are used, quality profiles must reduce the number/frequency of animated batches.
+Use a small number of layer/group refs:
 
-## 12. Sky and Cloud Motion
-
-Keep the current bounded cloud count.
-
-Upgrade `HexSkyAtmosphere` so cloud layers do not move as one rigid object.
-
-Desired behavior:
-
-- different horizontal drift rates per layer
+- different horizontal drift speeds
 - tiny vertical drift
-- tiny scale breathing only if cheap
-- foreground/background parallax impression
+- optional tiny scale breathing only if cheap
+- parallax impression
 - no cloud shadows
-- no volumetric cloud shaders
+- no volumetric cloud shader
 
-High quality uses all current cloud layers; Medium and Mobile retain existing reduced layer counts.
+High uses the current full layer budget; Medium/Mobile keep reduced layer counts.
 
-Fog/background palette remains pastel and should not obscure terrain readability.
+## 12. Lighting and Materials
 
-## 13. Lighting and Material Pass
+Preserve one main directional real-time shadow owner.
 
-Preserve one main real-time directional shadow light.
+No per-building point-light fleet.
 
-No per-building point lights.
-
-Upgrade goals:
+Tune toward:
 
 - warmer key light
 - slightly cooler sky/fill relationship
 - softer miniature-style shadows
 - stronger material separation without oversaturation
-- structural wood/stone/roof materials get coherent roughness/value treatment
-- warm windows should use emissive material only where appropriate, not dynamic lights
+- coherent wood/stone/roof roughness/value treatment
+- emissive window materials only where useful; no point lights for windows
 
-Avoid mandatory post-processing.
+No mandatory Bloom, SSAO, DOF, SSR, planar reflection, or other heavy post-processing.
 
-No required Bloom, SSAO, DOF, SSR, or planar reflections.
+Optional post-processing is outside core acceptance and cannot be required for the world to look correct.
 
-If any optional post effect is later considered, it must be feature-gated to High and cannot be required for the scene to look correct. It is outside the core acceptance criteria of this design.
+## 13. Water
 
-## 14. Water Upgrade
+Preserve instanced water.
 
-Preserve the instanced water architecture.
+The pond should feel calmer and more premium:
 
-Current water already has a vertical bob and optional rings. Upgrade it into a calmer premium pond treatment.
-
-Desired characteristics:
-
-- translucent soft turquoise
+- soft translucent turquoise
 - moderately high roughness
-- asynchronous ripple phase rather than every tile moving as one slab
-- subtle darker edge/value relationship
-- High may show a very small count of moving glints/rings
-- Medium simplified ripples
-- Mobile basic static/translucent surface with minimal motion
+- asynchronous ripple phase
+- subtle darker edge/value impression
+- High may have a tiny bounded glint/ring count
+- Medium uses simpler ripples
+- Mobile is mostly static with minimal motion
 
-No planar reflection.
+Avoid per-tile matrix updates every frame when possible.
 
-No expensive refraction shader required.
+Preferred implementation mirrors vegetation phase buckets: partition water tiles into a very small fixed number of deterministic groups and animate group vertical/ripple phase independently.
 
-Decorative reeds/stones may be added using existing ambient instancing patterns if deterministic and bounded.
+No planar reflection and no expensive refraction shader is required.
 
-## 15. World Particles
+Deterministic reeds/stones may be added through existing ambient instancing patterns if bounded.
 
-Keep one shared ambient particle batch.
+## 14. Ambient Particles
 
-Ambient particles should remain subtle:
+Keep one shared ambient points batch.
 
-- pollen/dust feeling
-- slow vertical drift
+Particles should read as pollen/dust:
+
+- slow drift
 - low opacity
+- restrained size
 - not a starfield
 
-Placement particles are a separate bounded transient concern and should not multiply persistent draw calls significantly.
+Persistent count stays quality-controlled. Placement effects are separate short-lived bounded effects and must not multiply persistent draw calls significantly.
 
-Particle counts remain quality controlled.
+## 15. Camera Motion Language
 
-## 16. Camera Motion Language
-
-Preserve `HexDioramaCamera` intent architecture and user-interrupt behavior.
+Preserve the current camera intent architecture and interruptibility.
 
 ### Overview
 
-- island framed with current bounds logic
-- slightly slower premium settle on first entry
+- keep bounds-based framing
+- initial entry may begin slightly wider/elevated and settle softly
+- interaction is immediately available
 - no automatic orbit
 
 ### Focus
 
-- smooth target and distance transition
-- enough island context remains visible
+- smooth target/distance transition
+- retain island context
 - avoid aggressive zoom
 
 ### Build
 
-- almost no unsolicited camera movement while the user is trying to click a tile
-- when target anchor changes, camera should not chase every hover
-- only intentional camera intent changes should trigger meaningful movement
+Build camera must **not chase hover anchors**.
+
+The existing Build intent may still carry an anchor for semantic context, but changing hover/tile anchor alone must not restart scripted camera travel. The camera may frame Build mode once when entering the mode, then remain user-stable until a real camera intent such as Reset, Focus, confirmed expansion reframe, or mode transition occurs.
+
+This is a hard acceptance criterion because click-to-place depends on a stable pointer target.
 
 ### Expansion
 
-- server-confirmed expansion may trigger a gentle reframe
-- approximately 700–1000ms
-- user interaction interrupts scripted motion
+Confirmed expansion may trigger a gentle `700–1000ms` reframe only if newly unlocked coordinates would sit outside comfortable bounds. User orbit interaction interrupts it.
 
-### Invalid Placement
+### Invalid placement
 
 No camera shake.
 
-## 17. Opening Presentation
+## 16. Opening Presentation
 
-The first entry should feel more crafted without blocking interaction.
-
-Preferred behavior:
+First entry should feel crafted but never block input:
 
 - scene renders immediately
-- camera begins from a slightly elevated/wider position and settles into Overview
-- clouds already drifting
-- island detail visible immediately
-- interaction remains available; cinematic motion is interruptible
+- optional slightly wider/elevated starting pose
+- camera settles into Overview
+- clouds already drift
+- world is clickable/orbitable during the settle
 
-Reduced-motion users get direct Overview framing.
+Reduced-motion users receive direct Overview framing.
 
-No splash screen and no non-interactive intro sequence.
+No splash screen or non-interactive intro.
 
-## 18. Expansion Motion
+## 17. Expansion Motion
 
-Existing server-confirmed tile rise remains the base.
+Existing server-confirmed tile rise is the base.
 
-Upgrade sequence after server success:
+After server success:
 
-1. amber ghost cluster disappears
-2. light mist/dust begins at expansion edge
-3. tiles rise with short stagger derived deterministically from cluster coordinate ordering
-4. optional edge vegetation/decor appears after tile settle
-5. camera reframes only when the new land would sit outside comfortable bounds
+1. amber preview disappears
+2. light mist/dust appears at the edge
+3. new tiles rise with deterministic short stagger
+4. visual-only decor settles after terrain
+5. camera reframes only when necessary
 
-Keep total sequence approximately 700–1100ms.
+Total target: `700–1100ms`.
 
-Expansion remains non-undoable and the Points transaction is unchanged.
+Expansion remains non-undoable. Points charging and transaction semantics remain unchanged.
 
-## 19. Click-to-Place Preservation
+## 18. Click-to-Place Preservation
 
-The recently approved Build interaction is a hard requirement:
+Hard requirements:
 
-- Build catalog item selection enters placing mode
+- selecting a Build catalog item enters placing mode
 - hover/tap shows ghost and footprint
-- click/tap a valid hex calls Place immediately
-- there is no second `Place` confirm button
+- click/tap valid hex places immediately
+- no second `Place` button
 - invalid click sends no mutation
 - rapid double-click remains guarded
-- rotate/cancel remain available
-- successful placement exits placing state and surfaces the existing short-lived Undo token
-- Move remains explicitly confirmed with `Move here`
+- rotate/cancel remain
+- successful Place exits placing state and surfaces current short-lived Undo
+- Move still requires `Move here`
 
 Graphic/motion work must not regress this flow.
 
-## 20. Server Authority and Data Integrity
+## 19. Server Authority and Land Isolation
 
-No Phase 3 graphic/motion code may weaken these existing rules:
+No graphics/motion code may weaken:
 
-- server validates building catalog definitions
-- server validates footprint/terrain/unlocked/occupancy
-- Place/Move/Rotate/Remove remain authoritative mutations
-- Undo remains Redis-backed, short-lived, scoped to authenticated config/Land/user
-- `HexWorld.revision` stale-edit protection remains
-- expansion Points charging remains authoritative and transactional
-- stale responses from a previous Land cannot write into the active Land
+- catalog/footprint/terrain/unlocked/occupancy server validation
+- Place/Move/Rotate/Remove server authority
+- Redis-backed scoped Undo
+- `HexWorld.revision` stale-edit protection
+- transactional expansion Points charging
+- stale-Land response guards
 
-No database migration is expected for this phase.
+No database migration is expected.
 
-If implementation discovers a genuine need for persistence changes, stop and reclassify scope before adding them.
+If implementation discovers a real need for persistence changes, stop and reclassify the work before making them.
 
-## 21. Component/File Plan
+Transient animation/effect state must reset on Land switch, including:
 
-### New files expected
+- newly placed id
+- placement/move/remove effect coordinates
+- local settle timers
+- pending expansion visual timers
+
+No old-Land animation may render into a new Land snapshot.
+
+## 20. Expected File Changes
+
+### New
 
 - `lib/hex-world/motion.ts`
 - `components/hex-world/HexPlacementEffects.tsx`
 - optional `components/hex-world/useReducedHexMotion.ts`
-- tests dedicated to motion config and graphic contracts
+- motion/graphic contract tests
 
-### Existing files expected to change
+### Existing
 
-- `components/hex-world/HexWorld3D.tsx`
-- `components/hex-world/HexDioramaCamera.tsx`
-- `components/hex-world/HexWorldLighting.tsx`
-- `components/hex-world/HexSkyAtmosphere.tsx`
-- `components/hex-world/HexTileInstances.tsx`
-- `components/hex-world/HexSelectionEffects.tsx`
-- `components/hex-world/HexWaterSurface.tsx`
-- `components/hex-world/HexAmbientDecor.tsx`
-- `components/hex-world/HexBuildings.tsx`
-- selected building model modules where material tuning is needed
-- `components/hex-world/HexBuildController.tsx` only for semantic confirmed-action trigger wiring
-- `lib/hex-world/quality.ts`
-- `tests/hex-render-budget.test.ts`
-- `tests/hex-phase2-acceptance.test.ts` or a new Phase 3 acceptance file
+- `HexWorld3D.tsx`
+- `HexDioramaCamera.tsx`
+- `HexWorldLighting.tsx`
+- `HexSkyAtmosphere.tsx`
+- `HexTileInstances.tsx`
+- `HexSelectionEffects.tsx`
+- `HexWaterSurface.tsx`
+- `HexAmbientDecor.tsx`
+- `HexBuildings.tsx`
+- selected model modules for material tuning
+- `HexBuildController.tsx` only for confirmed semantic triggers
+- `quality.ts`
+- render-budget and acceptance tests
 
-Do not combine unrelated application-shell work into this phase.
+Do not mix application-shell redesign or unrelated gameplay work into this phase.
 
-## 22. Motion Timing Targets
+## 21. Motion Timing Targets
 
-These are design targets, not reasons to hard-code magic numbers in JSX.
+Centralize these in the motion profile rather than JSX magic numbers:
 
-- hover response: perceptual 120–180ms
-- selection lift: 180–220ms
-- rotation: 200–260ms
-- new placement settle: 320–480ms
-- move settle: 240–380ms
-- removal feedback: 180–260ms
-- invalid footprint pulse: 100–160ms
-- opening camera settle: approximately 650–1000ms, interruptible
-- expansion sequence: 700–1100ms
-- cloud loops/drift: continuous and very slow
-- vegetation loop: roughly 3–6 seconds with seeded phase
+- hover: `120–180ms`
+- selection: `180–220ms`
+- rotation: `200–260ms`
+- new placement: `320–480ms`
+- move settle: `240–380ms`
+- removal feedback: `180–260ms`
+- invalid footprint pulse: `100–160ms`
+- opening camera: `650–1000ms`, interruptible
+- expansion: `700–1100ms`
+- vegetation: `3–6s` seeded cycle
+- clouds: continuous, very slow
 
 Motion should feel soft and weighted, not rubbery.
 
-## 23. Interaction Acceptance Flow
-
-The implementation is accepted only when this sequence works without visual or state dead ends:
+## 22. Acceptance Flow
 
 `Open Garden`
 → world renders immediately
 → camera settles softly
 → orbit/zoom remain responsive
-→ clouds/water/vegetation exhibit restrained independent motion
+→ cloud/water/vegetation motion is restrained and independent
 → Build
 → select component
 → hover valid tile
-→ ghost/footprint feedback responds
+→ ghost/footprint responds
 → click valid hex
-→ one mutation only
+→ exactly one mutation
 → server confirms
 → persisted building settles with placement effect
 → Undo appears
-→ Undo restores world correctly
+→ Undo restores correctly
 → select building
 → smooth selection lift
 → rotate
-→ server confirms and visual rotation settles
+→ confirmed 60° visual settle
 → Move
 → target ghost
-→ Move here
-→ settle at confirmed target
+→ `Move here`
+→ confirmed settle
 → Remove
-→ server confirmation + restrained removal feedback
+→ confirmed removal feedback
 → Expand
 → select amber cluster
 → confirm
-→ server transaction succeeds
+→ transaction succeeds
 → staggered tile rise + optional reframe
 → Reset View
-→ switch Land during/after animations
-→ no stale animation or snapshot leaks into new Land
+→ switch Land while/after effects
+→ no stale snapshot/effect leaks
 → reload
 → persisted layout remains correct
 
-## 24. Accessibility and Input
+## 23. Accessibility and Input
 
 - click/tap placement remains primary
 - minimum 44–48px UI targets remain
-- motion cannot be the only state indicator
-- valid/invalid still use color plus footprint/shape/context copy where applicable
+- motion is never the sole feedback
+- valid/invalid retain distinct footprint/color/context feedback
 - reduced-motion is respected
-- keyboard rotate/cancel/confirm behavior remains logical; Enter may still place current valid keyboard-selected anchor, but pointer click remains the normal Build path
-- no hover-only essential behavior on touch devices
+- touch has no hover-only essential behavior
+- keyboard rotate/cancel/confirm remains logical
 
-## 25. Performance Acceptance
+Enter may still confirm the currently valid keyboard-selected Build anchor, but pointer/touch click remains the standard placement path.
 
-The visual pass is not accepted if it destroys the Phase 2 performance discipline.
+## 24. Performance Acceptance
 
 Hard constraints:
 
 - terrain remains instanced
-- ambient repeated decor remains instanced where practical
+- repeated ambient decor remains instanced
 - no per-tile React component explosion
 - one main directional real-time shadow owner
-- no per-building point-light fleet
+- no per-building dynamic-light fleet
 - no planar reflection
 - no mandatory heavy post-processing
-- bounded DPR by quality profile
-- bounded persistent particle count
-- placement effects use a bounded pool/shared batch
-- hidden/inactive page should not continue unnecessary high-frequency animation work where practical
+- DPR remains quality-bounded
+- persistent particle count remains bounded
+- placement effects use a shared pool/batch
+- vegetation/water asynchronous motion uses a small fixed number of phase buckets instead of per-instance full-matrix updates each frame
 - no network writes from hover/idle animation
+- hidden/inactive document state should skip or minimize non-essential ambient animation work
 
-Regression tests should assert architecture-level performance rules where reasonable.
+## 25. Failure Handling
 
-## 26. Testing Strategy
+Visual effects must never imply success before persistence succeeds.
+
+- failed Place → no committed placement celebration; stay in placement mode and show existing error
+- failed Move → original building remains authoritative
+- failed Rotate → preserve/return to server orientation
+- failed Remove → building remains present
+- failed Expand → no rise/reframe celebration
+- Undo conflict/unavailable → existing copy remains; no fake reverse animation
+
+Persistence-related effects begin from confirmed semantic events only.
+
+## 26. TDD and Verification
 
 Implementation must follow RED → GREEN TDD.
 
 ### Pure tests
 
-Add tests for:
-
 - motion profile resolution
 - reduced-motion overrides
-- deterministic motion phase helper
-- quality-profile graphic/motion budgets
+- deterministic phase helper
+- quality motion/particle budgets
 
-### Static/contract tests
+### Contract tests
 
-Assert:
-
-- `HexWorld3D` mounts the new placement-effects layer
-- heavy post-processing packages/components are not required
-- click-to-place contract remains
-- one main shadow owner remains
-- cloud count remains bounded by quality profile
+- `HexWorld3D` mounts placement effects
+- no mandatory heavy post-processing
+- one main shadow owner
+- bounded cloud layers
 - ambient repeated geometry remains instanced
-- no animation code adds network writes
+- fixed phase-bucket strategy remains bounded
+- Build camera does not re-script solely because hover anchor changes
+- click-to-place contract remains
+- no animation module performs network writes
 
-### Interaction regression
-
-Keep/extend existing tests for:
+### Interaction regressions
 
 - click-to-place
 - invalid placement
 - double-click guard
 - Move confirmation
 - Undo
-- stale Land responses
+- stale Land responses/effects
 - expansion confirmation
 
-### Build gates
+### Full gates
 
-The branch must pass:
-
-- Prisma validate/migrate chain even though no migration is expected
+- Prisma validate/migrate chain
 - all Hex pure/acceptance tests
 - Postgres + Redis Undo integration
 - family-farm regression
 - lint
 - production build
 
-## 27. Visual QA Checklist
+## 27. Visual QA
 
-Desktop High:
+### Desktop High
 
-- island reads as a miniature world before individual hexes
-- terrain variation is visible but not noisy
-- lighting has clear warm key / soft fill separation
+- island reads as one miniature world before individual hex cells
+- terrain variation is visible but quiet
+- warm key / soft fill separation is clear
 - Home remains visual focal point
-- clouds exhibit parallax rather than moving as one slab
-- trees do not sway in perfect sync
-- pond looks calm, not gelatinous
-- placement effect is satisfying but short
-- ghost is obviously temporary
-- no camera chase during normal hover
+- clouds show parallax instead of rigid group translation
+- vegetation does not sway perfectly in sync
+- pond is calm, not gelatinous
+- placement effect is satisfying and short
+- ghost is clearly temporary
+- camera remains stable while hovering Build tiles
 
-Desktop Medium:
+### Medium
 
-- artistic identity matches High
-- effects are reduced, not missing essential feedback
+- same art identity as High
+- fewer effects without losing core feedback
 
-Mobile:
+### Mobile
 
-- no frame-heavy particle/vegetation overload
-- controls remain clear and tappable
-- Build click-to-place remains reliable
+- no heavy vegetation/particle cost
+- controls remain tappable and clear
+- click-to-place remains reliable
 - no UI overflow
 - no excessive camera movement
 
-Reduced Motion:
+### Reduced Motion
 
-- interaction remains fully understandable
-- state changes remain visible
-- no large animated travel required to operate the builder
+- all state changes remain understandable
+- no large travel or looping motion is required to operate the builder
 
-## 28. Failure Handling
+## 28. Non-Goals
 
-Graphic effects must never hide or change the meaning of server failures.
-
-Examples:
-
-- failed Place: no committed placement celebration; remain in placement mode and surface existing error
-- failed Move: original building remains authoritative
-- failed Rotate: visual orientation returns/preserves server state
-- failed Remove: building remains present
-- failed Expand: no tile-rise celebration and no false camera reframe
-- Undo conflict/unavailable: existing copy remains; no misleading reverse animation
-
-Effects start from confirmed semantic events wherever persistence is involved.
-
-## 29. Non-Goals
-
-Explicitly out of scope:
+Out of scope:
 
 - farming/resource economy
 - crop growth gameplay
-- crafting
-- production chains
-- NPCs
-- playable avatar
+- crafting/production chains
+- NPCs or playable avatar
 - WASD movement
 - multiplayer building
-- seasons
-- weather gameplay
-- day/night gameplay system
-- procedural terrain sculpting
+- seasons/weather gameplay/day-night system
+- terrain sculpting
 - long Undo history
-- expansion Undo/refunds
-- physics simulation
-- destructible buildings
-- mandatory bloom/DOF/SSAO/SSR
-- planar water reflections
-- migration/persistence redesign
+- expansion Undo/refund
+- physics/destruction
+- mandatory Bloom/DOF/SSAO/SSR
+- planar reflections
+- persistence redesign
 
-## 30. Completion Criteria
+## 29. Completion Criteria
 
-This phase is complete when:
+This phase is complete only when:
 
-1. The island looks materially richer without changing its established cozy art direction.
-2. Normal idle scene feels alive through restrained cloud, water, particle, and vegetation motion.
-3. Click-to-place has a server-confirmed tactile placement celebration.
-4. Building selection and rotation no longer snap visually.
+1. The island looks materially richer without changing the established cozy art direction.
+2. Idle scene feels alive through restrained independent cloud, water, particle, and vegetation motion.
+3. Click-to-place produces a tactile **server-confirmed** placement celebration.
+4. Selection and rotation no longer visually snap.
 5. Invalid interactions communicate locally without camera shake.
-6. Camera motion feels premium and remains interruptible.
-7. Expansion presentation is more polished but remains server-confirmed and non-undoable.
-8. Reduced-motion users retain full usability with minimized movement.
-9. High/Medium/Mobile profiles preserve the same art identity at different cost envelopes.
-10. Existing server authority, Undo, Land isolation, expansion charging, and legacy/family-farm behavior remain intact.
-11. Hex + Redis integration + farm regression + lint + production build are green on the exact implementation head.
-12. Railway deploy starts with additive migration-only startup behavior and `/api/health` succeeds before production is declared verified.
+6. Build camera does not chase hover anchors.
+7. Camera motion is premium and remains interruptible.
+8. Expansion presentation is improved without changing transaction/Undo rules.
+9. Reduced-motion users retain full usability.
+10. High/Medium/Mobile preserve the same art identity at different cost envelopes.
+11. Server authority, Undo, Land isolation, expansion charging, legacy data, and family-farm behavior remain intact.
+12. Hex + Redis integration + farm regression + lint + production build are green on the exact implementation head.
+13. Railway production deployment passes additive migration startup and `/api/health` before production is declared verified.
