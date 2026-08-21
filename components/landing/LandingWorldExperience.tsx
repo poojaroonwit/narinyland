@@ -72,7 +72,7 @@ export function LandingWorldExperience() {
           disabled={entering}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
-          className="flex h-10 items-center gap-2 rounded-full bg-white/82 px-4 text-xs font-black text-stone-800 shadow-lg backdrop-blur-xl disabled:cursor-wait disabled:opacity-70"
+          className="flex h-10 items-center gap-2 rounded-full bg-white/[0.82] px-4 text-xs font-black text-stone-800 shadow-lg backdrop-blur-xl disabled:cursor-wait disabled:opacity-70"
         >
           <i className={`fas ${entering ? 'fa-spinner fa-spin' : 'fa-arrow-right-to-bracket'} text-[11px] text-pink-500`} />
           <span>{entering ? 'Entering…' : 'Enter World'}</span>
@@ -86,7 +86,7 @@ export function LandingWorldExperience() {
         transition={{ duration: 0.7, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="max-w-[32rem]">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/38 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800 shadow-sm backdrop-blur-lg">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.38] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800 shadow-sm backdrop-blur-lg">
             <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
             Your shared world
           </div>
