@@ -41,3 +41,28 @@ test('placement effects stay visual-only and invalid clicks use local pulse feed
   assert.match(world, /HexPlacementEffects/);
   assert.match(controller, /invalidPulseNonce/);
 });
+
+test('ambient vegetation uses fixed quality-aware motion buckets', async () => {
+  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
+  assert.match(ambient, /deterministicMotionBucket/);
+  assert.match(ambient, /vegetationMotion/);
+  assert.match(ambient, /motionProfile/);
+  assert.match(ambient, /rocks/);
+  assert.match(ambient, /paths/);
+});
+
+test('sky parallax remains bounded and uses shared motion profile', async () => {
+  const sky = await source('../components/hex-world/HexSkyAtmosphere.tsx');
+  const lighting = await source('../components/hex-world/HexWorldLighting.tsx');
+  assert.match(sky, /cloudParallaxScale/);
+  assert.match(sky, /motionProfile/);
+  assert.equal((lighting.match(/<directionalLight\b/g) ?? []).length, 1);
+  assert.doesNotMatch(`${sky}\n${lighting}`, /EffectComposer|Bloom|DepthOfField|volumetric/i);
+});
+
+test('water uses deterministic buckets and bounded quality glints', async () => {
+  const water = await source('../components/hex-world/HexWaterSurface.tsx');
+  assert.match(water, /deterministicMotionBucket/);
+  assert.match(water, /waterGlintCount/);
+  assert.doesNotMatch(water, /MeshReflectorMaterial|CubeCamera|WebGLCubeRenderTarget/);
+});
