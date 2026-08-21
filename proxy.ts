@@ -33,6 +33,9 @@ const PUBLIC_API_PREFIXES = [
   '/api/health',
 ];
 
+const LOCAL_AUTH_PATHS = ['/login', '/signup'];
+const PROTECTED_PAGE_PREFIXES = ['/garden', '/onboarding', '/board'];
+
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
   const host = request.headers.get('host');
@@ -58,9 +61,18 @@ function hasServerSessionCookie(request: NextRequest): boolean {
   );
 }
 
+function isProtectedPage(pathname: string): boolean {
+  return PROTECTED_PAGE_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isLocalAuthPage(pathname: string): boolean {
+  return LOCAL_AUTH_PATHS.some(path => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ua = (request.headers.get('user-agent') || '').toLowerCase();
+  const hasSession = hasServerSessionCookie(request);
 
   if (pathname === '/api/health') {
     return NextResponse.next();
@@ -71,6 +83,21 @@ export function proxy(request: NextRequest) {
       { error: 'forbidden', error_description: 'CSRF validation failed' },
       { status: 403 }
     );
+  }
+
+  // Local page authentication is handled here because Next.js 16 uses proxy.ts
+  // instead of a parallel middleware.ts file. Use server-only session cookies so
+  // a script-readable metadata cookie can never grant access to a protected page.
+  if (!pathname.startsWith('/api')) {
+    if (isProtectedPage(pathname) && !hasSession) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (isLocalAuthPage(pathname) && hasSession) {
+      return NextResponse.redirect(new URL('/garden', request.url));
+    }
   }
   
   // 1. Check for Legitimate Search Engines (Allow List)
@@ -98,7 +125,7 @@ export function proxy(request: NextRequest) {
   if (
     pathname.startsWith('/api') &&
     !PUBLIC_API_PREFIXES.some(prefix => pathname.startsWith(prefix)) &&
-    !hasServerSessionCookie(request)
+    !hasSession
   ) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -107,5 +134,12 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    '/api/:path*',
+    '/garden/:path*',
+    '/onboarding/:path*',
+    '/board/:path*',
+    '/login',
+    '/signup',
+  ],
 };
