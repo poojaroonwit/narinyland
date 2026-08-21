@@ -15,7 +15,6 @@ import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexDioramaCamera } from './HexDioramaCamera';
-import { HexExpansionClusters } from './HexExpansionClusters';
 import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
@@ -131,7 +130,6 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <FloatingFragments />
         <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
         <HexPlacementEffects event={props.visualEvent ?? null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
-        {!!props.expansionOptions?.length && !props.expansionPlacementPreview && <HexExpansionClusters expansions={props.expansionOptions} selectedKey={props.selectedExpansionKey} onSelect={(key) => props.onSelectExpansion?.(key)} />}
         <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
         <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
