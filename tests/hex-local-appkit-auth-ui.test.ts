@@ -45,10 +45,11 @@ test('local credentials stay server-side while AppKit remains the auth backend',
   assert.match(route, /delete safeData\.refreshToken/);
 });
 
-test('entry and protected-route navigation use the local login page', async () => {
-  const [authFacade, boundary, middleware, landing] = await Promise.all([
+test('entry and protected-route navigation use one Next 16 proxy and the local login page', async () => {
+  const [authFacade, boundary, proxy, middleware, landing] = await Promise.all([
     readSource('lib/auth-local.ts'),
     readSource('components/AuthBoundary.tsx'),
+    readSource('proxy.ts'),
     readSource('middleware.ts'),
     readSource('components/landing/LandingWorldExperience.tsx'),
   ]);
@@ -57,7 +58,11 @@ test('entry and protected-route navigation use the local login page', async () =
   assert.match(authFacade, /loginWithAppKit/);
   assert.match(boundary, /['"]\/login['"]/);
   assert.match(boundary, /['"]\/signup['"]/);
-  assert.match(middleware, /NextResponse\.redirect\(loginUrl\)/);
-  assert.match(middleware, /new URL\(['"]\/login['"]/);
+  assert.match(proxy, /NextResponse\.redirect\(loginUrl\)/);
+  assert.match(proxy, /new URL\(['"]\/login['"]/);
+  assert.match(proxy, /['"]\/garden\/:path\*['"]/);
+  assert.match(proxy, /['"]\/onboarding\/:path\*['"]/);
+  assert.match(proxy, /['"]\/board\/:path\*['"]/);
+  assert.equal(middleware, '');
   assert.match(landing, /import \{ login \} from ['"]@\/lib\/auth['"]/);
 });
