@@ -24,6 +24,7 @@ test('local login and signup pages use the Narinyland app world style', async ()
   assert.match(authUi, /\/api\/auth\/credentials/);
   assert.match(authUi, /step === 'mfa'/);
   assert.match(authUi, /step === 'verify-email'/);
+  assert.match(authUi, /loginWithAppKit/);
 });
 
 test('local credentials stay server-side while AppKit remains the auth backend', async () => {
@@ -46,14 +47,17 @@ test('local credentials stay server-side while AppKit remains the auth backend',
 });
 
 test('entry and protected-route navigation use the local login page', async () => {
-  const [provider, landing] = await Promise.all([
-    readSource('components/AuthProvider.tsx'),
+  const [authFacade, boundary, middleware, landing] = await Promise.all([
+    readSource('lib/auth-local.ts'),
+    readSource('components/AuthBoundary.tsx'),
+    readSource('middleware.ts'),
     readSource('components/landing/LandingWorldExperience.tsx'),
   ]);
 
-  assert.match(provider, /['"]\/login['"]/);
-  assert.match(provider, /['"]\/signup['"]/);
-  assert.match(provider, /router\.replace\(['"]\/login['"]\)/);
-  assert.match(landing, /router\.push\(['"]\/login['"]\)/);
-  assert.doesNotMatch(landing, /await login\(\)/);
+  assert.match(authFacade, /window\.location\.assign\(['"]\/login['"]\)/);
+  assert.match(authFacade, /loginWithAppKit/);
+  assert.match(boundary, /['"]\/login['"]/);
+  assert.match(boundary, /['"]\/signup['"]/);
+  assert.match(middleware, /NextResponse\.redirect\(new URL\(['"]\/login['"]/);
+  assert.match(landing, /import \{ login \} from ['"]@\/lib\/auth['"]/);
 });
