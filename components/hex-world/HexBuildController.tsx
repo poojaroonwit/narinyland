@@ -4,10 +4,11 @@ import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } 
 import { getBuildingDefinition, getBuildingFootprint, type HexBuildingKey } from '@/lib/hex-world/building-catalog';
 import { createInitialHexBuildState, hexBuildReducer } from '@/lib/hex-world/build-state';
 import { getUnlockedIslandBounds, shouldReframeForCoords, type HexCameraIntent } from '@/lib/hex-world/camera';
+import { getExpansionPlacementTiles, validateExpansionPlacement } from '@/lib/hex-world/expansions';
 import { hexKey } from '@/lib/hex-world/hex-grid';
 import { getPlacementMessage } from '@/lib/hex-world/placement-message';
 import { validatePlacement } from '@/lib/hex-world/rules';
-import type { HexBuildingDTO, HexCoord, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexBuildingDTO, HexCoord, HexExpansionPlacementPreview, HexWorldSnapshot } from '@/lib/hex-world/types';
 import type { HexUndoMeta } from '@/lib/hex-world/undo-types';
 import type { HexConfirmedVisualEvent } from '@/lib/hex-world/visual-events';
 import { HexWorldApiError, hexWorldAPI } from '@/services/hex-world-api';
@@ -21,8 +22,17 @@ import { HexRemovalConfirm } from './HexRemovalConfirm';
 import { HexUndoToast } from './HexUndoToast';
 import { HexWorld3D } from './HexWorld3D';
 import { HexWorldToolbar } from './HexWorldToolbar';
+import { useGardenMusic } from './useGardenMusic';
 import { useHexKeyboardShortcuts } from './useHexKeyboardShortcuts';
 import { useLivingHomestead } from './useLivingHomestead';
+
+function centerOf(coords: HexCoord[]): HexCoord | null {
+  if (!coords.length) return null;
+  return {
+    q: Math.round(coords.reduce((sum, coord) => sum + coord.q, 0) / coords.length),
+    r: Math.round(coords.reduce((sum, coord) => sum + coord.r, 0) / coords.length),
+  };
+}
 
 export function HexBuildController({ landId, snapshot, setSnapshot, showToast, graphicsQuality = 'medium' }: {
   landId: string;
@@ -42,16 +52,17 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const [undoLabel, setUndoLabel] = useState('');
   const [visualEvent, setVisualEvent] = useState<HexConfirmedVisualEvent>(null);
   const [invalidPulseNonce, setInvalidPulseNonce] = useState(0);
+  const [expansionAnchor, setExpansionAnchor] = useState<HexCoord | null>(null);
+  const [expansionPinned, setExpansionPinned] = useState(false);
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeLandRef = useRef<string | null>(landId);
   const placementLockRef = useRef(false);
   const visualEventNonceRef = useRef(0);
   const living = useLivingHomestead(landId, showToast);
+  const { musicMuted, toggleMusic } = useGardenMusic();
   const nextVisualNonce = () => { visualEventNonceRef.current += 1; return visualEventNonceRef.current; };
 
-  useEffect(() => () => {
-    if (animationTimer.current) clearTimeout(animationTimer.current);
-  }, []);
+  useEffect(() => () => { if (animationTimer.current) clearTimeout(animationTimer.current); }, []);
 
   useEffect(() => {
     activeLandRef.current = landId;
@@ -66,14 +77,11 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     setUndoLabel('');
     setVisualEvent(null);
     setInvalidPulseNonce(0);
+    setExpansionAnchor(null);
+    setExpansionPinned(false);
     setBusy(false);
-    if (animationTimer.current) {
-      clearTimeout(animationTimer.current);
-      animationTimer.current = null;
-    }
-    return () => {
-      if (activeLandRef.current === landId) activeLandRef.current = null;
-    };
+    if (animationTimer.current) { clearTimeout(animationTimer.current); animationTimer.current = null; }
+    return () => { if (activeLandRef.current === landId) activeLandRef.current = null; };
   }, [landId]);
 
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
@@ -87,9 +95,28 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
       buildings: snapshot.buildings,
       ...(state.mode === 'moving' && state.selectedBuildingId ? { ignoreBuildingId: state.selectedBuildingId } : {}),
     });
-    const footprint = getBuildingFootprint(state.buildingKey, state.anchor, state.rotation);
-    return { result, footprint };
+    return { result, footprint: getBuildingFootprint(state.buildingKey, state.anchor, state.rotation) };
   }, [snapshot, state]);
+
+  const activeAvailableExpansion = state.expansionKey ? snapshot.expansions.find((item) => item.expansionKey === state.expansionKey) ?? null : null;
+  const activePurchasedExpansion = state.expansionKey ? snapshot.purchasedExpansions?.find((item) => item.expansionKey === state.expansionKey) ?? null : null;
+  const activeExpansion = activeAvailableExpansion ?? activePurchasedExpansion;
+  const expansionPlacementPreview = useMemo<HexExpansionPlacementPreview | null>(() => {
+    if (state.mode !== 'expanding' || !state.expansionKey || !expansionAnchor || !activeExpansion) return null;
+    const tiles = getExpansionPlacementTiles(activeExpansion.tier, expansionAnchor);
+    const result = validateExpansionPlacement(
+      tiles,
+      snapshot.tiles,
+      activePurchasedExpansion ? { ignoreExpansionKey: state.expansionKey } : {},
+    );
+    return {
+      expansionKey: state.expansionKey,
+      tier: activeExpansion.tier,
+      tiles,
+      valid: result.ok,
+      mode: activePurchasedExpansion ? 'move' : 'purchase',
+    };
+  }, [activeExpansion, activePurchasedExpansion, expansionAnchor, snapshot.tiles, state.expansionKey, state.mode]);
 
   const validKeys = preview?.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
   const invalidKeys = preview && !preview.result.ok ? new Set(preview.footprint.map(hexKey)) : undefined;
@@ -97,18 +124,12 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const setAnchor = (coord: HexCoord | null) => dispatch({ type: 'set_anchor', anchor: coord });
   const cameraIntent: HexCameraIntent = state.mode === 'placing' || state.mode === 'moving'
     ? { kind: 'build', anchor: state.anchor }
-    : selectedBuilding
-      ? { kind: 'focus', coord: { q: selectedBuilding.anchorQ, r: selectedBuilding.anchorR } }
-      : { kind: 'overview' };
+    : selectedBuilding ? { kind: 'focus', coord: { q: selectedBuilding.anchorQ, r: selectedBuilding.anchorR } } : { kind: 'overview' };
 
   const confirmPlacementAt = async (coord: HexCoord) => {
     if (state.mode !== 'placing' || !state.buildingKey || busy || placementLockRef.current) return;
     const placement = validatePlacement({ buildingKey: state.buildingKey, anchor: coord, rotation: state.rotation, tiles: snapshot.tiles, buildings: snapshot.buildings });
-    if (!placement.ok) {
-      setInvalidPulseNonce((value) => value + 1);
-      return;
-    }
-
+    if (!placement.ok) { setInvalidPulseNonce((value) => value + 1); return; }
     const previousIds = new Set(snapshot.buildings.map((building) => building.id));
     placementLockRef.current = true;
     setBusy(true);
@@ -150,9 +171,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     } catch (error) {
       if (activeLandRef.current !== landId) return;
       showToast(error instanceof Error ? error.message : 'Could not save this placement');
-    } finally {
-      if (activeLandRef.current === landId) setBusy(false);
-    }
+    } finally { if (activeLandRef.current === landId) setBusy(false); }
   };
 
   const handleTileSelect = (coord: HexCoord) => {
@@ -180,9 +199,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     } catch (error) {
       if (activeLandRef.current !== landId) return;
       showToast(error instanceof Error ? error.message : 'Could not rotate this building');
-    } finally {
-      if (activeLandRef.current === landId) setBusy(false);
-    }
+    } finally { if (activeLandRef.current === landId) setBusy(false); }
   };
 
   const removeSelected = async () => {
@@ -203,17 +220,14 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     } catch (error) {
       if (activeLandRef.current !== landId) return;
       showToast(error instanceof Error ? error.message : 'Could not remove this building');
-    } finally {
-      if (activeLandRef.current === landId) setBusy(false);
-    }
+    } finally { if (activeLandRef.current === landId) setBusy(false); }
   };
 
   const performUndo = async () => {
     if (!undo || busy || Date.parse(undo.expiresAt) <= Date.now()) { setUndo(null); return; }
-    const token = undo.token;
     setBusy(true);
     try {
-      const confirmed = await hexWorldAPI.undo(landId, token);
+      const confirmed = await hexWorldAPI.undo(landId, undo.token);
       if (activeLandRef.current !== landId) return;
       setSnapshot(confirmed);
       setUndo(null);
@@ -232,9 +246,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
       if (error instanceof HexWorldApiError && error.code === 'undo_conflict') showToast('Land changed — undo unavailable');
       else if (error instanceof HexWorldApiError && error.code === 'undo_unavailable') showToast('Undo is no longer available');
       else showToast(error instanceof Error ? error.message : 'Could not undo this change');
-    } finally {
-      if (activeLandRef.current === landId) setBusy(false);
-    }
+    } finally { if (activeLandRef.current === landId) setBusy(false); }
   };
 
   const confirmFromKeyboard = () => {
@@ -242,21 +254,43 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     if (state.mode === 'placing') { void confirmPlacementAt(state.anchor); return; }
     if (state.mode === 'moving') void confirmMove();
   };
-
   useHexKeyboardShortcuts({ enabled: state.mode === 'placing' || state.mode === 'moving', canConfirm: !!preview?.result.ok, busy, onRotate: () => dispatch({ type: 'rotate_clockwise' }), onCancel: () => dispatch({ type: 'cancel' }), onConfirm: confirmFromKeyboard });
-
   const scenePreview = preview && state.anchor && state.buildingKey ? { buildingKey: state.buildingKey, anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation, valid: preview.result.ok } : null;
 
-  const handleExpansionConfirmed = (confirmed: HexWorldSnapshot, newTileKeys: Set<string>) => {
+  const cancelExpansion = () => {
+    setExpansionAnchor(null);
+    setExpansionPinned(false);
+    dispatch({ type: 'cancel' });
+  };
+  const chooseExpansion = (expansionKey: string) => {
+    const available = snapshot.expansions.find((item) => item.expansionKey === expansionKey);
+    const purchased = snapshot.purchasedExpansions?.find((item) => item.expansionKey === expansionKey);
+    dispatch({ type: 'preview_expansion', expansionKey });
+    setExpansionAnchor(centerOf(purchased?.tiles ?? available?.tiles ?? []));
+    setExpansionPinned(false);
+  };
+  const handleExpansionHover = (coord: HexCoord) => {
+    if (state.mode !== 'expanding' || !state.expansionKey || expansionPinned) return;
+    setExpansionAnchor(coord);
+  };
+  const handleExpansionSelect = (coord: HexCoord) => {
+    if (state.mode !== 'expanding' || !state.expansionKey) return;
+    setExpansionAnchor(coord);
+    setExpansionPinned(true);
+  };
+
+  const handleExpansionConfirmed = (confirmed: HexWorldSnapshot, changedTileKeys: Set<string>) => {
     if (activeLandRef.current !== landId) return;
-    const newCoords = confirmed.tiles.filter((tile) => newTileKeys.has(hexKey(tile))).map(({ q, r }) => ({ q, r }));
+    const changedCoords = confirmed.tiles.filter((tile) => changedTileKeys.has(hexKey(tile))).map(({ q, r }) => ({ q, r }));
     const bounds = getUnlockedIslandBounds(snapshot.tiles);
     setSnapshot(confirmed);
     setUndo(null);
     setUndoLabel('');
-    setVisualEvent({ kind: 'expanded', coords: newCoords, nonce: nextVisualNonce() });
-    setNewlyAddedKeys(newTileKeys);
-    setReframeCoords(shouldReframeForCoords(bounds, newCoords) ? newCoords : []);
+    setVisualEvent({ kind: 'expanded', coords: changedCoords, nonce: nextVisualNonce() });
+    setNewlyAddedKeys(changedTileKeys);
+    setReframeCoords(shouldReframeForCoords(bounds, changedCoords) ? changedCoords : []);
+    setExpansionAnchor(null);
+    setExpansionPinned(false);
     dispatch({ type: 'cancel' });
     if (animationTimer.current) clearTimeout(animationTimer.current);
     animationTimer.current = setTimeout(() => {
@@ -266,8 +300,8 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     }, 1100);
   };
 
-  const openBuild = () => { dispatch({ type: 'cancel' }); setCatalogOpen(true); setRemoveOpen(false); };
-  const openExpand = () => { setCatalogOpen(false); setRemoveOpen(false); dispatch({ type: 'start_expansion' }); };
+  const openBuild = () => { cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
+  const openExpand = () => { setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
   const selectedDefinition = selectedBuilding ? getBuildingDefinition(selectedBuilding.buildingKey) : null;
   const expireUndo = useCallback(() => { setUndo(null); setUndoLabel(''); }, []);
 
@@ -286,34 +320,27 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         invalidKeys={invalidKeys}
         invalidPulseNonce={invalidPulseNonce}
         visualEvent={visualEvent}
-        expansionOptions={state.mode === 'expanding' ? snapshot.expansions : undefined}
+        expansionOptions={state.mode === 'expanding' && !state.expansionKey ? snapshot.expansions : undefined}
         selectedExpansionKey={state.expansionKey}
+        expansionPlacementPreview={expansionPlacementPreview}
         newlyAddedKeys={newlyAddedKeys}
         buildingPreview={scenePreview}
         onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
         onSelectTile={handleTileSelect}
-        onSelectExpansion={(expansionKey) => dispatch({ type: 'preview_expansion', expansionKey })}
+        onSelectExpansion={chooseExpansion}
+        onHoverExpansionAnchor={handleExpansionHover}
+        onSelectExpansionAnchor={handleExpansionSelect}
         onSelectBuilding={(building: HexBuildingDTO | null) => { if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }}
       />
 
-      <HexLivingHUD
-        state={living.state}
-        points={snapshot.points}
-        loading={living.loading}
-        error={living.error}
-        busy={living.busy}
-        onAction={living.act}
-        onRetry={living.retry}
-      />
+      <HexLivingHUD state={living.state} points={snapshot.points} loading={living.loading} error={living.error} busy={living.busy} musicMuted={musicMuted} onToggleMusic={toggleMusic} onAction={living.act} onRetry={living.retry} />
 
-      {state.mode === 'idle' && selectedBuilding && living.state && (
-        <HexLivingActionPanel building={selectedBuilding} state={living.state} busy={living.busy} onAction={living.act} />
-      )}
+      {state.mode === 'idle' && selectedBuilding && living.state && <HexLivingActionPanel building={selectedBuilding} state={living.state} busy={living.busy} onAction={living.act} />}
       {state.mode === 'idle' && !selectedBuilding && !catalogOpen && <HexWorldToolbar onBuild={openBuild} onExpand={openExpand} onResetView={() => setResetNonce((value) => value + 1)} />}
       <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
       {(state.mode === 'placing' || state.mode === 'moving') && <HexPlacementBar mode={state.mode} busy={busy} valid={!!preview?.result.ok} reason={placementReason} onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })} onRotateRight={() => dispatch({ type: 'rotate_clockwise' })} onConfirm={confirmMove} onCancel={() => dispatch({ type: 'cancel' })} />}
       {state.mode === 'idle' && selectedBuilding && selectedDefinition && <HexBuildingContextToolbar removable={selectedDefinition.removable} busy={busy} onMove={() => dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation })} onRotate={rotateSelected} onRemove={() => setRemoveOpen(true)} onClose={() => dispatch({ type: 'select_existing', buildingId: null })} />}
-      {state.mode === 'expanding' && <HexExpansionController landId={landId} snapshot={snapshot} activeExpansionKey={state.expansionKey} onCancelPreview={() => dispatch({ type: 'cancel' })} onConfirmed={handleExpansionConfirmed} showToast={showToast} />}
+      {state.mode === 'expanding' && <HexExpansionController landId={landId} snapshot={snapshot} activeExpansionKey={state.expansionKey} placementPreview={expansionPlacementPreview} placementPinned={expansionPinned} onChooseExpansion={chooseExpansion} onReposition={() => setExpansionPinned(false)} onCancelPreview={cancelExpansion} onConfirmed={handleExpansionConfirmed} showToast={showToast} />}
       {removeOpen && selectedBuilding && selectedDefinition?.removable && <HexRemovalConfirm name={selectedDefinition.name} important={selectedDefinition.category === 'main'} busy={busy} onConfirm={removeSelected} onCancel={() => setRemoveOpen(false)} />}
       {undo && <HexUndoToast undo={undo} label={undoLabel} busy={busy} onUndo={performUndo} onExpire={expireUndo} />}
     </div>
