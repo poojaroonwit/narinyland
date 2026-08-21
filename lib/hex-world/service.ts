@@ -315,8 +315,8 @@ export async function expandHexWorld(
   configId: string,
   landId: string,
   expansionKey: string,
-  anchorQ: number,
-  anchorR: number,
+  anchorQ?: number,
+  anchorR?: number,
 ): Promise<HexWorldSnapshot> {
   return runHexTransaction(async (tx) => {
     const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
@@ -329,7 +329,10 @@ export async function expandHexWorld(
     if (!definition) {
       throw new HexWorldServiceError('expansion_not_available', 409, 'This Land expansion is not currently available');
     }
-    const cells = getExpansionPlacementTiles(definition.tier, { q: anchorQ, r: anchorR });
+    const hasExactAnchor = Number.isInteger(anchorQ) && Number.isInteger(anchorR);
+    const cells = hasExactAnchor
+      ? getExpansionPlacementTiles(definition.tier, { q: anchorQ as number, r: anchorR as number })
+      : definition.tiles;
     const placement = validateExpansionPlacement(cells, snapshot.tiles);
     if (!placement.ok) throwExpansionPlacement(placement);
 
