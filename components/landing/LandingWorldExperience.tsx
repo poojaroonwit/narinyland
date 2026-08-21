@@ -92,20 +92,21 @@ export function LandingWorldExperience() {
 
   return (
     <main className="relative min-h-[100svh] overflow-x-hidden bg-[#edf6e9] text-stone-800">
-      <motion.div
-        aria-hidden="true"
-        style={{ y: atmosphereY }}
-        className="pointer-events-none fixed -inset-x-10 -inset-y-32 z-0 bg-[#edf6e9]"
-      >
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#edf6e9]">
         <motion.div
-          style={{ x: sunlightX }}
-          className="absolute -right-[12vw] -top-[8vh] h-[52vw] min-h-[28rem] w-[52vw] min-w-[28rem] rounded-full bg-white/55 blur-3xl"
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_13%,rgba(255,255,255,0.9),transparent_31%),radial-gradient(circle_at_14%_45%,rgba(219,244,216,0.76),transparent_31%),radial-gradient(circle_at_76%_76%,rgba(205,236,211,0.68),transparent_35%)]" />
-        <div className="absolute -left-[12vw] top-[82svh] h-[58vw] w-[58vw] rounded-full bg-white/28 blur-3xl" />
-        <div className="absolute -right-[18vw] top-[160svh] h-[62vw] w-[62vw] rounded-full bg-emerald-100/35 blur-3xl" />
-        <div className="absolute left-[10vw] top-[300svh] h-[48vw] w-[48vw] rounded-full bg-white/26 blur-3xl" />
-      </motion.div>
+          style={{ y: atmosphereY }}
+          className="absolute -inset-x-10 -inset-y-32"
+        >
+          <motion.div
+            style={{ x: sunlightX }}
+            className="absolute -right-[12vw] -top-[8vh] h-[52vw] min-h-[28rem] w-[52vw] min-w-[28rem] rounded-full bg-white/55 blur-3xl"
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_13%,rgba(255,255,255,0.9),transparent_31%),radial-gradient(circle_at_14%_45%,rgba(219,244,216,0.76),transparent_31%),radial-gradient(circle_at_76%_76%,rgba(205,236,211,0.68),transparent_35%)]" />
+          <div className="absolute -left-[12vw] top-[82svh] h-[58vw] w-[58vw] rounded-full bg-white/28 blur-3xl" />
+          <div className="absolute -right-[18vw] top-[160svh] h-[62vw] w-[62vw] rounded-full bg-emerald-100/35 blur-3xl" />
+          <div className="absolute left-[10vw] top-[300svh] h-[48vw] w-[48vw] rounded-full bg-white/26 blur-3xl" />
+        </motion.div>
+      </div>
 
       <motion.div
         aria-hidden="true"
