@@ -2,13 +2,26 @@ import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { getErrorField } from '@/lib/errors';
 import { spendSharedPoints } from '@/lib/stats-service';
-import { getBuildingDefinition } from './building-catalog';
-import { getEligibleExpansionDefinitions, getExpansionDefinitions } from './expansions';
+import { getBuildingDefinition, getBuildingFootprint } from './building-catalog';
+import {
+  getEligibleExpansionDefinitions,
+  getExpansionDefinitions,
+  getExpansionPlacementTiles,
+  validateExpansionPlacement,
+} from './expansions';
 import { generateStarterWorld } from './generator';
+import { hexKey } from './hex-grid';
 import type { HexMutationPersistenceResult } from './reversible-mutation';
 import { validatePlacement } from './rules';
 import { runHexTransaction } from './transaction';
-import type { HexBuildingDTO, HexPlacementInput, HexRotation, HexWorldErrorCode, HexWorldSnapshot } from './types';
+import type {
+  HexBuildingDTO,
+  HexPlacementInput,
+  HexPurchasedExpansionDTO,
+  HexRotation,
+  HexWorldErrorCode,
+  HexWorldSnapshot,
+} from './types';
 import type { HexUndoBuildingState } from './undo-types';
 
 export class HexWorldServiceError extends Error {
@@ -39,6 +52,36 @@ async function requireLand(client: HexWorldClient, configId: string, landId: str
 async function getSharedPoints(client: HexWorldClient, configId: string): Promise<number> {
   const result = await client.partner.aggregate({ where: { configId }, _sum: { points: true } });
   return result._sum.points ?? 0;
+}
+
+function metadataExpansionKey(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>).expansionKey;
+  return typeof value === 'string' && value ? value : null;
+}
+
+function purchasedExpansions(world: any): HexPurchasedExpansionDTO[] {
+  return world.expansions.map((expansion: any) => {
+    const tiles = world.tiles
+      .filter((tile: any) => metadataExpansionKey(tile.metadata) === expansion.expansionKey)
+      .map((tile: any) => ({ q: tile.q, r: tile.r }));
+    const tileKeys = new Set(tiles.map(hexKey));
+    const hasBuildings = world.buildings.some((building: any) =>
+      getBuildingFootprint(
+        building.buildingKey,
+        { q: building.anchorQ, r: building.anchorR },
+        building.rotation as HexRotation,
+      ).some((coord) => tileKeys.has(hexKey(coord))),
+    );
+    return {
+      expansionKey: expansion.expansionKey,
+      tier: expansion.tier as 1 | 2 | 3,
+      pointCost: expansion.pointCost,
+      tiles,
+      hasBuildings,
+      movable: tiles.length > 0 && !hasBuildings,
+    };
+  });
 }
 
 function serializeSnapshot(world: any, points: number): HexWorldSnapshot {
@@ -73,6 +116,7 @@ function serializeSnapshot(world: any, points: number): HexWorldSnapshot {
       metadata: (building.metadata ?? {}) as Record<string, unknown>,
     })),
     expansions: [],
+    purchasedExpansions: purchasedExpansions(world),
     points,
   };
   base.expansions = getEligibleExpansionDefinitions(base, world.expansions.map((item: any) => item.expansionKey));
@@ -137,6 +181,14 @@ function throwPlacement(result: ReturnType<typeof validatePlacement>): never {
   if (result.ok) throw new Error('Expected invalid placement');
   const status = result.code === 'tile_occupied' ? 409 : 400;
   throw new HexWorldServiceError(result.code, status, result.code.replaceAll('_', ' '));
+}
+
+function throwExpansionPlacement(result: ReturnType<typeof validateExpansionPlacement>): never {
+  if (result.ok) throw new Error('Expected invalid expansion placement');
+  const message = result.code === 'expansion_overlap'
+    ? 'That land position overlaps the existing island'
+    : 'New land must touch the existing island';
+  throw new HexWorldServiceError(result.code, 409, message);
 }
 
 async function incrementWorldRevision(tx: Prisma.TransactionClient, worldId: string) {
@@ -259,7 +311,13 @@ export async function removeHexBuilding(configId: string, landId: string, buildi
   });
 }
 
-export async function expandHexWorld(configId: string, landId: string, expansionKey: string): Promise<HexWorldSnapshot> {
+export async function expandHexWorld(
+  configId: string,
+  landId: string,
+  expansionKey: string,
+  anchorQ: number,
+  anchorR: number,
+): Promise<HexWorldSnapshot> {
   return runHexTransaction(async (tx) => {
     const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
     const purchased = await tx.hexExpansion.findUnique({
@@ -268,9 +326,12 @@ export async function expandHexWorld(configId: string, landId: string, expansion
     if (purchased) return (await readSnapshot(tx, configId, landId))!;
 
     const definition = getExpansionDefinitions(snapshot.world.seed).find((item) => item.expansionKey === expansionKey);
-    if (!definition || !snapshot.expansions.some((item) => item.expansionKey === expansionKey)) {
+    if (!definition) {
       throw new HexWorldServiceError('expansion_not_available', 409, 'This Land expansion is not currently available');
     }
+    const cells = getExpansionPlacementTiles(definition.tier, { q: anchorQ, r: anchorR });
+    const placement = validateExpansionPlacement(cells, snapshot.tiles);
+    if (!placement.ok) throwExpansionPlacement(placement);
 
     try {
       await spendSharedPoints(tx, configId, definition.pointCost);
@@ -282,7 +343,7 @@ export async function expandHexWorld(configId: string, landId: string, expansion
     }
 
     await tx.hexTile.createMany({
-      data: definition.tiles.map((tile) => ({
+      data: cells.map((tile) => ({
         worldId: snapshot.world.id,
         q: tile.q,
         r: tile.r,
@@ -291,7 +352,6 @@ export async function expandHexWorld(configId: string, landId: string, expansion
         unlocked: true,
         metadata: { expansionKey } satisfies Prisma.InputJsonObject,
       })),
-      skipDuplicates: true,
     });
     await tx.hexExpansion.create({
       data: {
@@ -301,7 +361,61 @@ export async function expandHexWorld(configId: string, landId: string, expansion
         pointCost: definition.pointCost,
       },
     });
-    await tx.hexWorld.update({ where: { id: snapshot.world.id }, data: { expansionLevel: { increment: 1 } } });
+    await tx.hexWorld.update({
+      where: { id: snapshot.world.id },
+      data: { expansionLevel: { increment: 1 }, revision: { increment: 1 } },
+    });
+    return (await readSnapshot(tx, configId, landId))!;
+  });
+}
+
+export async function moveHexExpansion(
+  configId: string,
+  landId: string,
+  expansionKey: string,
+  anchorQ: number,
+  anchorR: number,
+): Promise<HexWorldSnapshot> {
+  return runHexTransaction(async (tx) => {
+    const snapshot = await getOrCreateHexWorldSnapshotWithClient(tx, configId, landId);
+    const expansion = await tx.hexExpansion.findUnique({
+      where: { worldId_expansionKey: { worldId: snapshot.world.id, expansionKey } },
+    });
+    if (!expansion) throw new HexWorldServiceError('expansion_not_found', 404, 'Purchased land cluster not found');
+
+    const clusterTiles = snapshot.tiles.filter((tile) => tile.metadata?.expansionKey === expansionKey);
+    if (!clusterTiles.length) throw new HexWorldServiceError('expansion_not_found', 404, 'Purchased land cluster has no tiles');
+    const clusterKeys = new Set(clusterTiles.map(hexKey));
+    const expansionHasBuildings = snapshot.buildings.some((building) =>
+      getBuildingFootprint(
+        building.buildingKey,
+        { q: building.anchorQ, r: building.anchorR },
+        building.rotation,
+      ).some((coord) => clusterKeys.has(hexKey(coord))),
+    );
+    if (expansionHasBuildings) {
+      throw new HexWorldServiceError('expansion_has_buildings', 409, 'Move buildings off this land block before moving the land');
+    }
+
+    const tier = expansion.tier as 1 | 2 | 3;
+    const cells = getExpansionPlacementTiles(tier, { q: anchorQ, r: anchorR });
+    const placement = validateExpansionPlacement(cells, snapshot.tiles, { ignoreExpansionKey: expansionKey });
+    if (!placement.ok) throwExpansionPlacement(placement);
+
+    const oldIds = clusterTiles.map((tile) => tile.id).filter((id): id is string => !!id);
+    await tx.hexTile.deleteMany({ where: { id: { in: oldIds } } });
+    await tx.hexTile.createMany({
+      data: cells.map((tile) => ({
+        worldId: snapshot.world.id,
+        q: tile.q,
+        r: tile.r,
+        terrainType: 'grass',
+        height: 0,
+        unlocked: true,
+        metadata: { expansionKey } satisfies Prisma.InputJsonObject,
+      })),
+    });
+    await incrementWorldRevision(tx, snapshot.world.id);
     return (await readSnapshot(tx, configId, landId))!;
   });
 }
