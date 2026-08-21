@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useEffect, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
+import { deterministicMotionPhase, resolveHexMotionProfile, type HexMotionProfile } from '@/lib/hex-world/motion';
 import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
 import { hexRotationToRadians } from '@/lib/hex-world/rendering';
 import type { HexCameraIntent } from '@/lib/hex-world/camera';
@@ -55,6 +57,24 @@ function FloatingFragments() {
   ].map(([x, y, z, scale], index) => <mesh key={index} position={[x, y, z]} rotation={[0.2, index * 0.8, 0.12]} scale={scale} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#8e8877" roughness={1} /></mesh>)}</group>;
 }
 
+function AnimatedBuildingPreview({ preview, position, motionProfile }: {
+  preview: HexBuildingPreview;
+  position: { x: number; y: number; z: number };
+  motionProfile: HexMotionProfile;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  const phase = deterministicMotionPhase(`ghost:${preview.buildingKey}:${preview.anchorQ}:${preview.anchorR}`);
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    ref.current.position.y = position.y + Math.sin(clock.elapsedTime * 1.6 + phase) * 0.02 * motionProfile.ghostBobScale;
+  });
+  return (
+    <group ref={ref} position={[position.x, position.y, position.z]} rotation={[0, hexRotationToRadians(preview.rotation), 0]}>
+      <HexBuildingModel buildingKey={preview.buildingKey} ghost />
+    </group>
+  );
+}
+
 export function HexWorld3D({ snapshot, ...props }: Props) {
   const [device, setDevice] = useState({ viewportWidth: 1280, devicePixelRatio: 1 });
   useEffect(() => {
@@ -69,6 +89,8 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
     viewportWidth: device.viewportWidth,
     devicePixelRatio: device.devicePixelRatio,
   });
+  const reducedMotion = false;
+  const motionProfile = resolveHexMotionProfile({ quality: profile, reducedMotion });
   const tileHeight = new Map(snapshot.tiles.map((tile) => [hexKey(tile), tile.height]));
   const hoveredKey = props.hoveredCoord ? hexKey(props.hoveredCoord) : null;
   const selectedKey = props.selectedCoord ? hexKey(props.selectedCoord) : null;
@@ -88,6 +110,8 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         {!!props.expansionOptions?.length && <HexExpansionClusters expansions={props.expansionOptions} selectedKey={props.selectedExpansionKey} onSelect={(key) => props.onSelectExpansion?.(key)} />}
         <HexTileInstances
           tiles={snapshot.tiles}
+          profile={profile}
+          motionProfile={motionProfile}
           hoveredKey={hoveredKey}
           selectedKey={selectedKey}
           validKeys={props.validKeys}
@@ -96,16 +120,12 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
           onHover={props.onHoverTile}
           onSelect={props.onSelectTile}
         />
-        <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} />
+        <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} />
         <HexAmbientDecor tiles={snapshot.tiles} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} onSelect={(building) => props.onSelectBuilding?.(building)} />
-        {preview && previewPosition && (
-          <group position={[previewPosition.x, previewPosition.y, previewPosition.z]} rotation={[0, hexRotationToRadians(preview.rotation), 0]}>
-            <HexBuildingModel buildingKey={preview.buildingKey} ghost />
-          </group>
-        )}
-        <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
+        {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
+        <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
       </Canvas>
     </div>
   );
