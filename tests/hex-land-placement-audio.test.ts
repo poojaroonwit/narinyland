@@ -7,13 +7,13 @@ import {
 } from '../lib/hex-world/expansions';
 import type { HexTileDTO } from '../lib/hex-world/types';
 
-function tile(q: number, r: number, expansionKey?: string): HexTileDTO {
+function tile(q: number, r: number, expansionKey?: string, unlocked = true): HexTileDTO {
   return {
     q,
     r,
     terrainType: 'grass',
     height: 0,
-    unlocked: true,
+    unlocked,
     metadata: expansionKey ? { expansionKey } : {},
   };
 }
@@ -36,6 +36,13 @@ test('free expansion placement must touch unlocked land and cannot overlap it', 
   assert.deepEqual(validateExpansionPlacement(overlapping, world), { ok: false, code: 'expansion_overlap' });
 });
 
+test('placement cannot overlap persisted locked starter-envelope coordinates', () => {
+  const world = [tile(0, 0), tile(2, 0, undefined, false)];
+  const candidate = getExpansionPlacementTiles(1, { q: 2, r: 0 });
+
+  assert.deepEqual(validateExpansionPlacement(candidate, world), { ok: false, code: 'expansion_overlap' });
+});
+
 test('moving purchased land validates against the island with its own old cells removed', () => {
   const world = [
     tile(0, 0), tile(1, 0), tile(0, 1),
@@ -44,6 +51,20 @@ test('moving purchased land validates against the island with its own old cells 
   const candidate = getExpansionPlacementTiles(1, { q: -2, r: 1 });
 
   assert.equal(validateExpansionPlacement(candidate, world, { ignoreExpansionKey: '1:0:0' }).ok, true);
+});
+
+test('moving a bridge cluster cannot strand other unlocked land', () => {
+  const world = [
+    tile(0, 0),
+    tile(1, 0, 'bridge'),
+    tile(2, 0, 'downstream'),
+  ];
+  const candidate = getExpansionPlacementTiles(1, { q: -2, r: 0 });
+
+  assert.deepEqual(
+    validateExpansionPlacement(candidate, world, { ignoreExpansionKey: 'bridge' }),
+    { ok: false, code: 'expansion_disconnects_island' },
+  );
 });
 
 test('server expansion authority accepts exact placement and supports moving only purchased empty clusters', async () => {
