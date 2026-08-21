@@ -8,6 +8,9 @@ test('small viewport chooses mobile-safe profile even from medium setting', () =
   assert.equal(profile.maxDpr, 1);
   assert.ok(profile.cloudLayers <= 1);
   assert.ok(profile.particleCount <= 36);
+  assert.equal(profile.vegetationMotion, 'minimal');
+  assert.equal(profile.waterGlintCount, 0);
+  assert.ok(profile.placementParticleCount <= 4);
 });
 
 test('desktop high keeps visual-wow budget bounded', () => {
@@ -16,6 +19,9 @@ test('desktop high keeps visual-wow budget bounded', () => {
   assert.ok(profile.maxDpr <= 1.75);
   assert.equal(profile.shadowMapSize, 2048);
   assert.equal(profile.cloudLayers, 3);
+  assert.equal(profile.vegetationMotion, 'full');
+  assert.equal(profile.placementParticleCount, 20);
+  assert.equal(profile.waterGlintCount, 3);
 });
 
 test('desktop low resolves to the mobile cost envelope', () => {
