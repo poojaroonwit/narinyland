@@ -62,7 +62,7 @@ export function LandingWorldExperience() {
       </div>
 
       <section className="pointer-events-auto fixed bottom-32 left-4 z-[60] max-w-[min(30rem,calc(100vw-2rem))] md:bottom-28 md:left-8">
-        <div className="rounded-[2rem] border border-white/70 bg-white/72 p-5 shadow-2xl backdrop-blur-xl md:p-7">
+        <div className="rounded-[2rem] bg-white/72 p-5 shadow-2xl backdrop-blur-xl md:p-7">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-50/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             Your shared world
