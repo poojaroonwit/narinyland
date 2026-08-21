@@ -1,7 +1,9 @@
 import {
   getCropAvailability,
   getProgressionPlotProgress,
+  getSeasonPresentation as getProgressionSeasonPresentation,
   isProgressionPlotReady,
+  type FarmSeason,
   type FarmWeather,
   type ProgressionCropKey,
   type ProgressionFamilyFarmState,
@@ -67,24 +69,9 @@ export function getGardenSummary(state: ProgressionFamilyFarmState): GardenSumma
   };
 }
 
-export function getCropAvailabilityCopy(state: ProgressionFamilyFarmState, cropKey: ProgressionCropKey): string {
+export function getCropAvailabilityCopy(state: ProgressionFamilyFarmState, cropKey: ProgressionCropKey): string | null {
   const availability = getCropAvailability(state, cropKey);
-  if (availability.available) return state.season === cropKeySeasonBonus(cropKey) ? 'In season · +1 harvest bonus' : 'In season';
-  return availability.reason ?? 'Unavailable';
-}
-
-function cropKeySeasonBonus(cropKey: ProgressionCropKey) {
-  const bonus: Record<ProgressionCropKey, ProgressionFamilyFarmState['season']> = {
-    carrot: 'spring',
-    lettuce: 'spring',
-    tomato: 'summer',
-    strawberry: 'summer',
-    corn: 'autumn',
-    pumpkin: 'autumn',
-    potato: 'winter',
-    cabbage: 'winter',
-  };
-  return bonus[cropKey];
+  return availability.available ? null : availability.reason;
 }
 
 export function getCropVisualSamples(
@@ -112,6 +99,10 @@ export function getCropVisualSamples(
         slot: Math.floor(index / gardens.length),
       };
     });
+}
+
+export function getSeasonPresentation(season: FarmSeason): { label: string; emoji: string } {
+  return getProgressionSeasonPresentation(season);
 }
 
 export function getWeatherPresentation(weather: FarmWeather): { label: string; emoji: string } {
