@@ -77,6 +77,12 @@ test('confirmed expansion uses deterministic stagger and visual-only mist', asyn
   assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
 });
 
+test('placement effect origin narrows rotation-only events before reading coord', async () => {
+  const effects = await source('../components/hex-world/HexPlacementEffects.tsx');
+  const helper = effects.match(/function effectOrigin[\s\S]*?\n\}/)?.[0] ?? '';
+  assert.match(helper, /event\.kind === 'rotated'/);
+});
+
 test('world resolves reduced motion once and children consume the resolved profile', async () => {
   const world = await source('../components/hex-world/HexWorld3D.tsx');
   const childPaths = [
