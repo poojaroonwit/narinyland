@@ -35,6 +35,13 @@ test('confirmed building actions animate through shared presentation events', as
   assert.match(events, /HexConfirmedVisualEvent/);
 });
 
+test('building transforms initialize once so first selection and rotation can interpolate', async () => {
+  const buildings = await source('../components/hex-world/HexBuildings.tsx');
+  assert.match(buildings, /initialized(?:Ref)?\s*=\s*useRef\(false\)/);
+  assert.match(buildings, /if \(!initialized(?:Ref)?\.current\)/);
+  assert.doesNotMatch(buildings, /if \(lastEventNonce\.current === null\) \{/);
+});
+
 test('placement effects stay visual-only and invalid clicks use local pulse feedback', async () => {
   const world = await source('../components/hex-world/HexWorld3D.tsx');
   const controller = await source('../components/hex-world/HexBuildController.tsx');
@@ -49,6 +56,13 @@ test('ambient vegetation uses fixed quality-aware motion buckets', async () => {
   assert.match(ambient, /motionProfile/);
   assert.match(ambient, /rocks/);
   assert.match(ambient, /paths/);
+});
+
+test('vegetation sway is applied to instance-local transforms instead of rotating world-space bucket parents', async () => {
+  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
+  assert.match(ambient, /AnimatedInstanceBatch|SwayInstanceBatch/);
+  assert.match(ambient, /mesh\.setMatrixAt/);
+  assert.doesNotMatch(ambient, /ref\.current\.rotation\.[xz]\s*=/);
 });
 
 test('sky parallax remains bounded and uses shared motion profile', async () => {
