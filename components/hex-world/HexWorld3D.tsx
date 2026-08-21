@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { FamilyFarmState } from '@/lib/family-farm-game';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionPhase, resolveHexMotionProfile, type HexMotionProfile } from '@/lib/hex-world/motion';
 import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
@@ -16,6 +17,7 @@ import { HexBuildings } from './HexBuildings';
 import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexExpansionClusters } from './HexExpansionClusters';
 import { HexIslandUnderside } from './HexIslandUnderside';
+import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
 import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
@@ -50,6 +52,7 @@ type Props = {
   resetNonce?: number;
   reframeCoords?: HexCoord[];
   graphicsQuality?: string;
+  livingState?: FamilyFarmState | null;
   onHoverTile?: (coord: HexCoord | null) => void;
   onSelectTile?: (coord: HexCoord) => void;
   onSelectBuilding?: (building: HexBuildingDTO | null) => void;
@@ -112,6 +115,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexAmbientDecor tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
+        {props.livingState && <HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
         {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
         <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
       </Canvas>

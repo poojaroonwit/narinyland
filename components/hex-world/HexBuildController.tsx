@@ -14,12 +14,15 @@ import { HexWorldApiError, hexWorldAPI } from '@/services/hex-world-api';
 import { HexBuildCatalog } from './HexBuildCatalog';
 import { HexBuildingContextToolbar } from './HexBuildingContextToolbar';
 import { HexExpansionController } from './HexExpansionController';
+import { HexLivingActionPanel } from './HexLivingActionPanel';
+import { HexLivingHUD } from './HexLivingHUD';
 import { HexPlacementBar } from './HexPlacementBar';
 import { HexRemovalConfirm } from './HexRemovalConfirm';
 import { HexUndoToast } from './HexUndoToast';
 import { HexWorld3D } from './HexWorld3D';
 import { HexWorldToolbar } from './HexWorldToolbar';
 import { useHexKeyboardShortcuts } from './useHexKeyboardShortcuts';
+import { useLivingHomestead } from './useLivingHomestead';
 
 export function HexBuildController({ landId, snapshot, setSnapshot, showToast, graphicsQuality = 'medium' }: {
   landId: string;
@@ -43,6 +46,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const activeLandRef = useRef<string | null>(landId);
   const placementLockRef = useRef(false);
   const visualEventNonceRef = useRef(0);
+  const living = useLivingHomestead(landId, showToast);
   const nextVisualNonce = () => { visualEventNonceRef.current += 1; return visualEventNonceRef.current; };
 
   useEffect(() => () => {
@@ -269,8 +273,42 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
 
   return (
     <div className="absolute inset-0">
-      <HexWorld3D snapshot={snapshot} cameraIntent={cameraIntent} resetNonce={resetNonce} reframeCoords={reframeCoords} graphicsQuality={graphicsQuality} selectedCoord={state.anchor} selectedBuildingId={state.selectedBuildingId} validKeys={validKeys} invalidKeys={invalidKeys} invalidPulseNonce={invalidPulseNonce} visualEvent={visualEvent} expansionOptions={state.mode === 'expanding' ? snapshot.expansions : undefined} selectedExpansionKey={state.expansionKey} newlyAddedKeys={newlyAddedKeys} buildingPreview={scenePreview} onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }} onSelectTile={handleTileSelect} onSelectExpansion={(expansionKey) => dispatch({ type: 'preview_expansion', expansionKey })} onSelectBuilding={(building: HexBuildingDTO | null) => { if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }} />
+      <HexWorld3D
+        snapshot={snapshot}
+        cameraIntent={cameraIntent}
+        resetNonce={resetNonce}
+        reframeCoords={reframeCoords}
+        graphicsQuality={graphicsQuality}
+        livingState={living.state}
+        selectedCoord={state.anchor}
+        selectedBuildingId={state.selectedBuildingId}
+        validKeys={validKeys}
+        invalidKeys={invalidKeys}
+        invalidPulseNonce={invalidPulseNonce}
+        visualEvent={visualEvent}
+        expansionOptions={state.mode === 'expanding' ? snapshot.expansions : undefined}
+        selectedExpansionKey={state.expansionKey}
+        newlyAddedKeys={newlyAddedKeys}
+        buildingPreview={scenePreview}
+        onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }}
+        onSelectTile={handleTileSelect}
+        onSelectExpansion={(expansionKey) => dispatch({ type: 'preview_expansion', expansionKey })}
+        onSelectBuilding={(building: HexBuildingDTO | null) => { if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }}
+      />
 
+      <HexLivingHUD
+        state={living.state}
+        points={snapshot.points}
+        loading={living.loading}
+        error={living.error}
+        busy={living.busy}
+        onAction={living.act}
+        onRetry={living.retry}
+      />
+
+      {state.mode === 'idle' && selectedBuilding && living.state && (
+        <HexLivingActionPanel building={selectedBuilding} state={living.state} busy={living.busy} onAction={living.act} />
+      )}
       {state.mode === 'idle' && !selectedBuilding && !catalogOpen && <HexWorldToolbar onBuild={openBuild} onExpand={openExpand} onResetView={() => setResetNonce((value) => value + 1)} />}
       <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
       {(state.mode === 'placing' || state.mode === 'moving') && <HexPlacementBar mode={state.mode} busy={busy} valid={!!preview?.result.ok} reason={placementReason} onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })} onRotateRight={() => dispatch({ type: 'rotate_clockwise' })} onConfirm={confirmMove} onCancel={() => dispatch({ type: 'cancel' })} />}
