@@ -26,3 +26,18 @@ test('selection and ghost motion use shared motion profile', async () => {
   assert.match(selection, /motionProfile/);
   assert.match(world, /ghostBobScale/);
 });
+
+test('confirmed building actions animate through shared presentation events', async () => {
+  const buildings = await source('../components/hex-world/HexBuildings.tsx');
+  const events = await source('../lib/hex-world/visual-events.ts').catch(() => '');
+  assert.match(buildings, /useFrame/);
+  assert.match(buildings, /visualEvent/);
+  assert.match(events, /HexConfirmedVisualEvent/);
+});
+
+test('placement effects stay visual-only and invalid clicks use local pulse feedback', async () => {
+  const world = await source('../components/hex-world/HexWorld3D.tsx');
+  const controller = await source('../components/hex-world/HexBuildController.tsx');
+  assert.match(world, /HexPlacementEffects/);
+  assert.match(controller, /invalidPulseNonce/);
+});
