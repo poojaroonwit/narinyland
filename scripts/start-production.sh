@@ -4,7 +4,7 @@ set -u
 MAX_ATTEMPTS="${DB_STARTUP_MAX_ATTEMPTS:-12}"
 attempt=1
 
-while ! npx prisma migrate deploy; do
+until npx prisma migrate deploy; do
   if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
     echo "Database migration failed after ${MAX_ATTEMPTS} attempts; refusing to start the app." >&2
     exit 1
