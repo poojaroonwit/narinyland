@@ -67,6 +67,10 @@ test('cinematic living world adds restrained ambient motion and a direct signup 
   assert.match(source, /Live homestead/);
   assert.match(source, /repeat:\s*Infinity/);
   assert.match(source, /prefersReducedMotion/);
+  assert.match(source, /style=\{\{ y: prefersReducedMotion \? 0 : atmosphereY \}\}/);
+  assert.match(source, /style=\{\{ x: prefersReducedMotion \? 0 : sunlightX \}\}/);
+  assert.match(source, /style=\{\{ opacity: prefersReducedMotion \? 1 : heroWorldOpacity, scale: prefersReducedMotion \? 1 : heroWorldScale \}\}/);
+  assert.match(source, /style=\{\{ opacity: prefersReducedMotion \? 1 : heroUiOpacity, y: prefersReducedMotion \? 0 : heroUiY \}\}/);
   assert.doesNotMatch(source, /filter:\s*blur\(/);
 });
 
