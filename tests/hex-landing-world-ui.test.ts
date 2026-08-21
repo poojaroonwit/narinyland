@@ -25,7 +25,7 @@ test('premium landing composition keeps the world dominant and UI editorial', as
   assert.match(source, /from 'framer-motion'/);
   assert.match(source, /Explore the world/);
   assert.match(source, /pointer-events-none/);
-  assert.match(source, /initial=\{\{ opacity: 0, y: 16 \}\}/);
+  assert.match(source, /initial=\{\{ opacity: 0, y: prefersReducedMotion \? 0 : 16 \}\}/);
   assert.match(source, /whileHover=\{\{ scale: 1\.03 \}\}/);
   assert.doesNotMatch(source, /bg-gradient-to-r from-white\/35/);
   assert.doesNotMatch(source, /bg-white\/72/);
