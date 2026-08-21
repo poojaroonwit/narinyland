@@ -61,6 +61,7 @@ ENV HOME=/home/nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-production.sh ./scripts/start-production.sh
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Automatically leverage output traces to reduce image size
@@ -76,5 +77,6 @@ ENV PORT=3000
 # set hostname to localhost
 ENV HOSTNAME="0.0.0.0"
 
-# server.js is created by next build from the standalone output
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Railway can resume the app before a sleeping Postgres service has finished recovery.
+# Retry the migration gate before exposing the Next.js server to health checks or user traffic.
+CMD ["sh", "scripts/start-production.sh"]
