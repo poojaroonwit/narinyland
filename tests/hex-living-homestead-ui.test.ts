@@ -9,6 +9,9 @@ test('living homestead hook uses the existing Family Farm API and guards Land sw
   assert.match(source, /familyFarmAPI\.act\(landId, action\)/);
   assert.match(source, /activeLandRef/);
   assert.match(source, /requestNonceRef/);
+  assert.match(source, /actionLockRef/);
+  assert.match(source, /actionLockRef\.current\s*=\s*true/);
+  assert.match(source, /actionLockRef\.current\s*=\s*false/);
   assert.match(source, /retry/);
   assert.match(source, /showToast/);
   assert.doesNotMatch(source, /fetch\(/);
