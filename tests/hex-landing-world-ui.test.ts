@@ -19,6 +19,19 @@ test('landing hero message card has no visible border', async () => {
   assert.doesNotMatch(source, /rounded-\[2rem\]\s+border\s+border-white\/70\s+bg-white\/72/);
 });
 
+test('premium landing composition keeps the world dominant and UI editorial', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /from 'framer-motion'/);
+  assert.match(source, /Explore the world/);
+  assert.match(source, /pointer-events-none fixed/);
+  assert.match(source, /initial=\{\{ opacity: 0, y: 16 \}\}/);
+  assert.match(source, /whileHover=\{\{ scale: 1\.03 \}\}/);
+  assert.doesNotMatch(source, /bg-gradient-to-r from-white\/35/);
+  assert.doesNotMatch(source, /bg-white\/72/);
+  assert.doesNotMatch(source, /Live world preview/);
+});
+
 test('HexWorld loading keeps the real world renderer visible behind product-aligned loading chrome', async () => {
   const source = await readFile(new URL('../components/hex-world/HexWorldLoading.tsx', import.meta.url), 'utf8');
 
