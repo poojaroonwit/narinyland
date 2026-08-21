@@ -66,3 +66,13 @@ test('water uses deterministic buckets and bounded quality glints', async () => 
   assert.match(water, /waterGlintCount/);
   assert.doesNotMatch(water, /MeshReflectorMaterial|CubeCamera|WebGLCubeRenderTarget/);
 });
+
+test('confirmed expansion uses deterministic stagger and visual-only mist', async () => {
+  const tiles = await source('../components/hex-world/HexTileInstances.tsx');
+  const effects = await source('../components/hex-world/HexPlacementEffects.tsx');
+  const controller = await source('../components/hex-world/HexBuildController.tsx');
+  assert.match(tiles, /stagger/i);
+  assert.match(effects, /expanded|expansion/i);
+  assert.match(controller, /setUndo\(null\)/);
+  assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
+});
