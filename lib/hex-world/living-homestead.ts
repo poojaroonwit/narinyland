@@ -70,9 +70,11 @@ export function getCropVisualSamples(
 ): CropVisualSample[] {
   if (gardenBuildings.length === 0 || maxSamples <= 0) return [];
   const gardens = [...gardenBuildings].sort((a, b) => a.id.localeCompare(b.id));
+  const visualCapacity = gardens.length * 6;
+  const sampleLimit = Math.min(visualCapacity, Math.max(0, Math.floor(maxSamples)));
   return state.plots
     .filter((plot): plot is typeof plot & { cropKey: NonNullable<typeof plot.cropKey> } => !!plot.cropKey)
-    .slice(0, Math.max(0, Math.floor(maxSamples)))
+    .slice(0, sampleLimit)
     .map((plot, index) => {
       const garden = gardens[index % gardens.length];
       return {
@@ -83,7 +85,7 @@ export function getCropVisualSamples(
         gardenBuildingId: garden.id,
         anchorQ: garden.anchorQ,
         anchorR: garden.anchorR,
-        slot: Math.floor(index / gardens.length) % 6,
+        slot: Math.floor(index / gardens.length),
       };
     });
 }
