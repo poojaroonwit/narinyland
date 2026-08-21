@@ -45,3 +45,9 @@ test('repeated ambient geometry stays instanced and high quality DPR remains bou
   assert.match(quality, /maxDpr:\s*1\.75/);
   assert.doesNotMatch(quality, /maxDpr:\s*(?:[2-9]|1\.(?:8|9))/);
 });
+
+test('confirmed placement effects use one bounded points batch and stay visual-only', async () => {
+  const placement = await source('../components/hex-world/HexPlacementEffects.tsx').catch(() => '');
+  assert.equal((placement.match(/<points\b/g) ?? []).length, 1);
+  assert.doesNotMatch(placement, /hexWorldAPI|fetch\(|prisma/);
+});
