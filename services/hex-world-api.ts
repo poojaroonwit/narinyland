@@ -1,6 +1,6 @@
 import { getActiveCircleId } from '@/lib/circle-store';
 import type { HexReversibleMutationResponse } from '@/lib/hex-world/reversible-mutation';
-import type { HexPlacementInput, HexWorldErrorCode, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexCoord, HexPlacementInput, HexWorldErrorCode, HexWorldSnapshot } from '@/lib/hex-world/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -54,9 +54,15 @@ export const hexWorldAPI = {
       body: JSON.stringify({ landId, undoToken }),
     }),
 
-  expand: (landId: string, expansionKey: string) =>
+  expand: (landId: string, expansionKey: string, anchor: HexCoord) =>
     request<HexWorldSnapshot>('/hex-world/expand', {
       method: 'POST',
-      body: JSON.stringify({ landId, expansionKey }),
+      body: JSON.stringify({ landId, expansionKey, anchorQ: anchor.q, anchorR: anchor.r }),
+    }),
+
+  moveExpansion: (landId: string, expansionKey: string, anchor: HexCoord) =>
+    request<HexWorldSnapshot>('/hex-world/expand', {
+      method: 'PATCH',
+      body: JSON.stringify({ landId, expansionKey, anchorQ: anchor.q, anchorR: anchor.r }),
     }),
 };
