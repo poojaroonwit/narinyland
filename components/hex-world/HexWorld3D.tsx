@@ -9,12 +9,14 @@ import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
 import { hexRotationToRadians } from '@/lib/hex-world/rendering';
 import type { HexCameraIntent } from '@/lib/hex-world/camera';
 import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexConfirmedVisualEvent } from '@/lib/hex-world/visual-events';
 import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexExpansionClusters } from './HexExpansionClusters';
 import { HexIslandUnderside } from './HexIslandUnderside';
+import { HexPlacementEffects } from './HexPlacementEffects';
 import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
 import { HexTileInstances } from './HexTileInstances';
@@ -37,6 +39,8 @@ type Props = {
   selectedBuildingId?: string | null;
   validKeys?: Set<string>;
   invalidKeys?: Set<string>;
+  invalidPulseNonce?: number;
+  visualEvent?: HexConfirmedVisualEvent;
   expansionOptions?: HexExpansionDTO[];
   selectedExpansionKey?: string | null;
   newlyAddedKeys?: Set<string>;
@@ -68,11 +72,7 @@ function AnimatedBuildingPreview({ preview, position, motionProfile }: {
     if (!ref.current) return;
     ref.current.position.y = position.y + Math.sin(clock.elapsedTime * 1.6 + phase) * 0.02 * motionProfile.ghostBobScale;
   });
-  return (
-    <group ref={ref} position={[position.x, position.y, position.z]} rotation={[0, hexRotationToRadians(preview.rotation), 0]}>
-      <HexBuildingModel buildingKey={preview.buildingKey} ghost />
-    </group>
-  );
+  return <group ref={ref} position={[position.x, position.y, position.z]} rotation={[0, hexRotationToRadians(preview.rotation), 0]}><HexBuildingModel buildingKey={preview.buildingKey} ghost /></group>;
 }
 
 export function HexWorld3D({ snapshot, ...props }: Props) {
@@ -84,11 +84,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  const profile = resolveHexQualityProfile({
-    graphicsQuality: props.graphicsQuality ?? 'medium',
-    viewportWidth: device.viewportWidth,
-    devicePixelRatio: device.devicePixelRatio,
-  });
+  const profile = resolveHexQualityProfile({ graphicsQuality: props.graphicsQuality ?? 'medium', viewportWidth: device.viewportWidth, devicePixelRatio: device.devicePixelRatio });
   const reducedMotion = false;
   const motionProfile = resolveHexMotionProfile({ quality: profile, reducedMotion });
   const tileHeight = new Map(snapshot.tiles.map((tile) => [hexKey(tile), tile.height]));
@@ -107,23 +103,13 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
         <HexWorldParticles seed={snapshot.world.seed} profile={profile} />
+        <HexPlacementEffects event={props.visualEvent ?? null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
         {!!props.expansionOptions?.length && <HexExpansionClusters expansions={props.expansionOptions} selectedKey={props.selectedExpansionKey} onSelect={(key) => props.onSelectExpansion?.(key)} />}
-        <HexTileInstances
-          tiles={snapshot.tiles}
-          profile={profile}
-          motionProfile={motionProfile}
-          hoveredKey={hoveredKey}
-          selectedKey={selectedKey}
-          validKeys={props.validKeys}
-          invalidKeys={props.invalidKeys}
-          riseKeys={props.newlyAddedKeys}
-          onHover={props.onHoverTile}
-          onSelect={props.onSelectTile}
-        />
-        <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} />
+        <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
+        <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} />
         <HexAmbientDecor tiles={snapshot.tiles} />
-        <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} onSelect={(building) => props.onSelectBuilding?.(building)} />
+        <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
         <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
       </Canvas>
