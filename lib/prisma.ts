@@ -1,38 +1,58 @@
 import { PrismaClient } from '@prisma/client';
+import { isRetryablePrismaReadOperation, retryDatabaseRead } from './database-read-retry';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+function buildDatabaseUrl(): string | undefined {
+  let url = process.env.DATABASE_URL;
+  if (!url) return undefined;
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+  // Add connection limit if not present to avoid Supabase connection errors.
+  if (!url.includes('connection_limit')) {
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}connection_limit=3&pool_timeout=20`;
+  }
+
+  // Detect Supabase Transaction Pooler (port 6543) and ensure pgbouncer=true.
+  if (url.includes(':6543') && !url.includes('pgbouncer=true')) {
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}pgbouncer=true`;
+  }
+
+  return url;
+}
+
+function createPrismaClient() {
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
-        url: (() => {
-          let url = process.env.DATABASE_URL;
-          if (!url) return undefined;
-          // Add connection limit if not present to avoid Supabase connection errors
-          if (!url.includes('connection_limit')) {
-             const separator = url.includes('?') ? '&' : '?';
-             // For Supabase, smaller limits are better to prevent "Max clients reached"
-             url = `${url}${separator}connection_limit=3&pool_timeout=20`;
-          }
-
-          // Detect Supabase Transaction Pooler (port 6543) and ensure pgbouncer=true
-          // Note: If you get "MaxClientsInSessionMode" error, ensure your Supabase 
-          // dashboard pooler setting is set to "Transaction" mode, NOT "Session".
-          if (url.includes(':6543') && !url.includes('pgbouncer=true')) {
-             const separator = url.includes('?') ? '&' : '?';
-             url = `${url}${separator}pgbouncer=true`;
-          }
-          
-          return url;
-        })(),
+        url: buildDatabaseUrl(),
       },
     },
   });
+
+  return client.$extends({
+    name: 'railway-read-recovery',
+    query: {
+      $allModels: {
+        async $allOperations({ operation, args, query }) {
+          if (!isRetryablePrismaReadOperation(operation)) {
+            return query(args);
+          }
+
+          return retryDatabaseRead(() => query(args));
+        },
+      },
+    },
+  });
+}
+
+type PrismaWithReadRecovery = ReturnType<typeof createPrismaClient>;
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaWithReadRecovery | undefined;
+};
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
