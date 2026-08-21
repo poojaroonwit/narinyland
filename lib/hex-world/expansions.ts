@@ -1,11 +1,11 @@
-import { axialToWorld, hexKey, hexNeighbors } from './hex-grid';
+import { axialToWorld, hexKey, hexNeighbors, isConnectedHexSet } from './hex-grid';
 import { generateStarterWorld } from './generator';
 import type { HexCoord, HexExpansionDTO, HexTileDTO, HexWorldSnapshot } from './types';
 
 export type HexExpansionDefinition = Omit<HexExpansionDTO, 'eligible'> & { directionIndex: number };
 export type HexExpansionPlacementResult =
   | { ok: true }
-  | { ok: false; code: 'expansion_overlap' | 'expansion_disconnected' };
+  | { ok: false; code: 'expansion_overlap' | 'expansion_disconnected' | 'expansion_disconnects_island' };
 
 const DIRECTIONS: HexCoord[] = [
   { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
@@ -46,13 +46,28 @@ export function validateExpansionPlacement(
   worldTiles: HexTileDTO[],
   options: { ignoreExpansionKey?: string } = {},
 ): HexExpansionPlacementResult {
-  const remaining = worldTiles.filter((tile) => {
-    if (!tile.unlocked) return false;
-    return !options.ignoreExpansionKey || tileExpansionKey(tile) !== options.ignoreExpansionKey;
-  });
-  const occupied = new Set(remaining.map(hexKey));
-  if (cells.some((cell) => occupied.has(hexKey(cell)))) return { ok: false, code: 'expansion_overlap' };
-  if (!touches(cells, occupied)) return { ok: false, code: 'expansion_disconnected' };
+  const remainingPersisted = worldTiles.filter((tile) =>
+    !options.ignoreExpansionKey || tileExpansionKey(tile) !== options.ignoreExpansionKey,
+  );
+  const persistedCoords = new Set(remainingPersisted.map(hexKey));
+  if (cells.some((cell) => persistedCoords.has(hexKey(cell)))) {
+    return { ok: false, code: 'expansion_overlap' };
+  }
+
+  const remainingUnlocked = remainingPersisted.filter((tile) => tile.unlocked);
+  const unlockedCoords = new Set(remainingUnlocked.map(hexKey));
+  if (!touches(cells, unlockedCoords)) return { ok: false, code: 'expansion_disconnected' };
+
+  if (options.ignoreExpansionKey) {
+    const resultingUnlocked = [
+      ...remainingUnlocked.map(({ q, r }) => ({ q, r })),
+      ...cells,
+    ];
+    if (!isConnectedHexSet(resultingUnlocked)) {
+      return { ok: false, code: 'expansion_disconnects_island' };
+    }
+  }
+
   return { ok: true };
 }
 
@@ -113,11 +128,12 @@ export function getEligibleExpansionDefinitions(
   purchasedExpansionKeys: Iterable<string> = [],
 ): HexExpansionDTO[] {
   const purchased = new Set(purchasedExpansionKeys);
-  const unlocked = new Set(snapshot.tiles.filter((tile) => tile.unlocked).map(hexKey));
 
+  // Free-placement expansion definitions are server-owned catalog identities and
+  // prices. Their deterministic coordinates remain only a backward-compatible
+  // default for older callers; the player selects and validates exact placement
+  // separately, so catalog availability must not depend on those old coordinates.
   return getExpansionDefinitions(snapshot.world.seed)
     .filter((definition) => !purchased.has(definition.expansionKey))
-    .filter((definition) => definition.tiles.every((cell) => !unlocked.has(hexKey(cell))))
-    .filter((definition) => touches(definition.tiles, unlocked))
     .map(({ directionIndex: _directionIndex, ...definition }) => ({ ...definition, eligible: true }));
 }
