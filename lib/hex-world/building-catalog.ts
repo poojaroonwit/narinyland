@@ -40,6 +40,11 @@ export const BUILDING_CATALOG = {
     footprint: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }], allowedTerrain: GRASSY,
     allowedRotations: ALL_ROTATIONS, removable: true, duplicates: false, visual: 'workshop',
   },
+  barn: {
+    key: 'barn', name: 'Barn', category: 'main',
+    footprint: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }], allowedTerrain: GRASSY,
+    allowedRotations: ALL_ROTATIONS, removable: true, duplicates: false, visual: 'barn',
+  },
   tree: {
     key: 'tree', name: 'Tree', category: 'nature', footprint: [{ q: 0, r: 0 }],
     allowedTerrain: GRASSY, allowedRotations: ALL_ROTATIONS, removable: true, duplicates: true, visual: 'tree',
