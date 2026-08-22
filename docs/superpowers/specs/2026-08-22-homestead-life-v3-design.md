@@ -30,11 +30,11 @@ The feature must not turn Narinyland into an MMO, character-control game, or das
 - energy
 - Coins, XP, Hearts
 - crop/inventory/livestock state
-- relationship and family milestones
+- family stage and milestones
 - child unlock/status
 - homestead event state/history
 - animal care and products
-- building progression tiers as gameplay unlocks
+- Home/Barn/Workshop/Storage progression tiers as gameplay unlocks
 - crafting unlocks and recipes
 
 **Hex World owns:**
@@ -45,13 +45,15 @@ The feature must not turn Narinyland into an MMO, character-control game, or das
 - expansion placement and relocation
 - Hex Points
 
-Family characters, animals, and event props in the 3D scene are projections of authoritative gameplay state. They are not independently persisted simulation entities.
+Family characters, animals, building-tier visuals, and event props in the 3D scene are projections of authoritative gameplay state. They are not independently persisted simulation entities.
+
+Building placement stays in Hex World. Building tier numbers stay in Family Farm v5 and are projected onto the matching Hex World building key. This avoids a second tier persistence model in Hex World.
 
 ### Module structure
 
 Keep the Family Farm save/API boundary, but split new logic into focused modules rather than expanding one monolithic progression file:
 
-- `family-life` — partners, relationship, child milestones
+- `family-life` — partners, Hearts-derived family stage, child milestones
 - `homestead-animals` — chicken/cow/sheep/pet care and production
 - `homestead-events` — daily and seasonal event selection/resolution
 - `building-progression` — Home/Barn/Workshop/Storage tier rules
@@ -64,12 +66,14 @@ No new gameplay persistence subsystem is introduced.
 ### Household model
 
 - Start with two partners.
-- One child unlocks later through relationship + Home progression.
+- One child unlocks later through Hearts + Home progression.
 - No open-ended household generator in v3.
 
 ### Family progression
 
-Relationship grows through:
+Existing **Hearts remain the canonical relationship currency**. v3 does not add a second relationship score.
+
+Family stage is derived from Hearts and milestones. Hearts grow through:
 - Family Time
 - shared meals
 - daily activities
@@ -77,16 +81,18 @@ Relationship grows through:
 - caring for animals together
 - Home upgrades
 
-Relationship milestones unlock visible moments and progression rather than a large menu of statistics.
+Family milestones unlock visible moments and progression rather than a large menu of statistics.
 
 ### Child unlock
 
-Child progression requires all of:
+The child unlock path is explicit:
 - Home Tier 2 or higher
-- a defined relationship/Hearts milestone
-- completion of a one-time family milestone event
+- at least **75 Hearts**
+- completion of the one-time **Growing Together** family milestone event
 
-The child becomes a lightweight visible household member with contextual activities around Home/Garden. There is no separate child-management simulator.
+When all three are satisfied, the child becomes permanently unlocked in the v5 save and appears as a lightweight visible household member with contextual activities around Home/Garden.
+
+There is no separate child-management simulator.
 
 ### 3D family behavior
 
@@ -119,28 +125,37 @@ Preserve the existing chicken loop and integrate chickens visually with Barn pro
 
 ### Cow
 
-- unlock through Barn progression
+- unlock at Barn Tier 2
 - feed once per day
-- produce milk once per eligible day
-- duplicate collection in the same day is rejected
+- a fed cow produces one milk collection opportunity on the next eligible day
+- collection can happen at most once per eligible day
 
 ### Sheep
 
-- unlock through higher Barn progression
-- feed/care interaction
-- produce wool on a periodic eligible cadence
-- duplicate collection in the same eligible period is rejected
+- unlock at Barn Tier 3
+- care/feed once per day
+- wool becomes ready after two cared-for in-game days
+- collecting resets wool progress
+- duplicate collection in the same readiness window is rejected
 
 ### Pet
 
-- player selects cat or dog
+- unlock through the Home/family progression path
+- player chooses **cat or dog** once; the selection persists
 - no commodity-production loop
-- gives Hearts/family-event bonuses
-- wanders around Home/family anchors
+- one pet interaction per day can grant a small Hearts bonus
+- pet can contribute to selected family-event outcomes
+- pet wanders around Home/family anchors
 
 Each animal has one clear care loop, one visible 3D behavior, and one useful gameplay benefit.
 
 ## Daily and Seasonal Events
+
+### Deterministic selection contract
+
+Event selection belongs to a pure domain module and never calls wall-clock randomness directly inside the reducer.
+
+The selector accepts deterministic inputs derived from authoritative state (including farm day/season and stable saved state). Tests can provide an explicit deterministic seed/selector input. Replaying the same persisted state must select the same unresolved event.
 
 ### Daily events
 
@@ -165,6 +180,15 @@ Events may present 1–3 lightweight choices when useful. Rewards/consequences c
 
 Daily-event rewards must be idempotent and not claimable more than once.
 
+### Growing Together milestone event
+
+`Growing Together` is a one-time family milestone event that becomes eligible when:
+- Home is Tier 2+
+- Hearts are 75+
+- the milestone has not previously completed
+
+Completing it unlocks the child permanently.
+
 ### Seasonal events
 
 Each seven-day season has one larger homestead event:
@@ -175,7 +199,7 @@ Each seven-day season has one larger homestead event:
 
 Seasonal events occur within the existing homestead and do not load a separate festival map.
 
-Seasonal event completion is recorded so one-time rewards cannot replay incorrectly.
+Seasonal event completion is recorded by year/season so rewards cannot replay multiple times for the same seasonal occurrence while still allowing the event to return in later in-game years.
 
 ## Building Progression
 
@@ -184,16 +208,20 @@ Buildings visibly upgrade in place through three tiers.
 ### Home
 
 - Tier 1: starter cottage
-- Tier 2: expanded cozy home; required for child progression
-- Tier 3: larger family house with stronger family bonuses
+- Tier 2: expanded cozy home; required for `Growing Together`
+- Tier 3: larger family house with stronger family/event bonuses
 
 ### Barn
 
+Barn does **not** exist in the current Hex World catalog and will be added as a normal Hex World building.
+
+- placement/move/rotate/remove remain Hex World-authoritative
+- tier remains Family Farm-authoritative
 - Tier 1: chicken support
 - Tier 2: cow unlock
 - Tier 3: sheep unlock + higher animal capacity
 
-If Barn does not yet exist as a Hex World building, add it as a normal world building under Hex World placement authority rather than encoding it as a hidden Family Farm-only object.
+The Barn must never be encoded as a hidden Family Farm-only spatial object.
 
 ### Workshop
 
@@ -214,7 +242,7 @@ Upgrades happen in place. The existing building identity and placement remain st
 
 Keep crafting compact and practical.
 
-Target recipe categories:
+Approved recipe categories:
 - fences
 - benches
 - lamps
@@ -227,6 +255,8 @@ Target recipe categories:
 - selected functional homestead upgrades
 
 Do not introduce a large crafting skill tree or hundreds of recipes.
+
+Existing crafted upgrades remain compatible. New recipes are added through the same authoritative Family Farm action pattern.
 
 ## Core Gameplay Loop
 
@@ -241,7 +271,7 @@ Upgrade Family Farm JSON from schema v4 to schema v5 through a backward-compatib
 Keep the existing Family Farm save boundary and save key. Do not create duplicate persistence.
 
 The v5 state adds safe-default fields for:
-- relationship/family milestones
+- family milestone/completion state
 - child unlock/status
 - cow/sheep/pet state
 - Home/Barn/Workshop/Storage tiers
@@ -259,9 +289,9 @@ End/start day processing follows this order:
 
 1. resolve day/season/weather
 2. reset eligible per-day animal flags
-3. resolve animal production eligibility
-4. select at most one daily event
-5. update family activity/milestones
+3. advance animal production eligibility
+4. select at most one daily event deterministically
+5. update family milestone eligibility
 6. resolve seasonal event eligibility
 7. apply deterministic state transitions
 8. persist normalized v5 state
@@ -285,9 +315,11 @@ Extend the living homestead scene to render:
 - building tier variants
 - contextual event props/poses
 
-The scene derives this from authoritative state and existing Hex building positions.
+The scene derives this from authoritative Family Farm state and existing Hex building positions.
 
 Known building anchors are converted into local activity points. Character/animal movement uses bounded local routes and simple interpolation, not full pathfinding.
+
+Missing or removed optional buildings must degrade gracefully: family/animal visuals fall back to Home-safe anchors instead of throwing or persisting invalid positions.
 
 ## Land Relocation — Hard Regression Contract
 
@@ -306,22 +338,21 @@ Rules that must remain true:
 - purchased land containing a building cannot move until the building is moved/removed
 - rejected movement does not spend Points
 
-New Barns, animals, family characters, or event props must not bypass or alter Hex World placement authority.
+New Barns, animals, family characters, building-tier visuals, or event props must not bypass or alter Hex World placement authority.
 
 ## Music — Hard Regression Contract
 
 The existing homestead music remains muteable from the HUD.
 
 Requirements:
-- clear `Music` / muted state affordance
+- HUD exposes the existing clear `🔊 Music` / `🔇 Music` control
 - mute preference persists across reloads
 - Web Audio remains gesture-gated
 - mute ramps gain down rather than leaving audible output
 - unmute resumes safely
-- Safari fallback remains supported
+- Safari `webkitAudioContext` fallback remains supported
 - future event/family sound effects must obey the same global mute preference
-
-Persisted key remains compatible with the existing implementation unless an explicit migration is added.
+- keep the existing storage key `narinyland:music-muted`
 
 ## UX Rules
 
@@ -357,23 +388,25 @@ Use TDD for new behavior.
 Required coverage:
 - v4 → v5 save migration
 - deterministic v5 normalization/defaults
-- partner relationship progression
-- one-time relationship/family milestones
-- child unlock conditions
+- Hearts-derived family progression
+- one-time family milestones
+- exact child unlock conditions: Home Tier 2 + 75 Hearts + `Growing Together`
 - cow daily care/production limits
-- sheep care/production cadence
-- pet selection and family bonus
+- sheep two-care-day wool cadence
+- persistent cat/dog selection and daily pet bonus
 - building tier requirements/unlocks
+- deterministic daily-event selection
 - daily-event at-most-once behavior
 - event choice reward idempotency
-- seasonal event eligibility/completion
+- seasonal event eligibility and year/season completion identity
 - expanded crafting costs/rewards
 - 3D family/animal projection helpers
+- missing-anchor fallback behavior
 - reduced-motion behavior
 - existing 7/19/37 free land placement
 - purchased Move Land regression suite
 - bridge/connectivity/locked-coordinate relocation safety
-- persistent global music mute
+- persistent global music mute under `narinyland:music-muted`
 - lint with zero errors
 - TypeScript/production build
 - DB/Redis integration where Hex World authority is involved
@@ -397,13 +430,14 @@ Not part of v3:
 Homestead Life v3 is accepted when:
 
 1. Two partners are visibly present and automatically perform lightweight homestead behaviors.
-2. A child can unlock through Home + relationship + milestone progression and then appears in the world.
-3. Chickens, cow, sheep, and a selectable cat/dog pet have simple working loops and visible world presence.
-4. Daily events occur at most once per day and seasonal events occur according to season rules.
-5. Home, Barn, Workshop, and Storage support visible three-tier progression in place.
-6. Crafting includes the approved compact homestead/decor expansion.
-7. Existing v4 saves migrate safely to v5.
-8. The world remains interaction-first rather than dashboard-first.
-9. Purchased land can still be freely relocated subject to all existing server-side safety rules.
-10. Music can still be muted/unmuted and the preference persists.
-11. Existing land, building, Family Farm, lint, build, and integration regression suites remain green.
+2. A child permanently unlocks only after Home Tier 2+, 75 Hearts, and completion of `Growing Together`, then appears in the world.
+3. Chickens, cow, sheep, and a persistent selectable cat/dog pet have simple working loops and visible world presence.
+4. Daily events occur at most once per day and replay deterministically from identical unresolved state.
+5. Spring Picnic, Summer Pond Day, Autumn Harvest Fair, and Winter Family Dinner resolve once per season occurrence and can return in later in-game years.
+6. Home, Barn, Workshop, and Storage support visible three-tier progression in place; Barn exists as a normal Hex World building.
+7. Crafting includes the approved compact homestead/decor expansion.
+8. Existing v4 saves migrate safely to v5 with deterministic defaults and no data loss.
+9. The world remains interaction-first rather than dashboard-first.
+10. Purchased land can still be freely relocated subject to all existing server-side safety rules.
+11. Music can still be muted/unmuted, uses `narinyland:music-muted`, and the preference persists.
+12. Existing land, building, Family Farm, lint, build, and integration regression suites remain green.
