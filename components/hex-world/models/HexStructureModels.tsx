@@ -36,6 +36,22 @@ export function HexStructureModel({ buildingKey, ghost = false, selected = false
           </group>
         </group>
       );
+    case 'barn':
+      return (
+        <group scale={selected ? 1.02 : 1}>
+          <mesh position={[0, 0.62, 0]} castShadow receiveShadow><boxGeometry args={[2.35, 1.24, 1.78]} /><meshStandardMaterial color="#b95f4f" {...material} /></mesh>
+          <mesh position={[0, 1.52, 0]} rotation={[0, Math.PI / 4, 0]} castShadow><coneGeometry args={[1.8, 1.05, 4]} /><meshStandardMaterial color="#765746" {...material} roughness={0.84} /></mesh>
+          <mesh position={[0, 0.62, 0.92]}><boxGeometry args={[0.86, 1.02, 0.08]} /><meshStandardMaterial color="#77503c" {...material} /></mesh>
+          <mesh position={[0, 0.62, 0.98]}><boxGeometry args={[0.08, 0.92, 0.08]} /><meshStandardMaterial color="#ead7b5" {...material} /></mesh>
+          <mesh position={[0, 0.62, 0.99]}><boxGeometry args={[0.76, 0.08, 0.08]} /><meshStandardMaterial color="#ead7b5" {...material} /></mesh>
+          <mesh position={[-0.68, 0.75, 0.93]}><boxGeometry args={[0.32, 0.32, 0.07]} /><meshStandardMaterial color="#ffe0a4" emissive="#ffc978" emissiveIntensity={ghost ? 0.08 : 0.38} {...material} /></mesh>
+          <mesh position={[0.68, 0.75, 0.93]}><boxGeometry args={[0.32, 0.32, 0.07]} /><meshStandardMaterial color="#ffe0a4" emissive="#ffc978" emissiveIntensity={ghost ? 0.08 : 0.38} {...material} /></mesh>
+          <group position={[1.14, 0.2, 0.2]}>
+            <mesh castShadow><cylinderGeometry args={[0.28, 0.34, 0.4, 12]} /><meshStandardMaterial color="#b49359" {...material} /></mesh>
+            <mesh position={[0, 0.25, 0]}><cylinderGeometry args={[0.2, 0.27, 0.18, 12]} /><meshStandardMaterial color="#d7bd78" {...material} /></mesh>
+          </group>
+        </group>
+      );
     case 'storage':
       return (
         <group scale={selected ? 1.02 : 1}>
