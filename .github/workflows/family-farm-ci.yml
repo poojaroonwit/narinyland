@@ -16,6 +16,7 @@ on:
       - 'tests/family-farm-game.test.ts'
       - 'tests/family-farm-progression.test.ts'
       - 'tests/homestead-life-v3.test.ts'
+      - 'tests/homestead-crafting.test.ts'
       - '.github/workflows/family-farm-ci.yml'
 
 permissions:
@@ -42,7 +43,7 @@ jobs:
         run: npm ci
 
       - name: Farm engine tests
-        run: node --import tsx --test tests/family-farm-game.test.ts tests/family-farm-progression.test.ts tests/homestead-life-v3.test.ts
+        run: node --import tsx --test tests/family-farm-game.test.ts tests/family-farm-progression.test.ts tests/homestead-life-v3.test.ts tests/homestead-crafting.test.ts
 
       - name: Lint
         run: npm run lint
