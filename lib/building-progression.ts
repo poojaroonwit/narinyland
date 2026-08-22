@@ -49,6 +49,7 @@ export function canUpgradeBuilding(_key: ProgressionBuildingKey, tier: BuildingT
 }
 
 export function getBuildingUpgradeCost(key: ProgressionBuildingKey, tier: BuildingTier): number {
-  if (tier >= 3) return 0;
-  return UPGRADE_COSTS[key][tier];
+  if (tier === 1) return UPGRADE_COSTS[key][1];
+  if (tier === 2) return UPGRADE_COSTS[key][2];
+  return 0;
 }
