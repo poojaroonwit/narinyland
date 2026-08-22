@@ -5,7 +5,7 @@ import {
   normalizeProgressionFarmState,
   type ProgressionFamilyFarmState,
 } from '../lib/family-farm-progression';
-import { performHomesteadLifeAction } from '../lib/homestead-life-engine';
+import { normalizeHomesteadLifeState, performHomesteadLifeAction } from '../lib/homestead-life-engine';
 
 type V5FamilyShape = {
   schemaVersion: number;
@@ -95,7 +95,7 @@ test('Home building upgrade keeps legacy homeLevel synchronized', () => {
 });
 
 test('v5 animal defaults add cow sheep pet plus milk and wool without losing base resources', () => {
-  const state = animalState(normalizeProgressionFarmState({
+  const state = animalState(normalizeHomesteadLifeState({
     schemaVersion: 4,
     inventory: { resources: { egg: 2, berries: 3, mushroom: 1, wood: 9, fish: 4 } },
   }));
@@ -113,22 +113,22 @@ test('v5 animal defaults add cow sheep pet plus milk and wool without losing bas
 
 test('cow requires Barn Tier 2, feeds once per day, and yields one next-day milk collection', () => {
   let state = { ...createInitialProgressionFarmState(), coins: 5000 };
-  assert.throws(() => performHomesteadLifeAction(state, { type: 'buy_cow' } as never), /barn.*tier 2|tier 2.*barn/i);
+  assert.throws(() => performHomesteadLifeAction(state, { type: 'buy_cow' }), /barn.*tier 2|tier 2.*barn/i);
 
   state = { ...state, buildingTiers: { ...state.buildingTiers, barn: 2 } };
-  state = performHomesteadLifeAction(state, { type: 'buy_cow' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'buy_cow' }).state;
   assert.equal(animalState(state).animals?.cow.owned, true);
 
-  state = performHomesteadLifeAction(state, { type: 'feed_cow' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'feed_cow' }).state;
   assert.equal(animalState(state).animals?.cow.fedDay, state.day);
-  assert.throws(() => performHomesteadLifeAction(state, { type: 'feed_cow' } as never), /already.*fed|fed.*today/i);
+  assert.throws(() => performHomesteadLifeAction(state, { type: 'feed_cow' }), /already.*fed|fed.*today/i);
 
   state = performHomesteadLifeAction(state, { type: 'end_day' }).state;
   assert.equal(animalState(state).animals?.cow.milkReady, true);
   const beforeMilk = animalState(state).inventory.resources.milk ?? 0;
-  state = performHomesteadLifeAction(state, { type: 'collect_milk' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'collect_milk' }).state;
   assert.equal(animalState(state).inventory.resources.milk, beforeMilk + 1);
-  assert.throws(() => performHomesteadLifeAction(state, { type: 'collect_milk' } as never), /milk.*not ready|already.*milk/i);
+  assert.throws(() => performHomesteadLifeAction(state, { type: 'collect_milk' }), /milk.*not ready|already.*milk/i);
 });
 
 test('sheep requires Barn Tier 3 and wool becomes ready after two cared-for days', () => {
@@ -137,19 +137,19 @@ test('sheep requires Barn Tier 3 and wool becomes ready after two cared-for days
     coins: 5000,
     buildingTiers: { home: 1 as const, barn: 3 as const, workshop: 1 as const, storage: 1 as const },
   };
-  state = performHomesteadLifeAction(state, { type: 'buy_sheep' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'buy_sheep' }).state;
 
-  state = performHomesteadLifeAction(state, { type: 'care_sheep' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'care_sheep' }).state;
   state = performHomesteadLifeAction(state, { type: 'end_day' }).state;
   assert.equal(animalState(state).animals?.sheep.caredProgress, 1);
   assert.equal(animalState(state).animals?.sheep.woolReady, false);
 
-  state = performHomesteadLifeAction(state, { type: 'care_sheep' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'care_sheep' }).state;
   state = performHomesteadLifeAction(state, { type: 'end_day' }).state;
   assert.equal(animalState(state).animals?.sheep.woolReady, true);
 
   const beforeWool = animalState(state).inventory.resources.wool ?? 0;
-  state = performHomesteadLifeAction(state, { type: 'collect_wool' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'collect_wool' }).state;
   assert.equal(animalState(state).inventory.resources.wool, beforeWool + 1);
   assert.equal(animalState(state).animals?.sheep.caredProgress, 0);
   assert.equal(animalState(state).animals?.sheep.woolReady, false);
@@ -162,12 +162,12 @@ test('pet choice is permanent after Home Tier 2 plus 50 Hearts and pet time gran
     buildingTiers: { home: 2 as const, barn: 1 as const, workshop: 1 as const, storage: 1 as const },
     homeLevel: 2,
   };
-  state = performHomesteadLifeAction(state, { type: 'choose_pet', petKind: 'cat' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'choose_pet', petKind: 'cat' }).state;
   assert.equal(animalState(state).animals?.pet.kind, 'cat');
-  assert.throws(() => performHomesteadLifeAction(state, { type: 'choose_pet', petKind: 'dog' } as never), /already.*pet|permanent|chosen/i);
+  assert.throws(() => performHomesteadLifeAction(state, { type: 'choose_pet', petKind: 'dog' }), /already.*pet|permanent|chosen/i);
 
   const beforeHearts = state.hearts;
-  state = performHomesteadLifeAction(state, { type: 'pet_time' } as never).state;
+  state = performHomesteadLifeAction(state, { type: 'pet_time' }).state;
   assert.equal(state.hearts, Math.min(100, beforeHearts + 1));
-  assert.throws(() => performHomesteadLifeAction(state, { type: 'pet_time' } as never), /already.*today|pet.*today/i);
+  assert.throws(() => performHomesteadLifeAction(state, { type: 'pet_time' }), /already.*today|pet.*today/i);
 });
