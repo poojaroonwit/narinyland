@@ -249,6 +249,7 @@ export const HOMESTEAD_CRAFT_KEYS = [
   'fence_bundle', 'bench_kit', 'lamp_kit', 'stone_path_kit', 'flower_planter',
   'animal_trough', 'picnic_table', 'flower_box', 'wool_cushion',
 ] as const;
+export type HomesteadCraftKey = (typeof HOMESTEAD_CRAFT_KEYS)[number];
 
 export type HomesteadCraftingState = Record<HomesteadCraftKey, number>;
 export type HomesteadCraftDefinition = {
