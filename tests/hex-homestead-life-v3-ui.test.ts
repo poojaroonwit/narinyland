@@ -13,9 +13,12 @@ test('context action panel exposes Homestead Life v3 animals tiers pets and comp
 
   assert.match(source, /HomesteadLifeState/);
   assert.match(source, /HomesteadLifeAction/);
-  for (const copy of ['Barn', 'Tier', 'Cow', 'Sheep', 'Milk', 'Wool', 'Cat', 'Dog', 'Workshop Tier', 'Storage Tier', 'Home Tier']) {
+  for (const copy of ['Barn', 'Tier', 'Cow', 'Sheep', 'Milk', 'Wool', 'Cat', 'Dog', 'Workshop Tier', 'Home Tier']) {
     assert.match(source, new RegExp(copy));
   }
+  assert.match(source, /<TierCard label="Storage"/);
+  assert.match(source, /<TierCard label="Home"/);
+  assert.match(source, /Upgrade \{label\}/);
   for (const action of ['upgrade_building', 'buy_cow', 'feed_cow', 'collect_milk', 'buy_sheep', 'care_sheep', 'collect_wool', 'choose_pet', 'pet_time', 'craft_homestead_item']) {
     assert.match(source, new RegExp(`type: '${action}'`));
   }
