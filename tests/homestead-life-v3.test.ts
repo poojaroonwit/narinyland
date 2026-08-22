@@ -3,9 +3,8 @@ import { test } from 'node:test';
 import {
   createInitialProgressionFarmState,
   normalizeProgressionFarmState,
-  performProgressionFarmAction,
-  type ProgressionFarmAction,
 } from '../lib/family-farm-progression';
+import { performHomesteadLifeAction } from '../lib/homestead-life-engine';
 
 type V5FamilyShape = {
   schemaVersion: number;
@@ -57,26 +56,24 @@ test('v4 normalization preserves Home and Hearts while adding v5 family state', 
 
 test('building upgrades charge Coins, advance one tier, and cap at Tier 3', () => {
   let state = { ...createInitialProgressionFarmState(), coins: 5000 };
-  const upgradeBarn = { type: 'upgrade_building', buildingKey: 'barn' } as unknown as ProgressionFarmAction;
   const beforeCoins = state.coins;
 
-  const first = performProgressionFarmAction(state, upgradeBarn) as unknown as { state?: typeof state };
-  assert.ok(first.state, 'upgrade_building must return a farm action result');
-  state = first.state;
+  state = performHomesteadLifeAction(state, { type: 'upgrade_building', buildingKey: 'barn' }).state;
   assert.equal(state.buildingTiers.barn, 2);
   assert.ok(state.coins < beforeCoins, 'upgrading must cost Coins');
 
-  state = performProgressionFarmAction(state, upgradeBarn).state;
+  state = performHomesteadLifeAction(state, { type: 'upgrade_building', buildingKey: 'barn' }).state;
   assert.equal(state.buildingTiers.barn, 3);
-  assert.throws(() => performProgressionFarmAction(state, upgradeBarn), /tier 3|maximum|max/i);
+  assert.throws(
+    () => performHomesteadLifeAction(state, { type: 'upgrade_building', buildingKey: 'barn' }),
+    /tier 3|maximum|max/i,
+  );
 });
 
 test('Home building upgrade keeps legacy homeLevel synchronized', () => {
   const state = { ...createInitialProgressionFarmState(), coins: 5000 };
-  const action = { type: 'upgrade_building', buildingKey: 'home' } as unknown as ProgressionFarmAction;
-  const result = performProgressionFarmAction(state, action) as unknown as { state?: typeof state };
+  const result = performHomesteadLifeAction(state, { type: 'upgrade_building', buildingKey: 'home' });
 
-  assert.ok(result.state, 'upgrade_building must return a farm action result');
   assert.equal(result.state.homeLevel, 2);
   assert.equal(result.state.buildingTiers.home, 2);
 });
