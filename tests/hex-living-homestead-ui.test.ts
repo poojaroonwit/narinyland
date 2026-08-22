@@ -45,9 +45,11 @@ test('living HUD exposes season progression Journey and end-of-season payoff wit
 test('living action panel maps buildings to progression actions and market utility', async () => {
   const source = await readFile(new URL('../components/hex-world/HexLivingActionPanel.tsx', import.meta.url), 'utf8');
 
-  for (const copy of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Cook', 'Family Time', 'Care Chickens', 'Upgrade Home', 'Sleep', 'Inventory', 'Workshop', 'Craft', 'Tend Flowers', 'Buy seed', 'Sell all']) {
+  for (const copy of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Cook', 'Family Time', 'Care Chickens', 'Sleep', 'Inventory', 'Workshop', 'Craft', 'Tend Flowers', 'Buy seed', 'Sell all']) {
     assert.match(source, new RegExp(copy));
   }
+  assert.match(source, /<TierCard label="Home"/);
+  assert.match(source, /Upgrade \{label\}/);
   for (const action of ['plant', 'water', 'harvest', 'buy_seed', 'sell', 'sell_resource', 'fish', 'forage', 'cook', 'family_time', 'feed_chickens', 'collect_eggs', 'buy_chicken', 'upgrade_building', 'end_day', 'craft', 'tend_flowers']) {
     assert.match(source, new RegExp(`type: '${action}'`));
   }
