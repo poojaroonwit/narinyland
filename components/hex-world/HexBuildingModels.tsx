@@ -14,7 +14,7 @@ export function HexBuildingModel({
   ghost?: boolean;
   selected?: boolean;
 }) {
-  if (buildingKey === 'home' || buildingKey === 'storage' || buildingKey === 'workshop') {
+  if (buildingKey === 'home' || buildingKey === 'barn' || buildingKey === 'storage' || buildingKey === 'workshop') {
     return <HexStructureModel buildingKey={buildingKey} ghost={ghost} selected={selected} />;
   }
   if (buildingKey === 'tree' || buildingKey === 'flower_patch' || buildingKey === 'pond' || buildingKey === 'garden_patch') {
