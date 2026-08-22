@@ -11,7 +11,7 @@ const CATEGORY_LABELS: Array<{ key: HexBuildingCategory; label: string }> = [
 ];
 
 const ICONS: Record<string, string> = {
-  home: '🏡', storage: '📦', workshop: '🛠️', tree: '🌳', flower_patch: '🌸', pond: '💧',
+  home: '🏡', barn: '🏚️', storage: '📦', workshop: '🛠️', tree: '🌳', flower_patch: '🌸', pond: '💧',
   bench: '🪑', lamp: '🏮', fence: '🪵', stone_path: '🪨', garden_patch: '🌱',
 };
 
