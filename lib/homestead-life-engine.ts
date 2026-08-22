@@ -2,6 +2,7 @@ import { BEDTIME_MINUTES, FarmGameError } from './family-farm-game';
 import {
   normalizeProgressionFarmState,
   performProgressionFarmAction,
+  seasonForDay,
   type ProgressionFamilyFarmState,
   type ProgressionFarmAction,
 } from './family-farm-progression';
@@ -12,15 +13,29 @@ import {
   type ProgressionBuildingKey,
 } from './building-progression';
 import {
+  canCompleteGrowingTogether,
+  canWelcomeChild,
+} from './family-life';
+import {
   advanceHomesteadAnimalsForNewDay,
   isPetKind,
   normalizeHomesteadAnimalsState,
   type HomesteadAnimalsState,
   type PetKind,
 } from './homestead-animals';
+import {
+  createCurrentHomesteadEvent,
+  getHomesteadEventDefinition,
+  normalizeHomesteadEventState,
+  seasonalOccurrenceKey,
+  selectHomesteadEvent,
+  type HomesteadEventResourceKey,
+  type HomesteadEventState,
+} from './homestead-events';
 
 export type HomesteadLifeState = Omit<ProgressionFamilyFarmState, 'inventory'> & {
   animals: HomesteadAnimalsState;
+  events: HomesteadEventState;
   inventory: Omit<ProgressionFamilyFarmState['inventory'], 'resources'> & {
     resources: ProgressionFamilyFarmState['inventory']['resources'] & {
       milk: number;
@@ -39,7 +54,8 @@ export type HomesteadLifeAction =
   | { type: 'care_sheep' }
   | { type: 'collect_wool' }
   | { type: 'choose_pet'; petKind: PetKind }
-  | { type: 'pet_time' };
+  | { type: 'pet_time' }
+  | { type: 'resolve_event'; choiceKey: string };
 
 export type HomesteadLifeActionResult = {
   state: HomesteadLifeState;
@@ -78,6 +94,7 @@ export function normalizeHomesteadLifeState(raw: unknown): HomesteadLifeState {
       },
     },
     animals: normalizeHomesteadAnimalsState(source.animals),
+    events: normalizeHomesteadEventState(source.events),
   };
 }
 
@@ -90,6 +107,7 @@ function preserveHomesteadState(
   result: { state: ProgressionFamilyFarmState; message: string },
   previous: HomesteadLifeState,
   animals = previous.animals,
+  events = previous.events,
 ): HomesteadLifeActionResult {
   return {
     message: result.message,
@@ -104,6 +122,7 @@ function preserveHomesteadState(
         },
       },
       animals,
+      events,
     }),
   };
 }
@@ -117,6 +136,80 @@ function spendHomesteadAction(state: HomesteadLifeState, energy: number, minutes
   }
   state.energy -= energy;
   state.timeMinutes += minutes;
+}
+
+function selectEventForCurrentDay(state: HomesteadLifeState) {
+  if (state.events.current && !state.events.current.resolved) return;
+
+  const definition = selectHomesteadEvent({
+    day: state.day,
+    season: state.season,
+    weather: state.weather,
+    hasPet: !!state.animals.pet.kind,
+    hasChild: state.family.stage === 'child',
+    growingTogetherEligible: canCompleteGrowingTogether({
+      hearts: state.hearts,
+      homeTier: state.buildingTiers.home,
+      family: state.family,
+    }),
+    resolvedDailyDays: state.events.resolvedDailyDays,
+    seasonalOccurrences: state.events.seasonalOccurrences,
+  });
+
+  state.events.current = definition ? createCurrentHomesteadEvent(state.day, definition) : null;
+}
+
+function applyEventReward(
+  state: HomesteadLifeState,
+  reward: {
+    hearts?: number;
+    coins?: number;
+    energy?: number;
+    resources?: Partial<Record<HomesteadEventResourceKey, number>>;
+  },
+) {
+  if (reward.hearts) state.hearts = Math.min(100, state.hearts + Math.max(0, reward.hearts));
+  if (reward.coins) state.coins += Math.max(0, reward.coins);
+  if (reward.energy) state.energy = Math.min(state.maxEnergy, state.energy + Math.max(0, reward.energy));
+  if (reward.resources) {
+    for (const [key, amount] of Object.entries(reward.resources) as Array<[HomesteadEventResourceKey, number]>) {
+      state.inventory.resources[key] += Math.max(0, amount);
+    }
+  }
+}
+
+function resolveCurrentEvent(state: HomesteadLifeState, choiceKey: string): HomesteadLifeActionResult {
+  const current = state.events.current;
+  if (!current) throw new FarmGameError('There is no homestead event to resolve.');
+  if (current.resolved) throw new FarmGameError('That homestead event is already resolved.');
+
+  const definition = getHomesteadEventDefinition(current.key);
+  if (!definition) throw new FarmGameError('That homestead event no longer exists.');
+  const choice = definition.choices.find((candidate) => candidate.key === choiceKey);
+  if (!choice) throw new FarmGameError('That event choice is not available.');
+
+  applyEventReward(state, choice.reward);
+  current.resolved = true;
+  current.choiceKey = choice.key;
+
+  if (current.kind === 'daily' && !state.events.resolvedDailyDays.includes(current.day)) {
+    state.events.resolvedDailyDays.push(current.day);
+    state.events.resolvedDailyDays.sort((a, b) => a - b);
+  }
+
+  if (current.kind === 'seasonal') {
+    const season = seasonForDay(current.day);
+    state.events.seasonalOccurrences[seasonalOccurrenceKey(current.day, season)] = true;
+  }
+
+  if (current.key === 'growing_together') {
+    state.family.milestones.growingTogether = true;
+    if (canWelcomeChild({ hearts: state.hearts, homeTier: state.buildingTiers.home, family: state.family })) {
+      state.family.stage = 'child';
+    }
+  }
+
+  return finish(state, `${definition.title} · ${choice.label}`);
 }
 
 export function performHomesteadLifeAction(
@@ -216,10 +309,15 @@ export function performHomesteadLifeAction(
       state.hearts = Math.min(100, state.hearts + 1);
       return finish(state, `Spent time with the ${state.animals.pet.kind} · +1 Heart 🐾`);
     }
+    case 'resolve_event': {
+      return resolveCurrentEvent(state, action.choiceKey);
+    }
     case 'end_day': {
       const result = performProgressionFarmAction(state, action);
       const animals = advanceHomesteadAnimalsForNewDay(state.animals, state.day);
-      return preserveHomesteadState(result, state, animals);
+      const next = preserveHomesteadState(result, state, animals).state;
+      selectEventForCurrentDay(next);
+      return finish(next, result.message);
     }
     default: {
       const result = performProgressionFarmAction(state, action as ProgressionFarmAction);
