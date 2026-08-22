@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-test('living homestead hook uses progression-typed Family Farm API and guards Land switches', async () => {
+test('living homestead hook uses Homestead Life typed Family Farm API and guards Land switches', async () => {
   const source = await readFile(new URL('../components/hex-world/useLivingHomestead.ts', import.meta.url), 'utf8');
 
   assert.match(source, /livingFamilyFarmAPI\.get\(landId\)/);
   assert.match(source, /livingFamilyFarmAPI\.act\(landId, action\)/);
-  assert.match(source, /ProgressionFamilyFarmState/);
-  assert.match(source, /ProgressionFarmAction/);
+  assert.match(source, /HomesteadLifeState/);
+  assert.match(source, /HomesteadLifeAction/);
   assert.match(source, /activeLandRef/);
   assert.match(source, /requestNonceRef/);
   assert.match(source, /actionLockRef/);
