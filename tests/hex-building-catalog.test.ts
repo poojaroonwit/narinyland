@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BUILDING_CATALOG, getBuildingFootprint } from '@/lib/hex-world/building-catalog';
 
-test('catalog exposes exactly the MVP building keys', () => {
+test('catalog exposes Homestead Life building keys including Barn', () => {
   assert.deepEqual(Object.keys(BUILDING_CATALOG).sort(), [
-    'bench', 'fence', 'flower_patch', 'garden_patch', 'home', 'lamp',
+    'barn', 'bench', 'fence', 'flower_patch', 'garden_patch', 'home', 'lamp',
     'pond', 'stone_path', 'storage', 'tree', 'workshop',
   ]);
 });
@@ -14,6 +14,16 @@ test('starter home is protected and multi-hex', () => {
   assert.equal(home.removable, false);
   assert.ok(home.footprint.length > 1);
   assert.deepEqual(home.allowedRotations, [0, 1, 2, 3, 4, 5]);
+});
+
+test('Barn is a unique removable three-hex grassy building', () => {
+  const barn = (BUILDING_CATALOG as Record<string, typeof BUILDING_CATALOG.workshop>).barn;
+  assert.ok(barn, 'Barn must exist in the Hex World building catalog');
+  assert.equal(barn.removable, true);
+  assert.equal(barn.duplicates, false);
+  assert.equal(barn.footprint.length, 3);
+  assert.deepEqual(barn.allowedTerrain, ['grass', 'soil']);
+  assert.deepEqual(barn.allowedRotations, [0, 1, 2, 3, 4, 5]);
 });
 
 test('footprint rotation keeps cell count stable', () => {
