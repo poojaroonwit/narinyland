@@ -32,10 +32,19 @@ import {
   type HomesteadEventResourceKey,
   type HomesteadEventState,
 } from './homestead-events';
+import {
+  HOMESTEAD_CRAFT_CATALOG,
+  isHomesteadCraftKey,
+  normalizeHomesteadCraftingState,
+  type HomesteadCraftKey,
+  type HomesteadCraftResourceKey,
+  type HomesteadCraftingState,
+} from './homestead-crafting';
 
 export type HomesteadLifeState = Omit<ProgressionFamilyFarmState, 'inventory'> & {
   animals: HomesteadAnimalsState;
   events: HomesteadEventState;
+  homesteadCrafting: HomesteadCraftingState;
   inventory: Omit<ProgressionFamilyFarmState['inventory'], 'resources'> & {
     resources: ProgressionFamilyFarmState['inventory']['resources'] & {
       milk: number;
@@ -55,7 +64,8 @@ export type HomesteadLifeAction =
   | { type: 'collect_wool' }
   | { type: 'choose_pet'; petKind: PetKind }
   | { type: 'pet_time' }
-  | { type: 'resolve_event'; choiceKey: string };
+  | { type: 'resolve_event'; choiceKey: string }
+  | { type: 'craft_homestead_item'; craftKey: HomesteadCraftKey };
 
 export type HomesteadLifeActionResult = {
   state: HomesteadLifeState;
@@ -95,6 +105,7 @@ export function normalizeHomesteadLifeState(raw: unknown): HomesteadLifeState {
     },
     animals: normalizeHomesteadAnimalsState(source.animals),
     events: normalizeHomesteadEventState(source.events),
+    homesteadCrafting: normalizeHomesteadCraftingState(source.homesteadCrafting),
   };
 }
 
@@ -108,6 +119,7 @@ function preserveHomesteadState(
   previous: HomesteadLifeState,
   animals = previous.animals,
   events = previous.events,
+  homesteadCrafting = previous.homesteadCrafting,
 ): HomesteadLifeActionResult {
   return {
     message: result.message,
@@ -123,6 +135,7 @@ function preserveHomesteadState(
       },
       animals,
       events,
+      homesteadCrafting,
     }),
   };
 }
@@ -210,6 +223,32 @@ function resolveCurrentEvent(state: HomesteadLifeState, choiceKey: string): Home
   }
 
   return finish(state, `${definition.title} · ${choice.label}`);
+}
+
+function craftHomesteadItem(state: HomesteadLifeState, craftKey: HomesteadCraftKey): HomesteadLifeActionResult {
+  if (!isHomesteadCraftKey(craftKey)) throw new FarmGameError('Unknown homestead craft.');
+  const definition = HOMESTEAD_CRAFT_CATALOG[craftKey];
+  if (state.buildingTiers.workshop < definition.minWorkshopTier) {
+    throw new FarmGameError(`Upgrade the Workshop to Tier ${definition.minWorkshopTier} for ${definition.name}.`);
+  }
+
+  const currentCount = state.homesteadCrafting[craftKey];
+  if (definition.maxCount !== undefined && currentCount >= definition.maxCount) {
+    throw new FarmGameError(`You already have the approved maximum of ${definition.maxCount} ${definition.name}.`);
+  }
+
+  for (const [resourceKey, amount] of Object.entries(definition.resources) as Array<[HomesteadCraftResourceKey, number]>) {
+    if (state.inventory.resources[resourceKey] < amount) {
+      throw new FarmGameError(`Not enough ${resourceKey} to craft ${definition.name}.`);
+    }
+  }
+  for (const [resourceKey, amount] of Object.entries(definition.resources) as Array<[HomesteadCraftResourceKey, number]>) {
+    state.inventory.resources[resourceKey] -= amount;
+  }
+
+  state.homesteadCrafting[craftKey] += 1;
+  state.stats.crafted += 1;
+  return finish(state, `Crafted ${definition.name} ${definition.emoji}`);
 }
 
 export function performHomesteadLifeAction(
@@ -311,6 +350,9 @@ export function performHomesteadLifeAction(
     }
     case 'resolve_event': {
       return resolveCurrentEvent(state, action.choiceKey);
+    }
+    case 'craft_homestead_item': {
+      return craftHomesteadItem(state, action.craftKey);
     }
     case 'end_day': {
       const result = performProgressionFarmAction(state, action);
