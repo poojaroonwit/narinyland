@@ -33,3 +33,25 @@ export function normalizeFamilyLifeState(raw: unknown): FamilyLifeState {
     },
   };
 }
+
+export function canCompleteGrowingTogether(input: {
+  hearts: number;
+  homeTier: number;
+  family: FamilyLifeState;
+}): boolean {
+  return input.family.stage === 'partners'
+    && !input.family.milestones.growingTogether
+    && input.homeTier >= 2
+    && input.hearts >= 75;
+}
+
+export function canWelcomeChild(input: {
+  hearts: number;
+  homeTier: number;
+  family: FamilyLifeState;
+}): boolean {
+  return input.family.stage === 'partners'
+    && input.family.milestones.growingTogether
+    && input.homeTier >= 2
+    && input.hearts >= 75;
+}
