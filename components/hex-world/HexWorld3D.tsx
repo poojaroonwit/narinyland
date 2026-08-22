@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { ProgressionFamilyFarmState } from '@/lib/family-farm-progression';
+import type { HomesteadLifeState } from '@/lib/homestead-life-engine';
 import { axialToWorld, hexKey, worldToAxial } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionPhase, resolveHexMotionProfile, type HexMotionProfile } from '@/lib/hex-world/motion';
 import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
@@ -46,7 +46,7 @@ type Props = {
   resetNonce?: number;
   reframeCoords?: HexCoord[];
   graphicsQuality?: string;
-  livingState?: ProgressionFamilyFarmState | null;
+  livingState?: HomesteadLifeState | null;
   onHoverTile?: (coord: HexCoord | null) => void;
   onSelectTile?: (coord: HexCoord) => void;
   onSelectBuilding?: (building: HexBuildingDTO | null) => void;
