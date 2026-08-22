@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ProgressionFamilyFarmState, ProgressionFarmAction } from '@/lib/family-farm-progression';
+import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-life-engine';
 import { livingFamilyFarmAPI } from '@/services/living-family-farm-api';
 
 export type LivingHomesteadController = {
-  state: ProgressionFamilyFarmState | null;
+  state: HomesteadLifeState | null;
   revision: number;
   loading: boolean;
   error: string | null;
   busy: boolean;
-  act: (action: ProgressionFarmAction) => Promise<boolean>;
+  act: (action: HomesteadLifeAction) => Promise<boolean>;
   retry: () => void;
 };
 
@@ -18,7 +18,7 @@ export function useLivingHomestead(
   landId: string,
   showToast: (message: string) => void,
 ): LivingHomesteadController {
-  const [state, setState] = useState<ProgressionFamilyFarmState | null>(null);
+  const [state, setState] = useState<HomesteadLifeState | null>(null);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function useLivingHomestead(
     };
   }, [landId, reloadNonce]);
 
-  const act = useCallback(async (action: ProgressionFarmAction) => {
+  const act = useCallback(async (action: HomesteadLifeAction) => {
     if (!state || busy || actionLockRef.current) return false;
     const requestNonce = ++requestNonceRef.current;
     actionLockRef.current = true;
