@@ -35,8 +35,26 @@ type AnimalStateShape = ProgressionFamilyFarmState & {
   };
 };
 
+type EventStateShape = ProgressionFamilyFarmState & {
+  events?: {
+    current: {
+      day: number;
+      key: string;
+      kind: 'daily' | 'milestone' | 'seasonal';
+      resolved: boolean;
+      choiceKey: string | null;
+    } | null;
+    resolvedDailyDays: number[];
+    seasonalOccurrences: Record<string, true>;
+  };
+};
+
 function animalState(state: ProgressionFamilyFarmState): AnimalStateShape {
   return state as AnimalStateShape;
+}
+
+function eventState(state: ProgressionFamilyFarmState): EventStateShape {
+  return state as EventStateShape;
 }
 
 test('Homestead Life v3 starts with two partners and deterministic building tier defaults', () => {
@@ -170,4 +188,85 @@ test('pet choice is permanent after Home Tier 2 plus 50 Hearts and pet time gran
   state = performHomesteadLifeAction(state, { type: 'pet_time' }).state;
   assert.equal(state.hearts, Math.min(100, beforeHearts + 1));
   assert.throws(() => performHomesteadLifeAction(state, { type: 'pet_time' }), /already.*today|pet.*today/i);
+});
+
+test('event state defaults safely and identical unresolved state selects the same daily event', () => {
+  const initial = normalizeHomesteadLifeState(createInitialProgressionFarmState());
+  assert.deepEqual(eventState(initial).events, {
+    current: null,
+    resolvedDailyDays: [],
+    seasonalOccurrences: {},
+  });
+
+  const first = performHomesteadLifeAction(initial, { type: 'end_day' }).state;
+  const second = performHomesteadLifeAction(normalizeHomesteadLifeState(initial), { type: 'end_day' }).state;
+  const firstEvent = eventState(first).events?.current;
+  const secondEvent = eventState(second).events?.current;
+
+  assert.ok(firstEvent);
+  assert.equal(firstEvent?.kind, 'daily');
+  assert.equal(firstEvent?.day, 2);
+  assert.equal(secondEvent?.key, firstEvent?.key);
+  assert.equal(secondEvent?.day, firstEvent?.day);
+});
+
+test('daily event resolution is idempotent and records the resolved farm day once', () => {
+  let state = performHomesteadLifeAction(createInitialProgressionFarmState(), { type: 'end_day' }).state;
+  const event = eventState(state).events?.current;
+  assert.ok(event && event.kind === 'daily');
+
+  state = performHomesteadLifeAction(state, { type: 'resolve_event', choiceKey: 'primary' } as never).state;
+  assert.equal(eventState(state).events?.current?.resolved, true);
+  assert.deepEqual(eventState(state).events?.resolvedDailyDays, [state.day]);
+  assert.throws(
+    () => performHomesteadLifeAction(state, { type: 'resolve_event', choiceKey: 'primary' } as never),
+    /already.*resolved|resolved.*already/i,
+  );
+});
+
+test('Growing Together has priority at Home Tier 2 plus 75 Hearts and permanently unlocks the child', () => {
+  let state = normalizeHomesteadLifeState({
+    ...createInitialProgressionFarmState(),
+    homeLevel: 2,
+    hearts: 75,
+    buildingTiers: { home: 2, barn: 1, workshop: 1, storage: 1 },
+  });
+
+  state = performHomesteadLifeAction(state, { type: 'end_day' }).state;
+  assert.equal(eventState(state).events?.current?.key, 'growing_together');
+  assert.equal(eventState(state).events?.current?.kind, 'milestone');
+
+  state = performHomesteadLifeAction(state, { type: 'resolve_event', choiceKey: 'primary' } as never).state;
+  assert.equal(state.family.milestones.growingTogether, true);
+  assert.equal(state.family.stage, 'child');
+  assert.throws(
+    () => performHomesteadLifeAction(state, { type: 'resolve_event', choiceKey: 'primary' } as never),
+    /already.*resolved|resolved.*already/i,
+  );
+});
+
+test('seasonal event rewards once per year-season occurrence and returns next in-game year', () => {
+  let state = normalizeHomesteadLifeState({
+    ...createInitialProgressionFarmState(),
+    day: 6,
+  });
+
+  state = performHomesteadLifeAction(state, { type: 'end_day' }).state;
+  assert.equal(state.day, 7);
+  assert.equal(eventState(state).events?.current?.key, 'spring_picnic');
+  assert.equal(eventState(state).events?.current?.kind, 'seasonal');
+
+  state = performHomesteadLifeAction(state, { type: 'resolve_event', choiceKey: 'primary' } as never).state;
+  assert.equal(eventState(state).events?.seasonalOccurrences['1:spring'], true);
+  assert.throws(
+    () => performHomesteadLifeAction(state, { type: 'resolve_event', choiceKey: 'primary' } as never),
+    /already.*resolved|resolved.*already/i,
+  );
+
+  state = normalizeHomesteadLifeState({ ...state, day: 34 });
+  state = performHomesteadLifeAction(state, { type: 'end_day' }).state;
+  assert.equal(state.day, 35);
+  assert.equal(eventState(state).events?.current?.key, 'spring_picnic');
+  assert.equal(eventState(state).events?.current?.resolved, false);
+  assert.equal(eventState(state).events?.seasonalOccurrences['2:spring'], undefined);
 });
