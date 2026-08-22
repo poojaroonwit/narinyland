@@ -3,12 +3,15 @@ import { test } from 'node:test';
 import {
   createInitialProgressionFarmState,
   normalizeProgressionFarmState,
+  performProgressionFarmAction,
+  type ProgressionFarmAction,
 } from '../lib/family-farm-progression';
 
 type V5FamilyShape = {
   schemaVersion: number;
   homeLevel: number;
   hearts: number;
+  coins: number;
   family?: {
     stage?: 'partners' | 'child';
     milestones?: { growingTogether?: boolean };
@@ -50,4 +53,30 @@ test('v4 normalization preserves Home and Hearts while adding v5 family state', 
   assert.equal(state.family?.stage, 'partners');
   assert.equal(state.family?.milestones?.growingTogether, false);
   assert.deepEqual(state.buildingTiers, { home: 2, barn: 1, workshop: 1, storage: 1 });
+});
+
+test('building upgrades charge Coins, advance one tier, and cap at Tier 3', () => {
+  let state = { ...createInitialProgressionFarmState(), coins: 5000 };
+  const upgradeBarn = { type: 'upgrade_building', buildingKey: 'barn' } as unknown as ProgressionFarmAction;
+  const beforeCoins = state.coins;
+
+  const first = performProgressionFarmAction(state, upgradeBarn) as unknown as { state?: typeof state };
+  assert.ok(first.state, 'upgrade_building must return a farm action result');
+  state = first.state;
+  assert.equal(state.buildingTiers.barn, 2);
+  assert.ok(state.coins < beforeCoins, 'upgrading must cost Coins');
+
+  state = performProgressionFarmAction(state, upgradeBarn).state;
+  assert.equal(state.buildingTiers.barn, 3);
+  assert.throws(() => performProgressionFarmAction(state, upgradeBarn), /tier 3|maximum|max/i);
+});
+
+test('Home building upgrade keeps legacy homeLevel synchronized', () => {
+  const state = { ...createInitialProgressionFarmState(), coins: 5000 };
+  const action = { type: 'upgrade_building', buildingKey: 'home' } as unknown as ProgressionFarmAction;
+  const result = performProgressionFarmAction(state, action) as unknown as { state?: typeof state };
+
+  assert.ok(result.state, 'upgrade_building must return a farm action result');
+  assert.equal(result.state.homeLevel, 2);
+  assert.equal(result.state.buildingTiers.home, 2);
 });
