@@ -48,7 +48,7 @@ test('living action panel maps buildings to progression actions and market utili
   for (const copy of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Cook', 'Family Time', 'Care Chickens', 'Upgrade Home', 'Sleep', 'Inventory', 'Workshop', 'Craft', 'Tend Flowers', 'Buy seed', 'Sell all']) {
     assert.match(source, new RegExp(copy));
   }
-  for (const action of ['plant', 'water', 'harvest', 'buy_seed', 'sell', 'sell_resource', 'fish', 'forage', 'cook', 'family_time', 'feed_chickens', 'collect_eggs', 'buy_chicken', 'upgrade_home', 'end_day', 'craft', 'tend_flowers']) {
+  for (const action of ['plant', 'water', 'harvest', 'buy_seed', 'sell', 'sell_resource', 'fish', 'forage', 'cook', 'family_time', 'feed_chickens', 'collect_eggs', 'buy_chicken', 'upgrade_building', 'end_day', 'craft', 'tend_flowers']) {
     assert.match(source, new RegExp(`type: '${action}'`));
   }
   for (const crop of ['corn', 'pumpkin', 'potato', 'cabbage']) assert.match(source, new RegExp(crop));
