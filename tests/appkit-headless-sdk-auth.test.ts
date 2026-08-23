@@ -71,6 +71,7 @@ test('SSO start route allowlists configured AppKit providers and uses Narinyland
   const route = await readSource('app/api/auth/sso/start/route.ts');
   assert.match(route, /getHeadlessAuthConfig/);
   assert.match(route, /getHeadlessSocialLoginUrl/);
+  assert.match(route, /ensureOAuthRedirectUriConfigured/);
   assert.match(route, /providers/);
   assert.match(route, /auth\/social-complete/);
   assert.match(route, /Unsupported social sign-in provider/);
@@ -83,6 +84,11 @@ test('social callback consumes opaque AppKit code through the BFF and removes it
   assert.match(callback, /\/api\/auth\/credentials/);
   assert.match(callback, /social-continue/);
   assert.doesNotMatch(callback, /accessToken|refreshToken/);
+});
+
+test('social callback bypasses AuthProvider until the one-time handoff is consumed', async () => {
+  const boundary = await readSource('components/AuthBoundary.tsx');
+  assert.match(boundary, /\/auth\/social-complete/);
 });
 
 test('Narinyland login renders only AppKit-configured social providers', async () => {
@@ -98,4 +104,11 @@ test('credentials BFF accepts social continuation and still strips AppKit tokens
   assert.match(route, /stripSecrets/);
   assert.match(route, /delete safeData\.accessToken/);
   assert.match(route, /delete safeData\.refreshToken/);
+});
+
+test('AppKit server helper can append the exact OAuth redirect URI without replacing existing redirects', async () => {
+  const server = await readSource('lib/appkit-server.ts');
+  assert.match(server, /ensureOAuthRedirectUriConfigured/);
+  assert.match(server, /oauthRedirectUris/);
+  assert.match(server, /new Set/);
 });
