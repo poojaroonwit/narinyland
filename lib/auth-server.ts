@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { refreshHeadlessSession } from '@/lib/appkit-headless-server';
 import { rejectCrossOrigin } from '@/lib/security';
 import { debugLog, debugWarn } from '@/lib/logger';
 import {
@@ -38,7 +39,7 @@ function stringValue(value: unknown): string {
 export async function validateAppKitAccessToken(token: string): Promise<NarinylandSessionUser | null> {
   if (!token) return null;
   try {
-    const response = await fetchWithTimeout(`${getAppKitDomain()}/users/me`, {
+    const response = await fetchWithTimeout(`${getAppKitDomain()}/api/v1/users/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
@@ -127,13 +128,9 @@ export async function getAuthSession(req?: Request) {
     };
   }
 
-  // Compatibility/bootstrap path for pre-hardening AppKit cookies. The token
-  // must be validated remotely before a new opaque session is created.
   if (!token && refreshToken) {
     const refreshed = await refreshSession();
-    if (refreshed) {
-      token = (await cookies()).get('appkit_access_token')?.value;
-    }
+    if (refreshed) token = (await cookies()).get('appkit_access_token')?.value;
   }
 
   if (token) {
@@ -149,64 +146,35 @@ export async function getAuthSession(req?: Request) {
   return { error: 'unauthorized', status: 401 };
 }
 
-/** Refresh AppKit cookies. The refresh token is never treated as identity. */
+/** Refresh AppKit cookies through the same headless-auth SDK used for login. */
 export async function refreshSession(): Promise<boolean> {
   try {
     const cookieStore = await cookies();
     const refreshToken = cookieStore.get('appkit_refresh_token')?.value;
     if (!refreshToken) return false;
 
-    const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
-    const clientId = (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || process.env.APPKIT_CLIENT_ID || '').trim();
-    if (!clientSecret || !clientId) {
-      console.error('BFF: Refresh failed - AppKit client credentials are not configured.');
+    const result = await refreshHeadlessSession(refreshToken);
+    if (result.status !== 'authenticated' || !result.accessToken) {
+      debugWarn('BFF: AppKit headless refresh did not return an authenticated continuation.');
       return false;
     }
 
-    const params = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
-    });
-
-    const refreshRes = await fetchWithTimeout(`${getAppKitDomain()}/oauth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-      body: params.toString(),
-    });
-    if (!refreshRes.ok) {
-      debugWarn(`BFF: Refresh exchange failed with status ${refreshRes.status}.`);
-      return false;
-    }
-
-    const refreshData = await refreshRes.json().catch(() => ({})) as Record<string, unknown>;
-    const newToken = stringValue(refreshData.access_token);
-    if (!newToken) return false;
-
-    const expiresIn = typeof refreshData.expires_in === 'number' && Number.isFinite(refreshData.expires_in)
-      ? Math.max(60, Math.floor(refreshData.expires_in))
-      : 3600;
-    cookieStore.set('appkit_access_token', newToken, {
+    cookieStore.set('appkit_access_token', result.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: expiresIn,
+      maxAge: 3600,
+      path: '/',
+    });
+    cookieStore.set('appkit_refresh_token', result.refreshToken || refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 3600,
       path: '/',
     });
 
-    const rotatedRefreshToken = stringValue(refreshData.refresh_token);
-    if (rotatedRefreshToken) {
-      cookieStore.set('appkit_refresh_token', rotatedRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 3600,
-        path: '/',
-      });
-    }
-
-    debugLog('BFF: AppKit token refreshed.');
+    debugLog('BFF: AppKit headless session refreshed.');
     return true;
   } catch (error) {
     debugWarn('BFF: refreshSession failed.', error instanceof Error ? error.message : 'unknown error');
