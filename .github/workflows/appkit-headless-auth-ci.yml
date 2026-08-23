@@ -1,0 +1,37 @@
+name: AppKit Headless Auth CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/api/auth/**'
+      - 'components/auth/**'
+      - 'lib/auth.ts'
+      - 'lib/appkit-headless-server.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tests/appkit-headless-sdk-auth.test.ts'
+      - 'tests/hex-local-appkit-auth-ui.test.ts'
+      - '.github/workflows/appkit-headless-auth-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/narinyland_ci
+      NEXT_PUBLIC_API_URL: /api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: AppKit headless auth contracts
+        run: node --import tsx --test tests/appkit-headless-sdk-auth.test.ts tests/hex-local-appkit-auth-ui.test.ts
+      - name: Production build
+        run: npm run build

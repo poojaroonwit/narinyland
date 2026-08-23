@@ -1,107 +1,58 @@
-import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAppKitApplicationId, getAppKitDomain, getServiceToken } from '@/lib/appkit-server';
-import { rejectCrossOrigin } from '@/lib/security';
-import { debugWarn } from '@/lib/logger';
+import { NextResponse } from 'next/server';
 import { validateAppKitAccessToken } from '@/lib/auth-server';
-import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, type NarinylandSessionUser } from '@/lib/session-store';
+import {
+  runHeadlessAuthAction,
+  type HeadlessAuthAction,
+  type HeadlessAuthActionResult,
+} from '@/lib/appkit-headless-server';
+import { debugWarn } from '@/lib/logger';
+import { rejectCrossOrigin } from '@/lib/security';
+import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/session-store';
 
-type AuthAction =
-  | 'login'
-  | 'register'
-  | 'mfa-request'
-  | 'mfa-verify'
-  | 'email-verify'
-  | 'otp-request';
+type JsonMap = Record<string, unknown>;
 
-type UpstreamPayload = Record<string, unknown>;
-
-const ACTION_PATHS: Record<AuthAction, string> = {
-  login: '/api/v1/auth/login',
-  register: '/api/v1/auth/register',
-  'mfa-request': '/api/v1/auth/mfa/request',
-  'mfa-verify': '/api/v1/auth/mfa/verify',
-  'email-verify': '/api/v1/auth/email-verification/verify',
-  'otp-request': '/api/v1/auth/otp/request',
-};
-
-const ACTION_FIELDS: Record<AuthAction, readonly string[]> = {
-  login: ['email', 'password', 'rememberMe'],
-  register: ['email', 'password', 'firstName', 'lastName', 'phone'],
-  'mfa-request': ['challengeToken', 'channel'],
-  'mfa-verify': ['challengeToken', 'channel', 'code'],
-  'email-verify': ['verificationToken', 'code'],
-  'otp-request': ['email'],
-};
-
-const AUTH_TIMEOUT_MS = 8_000;
-
-function normalizeDomain(value: string) {
-  return value.trim().replace(/\/+$/, '');
-}
+const AUTH_ACTIONS = new Set<HeadlessAuthAction>([
+  'login',
+  'register',
+  'mfa-request',
+  'mfa-verify',
+  'mfa-enroll-start',
+  'mfa-enroll-verify',
+  'email-verify',
+  'email-resend',
+  'forgot-password',
+  'reset-password',
+]);
 
 function stringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-function selectPayload(action: AuthAction, body: Record<string, unknown>): UpstreamPayload {
-  const selected: UpstreamPayload = {};
-  for (const key of ACTION_FIELDS[action]) {
-    if (body[key] !== undefined) selected[key] = body[key];
-  }
-  return selected;
+function isRecord(value: unknown): value is JsonMap {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function trustedUserFromResponse(data: Record<string, unknown>): NarinylandSessionUser | null {
-  const raw = data.user && typeof data.user === 'object' && !Array.isArray(data.user)
-    ? data.user as Record<string, unknown>
-    : null;
-  if (!raw) return null;
-  const sub = stringValue(raw.id) || stringValue(raw.sub);
-  if (!sub) return null;
-  const firstName = stringValue(raw.firstName) || stringValue(raw.given_name);
-  const lastName = stringValue(raw.lastName) || stringValue(raw.family_name);
-  return {
-    id: sub,
-    sub,
-    name: stringValue(raw.name) || `${firstName} ${lastName}`.trim(),
-    email: stringValue(raw.email),
-    avatar: stringValue(raw.avatar) || stringValue(raw.avatarUrl) || stringValue(raw.picture),
-    attributes: raw.attributes && typeof raw.attributes === 'object' && !Array.isArray(raw.attributes)
-      ? raw.attributes as Record<string, unknown>
-      : {},
-    authSource: 'appkit',
-  };
+function authenticatedPayload(result: HeadlessAuthActionResult): JsonMap | null {
+  const record = result as unknown as JsonMap;
+  const resultStatus = stringValue(record.status);
+  if (resultStatus === 'authenticated') return record;
+
+  const next = isRecord(record.next) ? record.next : null;
+  if (resultStatus === 'recovery_codes' && next && stringValue(next.status) === 'authenticated') return next;
+  return null;
 }
 
-async function resolveApplicationId() {
-  let applicationId = getAppKitApplicationId();
-  if (!applicationId) {
-    await getServiceToken();
-    applicationId = getAppKitApplicationId();
-  }
-  return applicationId;
-}
+async function persistSession(result: HeadlessAuthActionResult) {
+  const data = authenticatedPayload(result);
+  if (!data) return;
 
-async function fetchUpstream(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal, cache: 'no-store' });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+  const accessToken = stringValue(data.accessToken);
+  const refreshToken = stringValue(data.refreshToken);
+  if (!accessToken) throw new Error('AppKit authenticated without an access token');
 
-async function persistSession(data: Record<string, unknown>) {
-  const accessToken = stringValue(data.accessToken) || stringValue(data.access_token) || stringValue(data.token);
-  const refreshToken = stringValue(data.refreshToken) || stringValue(data.refresh_token);
-  if (!accessToken) return;
-
-  // Prefer remote validation. The response's user object is trusted only as a
-  // fallback because it came directly from the configured AppKit endpoint.
-  const user = await validateAppKitAccessToken(accessToken) || trustedUserFromResponse(data);
-  if (!user) throw new Error('AppKit login response did not contain a validated identity');
+  const user = await validateAppKitAccessToken(accessToken);
+  if (!user) throw new Error('AppKit access token could not be validated');
 
   const cookieStore = await cookies();
   cookieStore.set('appkit_access_token', accessToken, {
@@ -139,52 +90,68 @@ async function persistSession(data: Record<string, unknown>) {
   cookieStore.delete('narinyland_sub');
 }
 
+function stripSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripSecrets);
+  if (!isRecord(value)) return value;
+
+  const safeData: JsonMap = {};
+  for (const [key, entry] of Object.entries(value)) safeData[key] = stripSecrets(entry);
+  delete safeData.accessToken;
+  delete safeData.refreshToken;
+  delete safeData.access_token;
+  delete safeData.refresh_token;
+  delete safeData.token;
+  delete safeData.id_token;
+  return safeData;
+}
+
+function browserResult(action: HeadlessAuthAction, result: HeadlessAuthActionResult): JsonMap {
+  const safe = stripSecrets(result) as JsonMap;
+  if (typeof safe.status === 'string') return safe;
+  if (action === 'mfa-request') return { status: 'mfa_requested', ...safe };
+  if (action === 'mfa-enroll-start') return { status: 'mfa_enrollment_started', ...safe };
+  if (action === 'email-resend') return { status: 'email_verification_resent', ...safe };
+  if (action === 'forgot-password') return { status: 'password_reset_challenge', ...safe };
+  return { status: safe.success === true ? 'complete' : 'failed', ...safe };
+}
+
+function errorStatus(error: unknown): number {
+  if (isRecord(error) && typeof error.status === 'number') return error.status;
+  return 503;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return 'Authentication service unavailable';
+}
+
 export async function POST(req: Request) {
   const csrfRejection = rejectCrossOrigin(req);
   if (csrfRejection) return csrfRejection;
 
   try {
-    const body = await req.json() as Record<string, unknown>;
-    const action = stringValue(body.action) as AuthAction;
-    const path = ACTION_PATHS[action];
-    if (!path) return NextResponse.json({ error: 'Unsupported authentication action' }, { status: 400 });
-
-    const applicationId = await resolveApplicationId();
-    if (!applicationId) {
-      return NextResponse.json({ error: 'Authentication is not configured for this application' }, { status: 500 });
+    const body = await req.json().catch(() => null) as JsonMap | null;
+    const actionValue = stringValue(body?.action) as HeadlessAuthAction;
+    if (!AUTH_ACTIONS.has(actionValue)) {
+      return NextResponse.json({ error: 'Unsupported authentication action' }, { status: 400 });
     }
 
-    const requestUpstream = () => fetchUpstream(`${normalizeDomain(getAppKitDomain())}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'x-app-id': applicationId,
-      },
-      body: JSON.stringify(selectPayload(action, body)),
-    });
-
-    let response = await requestUpstream();
-    if ([502, 503, 504].includes(response.status)) {
-      debugWarn(`AppKit credential auth returned ${response.status}; retrying once.`);
+    const run = () => runHeadlessAuthAction(actionValue, body || {});
+    let result: HeadlessAuthActionResult;
+    try {
+      result = await run();
+    } catch (error) {
+      if (![502, 503, 504].includes(errorStatus(error))) throw error;
+      debugWarn(`AppKit headless auth returned ${errorStatus(error)}; retrying once.`);
       await new Promise((resolve) => setTimeout(resolve, 500));
-      response = await requestUpstream();
+      result = await run();
     }
 
-    const data = await response.json().catch(() => ({})) as Record<string, unknown>;
-    if (response.ok) await persistSession(data);
-
-    const safeData = { ...data };
-    delete safeData.accessToken;
-    delete safeData.refreshToken;
-    delete safeData.access_token;
-    delete safeData.refresh_token;
-    delete safeData.token;
-    delete safeData.id_token;
-
-    return NextResponse.json(safeData, { status: response.status });
+    await persistSession(result);
+    return NextResponse.json(browserResult(actionValue, result));
   } catch (error) {
-    console.error('Local AppKit credential proxy error:', error instanceof Error ? error.message : 'unknown error');
-    return NextResponse.json({ error: 'Authentication service unavailable' }, { status: 503 });
+    const status = errorStatus(error);
+    console.error('Local AppKit headless auth error:', errorMessage(error));
+    return NextResponse.json({ error: errorMessage(error) }, { status });
   }
 }

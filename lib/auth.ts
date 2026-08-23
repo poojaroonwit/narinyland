@@ -1,21 +1,3 @@
-import { AppKit } from 'alphayard-appkit';
-
-/**
- * AlphaYard AppKit Authentication Library
- */
-
-let appKitInstance: AppKit | null = null;
-let appKitConfigCache: {
-  clientId: string;
-  domain: string;
-  redirectUri?: string;
-} | null = null;
-
-let isInitializing = false;
-let initPromise: Promise<void> | null = null;
-
-const DEFAULT_APPKIT_DOMAIN = 'https://appkits.up.railway.app';
-const DEFAULT_APPKIT_SCOPES = ['openid', 'profile', 'email', 'offline_access'];
 const PUBLIC_AUTH_RETURN_PATH = '/';
 const AUTH_FETCH_TIMEOUT_MS = 8000;
 
@@ -36,7 +18,6 @@ export class AuthUnavailableError extends Error {
 async function fetchAuthResource(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
-
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
@@ -46,241 +27,48 @@ async function fetchAuthResource(input: RequestInfo | URL, init: RequestInit = {
   }
 }
 
-declare global {
-  interface Window {
-    __NARINYLAND_APPKIT_CONFIG__?: {
-      clientId?: string | null;
-      domain?: string | null;
-    };
-  }
-}
-
-function normalizeDomain(domain?: string | null): string {
-  const trimmed = (domain || DEFAULT_APPKIT_DOMAIN).trim();
-  return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
-}
-
-function normalizeClientId(clientId?: string | null): string {
-  return (clientId || '').trim();
-}
-
-function getRedirectUri(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/auth/callback`;
-}
-
-function getStaticConfig() {
-  return {
-    clientId: normalizeClientId(process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID),
-    domain: normalizeDomain(process.env.NEXT_PUBLIC_APPKIT_DOMAIN),
-    redirectUri: getRedirectUri(),
-  };
-}
-
-async function resolveAppKitConfig() {
-  const config = getStaticConfig();
-
-  if (typeof window !== 'undefined') {
-    const injectedConfig = window.__NARINYLAND_APPKIT_CONFIG__;
-    if (injectedConfig) {
-      config.clientId = normalizeClientId(injectedConfig.clientId || config.clientId);
-      config.domain = normalizeDomain(injectedConfig.domain || config.domain);
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    try {
-      const res = await fetchAuthResource(`/api/config/appkit?ts=${Date.now()}`, { cache: 'no-store' });
-      if (res.ok) {
-        const runtimeConfig = await res.json();
-        const resolvedClientId = normalizeClientId(
-          runtimeConfig.clientId ||
-          runtimeConfig.appId ||
-          runtimeConfig.applicationId ||
-          config.clientId
-        );
-        const resolvedDomain = normalizeDomain(runtimeConfig.domain || config.domain);
-
-        console.log('[Auth] Resolved AppKit Config:', {
-          clientId: resolvedClientId ? 'SET' : 'MISSING',
-          domain: resolvedDomain ? 'SET' : 'MISSING'
-        });
-
-        config.clientId = resolvedClientId;
-        config.domain = resolvedDomain;
-      } else {
-        const details = await res.text().catch(() => '');
-        console.error('[Auth] Failed to fetch runtime AppKit config:', res.status, details);
-      }
-    } catch (err) {
-      console.error('[Auth] Error fetching runtime AppKit config:', err);
-    }
-  }
-
-  if (!config.clientId || !config.domain) {
-    console.error('[Auth] Final Config Validation Failed:', config);
-    throw new Error('Sign in is temporarily unavailable because AppKit is not configured properly. Please ensure NEXT_PUBLIC_APPKIT_CLIENT_ID and NEXT_PUBLIC_APPKIT_DOMAIN are set and the server is restarted.');
-  }
-
-  return config;
-}
-
-function createAppKitClient(config: { clientId: string; domain: string; redirectUri?: string }) {
-  return new AppKit({
-    clientId: config.clientId,
-    domain: config.domain,
-    redirectUri: config.redirectUri,
-    scopes: DEFAULT_APPKIT_SCOPES,
-    storage: 'sessionStorage',
-    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-      const urlStr = input.toString();
-
-      // Proxy token exchange and revocation through our backend as usual,
-      // but now our backend will also set the HttpOnly cookies.
-      if (urlStr.includes('/oauth/token')) {
-        const rawParams = new URLSearchParams(init?.body as string);
-        const bodyData = Object.fromEntries(rawParams);
-
-        return globalThis.fetch('/api/auth/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyData),
-          credentials: 'include',
-        });
-      }
-
-      if (urlStr.includes('/oauth/revoke')) {
-        const rawParams = new URLSearchParams(init?.body as string);
-        const bodyData = Object.fromEntries(rawParams);
-
-        return globalThis.fetch('/api/auth/revoke', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyData),
-          credentials: 'include',
-        });
-      }
-
-      // Proxy "me" profile request
-      if (urlStr.includes('/users/me')) {
-        return globalThis.fetch('/api/auth/me', { credentials: 'include' });
-      }
-
-      return globalThis.fetch(input, init);
-    },
-  });
-}
-
 /**
- * Asynchronously initialize the AppKit client
- * This fetches the Client ID from the server at runtime, bypassing Next.js build-time injection issues on Railway.
+ * Legacy compatibility facade. The browser no longer constructs an AppKit SDK
+ * client or stores AppKit tokens; authentication is owned by the same-origin
+ * BFF and `@alphayard/appkit/headless-auth` on the server.
  */
 export async function initAppKit(): Promise<void> {
-  if (appKitInstance) return;
-  if (isInitializing && initPromise) return initPromise;
-
-  isInitializing = true;
-  initPromise = (async () => {
-    const config = await resolveAppKitConfig();
-    appKitConfigCache = config;
-    appKitInstance = createAppKitClient(config);
-  })();
-
-  try {
-    await initPromise;
-  } finally {
-    isInitializing = false;
-    if (!appKitInstance) {
-      initPromise = null;
-    }
-  }
+  return;
 }
 
-/**
- * Synchronous getter for AppKit client.
- * Must call `await initAppKit()` at least once before using this.
- */
-export function getAppKit(): AppKit {
-  if (!appKitInstance) {
-    if (isInitializing) {
-      console.warn('getAppKit called while initAppKit is in progress. This may result in using an uninitialized client.');
-    } else {
-      console.warn('getAppKit called before initAppKit started. Performing emergency synchronous fallback.');
-    }
-
-    const fallbackConfig = appKitConfigCache || getStaticConfig();
-    if (!fallbackConfig.clientId) {
-      throw new Error('AppKit has not been initialized yet.');
-    }
-
-    return createAppKitClient(fallbackConfig);
-  }
-
-  return appKitInstance;
-}
-
-/**
- * Start the login/signup flow
- */
+/** Open Narinyland's own login UI. */
 export async function login(): Promise<void> {
-  await initAppKit();
-  const client = getAppKit();
-  const url = await client.buildAuthUrl({
-    redirect_uri: getRedirectUri(),
-    extraParams: { prompt: 'consent' },
-  });
-
-  if (typeof window !== 'undefined') {
-    window.location.assign(url);
-  }
+  if (typeof window !== 'undefined') window.location.assign('/login');
 }
 
 /**
- * Handle the OAuth callback
+ * Hosted OAuth callbacks are no longer part of normal credentials login.
+ * Keep this compatibility probe for old bookmarked/callback URLs: if the BFF
+ * already established a valid session, accept it; otherwise return the user to
+ * Narinyland's local sign-in journey rather than reintroducing browser tokens.
  */
 export async function handleCallback(): Promise<boolean> {
-  try {
-    await initAppKit();
-    const client = getAppKit();
-    await client.handleCallback();
-    return true;
-  } catch (err: unknown) {
-    // If handleCallback fails because of stripped tokens, check our metadata cookie
-    if (isAuthenticated()) {
-      console.log('AppKit SDK reported callback error (likely due to stripped tokens), but session cookie is present. Considering success.');
-      return true;
-    }
-    console.error('AppKit handleCallback error:', err);
-    // Surface transient server errors with a clear, retryable message
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('503') || msg.includes('502') || msg.includes('504')) {
-      throw new Error('Authentication server is temporarily unavailable. Please try again in a moment.');
-    }
-    throw err;
-  }
+  if (typeof window === 'undefined') return false;
+  const response = await fetchAuthResource('/api/auth/session', {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new AuthUnavailableError(`Session check failed: ${response.status}`);
+  const result = await response.json().catch(() => ({})) as { authenticated?: boolean };
+  if (result.authenticated) return true;
+  throw new AuthRequiredError('This sign-in link is no longer active. Please sign in from Narinyland.');
 }
 
-/**
- * Get the stored access token
- */
+/** Raw AppKit bearer tokens are never exposed to browser code. */
 export function getAccessToken(): string | null {
-  // In BFF mode, we don't return the raw access token to the frontend.
-  // This helps enforce that all API calls must go through our backend.
   return null;
 }
 
-/**
- * Check if the user is authenticated
- */
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
-  // In BFF mode, we check for our non-HttpOnly metadata cookie
   return (document.cookie || '').includes('narinyland_is_auth=true');
 }
 
-/**
- * Get stored user info (Async)
- */
 type AuthUserResponse = {
   id?: string;
   sub?: string;
@@ -294,20 +82,14 @@ type AuthUserResponse = {
 };
 
 export async function getUser(): Promise<{ sub: string; name: string; email: string; picture: string; attributes: Record<string, unknown> } | null> {
-  if (typeof window === 'undefined') return null;
-
+  if (typeof window === 'undefined' || !isAuthenticated()) return null;
   try {
-    if (!isAuthenticated()) return null;
-
-    // Call our proxied "me" endpoint which uses the HttpOnly cookie
-    const res = await fetchAuthResource('/api/auth/me', { credentials: 'include' });
+    const res = await fetchAuthResource('/api/auth/me', { credentials: 'include', cache: 'no-store' });
     if (res.status === 401 || res.status === 403) return null;
     if (!res.ok) throw new AuthUnavailableError(`Profile request failed: ${res.status}`);
-
     const user = (await res.json()) as AuthUserResponse;
     const sub = user.id || user.sub;
     if (!sub) return null;
-
     return {
       sub,
       name: user.name || '',
@@ -315,48 +97,31 @@ export async function getUser(): Promise<{ sub: string; name: string; email: str
       picture: user.avatar || user.picture || user.profile_image || user.image || '',
       attributes: user.attributes || {},
     };
-  } catch (err) {
-    if (err instanceof AuthUnavailableError) throw err;
-    console.error('AppKit getUser error:', err);
-    throw new AuthUnavailableError(err instanceof Error ? err.message : undefined);
+  } catch (error) {
+    if (error instanceof AuthUnavailableError) throw error;
+    throw new AuthUnavailableError(error instanceof Error ? error.message : undefined);
   }
 }
 
-/**
- * Logout
- */
 export async function logout(): Promise<void> {
   try {
-    // Clear cookies on the server
-    await fetch('/api/auth/logout', { method: 'POST' });
-
-    // Also clear AppKit local storage state just in case
-    await initAppKit();
-    const client = getAppKit();
-    await client.logout({
-      post_logout_redirect_uri: typeof window !== 'undefined'
-        ? `${window.location.origin}${PUBLIC_AUTH_RETURN_PATH}`
-        : undefined,
+    await fetchAuthResource('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
     });
-  } catch (err) {
-    console.error('Logout error:', err);
-    if (typeof window !== 'undefined') {
-      window.location.href = PUBLIC_AUTH_RETURN_PATH;
-    }
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    if (typeof window !== 'undefined') window.location.assign(PUBLIC_AUTH_RETURN_PATH);
   }
 }
 
-/**
- * Get all circles/worlds the current user belongs to.
- * Proxied through our own backend to avoid CORS restrictions when calling
- * the AppKit API directly from the browser.
- */
-type CircleListPayload = {
-  circles?: unknown;
-  data?: unknown;
-};
+type Circle = { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string };
+type CircleListPayload = { circles?: unknown; data?: unknown };
 
-function extractCircleList(payload: unknown): Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }> {
+function extractCircleList(payload: unknown): Circle[] {
   const candidates = [
     payload,
     payload && typeof payload === 'object' ? (payload as CircleListPayload).circles : undefined,
@@ -365,70 +130,60 @@ function extractCircleList(payload: unknown): Array<{ id: string; name: string; 
       ? ((payload as { data: CircleListPayload }).data).circles
       : undefined,
   ];
-
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.filter((circle): circle is { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string } => (
-        !!circle && typeof circle === 'object' && typeof (circle as { id?: unknown }).id === 'string'
-      ));
-    }
+    if (!Array.isArray(candidate)) continue;
+    return candidate.filter((circle): circle is Circle => (
+      Boolean(circle) && typeof circle === 'object' && typeof (circle as { id?: unknown }).id === 'string'
+    ));
   }
-
   return [];
 }
 
-export async function getUserCircles(): Promise<Array<{ id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string }>> {
+export async function getUserCircles(): Promise<Circle[]> {
   try {
     if (typeof window === 'undefined') return [];
     if (!isAuthenticated()) throw new AuthRequiredError('Not authenticated');
-
-    // Use our server-side proxy. In BFF mode, auth lives in cookies rather than
-    // the SDK's browser storage state, so rely on the cookie-backed session.
     const res = await fetchAuthResource('/api/circles', {
       credentials: 'include',
       cache: 'no-store',
     });
-
-    // Distinguish auth errors from empty circles - auth errors should redirect to login
-    if (res.status === 401 || res.status === 403) {
-      throw new AuthRequiredError(`Auth error: ${res.status}`);
-    }
-
+    if (res.status === 401 || res.status === 403) throw new AuthRequiredError(`Auth error: ${res.status}`);
     if (!res.ok) return [];
-    const data = await res.json();
-    return extractCircleList(data);
-  } catch (err) {
-    if (err instanceof AuthRequiredError) throw err;
-    console.error('getUserCircles error:', err);
+    return extractCircleList(await res.json());
+  } catch (error) {
+    if (error instanceof AuthRequiredError) throw error;
+    console.error('getUserCircles error:', error);
     return [];
   }
 }
 
-/**
- * Update the current user's profile
- */
 export async function updateProfile(data: { name?: string; avatar?: string; attributes?: Record<string, unknown> }): Promise<boolean> {
   try {
-    await initAppKit();
-    const client = getAppKit();
-
-    const nameParts = data.name?.trim().split(/\s+/) || [];
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    await client.updateProfile({
-      firstName: firstName || undefined,
-      lastName: lastName || undefined,
-      avatar: data.avatar !== undefined ? data.avatar : undefined,
+    const response = await fetchAuthResource('/api/auth/profile', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-
-    if (data.attributes) {
-      await client.updateAttributes(data.attributes);
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({})) as { error?: string };
+      throw new Error(result.error || `Profile update failed: ${response.status}`);
     }
-
     return true;
-  } catch (err) {
-    console.error('AppKit updateProfile error:', err);
+  } catch (error) {
+    console.error('AppKit profile update error:', error);
     return false;
   }
+}
+
+/**
+ * Compatibility shape for older callers that only persisted user attributes.
+ * This is not an AppKit SDK instance; it routes through Narinyland's BFF.
+ */
+export function getAppKit() {
+  return {
+    updateAttributes(attributes: Record<string, unknown>) {
+      return updateProfile({ attributes });
+    },
+  };
 }
