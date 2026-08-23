@@ -7,10 +7,14 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('Narinyland login always exposes AppKit SSO independently of social provider config', () => {
-  const ui = read('components/auth/NarinylandAuthPage.tsx');
-  assert.match(ui, /Continue with AppKit/);
-  assert.match(ui, /\/api\/auth\/sso\/appkit\/start/);
-  assert.match(ui, /socialProviders\.length > 0/);
+  const page = read('app/login/page.tsx');
+  const entry = read('components/auth/AppKitSsoEntry.tsx');
+  assert.match(page, /AppKitSsoEntry/);
+  assert.match(entry, /Continue with AppKit/);
+  assert.match(entry, /\/api\/auth\/sso\/appkit\/start/);
+
+  const authUi = read('components/auth/NarinylandAuthPage.tsx');
+  assert.match(authUi, /socialProviders\.length > 0/);
 });
 
 test('AppKit SSO start uses authorization code with PKCE and an exact server callback', () => {
