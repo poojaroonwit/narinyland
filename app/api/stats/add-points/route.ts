@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
-import { addPoints } from '@/lib/stats-service';
+import { getStats } from '@/lib/stats-service';
 
+/**
+ * Legacy compatibility endpoint.
+ *
+ * Point awards must originate from server-authoritative game actions. Older
+ * clients may still POST here while refreshing their HUD, so preserve the
+ * authenticated response shape without accepting a caller-controlled reward.
+ */
 export async function POST(request: Request) {
   try {
     const access = await requireConfigAccess(request);
     if (isConfigAccessDenied(access)) return access.response;
 
-    const body = await request.json();
-    const { amount } = body;
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
-    }
-
-    return NextResponse.json(await addPoints(access.configId, amount));
+    return NextResponse.json(await getStats(access.configId));
   } catch (error) {
-    console.error('Error adding points:', error);
-    return NextResponse.json({ error: 'Failed to add points' }, { status: 500 });
+    console.error('Error refreshing points:', error);
+    return NextResponse.json({ error: 'Failed to refresh points' }, { status: 500 });
   }
 }
