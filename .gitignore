@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+
+# Local investigation / credential-bearing scratch scripts
+scratch*_db.*
+*_appkit_secrets.*
+check_apps.js
+seed_*_client.js
 
 # Editor directories and files
 .vscode/*
@@ -37,4 +44,3 @@ server/dist
 .next/
 out/
 build/
-
