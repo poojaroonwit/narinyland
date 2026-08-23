@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useSearchParams } from 'next/navigation';
 
 const ERROR_MESSAGES: Record<string, string> = {
   appkit_sso_denied: 'AppKit sign-in was cancelled.',
@@ -13,9 +12,12 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function AppKitSsoEntry() {
-  const searchParams = useSearchParams();
-  const errorCode = searchParams.get('auth_error') || '';
-  const message = ERROR_MESSAGES[errorCode] || '';
+  const [message, setMessage] = React.useState('');
+
+  React.useEffect(() => {
+    const errorCode = new URL(window.location.href).searchParams.get('auth_error') || '';
+    setMessage(ERROR_MESSAGES[errorCode] || '');
+  }, []);
 
   return (
     <div className="fixed inset-x-4 top-4 z-[90] sm:left-auto sm:right-6 sm:w-[340px]">
