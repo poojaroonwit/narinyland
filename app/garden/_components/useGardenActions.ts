@@ -1,34 +1,75 @@
-// @ts-nocheck
-
-import { Interaction, LoveLetterMessage } from '../../../types';
-import { configAPI, lettersAPI, timelineAPI, memoriesAPI, statsAPI, couponsAPI } from '../../../services/api';
+import type { AppConfig, Emotion, Interaction, LoveLetterMessage, LoveStats } from '../../../types';
+import { configAPI, lettersAPI, timelineAPI, statsAPI, couponsAPI } from '../../../services/api';
 import { getErrorMessage } from '../../../lib/errors';
 
-export const useGardenActions = (ctx: any) => {
-  const { appConfig, setAppConfig, handleSetAppConfig, loveStats, setLoveStats, activePartners, setPetEmotion, setPetMessage, setLoveLetters, showToast, setHasAcceptedProposal, requestConfirm } = ctx;
+type StateSetter<T> = (value: T | ((previous: T) => T)) => void;
+
+type GardenConfirmPrompt = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  tone?: 'default' | 'danger';
+};
+
+type GardenActionsContext = {
+  appConfig: AppConfig;
+  setAppConfig: StateSetter<AppConfig>;
+  handleSetAppConfig: StateSetter<AppConfig>;
+  loveStats: LoveStats;
+  setLoveStats: StateSetter<LoveStats>;
+  setPetEmotion: StateSetter<Emotion>;
+  setPetMessage: StateSetter<string>;
+  setLoveLetters: StateSetter<LoveLetterMessage[]>;
+  showToast?: (message: string) => void;
+  setHasAcceptedProposal: StateSetter<boolean>;
+  requestConfirm?: (prompt: GardenConfirmPrompt) => Promise<boolean>;
+};
+
+export const useGardenActions = (ctx: GardenActionsContext) => {
+  const {
+    appConfig,
+    setAppConfig,
+    handleSetAppConfig,
+    loveStats,
+    setLoveStats,
+    setPetEmotion,
+    setPetMessage,
+    setLoveLetters,
+    showToast,
+    setHasAcceptedProposal,
+    requestConfirm,
+  } = ctx;
+
   const notify = (message: string) => {
-    if (typeof showToast === 'function') showToast(message);
+    showToast?.(message);
   };
-  const confirmWorldAction = async (prompt: { title: string; message: string; confirmLabel?: string; cancelLabel?: string; tone?: 'default' | 'danger' }) => {
-    if (typeof requestConfirm !== 'function') {
+
+  const confirmWorldAction = async (prompt: GardenConfirmPrompt) => {
+    if (!requestConfirm) {
       notify('Confirmation is unavailable right now.');
       return false;
     }
     return requestConfirm(prompt);
   };
 
-  const addXP = async (amount: number, partnerId?: string) => {
+  // Compatibility name retained because downstream garden context exposes
+  // `addXP`. Rewards are now server-authoritative; this only refreshes stats.
+  const addXP = async (amount = 0, partnerId?: string) => {
+    void amount;
+    void partnerId;
     try {
-      const res = await statsAPI.addXP(amount, partnerId);
-      
-      if (res.leveledUp) {
+      const res = await statsAPI.get();
+      const leveledUp = res.level > loveStats.level;
+
+      if (leveledUp) {
         const nextLevel = res.level;
         let message = `LEVEL UP! Nari evolved to Level ${nextLevel}! 🎉✨`;
-        if (nextLevel === 2) message = "Nari is feeling royal! Level 2 Unlocked 👑";
-        if (nextLevel === 3) message = "Magic flows through Nari! Level 3 Reached ✨";
-        if (nextLevel === 4) message = "Nari has taken flight! Level 4 Angel Form 👼";
-        if (nextLevel === 5) message = "Behold! Ascended Nari! Level 5 reached 🌟";
-        
+        if (nextLevel === 2) message = 'Nari is feeling royal! Level 2 Unlocked 👑';
+        if (nextLevel === 3) message = 'Magic flows through Nari! Level 3 Reached ✨';
+        if (nextLevel === 4) message = 'Nari has taken flight! Level 4 Angel Form 👼';
+        if (nextLevel === 5) message = 'Behold! Ascended Nari! Level 5 reached 🌟';
+
         setPetMessage(message);
         setPetEmotion('excited');
       }
@@ -36,11 +77,14 @@ export const useGardenActions = (ctx: any) => {
       setLoveStats({
         xp: res.xp,
         level: res.level,
+        xpForNextLevel: res.xpForNextLevel,
+        totalXP: res.totalXP,
         leaves: res.leaves ?? loveStats.leaves,
-        points: res.points ?? loveStats.points
+        points: res.points ?? loveStats.points,
+        partnerPoints: res.partnerPoints,
       });
-    } catch (e) {
-      console.error("XP Update Failed:", e);
+    } catch (error) {
+      console.error('Stats refresh failed:', error);
     }
   };
 
@@ -50,119 +94,118 @@ export const useGardenActions = (ctx: any) => {
       return;
     }
 
-    // Optimistic Update: Immediately update UI
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-       navigator.vibrate(50); // Haptic feedback
-    }
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
 
-    const prevStats = { ...loveStats }; // Backup for rollback
-    setLoveStats(prev => ({
-       ...prev,
-       leaves: prev.leaves + 1,
-       points: prev.points - 100
+    const prevStats = { ...loveStats };
+    setLoveStats((prev) => ({
+      ...prev,
+      leaves: prev.leaves + 1,
+      points: prev.points - 100,
     }));
     setPetEmotion('happy');
-    setPetMessage("A new memory planted! 🌱");
+    setPetMessage('A new memory planted! 🌱');
     setTimeout(() => setPetEmotion('neutral'), 3000);
 
     try {
       const res = await statsAPI.addLeaf();
       if (res.success) {
-         // Sync with server response to ensure consistency (especially for level ups)
-         setLoveStats(prev => ({
-           ...prev,
-           leaves: res.leaves,
-           points: res.points,
-           xp: res.xp,
-           level: res.level,
-         }));
+        setLoveStats((prev) => ({
+          ...prev,
+          leaves: res.leaves,
+          points: res.points,
+          xp: res.xp,
+          level: res.level,
+          xpForNextLevel: res.xpForNextLevel,
+          totalXP: res.totalXP,
+          partnerPoints: res.partnerPoints,
+        }));
 
-         if (res.leveledUp) {
-            setPetEmotion('excited');
-            setPetMessage(`Level Up! Our garden is growing! Level ${res.level} 🌟`);
-         }
+        if (res.leveledUp) {
+          setPetEmotion('excited');
+          setPetMessage(`Level Up! Our garden is growing! Level ${res.level} 🌟`);
+        }
       } else {
-         // Revert on failure
-         setLoveStats(prevStats);
-         notify('Something went wrong growing the leaf.');
+        setLoveStats(prevStats);
+        notify('Something went wrong growing the leaf.');
       }
-    } catch (e) {
-      console.error("Failed to add leaf:", e);
-      setLoveStats(prevStats); // Revert on error
+    } catch (error) {
+      console.error('Failed to add leaf:', error);
+      setLoveStats(prevStats);
       notify('Something went wrong growing the leaf.');
     }
   };
 
   const handleProposalStepChange = (progress: number) => {
-    handleSetAppConfig(prev => ({
+    handleSetAppConfig((prev) => ({
       ...prev,
-      proposal: { ...prev.proposal, progress }
+      proposal: { ...prev.proposal, progress },
     }));
   };
 
   const handleProposalAccepted = () => {
     setHasAcceptedProposal(true);
-    // Update local state and persist to backend
-    handleSetAppConfig(prev => ({
+    handleSetAppConfig((prev) => ({
       ...prev,
-      proposal: { ...prev.proposal, isAccepted: true }
+      proposal: { ...prev.proposal, isAccepted: true },
     }));
   };
 
-
   const handleRedeemCoupon = async (id: string) => {
     try {
-      // Call API first
       await couponsAPI.redeem(id);
-      
-      // Update state only after success
-      setAppConfig(prev => ({
+
+      setAppConfig((prev) => ({
         ...prev,
-        coupons: prev.coupons.map(c => c.id === id ? { ...c, isRedeemed: true, redeemedAt: new Date() } : c)
+        coupons: prev.coupons.map((coupon) => coupon.id === id
+          ? { ...coupon, isRedeemed: true, redeemedAt: new Date() }
+          : coupon),
       }));
 
-      // Add timeline event
-      const coupon = appConfig.coupons.find(c => c.id === id);
+      const coupon = appConfig.coupons.find((candidate) => candidate.id === id);
       if (coupon) {
         const text = `🎟️ Coupon Redeemed: ${coupon.title} ${coupon.emoji}`;
         const timelineRes = await timelineAPI.create({
           text,
           type: 'system',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
-        
-        // Update timeline locally
+
         const newEvent: Interaction = {
           id: timelineRes.id,
           text: timelineRes.text,
           timestamp: new Date(timelineRes.timestamp),
-          type: 'system'
+          type: 'system',
         };
-        
-        setAppConfig(prev => ({
-           ...prev,
-           timeline: [newEvent, ...prev.timeline]
+
+        setAppConfig((prev) => ({
+          ...prev,
+          timeline: [newEvent, ...prev.timeline],
         }));
-        
-        // Refresh Stats to show new level/points (0 amount just recalculates)
-        addXP(0);
       }
 
-    } catch (err) {
-      console.error("Failed to redeem coupon:", err);
+      await addXP();
+    } catch (error) {
+      console.error('Failed to redeem coupon:', error);
       notify('Failed to redeem coupon. Please try again.');
     }
   };
 
-  const handleAddCoupon = async (data: { title: string; emoji: string; desc: string; color: string; forPartner: string; points: number }) => {
+  const handleAddCoupon = async (data: {
+    title: string;
+    emoji: string;
+    desc: string;
+    color: string;
+    forPartner: string;
+    points: number;
+  }) => {
     try {
       const newCoupon = await couponsAPI.create(data);
-      setAppConfig(prev => ({
+      setAppConfig((prev) => ({
         ...prev,
-        coupons: [...prev.coupons, newCoupon]
+        coupons: [...prev.coupons, newCoupon],
       }));
-    } catch (err) {
-      console.error("Failed to add coupon:", err);
+    } catch (error) {
+      console.error('Failed to add coupon:', error);
       notify('Failed to add coupon.');
     }
   };
@@ -176,220 +219,217 @@ export const useGardenActions = (ctx: any) => {
       tone: 'danger',
     });
     if (!confirmed) return;
+
     try {
       await couponsAPI.delete(id);
-      setAppConfig(prev => ({
+      setAppConfig((prev) => ({
         ...prev,
-        coupons: prev.coupons.filter(c => c.id !== id)
+        coupons: prev.coupons.filter((coupon) => coupon.id !== id),
       }));
-    } catch (err) {
-      console.error("Failed to delete coupon:", err);
+    } catch (error) {
+      console.error('Failed to delete coupon:', error);
       notify('Failed to delete coupon.');
     }
   };
 
   const handleSendMessage = async (msg: LoveLetterMessage) => {
     try {
-       // 1. Optimistic Update (Show immediately)
-       setLoveLetters(prev => [msg, ...prev]);
-       
-       // 2. Prepare File if media exists (convert blob URL to File)
-       let file: File | undefined;
-       if (msg.media?.url && msg.media.url.startsWith('blob:')) {
-         try {
-           const response = await fetch(msg.media.url);
-           const blob = await response.blob();
-           const ext = msg.media.type === 'image' ? 'jpg' : msg.media.type === 'video' ? 'mp4' : 'ogg';
-           file = new File([blob], `letter-media.${ext}`, { type: blob.type });
-         } catch (e) {
-           console.error("Failed to process media blob:", e);
-         }
-       }
+      setLoveLetters((prev) => [msg, ...prev]);
 
-       // 3. Persist Letter
-       const savedLetter = await lettersAPI.create({
-         fromId: msg.fromId, // 'partner1' or 'partner2'
-         content: msg.content,
-         unlockDate: msg.unlockDate.toISOString(),
-         file: file
-       });
+      let file: File | undefined;
+      if (msg.media?.url?.startsWith('blob:')) {
+        try {
+          const response = await fetch(msg.media.url);
+          const blob = await response.blob();
+          const ext = msg.media.type === 'image' ? 'jpg' : msg.media.type === 'video' ? 'mp4' : 'ogg';
+          file = new File([blob], `letter-media.${ext}`, { type: blob.type });
+        } catch (error) {
+          console.error('Failed to process media blob:', error);
+        }
+      }
 
-        // 4. Update local state with real ID and storage URL
-       setLoveLetters(prev => prev.map(l => l.id === msg.id ? { 
-         ...l, 
-         id: savedLetter.id, 
-         media: savedLetter.media ? { type: savedLetter.media.type, url: savedLetter.media.url } : l.media 
-       } : l));
+      const savedLetter = await lettersAPI.create({
+        fromId: msg.fromId,
+        content: msg.content,
+        unlockDate: msg.unlockDate.toISOString(),
+        file,
+      });
 
-       // 5. Update XP
-       await addXP(20, msg.fromId);
+      setLoveLetters((prev) => prev.map((letter) => letter.id === msg.id ? {
+        ...letter,
+        id: savedLetter.id,
+        media: savedLetter.media
+          ? { type: savedLetter.media.type, url: savedLetter.media.url }
+          : letter.media,
+      } : letter));
 
-       // 6. Add to Timeline
-       const senderName = msg.fromId === 'partner1' ? appConfig.partners.partner1.name : appConfig.partners.partner2.name;
-       
-       // Persist timeline event
-       const timelineRes = await timelineAPI.create({
-         text: `💌 Letter from ${senderName}: ${msg.content.substring(0, 60)}...`,
-         type: 'letter',
-         timestamp: msg.unlockDate.toISOString()
-       });
+      // Letter reward is committed by the server. Refresh the resulting stats.
+      await addXP();
 
-       // Update local timeline
-       const newTimelineEvent: Interaction = {
-         id: timelineRes.id,
-         text: timelineRes.text,
-         timestamp: new Date(timelineRes.timestamp),
-         type: 'letter'
-       };
+      const senderName = msg.fromId === 'partner1'
+        ? appConfig.partners.partner1.name
+        : appConfig.partners.partner2.name;
+      const timelineRes = await timelineAPI.create({
+        text: `💌 Letter from ${senderName}: ${msg.content.substring(0, 60)}...`,
+        type: 'letter',
+        timestamp: msg.unlockDate.toISOString(),
+      });
 
-       setAppConfig(prev => ({ 
-         ...prev, 
-         timeline: [newTimelineEvent, ...prev.timeline] 
-       }));
+      const newTimelineEvent: Interaction = {
+        id: timelineRes.id,
+        text: timelineRes.text,
+        timestamp: new Date(timelineRes.timestamp),
+        type: 'letter',
+      };
 
-    } catch (err) {
-      console.error("Failed to send letter:", err);
+      setAppConfig((prev) => ({
+        ...prev,
+        timeline: [newTimelineEvent, ...prev.timeline],
+      }));
+    } catch (error) {
+      console.error('Failed to send letter:', error);
       notify('Failed to save your letter. Please try again.');
-      // Revert optimistic update
-      setLoveLetters(prev => prev.filter(l => l.id !== msg.id));
+      setLoveLetters((prev) => prev.filter((letter) => letter.id !== msg.id));
     }
   };
 
-    const handleUpdateMessage = async (msg: LoveLetterMessage) => {
+  const handleUpdateMessage = async (msg: LoveLetterMessage) => {
     try {
       await lettersAPI.update(msg.id, {
         folder: msg.folder,
         isRead: msg.isRead,
-        readAt: msg.readAt
+        readAt: msg.readAt,
       });
-      // Optimistic update
-      setLoveLetters(prev => prev.map(m => m.id === msg.id ? msg : m));
-    } catch (err: unknown) {
-        console.error("Failed to update message", err);
-        notify(getErrorMessage(err) || 'Failed to update message');
+      setLoveLetters((prev) => prev.map((message) => message.id === msg.id ? msg : message));
+    } catch (error: unknown) {
+      console.error('Failed to update message', error);
+      notify(getErrorMessage(error) || 'Failed to update message');
     }
   };
 
   const handleUpdateTimeline = async (updated: Interaction) => {
-      try {
-        const files: File[] = [];
-        if (updated.mediaItems) {
-           for (const item of updated.mediaItems) {
-             if (item.url.startsWith('blob:')) {
-                try {
-                   const res = await fetch(item.url);
-                   const blob = await res.blob();
-                   const ext = blob.type.split('/')[1] || 'jpg';
-                   files.push(new File([blob], `timeline-media-${Date.now()}.${ext}`, { type: blob.type }));
-                } catch (e) { console.error("Failed to process blob:", e); }
-             }
-           }
-        }
-
-        const saved = await timelineAPI.update(updated.id, {
-          text: updated.text,
-          type: updated.type,
-          location: updated.location,
-          latitude: updated.latitude,
-          longitude: updated.longitude,
-          timestamp: updated.timestamp.toISOString(),
-          files: files.length > 0 ? files : undefined
-        });
-
-        setAppConfig(prev => ({
-          ...prev,
-          timeline: prev.timeline.map(t => t.id === updated.id ? { 
-            ...updated, 
-            timestamp: new Date(updated.timestamp),
-            media: saved.media,
-            mediaItems: saved.mediaItems 
-          } : t)
-        }));
-      } catch (err) {
-        console.error("Failed to update timeline:", err);
-        notify('Failed to save changes.');
-      }
-    };
-
-    const handleMassTimelineUpdate = async (items: Interaction[]) => {
-      for (const item of items) {
-        const original = appConfig.timeline.find(t => t.id === item.id);
-        if (!original || JSON.stringify(original) !== JSON.stringify(item)) {
-          if (item.id.startsWith('temp-')) {
-            await handleAddTimeline(item);
-          } else {
-            await handleUpdateTimeline(item);
-          }
-        }
-      }
-    };
- 
-   const handleAddTimeline = async (interaction: Interaction) => {
-     try {
-        // Handle files if present
-        const files: File[] = [];
-        const mediaToProcess = interaction.mediaItems?.length ? interaction.mediaItems : interaction.media ? [interaction.media] : [];
-        
-        for (const item of mediaToProcess) {
+    try {
+      const files: File[] = [];
+      if (updated.mediaItems) {
+        for (const item of updated.mediaItems) {
           if (item.url.startsWith('blob:')) {
             try {
               const res = await fetch(item.url);
               const blob = await res.blob();
               const ext = blob.type.split('/')[1] || 'jpg';
               files.push(new File([blob], `timeline-media-${Date.now()}.${ext}`, { type: blob.type }));
-            } catch (e) { console.error("Failed to process blob:", e); }
+            } catch (error) {
+              console.error('Failed to process blob:', error);
+            }
           }
         }
+      }
 
-        const saved = await timelineAPI.create({
-          text: interaction.text,
-          type: interaction.type,
-          location: interaction.location,
-          latitude: interaction.latitude,
-          longitude: interaction.longitude,
-          timestamp: interaction.timestamp.toISOString(),
-          files: files.length > 0 ? files : undefined
-        });
+      const saved = await timelineAPI.update(updated.id, {
+        text: updated.text,
+        type: updated.type,
+        location: updated.location,
+        latitude: updated.latitude,
+        longitude: updated.longitude,
+        timestamp: updated.timestamp.toISOString(),
+        files: files.length > 0 ? files : undefined,
+      });
 
-        const newEvent: Interaction = {
-          ...interaction,
-          id: saved.id,
-          timestamp: new Date(saved.timestamp),
+      setAppConfig((prev) => ({
+        ...prev,
+        timeline: prev.timeline.map((event) => event.id === updated.id ? {
+          ...updated,
+          timestamp: new Date(updated.timestamp),
           media: saved.media,
-          mediaItems: saved.mediaItems
-        };
+          mediaItems: saved.mediaItems,
+        } : event),
+      }));
+    } catch (error) {
+      console.error('Failed to update timeline:', error);
+      notify('Failed to save changes.');
+    }
+  };
 
-       setAppConfig(prev => ({
-         ...prev,
-         timeline: [newEvent, ...prev.timeline]
-       }));
-     } catch (err) {
-       console.error("Failed to add timeline event:", err);
-       notify('Failed to save event.');
-     }
-   };
- 
-    const handleDeleteTimeline = async (id: string) => {
-      try {
-        await timelineAPI.delete(id);
-        setAppConfig(prev => ({
-          ...prev,
-          timeline: prev.timeline.filter(t => t.id !== id)
-        }));
-      } catch (err: unknown) {
-        console.error("Failed to delete timeline event:", err);
-        // If it's already gone from server (404), still remove it from local state to stay in sync
-        const message = getErrorMessage(err);
-        if (message.includes('404') || message.includes('not found')) {
-          setAppConfig(prev => ({
-            ...prev,
-            timeline: prev.timeline.filter(t => t.id !== id)
-          }));
-        } else {
-          notify('Failed to delete memory. Please try again.');
+  const handleAddTimeline = async (interaction: Interaction) => {
+    try {
+      const files: File[] = [];
+      const mediaToProcess = interaction.mediaItems?.length
+        ? interaction.mediaItems
+        : interaction.media
+          ? [interaction.media]
+          : [];
+
+      for (const item of mediaToProcess) {
+        if (item.url.startsWith('blob:')) {
+          try {
+            const res = await fetch(item.url);
+            const blob = await res.blob();
+            const ext = blob.type.split('/')[1] || 'jpg';
+            files.push(new File([blob], `timeline-media-${Date.now()}.${ext}`, { type: blob.type }));
+          } catch (error) {
+            console.error('Failed to process blob:', error);
+          }
         }
       }
-    };
+
+      const saved = await timelineAPI.create({
+        text: interaction.text,
+        type: interaction.type,
+        location: interaction.location,
+        latitude: interaction.latitude,
+        longitude: interaction.longitude,
+        timestamp: interaction.timestamp.toISOString(),
+        files: files.length > 0 ? files : undefined,
+      });
+
+      const newEvent: Interaction = {
+        ...interaction,
+        id: saved.id,
+        timestamp: new Date(saved.timestamp),
+        media: saved.media,
+        mediaItems: saved.mediaItems,
+      };
+
+      setAppConfig((prev) => ({
+        ...prev,
+        timeline: [newEvent, ...prev.timeline],
+      }));
+    } catch (error) {
+      console.error('Failed to add timeline event:', error);
+      notify('Failed to save event.');
+    }
+  };
+
+  const handleMassTimelineUpdate = async (items: Interaction[]) => {
+    for (const item of items) {
+      const original = appConfig.timeline.find((candidate) => candidate.id === item.id);
+      if (!original || JSON.stringify(original) !== JSON.stringify(item)) {
+        if (item.id.startsWith('temp-')) await handleAddTimeline(item);
+        else await handleUpdateTimeline(item);
+      }
+    }
+  };
+
+  const handleDeleteTimeline = async (id: string) => {
+    try {
+      await timelineAPI.delete(id);
+      setAppConfig((prev) => ({
+        ...prev,
+        timeline: prev.timeline.filter((event) => event.id !== id),
+      }));
+    } catch (error: unknown) {
+      console.error('Failed to delete timeline event:', error);
+      const message = getErrorMessage(error);
+      if (message.includes('404') || message.includes('not found')) {
+        setAppConfig((prev) => ({
+          ...prev,
+          timeline: prev.timeline.filter((event) => event.id !== id),
+        }));
+      } else {
+        notify('Failed to delete memory. Please try again.');
+      }
+    }
+  };
 
   return {
     addXP,
