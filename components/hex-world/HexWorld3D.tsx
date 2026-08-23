@@ -126,7 +126,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <Canvas shadows dpr={[1, profile.maxDpr]} camera={{ fov: 42, near: 0.1, far: 160 }} onPointerMissed={() => props.onSelectBuilding?.(null)}>
         <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} />
         <HexWorldLighting profile={profile} />
-        <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
+        <HexIslandUndide tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
         <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
         <HexPlacementEffects event={props.visualEvent ?? null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
@@ -134,7 +134,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexAmbientDecor tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
-        <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
+        <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {props.livingState && <HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
         {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
         {props.expansionPlacementPreview && <ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
