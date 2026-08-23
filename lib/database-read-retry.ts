@@ -1,4 +1,4 @@
-const DEFAULT_RETRY_DELAYS_MS = [150, 300, 600, 1200, 2400, 3600] as const;
+const DEFAULT_RETRY_DELAYS_MS = [150, 300, 600, 1200, 2400, 3600, 5000] as const;
 
 const RETRYABLE_READ_OPERATIONS = new Set([
   'findUnique',
@@ -11,14 +11,18 @@ const RETRYABLE_READ_OPERATIONS = new Set([
   'groupBy',
 ]);
 
-const TRANSIENT_DATABASE_CODES = new Set(['P1001', 'P1017']);
+const TRANSIENT_DATABASE_CODES = new Set(['P1001', 'P1002', 'P1017']);
 const TRANSIENT_DATABASE_MESSAGES = [
   "can't reach database server",
+  'database system is starting up',
   'database system is not yet accepting connections',
   'consistent recovery state has not been yet reached',
   'error in postgresql connection',
   'server has closed the connection',
   'connection closed',
+  'connection terminated',
+  'connection reset',
+  'econnreset',
 ] as const;
 
 type RetryOptions = {
