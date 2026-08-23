@@ -78,9 +78,9 @@ test('HexWorld living presentation covers four seasons and remains bounded visua
   const world = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
   const layer = await readFile(new URL('../components/hex-world/HexLivingWorldLayer.tsx', import.meta.url), 'utf8');
 
-  assert.match(world, /livingState\?: ProgressionFamilyFarmState \| null/);
+  assert.match(world, /livingState\?: HomesteadLifeState \| null/);
   assert.match(world, /HexLivingWorldLayer/);
-  assert.match(layer, /ProgressionFamilyFarmState/);
+  assert.match(layer, /HomesteadLifeState/);
   assert.match(layer, /getCropVisualSamples/);
   assert.match(layer, /SEASON_PARTICLE_COUNT/);
   for (const season of ['spring', 'summer', 'autumn', 'winter']) assert.match(layer, new RegExp(`'${season}'`));
