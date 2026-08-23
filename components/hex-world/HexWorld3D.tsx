@@ -126,7 +126,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <Canvas shadows dpr={[1, profile.maxDpr]} camera={{ fov: 42, near: 0.1, far: 160 }} onPointerMissed={() => props.onSelectBuilding?.(null)}>
         <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} />
         <HexWorldLighting profile={profile} />
-        <HexIslandUndide tiles={snapshot.tiles} seed={snapshot.world.seed} />
+        <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
         <FloatingFragments />
         <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
         <HexPlacementEffects event={props.visualEvent ?? null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
