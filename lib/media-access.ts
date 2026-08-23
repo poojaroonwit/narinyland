@@ -17,17 +17,9 @@ export async function getStorageKeyConfigIds(key: string): Promise<string[]> {
   if (scopedConfigId) return [scopedConfigId];
 
   const [memories, timelineEvents, letters] = await Promise.all([
-    prisma.memory.findMany({
-      where: { s3Key: key },
-      select: { configId: true },
-    }),
+    prisma.memory.findMany({ where: { s3Key: key }, select: { configId: true } }),
     prisma.timelineEvent.findMany({
-      where: {
-        OR: [
-          { mediaS3Key: key },
-          { mediaS3Keys: { has: key } },
-        ],
-      },
+      where: { OR: [{ mediaS3Key: key }, { mediaS3Keys: { has: key } }] },
       select: { configId: true },
     }),
     prisma.loveLetter.findMany({
@@ -45,14 +37,9 @@ export async function getStorageKeyConfigIds(key: string): Promise<string[]> {
 
 export async function requireStorageKeyAccess(request: Request, key: string): Promise<NextResponse | null> {
   const configIds = await getStorageKeyConfigIds(key);
-
   if (configIds.length === 0) {
     if (allowUnscopedLegacyMediaAccess()) return null;
-
-    return NextResponse.json(
-      { error: 'legacy_media_requires_migration' },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: 'legacy_media_requires_migration' }, { status: 403 });
   }
 
   const session = await getAuthSession(request);
@@ -63,21 +50,17 @@ export async function requireStorageKeyAccess(request: Request, key: string): Pr
     );
   }
 
+  const isNameLogin = session.user?.authSource === 'name-login';
   const membership = await prisma.partner.findFirst({
     where: {
       configId: { in: configIds },
-      OR: [
-        { id: session.userId },
-        { userId: session.userId },
-        { partnerId: session.userId },
-      ],
+      OR: isNameLogin
+        ? [{ id: session.userId }, { userId: session.userId }]
+        : [{ userId: session.userId }],
     },
     select: { id: true },
   });
 
-  if (!membership) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  }
-
+  if (!membership) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   return null;
 }
