@@ -6,6 +6,12 @@ import { motion } from 'framer-motion';
 import { HexWorld3D } from '@/components/hex-world/HexWorld3D';
 import { createLandingHexWorldSnapshot } from '@/lib/hex-world/landing-world';
 
+const CONTINUATION_STORAGE_KEY = 'narinyland_auth_continuation';
+const OAUTH_PROVIDERS = new Set([
+  'google', 'google-oauth', 'github', 'github-oauth', 'facebook', 'facebook-oauth',
+  'x', 'x-oauth', 'twitter', 'twitter-oauth', 'microsoft', 'microsoft-oauth', 'line', 'line-oauth',
+]);
+
 type AuthMode = 'login' | 'signup';
 type AuthStep =
   | 'credentials'
@@ -65,6 +71,16 @@ type AuthPolicy = {
   legal: { requireAcceptance: boolean; termsUrl: string; privacyUrl: string };
 };
 
+type SocialProvider = {
+  providerName: string;
+  displayName?: string;
+  label?: string;
+  buttonText?: string;
+  isEnabled?: boolean;
+  logoUrl?: string;
+  iconUrl?: string | null;
+};
+
 type AuthConfig = {
   authPolicy?: Partial<AuthPolicy> & {
     registration?: Partial<AuthPolicy['registration']>;
@@ -72,6 +88,7 @@ type AuthConfig = {
     mfa?: Partial<AuthPolicy['mfa']>;
     legal?: Partial<AuthPolicy['legal']>;
   };
+  providers?: SocialProvider[];
 };
 
 const DEFAULT_POLICY: AuthPolicy = {
@@ -99,6 +116,29 @@ function mergePolicy(config: AuthConfig | null): AuthPolicy {
   };
 }
 
+function normalizeProviderName(value: string) {
+  return value.trim().toLowerCase().replace(/_/g, '-');
+}
+
+function providerLabel(provider: SocialProvider) {
+  if (provider.buttonText?.trim()) return provider.buttonText.trim();
+  if (provider.displayName?.trim()) return `Continue with ${provider.displayName.trim()}`;
+  if (provider.label?.trim()) return `Continue with ${provider.label.trim()}`;
+  const key = normalizeProviderName(provider.providerName).replace(/-oauth$/, '');
+  return `Continue with ${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+}
+
+function providerIcon(providerName: string) {
+  const key = normalizeProviderName(providerName);
+  if (key.startsWith('google')) return 'G';
+  if (key.startsWith('github')) return 'GH';
+  if (key.startsWith('microsoft')) return '⊞';
+  if (key.startsWith('facebook')) return 'f';
+  if (key === 'twitter' || key.startsWith('x-')) return 'X';
+  if (key.startsWith('line')) return 'L';
+  return '↗';
+}
+
 function responseMessage(data: AuthResponse, fallback: string) {
   return data.message || data.error || fallback;
 }
@@ -116,6 +156,7 @@ async function authRequest(action: string, payload: Record<string, unknown>) {
 
 export function NarinylandAuthPage({ mode }: { mode: AuthMode }) {
   const snapshot = React.useMemo(() => createLandingHexWorldSnapshot(), []);
+  const ssoResumeStarted = React.useRef(false);
   const [step, setStep] = React.useState<AuthStep>('credentials');
   const [config, setConfig] = React.useState<AuthConfig | null>(null);
   const [email, setEmail] = React.useState('');
@@ -144,6 +185,12 @@ export function NarinylandAuthPage({ mode }: { mode: AuthMode }) {
 
   const isSignup = mode === 'signup';
   const policy = React.useMemo(() => mergePolicy(config), [config]);
+  const socialProviders = React.useMemo(() => (
+    (config?.providers || []).filter((provider) => {
+      const name = normalizeProviderName(provider.providerName || '');
+      return provider.isEnabled !== false && OAUTH_PROVIDERS.has(name);
+    })
+  ), [config]);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -259,6 +306,35 @@ export function NarinylandAuthPage({ mode }: { mode: AuthMode }) {
         throw new Error(responseMessage(data, 'Authentication could not continue.'));
     }
   };
+
+  React.useEffect(() => {
+    if (ssoResumeStarted.current || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('sso') !== 'continue') return;
+    ssoResumeStarted.current = true;
+    url.searchParams.delete('sso');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+
+    const raw = window.sessionStorage.getItem(CONTINUATION_STORAGE_KEY);
+    window.sessionStorage.removeItem(CONTINUATION_STORAGE_KEY);
+    if (!raw) {
+      setError('The social sign-in continuation expired. Please try again.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = JSON.parse(raw) as AuthResponse;
+      void handleContinuation(data).catch(resumeError => {
+        setError(resumeError instanceof Error ? resumeError.message : 'Social sign-in could not continue.');
+      }).finally(() => setLoading(false));
+    } catch {
+      setLoading(false);
+      setError('The social sign-in continuation could not be read. Please try again.');
+    }
+    // This runs once for the callback handoff; continuation handlers intentionally use current state setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submitCredentials = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -425,6 +501,12 @@ export function NarinylandAuthPage({ mode }: { mode: AuthMode }) {
     }
   };
 
+  const startSocialLogin = (provider: SocialProvider) => {
+    setError('');
+    setStatus('');
+    window.location.assign(`/api/auth/sso/start?provider=${encodeURIComponent(provider.providerName)}`);
+  };
+
   const resetChallenge = () => {
     setStep('credentials');
     setChallengeToken('');
@@ -477,6 +559,23 @@ export function NarinylandAuthPage({ mode }: { mode: AuthMode }) {
                 <h2 className="mt-2 text-3xl font-black leading-tight tracking-[-0.035em] text-stone-950">{isSignup ? 'Create your little world.' : 'Welcome back to your world.'}</h2>
                 <p className="mt-2 text-sm font-medium leading-relaxed text-stone-600">{isSignup ? 'Create your account, then invite the person you want to build it with.' : 'Sign in and keep growing what belongs to both of you.'}</p>
               </div>
+
+              {socialProviders.length > 0 && (
+                <div className="mb-5 grid gap-2">
+                  {socialProviders.map(provider => (
+                    <button
+                      key={provider.providerName}
+                      type="button"
+                      onClick={() => startSocialLogin(provider)}
+                      className="flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl border border-white/80 bg-white/70 px-4 text-sm font-black text-stone-700 shadow-sm transition hover:bg-white"
+                    >
+                      <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-stone-100 px-1.5 text-[10px] font-black text-stone-700">{providerIcon(provider.providerName)}</span>
+                      {providerLabel(provider)}
+                    </button>
+                  ))}
+                  <div className="my-1 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400"><span className="h-px flex-1 bg-stone-200/80" />or use email<span className="h-px flex-1 bg-stone-200/80" /></div>
+                </div>
+              )}
 
               <form onSubmit={submitCredentials} className="space-y-4">
                 {isSignup && (
