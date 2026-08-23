@@ -23,6 +23,7 @@ const AUTH_ACTIONS = new Set<HeadlessAuthAction>([
   'email-resend',
   'forgot-password',
   'reset-password',
+  'social-continue',
 ]);
 
 function stringValue(value: unknown): string {
