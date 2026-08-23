@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { deleteFile, uploadLetterMedia } from '@/lib/storage';
-import { redis } from '@/lib/redis';
+import { redis, redisSetNxPx } from '@/lib/redis';
 import { validateUploadFile } from '@/lib/upload-validation';
 import { isConfigAccessDenied, requireConfigAccess, type ConfigAccess } from '@/lib/config-access';
 
@@ -134,10 +134,11 @@ export async function POST(request: Request) {
     }
 
     claimedRewardKey = rewardKey(access.configId, access.userId);
-    const claim = await redis
-      .set(claimedRewardKey, '1', 'EX', LETTER_REWARD_COOLDOWN_SECONDS, 'NX')
-      .catch(() => null);
-    rewardClaimed = claim === 'OK';
+    rewardClaimed = await redisSetNxPx(
+      claimedRewardKey,
+      '1',
+      LETTER_REWARD_COOLDOWN_SECONDS * 1000,
+    );
 
     const letter = await prisma.$transaction(async (tx) => {
       const created = await tx.loveLetter.create({
