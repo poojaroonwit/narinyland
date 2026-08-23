@@ -5,12 +5,17 @@ on:
     branches: [main]
     paths:
       - 'app/api/auth/**'
+      - 'app/login/**'
       - 'components/auth/**'
       - 'lib/auth.ts'
       - 'lib/appkit-headless-server.ts'
+      - 'lib/appkit-oauth-redirect.ts'
+      - 'lib/narinyland-public-origin.ts'
       - 'package.json'
       - 'package-lock.json'
       - 'tests/appkit-headless-sdk-auth.test.ts'
+      - 'tests/appkit-headless-sso.test.ts'
+      - 'tests/appkit-oidc-sso.test.ts'
       - 'tests/hex-local-appkit-auth-ui.test.ts'
       - '.github/workflows/appkit-headless-auth-ci.yml'
 
@@ -32,6 +37,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: AppKit headless auth contracts
-        run: node --import tsx --test tests/appkit-headless-sdk-auth.test.ts tests/hex-local-appkit-auth-ui.test.ts
+        run: node --import tsx --test tests/appkit-headless-sdk-auth.test.ts tests/appkit-headless-sso.test.ts tests/appkit-oidc-sso.test.ts tests/hex-local-appkit-auth-ui.test.ts
       - name: Production build
         run: npm run build
