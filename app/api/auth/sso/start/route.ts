@@ -30,15 +30,29 @@ function normalizeProviderName(value: unknown) {
   return typeof value === 'string' ? value.trim().toLowerCase().replace(/_/g, '-') : '';
 }
 
-function requestOrigin(req: Request) {
-  const url = new URL(req.url);
-  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
-  if (forwardedHost) {
-    const protocol = forwardedProto === 'http' ? 'http' : 'https';
-    return `${protocol}://${forwardedHost}`;
+function normalizeOrigin(value: string | undefined) {
+  if (!value?.trim()) return '';
+  const raw = value.trim();
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(candidate);
+    return parsed.origin;
+  } catch {
+    return '';
   }
-  return url.origin;
+}
+
+function trustedPublicOrigin(req: Request) {
+  const configured =
+    normalizeOrigin(process.env.NARINYLAND_PUBLIC_ORIGIN) ||
+    normalizeOrigin(process.env.RAILWAY_PUBLIC_DOMAIN) ||
+    normalizeOrigin(process.env.RAILWAY_STATIC_URL);
+  if (configured) return configured;
+
+  const requestOrigin = new URL(req.url).origin;
+  const hostname = new URL(requestOrigin).hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return requestOrigin;
+  throw new Error('Narinyland public origin is not configured');
 }
 
 function configuredOAuthProvider(config: JsonMap, requestedProvider: string): ProviderConfig | null {
@@ -72,7 +86,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unsupported social sign-in provider' }, { status: 400 });
     }
 
-    const callback = new URL('/auth/social-complete', requestOrigin(req)).toString();
+    const callback = new URL('/auth/social-complete', trustedPublicOrigin(req)).toString();
     const callbackReady = await ensureOAuthRedirectUriConfigured(callback);
     if (!callbackReady) {
       return NextResponse.json({ error: 'Social sign-in callback is not configured' }, { status: 503 });
