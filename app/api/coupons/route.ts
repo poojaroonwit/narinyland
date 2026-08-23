@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { normalizeCouponPartner, normalizeCouponRewardPoints } from '@/lib/coupon-rewards';
 
 // GET /api/coupons
 export async function GET(request: Request) {
@@ -34,6 +35,12 @@ export async function GET(request: Request) {
   }
 }
 
+function readBoundedText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized && normalized.length <= maxLength ? normalized : null;
+}
+
 // POST /api/coupons
 export async function POST(request: Request) {
   try {
@@ -41,8 +48,30 @@ export async function POST(request: Request) {
     if (isConfigAccessDenied(access)) return access.response;
 
     const { configId } = access;
-    const body = await request.json();
-    const { title, emoji, desc, color, forPartner, points } = body;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid coupon payload' }, { status: 400 });
+    }
+
+    const input = body as Record<string, unknown>;
+    const title = readBoundedText(input.title, 120);
+    const emoji = readBoundedText(input.emoji, 16);
+    const desc = readBoundedText(input.desc, 500);
+    const color = readBoundedText(input.color, 64);
+    const forPartner = normalizeCouponPartner(input.forPartner);
+    const points = normalizeCouponRewardPoints(input.points);
+
+    if (!title || !emoji || !desc || !color || !forPartner || points === null) {
+      return NextResponse.json({ error: 'Invalid coupon fields or reward points' }, { status: 400 });
+    }
+
+    const recipient = await prisma.partner.findFirst({
+      where: { configId, partnerId: forPartner },
+      select: { id: true },
+    });
+    if (!recipient) {
+      return NextResponse.json({ error: 'Coupon recipient not found' }, { status: 400 });
+    }
 
     const coupon = await prisma.coupon.create({
       data: {
@@ -50,8 +79,8 @@ export async function POST(request: Request) {
         emoji,
         desc,
         color,
-        points: points || 0,
-        forPartner: forPartner || 'partner1',
+        points,
+        forPartner,
         configId,
       },
     });
