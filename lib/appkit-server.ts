@@ -61,7 +61,6 @@ async function requestServiceToken(): Promise<ServiceTokenResult> {
       grant_type: 'client_credentials',
       client_id: APPKIT_CLIENT_ID,
       client_secret: APPKIT_CLIENT_SECRET,
-      // AppKit's application admin routes enforce these permission scopes.
       scope: 'applications:view applications:edit',
     });
 
@@ -77,10 +76,7 @@ async function requestServiceToken(): Promise<ServiceTokenResult> {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       const error = getAppKitErrorMessage(data, `AppKit service token exchange failed with HTTP ${res.status}`);
-      console.error('AppKit service token exchange failed:', {
-        status: res.status,
-        error,
-      });
+      console.error('AppKit service token exchange failed:', { status: res.status, error });
       return { token: null, error };
     }
 
@@ -94,14 +90,9 @@ async function requestServiceToken(): Promise<ServiceTokenResult> {
     }
 
     const tokenApplicationId = normalizeApplicationId(record.application_id || record.applicationId);
-    if (tokenApplicationId) {
-      resolvedAppKitApplicationId = tokenApplicationId;
-    }
+    if (tokenApplicationId) resolvedAppKitApplicationId = tokenApplicationId;
 
-    return {
-      token,
-      applicationId: resolvedAppKitApplicationId || undefined,
-    };
+    return { token, applicationId: resolvedAppKitApplicationId || undefined };
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Unable to reach AppKit token endpoint';
     console.error('AppKit getServiceToken error:', error);
@@ -109,19 +100,13 @@ async function requestServiceToken(): Promise<ServiceTokenResult> {
   }
 }
 
-/**
- * Get a service-level access token using the client_credentials grant.
- * Read-only callers may treat a missing token as an unavailable integration.
- */
 export async function getServiceToken(): Promise<string | null> {
   return (await requestServiceToken()).token;
 }
 
 async function requireServiceToken(): Promise<string> {
   const result = await requestServiceToken();
-  if (!result.token) {
-    throw new Error(result.error || 'AppKit service authentication failed');
-  }
+  if (!result.token) throw new Error(result.error || 'AppKit service authentication failed');
   return result.token;
 }
 
@@ -134,24 +119,14 @@ function requireApplicationId(): string {
   return resolvedAppKitApplicationId;
 }
 
-/**
- * Get the AppKit Domain
- */
 export function getAppKitDomain() {
   return APPKIT_DOMAIN;
 }
 
-/**
- * Get the AppKit Client ID.
- */
 export function getAppKitClientId() {
   return APPKIT_CLIENT_ID;
 }
 
-/**
- * Get the AppKit Application ID resolved from configuration or the latest
- * application-bound client_credentials token exchange.
- */
 export function getAppKitApplicationId() {
   return resolvedAppKitApplicationId;
 }
@@ -187,7 +162,7 @@ export async function ensureSsoLaunchUrlConfigured(ssoLaunchUrl: string): Promis
     const res = await fetch(
       `${getNormalizedAppKitDomain()}/api/v1/admin/applications/${applicationId}`,
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -213,8 +188,6 @@ export async function ensureSsoLaunchUrlConfigured(ssoLaunchUrl: string): Promis
     clearTimeout(timeout);
   }
 }
-
-// ─── Branding (used by PWA manifest) ────────────────────────────────
 
 export interface AppBranding {
   appName?: string;
@@ -242,10 +215,6 @@ type AppKitCircleMember = {
   };
 };
 
-/**
- * Fetch the branding configuration from AppKit admin API.
- * Falls back to null when credentials are missing or the call fails.
- */
 export async function getAppBranding(): Promise<AppBranding | null> {
   const token = await getServiceToken();
   const applicationId = resolvedAppKitApplicationId;
@@ -263,13 +232,6 @@ export async function getAppBranding(): Promise<AppBranding | null> {
   }
 }
 
-// ─── Circles (server-side management) ───────────────────────────────
-
-/**
- * Circle writes use the application-bound service identity. AppKit's public
- * user-circle API is read-only; the application admin API is the supported
- * write surface and enforces applications:edit.
- */
 export async function createCircleViaServer(name: string, description?: string, _userToken?: string) {
   const token = await requireServiceToken();
   const applicationId = requireApplicationId();
@@ -293,10 +255,6 @@ export async function createCircleViaServer(name: string, description?: string, 
   return res.json();
 }
 
-/**
- * Fetch all members of a circle via the AppKit Admin API.
- * Returns an array of member objects with at least { userId, name, avatar, role }.
- */
 export async function getCircleMembersViaServer(circleId: string): Promise<Array<{
   userId: string;
   name: string;
@@ -330,9 +288,6 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
   }
 }
 
-/**
- * Add a member to a circle via the AppKit application-admin API.
- */
 export async function addCircleMemberViaServer(circleId: string, userId: string, role = 'member', _userToken?: string) {
   const token = await requireServiceToken();
   const applicationId = requireApplicationId();
@@ -352,17 +307,12 @@ export async function addCircleMemberViaServer(circleId: string, userId: string,
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const message = getAppKitErrorMessage(err, `Failed to add member: ${res.status}`);
-    if (/already|exists|member/i.test(message)) {
-      return { success: true, alreadyMember: true };
-    }
+    if (/already|exists|member/i.test(message)) return { success: true, alreadyMember: true };
     throw new Error(message);
   }
   return res.json();
 }
 
-/**
- * Update a circle (world) via the AppKit application-admin API.
- */
 export async function updateCircleViaServer(circleId: string, data: { name?: string; description?: string }, _userToken?: string) {
   const token = await requireServiceToken();
   const applicationId = requireApplicationId();
@@ -386,9 +336,6 @@ export async function updateCircleViaServer(circleId: string, data: { name?: str
   return res.json();
 }
 
-/**
- * Delete a circle (world) via the AppKit application-admin API.
- */
 export async function deleteCircleViaServer(circleId: string, _userToken?: string) {
   const token = await requireServiceToken();
   const applicationId = requireApplicationId();

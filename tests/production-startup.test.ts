@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { isTransientDatabaseReadError } from '../lib/database-read-retry';
 
 test('production startup never runs destructive cleanup', async () => {
   const dockerfile = await readFile(new URL('../Dockerfile', import.meta.url), 'utf8');
@@ -18,4 +19,15 @@ test('production startup waits for Railway Postgres recovery before serving traf
   assert.match(startup, /DB_STARTUP_MAX_ATTEMPTS/);
   assert.match(startup, /Database not ready; retrying migration/);
   assert.match(startup, /exec node server\.js/);
+});
+
+test('runtime reads retry Railway Postgres while the database system is starting up', () => {
+  assert.equal(
+    isTransientDatabaseReadError(new Error('Error querying the database: FATAL: the database system is starting up')),
+    true,
+  );
+  assert.equal(
+    isTransientDatabaseReadError(new Error("Invalid prisma.appConfig.findMany invocation: Can't reach database server at postgres.railway.internal:5432")),
+    true,
+  );
 });

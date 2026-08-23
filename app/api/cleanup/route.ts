@@ -3,8 +3,9 @@ import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { requireAdminRequest } from '@/lib/security';
 import { isSafeStorageKey } from '@/lib/upload-validation';
+import { checkRemoteMediaHealth, type RemoteMediaHealth } from '@/lib/media-health';
 
-type BrokenMediaItem = {
+type MediaIssueItem = {
   id: string;
   url?: string | null;
   s3Key?: string | null;
@@ -16,322 +17,272 @@ type BrokenMediaItem = {
   caption?: string | null;
   text?: string;
   issue: string;
-  createdAt: Date;
+  createdAt?: Date;
 };
 
 const CLEANUP_TARGETS = ['all', 'memories', 'timeline'] as const;
 type CleanupTarget = (typeof CLEANUP_TARGETS)[number];
 
-// Helper function to validate image URL
-async function validateImageUrl(url: string | null | undefined): Promise<boolean> {
-  try {
-    if (!url || typeof url !== 'string' || url.trim().length === 0) {
-      return false;
-    }
-
-    if (url.startsWith('/api/serve-image')) {
-      return true;
-    }
-
-    // Check URL format
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return false;
-    }
-
-    // Try to fetch the image to check if it's accessible
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-// Helper function to validate managed storage references.
 function validateStorageReference(value: string | null | undefined): boolean {
   if (!value || typeof value !== 'string') return false;
   if (isSafeStorageKey(value)) return true;
-  
+
   const legacyCloudPatterns = [
     /s3\.amazonaws\.com/,
     /\.s3\.amazonaws\.com/,
     /s3-[^/]+\.amazonaws\.com/,
     /s3-[^/]+\.amazonaws\.com\.cn/,
-    /storage\.googleapis\.com/
+    /storage\.googleapis\.com/,
   ];
-  
-  return legacyCloudPatterns.some(pattern => pattern.test(value));
+
+  return legacyCloudPatterns.some((pattern) => pattern.test(value));
 }
 
 function isCleanupTarget(value: unknown): value is CleanupTarget {
   return typeof value === 'string' && CLEANUP_TARGETS.includes(value as CleanupTarget);
 }
 
-// GET /api/cleanup - Analyze broken images
+async function inspectUrls(urls: string[]) {
+  const health = await Promise.all(urls.map((url) => checkRemoteMediaHealth(url)));
+  return {
+    health,
+    hasHealthy: health.includes('healthy'),
+    hasBroken: health.includes('broken'),
+    hasUncertain: health.includes('uncertain'),
+  };
+}
+
+function classifySingleMedia(
+  urlHealth: RemoteMediaHealth,
+  storageValid: boolean,
+): RemoteMediaHealth {
+  if (!storageValid || urlHealth === 'broken') return 'broken';
+  if (urlHealth === 'uncertain') return 'uncertain';
+  return 'healthy';
+}
+
+// GET /api/cleanup - analyze media without deleting uncertain records.
 export async function GET(request: Request) {
   const adminRejection = requireAdminRequest(request);
   if (adminRejection) return adminRejection;
 
   try {
-    console.log('[Cleanup] Starting broken image analysis.');
+    const [memories, timelineEvents] = await Promise.all([
+      prisma.memory.findMany({
+        select: {
+          id: true,
+          url: true,
+          s3Key: true,
+          privacy: true,
+          caption: true,
+          configId: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.timelineEvent.findMany({
+        select: {
+          id: true,
+          configId: true,
+          mediaUrl: true,
+          mediaS3Key: true,
+          mediaUrls: true,
+          mediaS3Keys: true,
+          text: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
 
-    // Get all memories
-    const memories = await prisma.memory.findMany({
-      select: {
-        id: true,
-        url: true,
-        s3Key: true,
-        privacy: true,
-        caption: true,
-        configId: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'asc' }
-    });
-
-    // Get all timeline events with media
-    const timelineEvents = await prisma.timelineEvent.findMany({
-      select: {
-        id: true,
-        configId: true,
-        mediaUrl: true,
-        mediaS3Key: true,
-        mediaUrls: true,
-        mediaS3Keys: true,
-        text: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'asc' }
-    });
-
-    console.log(`[Cleanup] Found ${memories.length} memories and ${timelineEvents.length} timeline events.`);
-
-    // Analyze memories
     const memoryAnalysis = {
       total: memories.length,
       valid: 0,
       broken: 0,
-      brokenItems: [] as BrokenMediaItem[]
+      uncertain: 0,
+      brokenItems: [] as MediaIssueItem[],
+      uncertainItems: [] as MediaIssueItem[],
     };
 
     for (const memory of memories) {
-      const isUrlValid = await validateImageUrl(memory.url);
-      const isStorageKeyValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
-      
-      if (memory.url && isUrlValid && isStorageKeyValid) {
-        memoryAnalysis.valid++;
+      const health = await checkRemoteMediaHealth(memory.url);
+      const storageValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
+      const classification = classifySingleMedia(health, storageValid);
+      const item: MediaIssueItem = {
+        id: memory.id,
+        url: memory.url,
+        s3Key: memory.s3Key,
+        privacy: memory.privacy,
+        caption: memory.caption,
+        issue: !storageValid ? 'Invalid storage reference' : classification === 'uncertain' ? 'Remote media temporarily unreachable' : 'Broken media URL',
+        createdAt: memory.createdAt,
+      };
+
+      if (classification === 'healthy') memoryAnalysis.valid += 1;
+      else if (classification === 'broken') {
+        memoryAnalysis.broken += 1;
+        memoryAnalysis.brokenItems.push(item);
       } else {
-        memoryAnalysis.broken++;
-        memoryAnalysis.brokenItems.push({
-          id: memory.id,
-          url: memory.url,
-          s3Key: memory.s3Key,
-          privacy: memory.privacy,
-          caption: memory.caption,
-          issue: !memory.url ? 'Empty URL' : (!isUrlValid ? 'Invalid URL' : (!isStorageKeyValid ? 'Invalid storage reference' : 'Unknown')),
-          createdAt: memory.createdAt
-        });
+        memoryAnalysis.uncertain += 1;
+        memoryAnalysis.uncertainItems.push(item);
       }
     }
 
-    // Analyze timeline events
     const timelineAnalysis = {
       total: timelineEvents.length,
       valid: 0,
       broken: 0,
-      brokenItems: [] as BrokenMediaItem[]
+      uncertain: 0,
+      brokenItems: [] as MediaIssueItem[],
+      uncertainItems: [] as MediaIssueItem[],
     };
 
     for (const event of timelineEvents) {
       const allMediaUrls = [event.mediaUrl, ...(event.mediaUrls || [])].filter((url): url is string => Boolean(url));
       const allStorageKeys = [event.mediaS3Key, ...(event.mediaS3Keys || [])].filter((key): key is string => Boolean(key));
-      
-      let hasValidMedia = false;
-      let hasBrokenMedia = false;
-      
-      for (const url of allMediaUrls) {
-        const isValid = await validateImageUrl(url);
-        if (isValid) {
-          hasValidMedia = true;
-        } else {
-          hasBrokenMedia = true;
-          break;
-        }
+      if (allMediaUrls.length === 0 && allStorageKeys.length === 0) {
+        timelineAnalysis.valid += 1;
+        continue;
       }
-      
-      for (const storageKey of allStorageKeys) {
-        const isValid = validateStorageReference(storageKey);
-        if (!isValid) {
-          hasBrokenMedia = true;
-          break;
-        }
-      }
-      
-      if (allMediaUrls.length === 0) {
-        // No media to check
-        timelineAnalysis.valid++;
-      } else if (hasValidMedia && !hasBrokenMedia) {
-        timelineAnalysis.valid++;
+
+      const urlState = await inspectUrls(allMediaUrls);
+      const storageValid = allStorageKeys.every(validateStorageReference);
+      // A mixed event with at least one healthy asset is retained. Cleanup should
+      // never destroy a whole timeline entry because one attachment is down.
+      const classification: RemoteMediaHealth = !storageValid
+        ? 'broken'
+        : urlState.hasHealthy
+          ? (urlState.hasBroken || urlState.hasUncertain ? 'uncertain' : 'healthy')
+          : urlState.hasUncertain
+            ? 'uncertain'
+            : 'broken';
+      const item: MediaIssueItem = {
+        id: event.id,
+        mediaUrl: event.mediaUrl,
+        mediaS3Key: event.mediaS3Key,
+        mediaUrls: allMediaUrls,
+        mediaS3Keys: allStorageKeys,
+        text: event.text,
+        issue: !storageValid ? 'Invalid storage reference' : classification === 'uncertain' ? 'Some media could not be verified' : 'All referenced media is broken',
+        createdAt: event.createdAt,
+      };
+
+      if (classification === 'healthy') timelineAnalysis.valid += 1;
+      else if (classification === 'broken') {
+        timelineAnalysis.broken += 1;
+        timelineAnalysis.brokenItems.push(item);
       } else {
-        timelineAnalysis.broken++;
-        timelineAnalysis.brokenItems.push({
-          id: event.id,
-          mediaUrl: event.mediaUrl,
-          mediaS3Key: event.mediaS3Key,
-          mediaUrls: allMediaUrls,
-          mediaS3Keys: allStorageKeys,
-          text: event.text,
-          issue: allMediaUrls.length === 0 ? 'No media' : (hasBrokenMedia ? 'Broken media found' : 'Unknown'),
-          createdAt: event.createdAt
-        });
+        timelineAnalysis.uncertain += 1;
+        timelineAnalysis.uncertainItems.push(item);
       }
     }
 
-    const totalAnalysis = {
+    return NextResponse.json({
       memories: memoryAnalysis,
       timelineEvents: timelineAnalysis,
       summary: {
         totalItems: memoryAnalysis.total + timelineAnalysis.total,
         totalBroken: memoryAnalysis.broken + timelineAnalysis.broken,
-        totalValid: memoryAnalysis.valid + timelineAnalysis.valid
-      }
-    };
-
-    console.log('[Cleanup] Analysis results:');
-    console.log(`   Memories: ${memoryAnalysis.valid} valid, ${memoryAnalysis.broken} broken`);
-    console.log(`   Timeline Events: ${timelineAnalysis.valid} valid, ${timelineAnalysis.broken} broken`);
-    console.log(`   Total: ${totalAnalysis.summary.totalValid} valid, ${totalAnalysis.summary.totalBroken} broken`);
-
-    return NextResponse.json(totalAnalysis, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      }
+        totalUncertain: memoryAnalysis.uncertain + timelineAnalysis.uncertain,
+        totalValid: memoryAnalysis.valid + timelineAnalysis.valid,
+      },
+    }, {
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
     });
   } catch (error) {
-    console.error('[Cleanup] Error analyzing broken images:', error);
+    console.error('[Cleanup] Error analyzing media:', error);
     return NextResponse.json(
-      { error: 'Failed to analyze broken images', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+      { error: 'Failed to analyze media', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
     );
   }
 }
 
-// DELETE /api/cleanup - Clean broken images
+// DELETE /api/cleanup - delete only media proven broken. Network failures are uncertain and retained.
 export async function DELETE(request: Request) {
   const adminRejection = requireAdminRequest(request);
   if (adminRejection) return adminRejection;
 
   try {
-    console.log('[Cleanup] Starting broken image cleanup.');
-
-    const body = await request.json();
-    const { dryRun = false, targetTable = 'all' } = body;
+    const body = await request.json().catch(() => ({}));
+    const dryRun = body && typeof body === 'object' && 'dryRun' in body ? body.dryRun === true : false;
+    const targetTable = body && typeof body === 'object' && 'targetTable' in body ? body.targetTable : 'all';
 
     if (!isCleanupTarget(targetTable)) {
       return NextResponse.json(
         { error: `Invalid targetTable. Expected one of: ${CLEANUP_TARGETS.join(', ')}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
-    
-    console.log(`[Cleanup] Configuration: dryRun=${dryRun}, targetTable=${targetTable}.`);
 
     let deletedMemories = 0;
     let deletedEvents = 0;
+    let retainedUncertain = 0;
     const errors: string[] = [];
     const affectedConfigIds = new Set<string>();
 
-    // Clean memories
     if (targetTable === 'all' || targetTable === 'memories') {
       const memories = await prisma.memory.findMany({
-        select: { id: true, url: true, s3Key: true, privacy: true, caption: true, configId: true, createdAt: true }
+        select: { id: true, url: true, s3Key: true, configId: true },
       });
 
       for (const memory of memories) {
-        const isUrlValid = await validateImageUrl(memory.url);
-        const isStorageKeyValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
-        
-        if (memory.url && (!isUrlValid || !isStorageKeyValid)) {
-          console.log(`   Deleting memory: ${memory.id.substring(0, 8)}... (${memory.url?.substring(0, 50)}...)`);
-          
-          if (!dryRun) {
-            try {
-              await prisma.memory.delete({ where: { id: memory.id } });
-              affectedConfigIds.add(memory.configId);
-              deletedMemories++;
-            } catch (error) {
-              errors.push(`Failed to delete memory ${memory.id}: ${error}`);
-            }
-          } else {
-            deletedMemories++;
-          }
+        const health = await checkRemoteMediaHealth(memory.url);
+        const storageValid = memory.s3Key ? validateStorageReference(memory.s3Key) : true;
+        const definitelyBroken = !storageValid || health === 'broken';
+        if (health === 'uncertain' && storageValid) {
+          retainedUncertain += 1;
+          continue;
+        }
+        if (!definitelyBroken) continue;
+
+        if (dryRun) {
+          deletedMemories += 1;
+          continue;
+        }
+        try {
+          await prisma.memory.delete({ where: { id: memory.id } });
+          affectedConfigIds.add(memory.configId);
+          deletedMemories += 1;
+        } catch (error) {
+          errors.push(`Failed to delete memory ${memory.id}: ${String(error)}`);
         }
       }
     }
 
-    // Clean timeline events
     if (targetTable === 'all' || targetTable === 'timeline') {
       const events = await prisma.timelineEvent.findMany({
-        select: { id: true, configId: true, mediaUrl: true, mediaS3Key: true, mediaUrls: true, mediaS3Keys: true, text: true }
+        select: { id: true, configId: true, mediaUrl: true, mediaS3Key: true, mediaUrls: true, mediaS3Keys: true },
       });
 
       for (const event of events) {
-        const allMediaUrls = [event.mediaUrl, ...(event.mediaUrls || [])].filter(Boolean);
+        const allMediaUrls = [event.mediaUrl, ...(event.mediaUrls || [])].filter((url): url is string => Boolean(url));
         const allStorageKeys = [event.mediaS3Key, ...(event.mediaS3Keys || [])].filter((key): key is string => Boolean(key));
-        
-        let hasValidMedia = false;
-        let hasBrokenMedia = false;
-        
-        // Check all media URLs
-        for (const url of allMediaUrls) {
-          const isValid = await validateImageUrl(url);
-          if (isValid) {
-            hasValidMedia = true;
-          } else {
-            hasBrokenMedia = true;
-            break;
-          }
+        if (allMediaUrls.length === 0 && allStorageKeys.length === 0) continue;
+
+        const urlState = await inspectUrls(allMediaUrls);
+        const storageValid = allStorageKeys.every(validateStorageReference);
+        const definitelyBroken = !storageValid || (!urlState.hasHealthy && !urlState.hasUncertain && urlState.hasBroken);
+        if (!definitelyBroken) {
+          if (urlState.hasUncertain || urlState.hasBroken) retainedUncertain += 1;
+          continue;
         }
-        
-        // Check all managed storage keys.
-        for (const storageKey of allStorageKeys) {
-          const isValid = validateStorageReference(storageKey);
-          if (!isValid) {
-            hasBrokenMedia = true;
-            break;
-          }
+
+        if (dryRun) {
+          deletedEvents += 1;
+          continue;
         }
-        
-        // Delete if no valid media or has broken media
-        if ((allMediaUrls.length > 0 || allStorageKeys.length > 0) && (!hasValidMedia || hasBrokenMedia)) {
-          console.log(`   Deleting timeline event: ${event.id.substring(0, 8)}... (${event.text?.substring(0, 50)}...)`);
-          
-          if (!dryRun) {
-            try {
-              await prisma.timelineEvent.delete({ where: { id: event.id } });
-              affectedConfigIds.add(event.configId);
-              deletedEvents++;
-            } catch (error) {
-              errors.push(`Failed to delete timeline event ${event.id}: ${error}`);
-            }
-          } else {
-            deletedEvents++;
-          }
+        try {
+          await prisma.timelineEvent.delete({ where: { id: event.id } });
+          affectedConfigIds.add(event.configId);
+          deletedEvents += 1;
+        } catch (error) {
+          errors.push(`Failed to delete timeline event ${event.id}: ${String(error)}`);
         }
       }
     }
 
-    // Clear cache after cleanup
     if (!dryRun && (deletedMemories > 0 || deletedEvents > 0)) {
-      console.log('[Cleanup] Clearing cache.');
       await Promise.all(
         [...affectedConfigIds].flatMap((configId) => [
           redis.del(`app_config:${configId}`),
@@ -339,37 +290,25 @@ export async function DELETE(request: Request) {
           redis.del(`memories:${configId}:all`),
           redis.del(`memories:${configId}:public`),
           redis.del(`memories:${configId}:private`),
-        ])
+        ]),
       );
     }
 
-    const result = {
+    return NextResponse.json({
       dryRun,
       deletedMemories,
       deletedEvents,
+      retainedUncertain,
       errors,
-      totalDeleted: deletedMemories + deletedEvents
-    };
-
-    console.log('[Cleanup] Cleanup results:');
-    console.log(`   Deleted ${deletedMemories} memories`);
-    console.log(`   Deleted ${deletedEvents} timeline events`);
-    console.log(`   Total deleted: ${result.totalDeleted} items`);
-    if (errors.length > 0) {
-      console.log('   Errors encountered:');
-      errors.forEach(error => console.log(`     ${error}`));
-    }
-
-    return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      }
+      totalDeleted: deletedMemories + deletedEvents,
+    }, {
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
     });
   } catch (error) {
-    console.error('[Cleanup] Error cleaning broken images:', error);
+    console.error('[Cleanup] Error cleaning media:', error);
     return NextResponse.json(
-      { error: 'Failed to clean broken images', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+      { error: 'Failed to clean media', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
     );
   }
 }

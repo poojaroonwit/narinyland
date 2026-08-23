@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { uploadLetterMedia } from '@/lib/storage';
-
 import { redis } from '@/lib/redis';
 import { validateUploadFile } from '@/lib/upload-validation';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+
+const LETTER_REWARD_POINTS = 20;
 
 function getLettersCacheKey(configId: string): string {
   return `love_letters:${configId}`;
@@ -18,8 +19,6 @@ export async function GET(request: Request) {
 
     const { configId } = access;
     const cacheKey = getLettersCacheKey(configId);
-
-    // Check cache
     const cached = await redis.get(cacheKey);
     if (cached) return NextResponse.json(JSON.parse(cached));
 
@@ -36,14 +35,10 @@ export async function GET(request: Request) {
       timestamp: l.createdAt.toISOString(),
       unlockDate: l.unlockDate.toISOString(),
       isRead: l.isRead,
-      media: l.mediaType
-        ? { type: l.mediaType, url: l.mediaUrl }
-        : undefined,
+      media: l.mediaType ? { type: l.mediaType, url: l.mediaUrl } : undefined,
     }));
 
-    // Cache for 60s
     await redis.setex(cacheKey, 60, JSON.stringify(response));
-
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching letters:', error);
@@ -65,28 +60,40 @@ export async function POST(request: Request) {
     let unlockDate: string;
     let file: File | null = null;
     let mediaUrl: string | null = null;
-    let mediaType: string = 'image';
+    let mediaType = 'image';
 
     if (contentType.includes('application/json')) {
-      const body = await request.json();
-      fromId = body.fromId;
-      content = body.content;
-      unlockDate = body.unlockDate;
-      mediaUrl = body.mediaUrl || null;
-      mediaType = body.mediaType || 'image';
+      const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+      fromId = typeof body?.fromId === 'string' ? body.fromId.trim() : '';
+      content = typeof body?.content === 'string' ? body.content.trim() : '';
+      unlockDate = typeof body?.unlockDate === 'string' ? body.unlockDate : '';
+      mediaUrl = typeof body?.mediaUrl === 'string' ? body.mediaUrl : null;
+      mediaType = typeof body?.mediaType === 'string' ? body.mediaType : 'image';
     } else {
       const formData = await request.formData();
-      fromId = formData.get('fromId') as string;
-      content = formData.get('content') as string;
-      unlockDate = formData.get('unlockDate') as string;
-      file = formData.get('media') as File | null;
-      mediaUrl = formData.get('mediaUrl') as string | null;
-      mediaType = (formData.get('mediaType') as string) || 'image';
+      fromId = String(formData.get('fromId') || '').trim();
+      content = String(formData.get('content') || '').trim();
+      unlockDate = String(formData.get('unlockDate') || '');
+      const media = formData.get('media');
+      file = media instanceof File ? media : null;
+      const mediaUrlValue = formData.get('mediaUrl');
+      mediaUrl = typeof mediaUrlValue === 'string' && mediaUrlValue ? mediaUrlValue : null;
+      const mediaTypeValue = formData.get('mediaType');
+      mediaType = typeof mediaTypeValue === 'string' && mediaTypeValue ? mediaTypeValue : 'image';
     }
 
-    // Find the partner record
+    if (!fromId || !content || content.length > 10_000) {
+      return NextResponse.json({ error: 'A valid sender and letter content are required' }, { status: 400 });
+    }
+
+    const parsedUnlockDate = new Date(unlockDate || Date.now());
+    if (Number.isNaN(parsedUnlockDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid unlock date' }, { status: 400 });
+    }
+
     const partner = await prisma.partner.findFirst({
       where: { configId, OR: [{ partnerId: fromId }, { id: fromId }] },
+      select: { id: true, partnerId: true },
     });
 
     if (!partner) {
@@ -94,42 +101,50 @@ export async function POST(request: Request) {
     }
 
     let mediaS3Key: string | null = null;
-
-    if (file && file instanceof File) {
+    if (file) {
       const validationError = validateUploadFile(file);
-      if (validationError) {
-        return NextResponse.json({ error: validationError }, { status: 400 });
-      }
+      if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
       const buffer = Buffer.from(await file.arrayBuffer());
-      const result = await uploadLetterMedia(
-        buffer,
-        file.name,
-        file.type,
-        configId
-      );
+      const result = await uploadLetterMedia(buffer, file.name, file.type, configId);
       mediaUrl = result.url;
       mediaS3Key = result.key;
-      
+
       if (file.type.startsWith('image/')) mediaType = 'image';
       else if (file.type.startsWith('video/')) mediaType = 'video';
       else if (file.type.startsWith('audio/')) mediaType = 'audio';
     }
 
-    const letter = await prisma.loveLetter.create({
-      data: {
-        content,
-        fromId: partner.id,
-        unlockDate: new Date(unlockDate || Date.now()),
-        mediaType: mediaUrl ? mediaType : null,
-        mediaUrl,
-        mediaS3Key,
-      },
-      include: { from: true },
+    // The reward amount and recipient are resolved on the server and committed
+    // atomically with the letter. The client can no longer choose either value.
+    const letter = await prisma.$transaction(async (tx) => {
+      const created = await tx.loveLetter.create({
+        data: {
+          content,
+          fromId: partner.id,
+          unlockDate: parsedUnlockDate,
+          mediaType: mediaUrl ? mediaType : null,
+          mediaUrl,
+          mediaS3Key,
+        },
+        include: { from: true },
+      });
+
+      await tx.partner.update({
+        where: { id: partner.id },
+        data: {
+          points: { increment: LETTER_REWARD_POINTS },
+          lifetimePoints: { increment: LETTER_REWARD_POINTS },
+        },
+      });
+
+      return created;
     });
 
-    // Invalidate cache
-    await redis.del(getLettersCacheKey(configId));
+    await Promise.all([
+      redis.del(getLettersCacheKey(configId)),
+      redis.del(`app_stats:${configId}`),
+    ]);
 
     return NextResponse.json({
       id: letter.id,
@@ -138,11 +153,8 @@ export async function POST(request: Request) {
       timestamp: letter.createdAt.toISOString(),
       unlockDate: letter.unlockDate.toISOString(),
       isRead: letter.isRead,
-      media: letter.mediaType
-        ? { type: letter.mediaType, url: letter.mediaUrl }
-        : undefined,
+      media: letter.mediaType ? { type: letter.mediaType, url: letter.mediaUrl } : undefined,
     }, { status: 201 });
-
   } catch (error) {
     console.error('Error creating letter:', error);
     return NextResponse.json({ error: 'Failed to create letter' }, { status: 500 });
