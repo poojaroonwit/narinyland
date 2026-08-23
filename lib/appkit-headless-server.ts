@@ -19,7 +19,8 @@ export type HeadlessAuthAction =
   | 'email-verify'
   | 'email-resend'
   | 'forgot-password'
-  | 'reset-password';
+  | 'reset-password'
+  | 'social-continue';
 
 export type HeadlessAuthActionResult =
   | HeadlessAuthResult
@@ -104,6 +105,15 @@ export async function getHeadlessAuthConfig(): Promise<JsonMap> {
   return withTimeout(appkit.auth.getConfig()) as Promise<JsonMap>;
 }
 
+export async function getHeadlessSocialLoginUrl(provider: string, redirect: string): Promise<string> {
+  const normalizedProvider = stringValue(provider);
+  const normalizedRedirect = stringValue(redirect);
+  if (!normalizedProvider) throw new Error('Social sign-in provider is required');
+  if (!normalizedRedirect) throw new Error('Social sign-in redirect is required');
+  const appkit = await createServerHeadlessAppKit();
+  return appkit.auth.getSocialLoginUrl(normalizedProvider, { redirect: normalizedRedirect });
+}
+
 export async function refreshHeadlessSession(refreshToken: string): Promise<HeadlessAuthResult> {
   const appkit = await createServerHeadlessAppKit({ refreshToken });
   return withTimeout(appkit.auth.refreshToken());
@@ -161,6 +171,11 @@ export async function runHeadlessAuthAction(
         otp: stringValue(payload.otp) || stringValue(payload.code),
         password: stringValue(payload.password),
       }));
+    case 'social-continue': {
+      const resumeCode = stringValue(payload.resumeCode);
+      if (!resumeCode) throw new Error('Missing social sign-in continuation');
+      return withTimeout(appkit.auth.continueSocialLogin({ resumeCode }));
+    }
     default: {
       const exhaustive: never = action;
       throw new Error(`Unsupported authentication action: ${exhaustive}`);
