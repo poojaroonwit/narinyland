@@ -1,84 +1,106 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import redis from '@/lib/redis';
 import { rejectCrossOrigin } from '@/lib/security';
 import { debugLog, debugWarn } from '@/lib/logger';
+import { validateAppKitAccessToken } from '@/lib/auth-server';
+import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/session-store';
 
+const TOKEN_FETCH_TIMEOUT_MS = 8_000;
+const ALLOWED_TOKEN_FIELDS = new Set([
+  'grant_type',
+  'code',
+  'redirect_uri',
+  'client_id',
+  'code_verifier',
+  'refresh_token',
+  'scope',
+]);
 
-export async function POST(req: Request) {
+function appKitDomain() {
+  return (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || process.env.APPKIT_DOMAIN || 'https://appkits.up.railway.app')
+    .trim()
+    .replace(/\/+$/, '');
+}
+
+async function tokenRequest(body: Record<string, unknown>, clientSecret: string) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(body)) {
+    if (ALLOWED_TOKEN_FIELDS.has(key) && value !== undefined && value !== null) {
+      params.set(key, String(value));
+    }
+  }
+  params.set('client_secret', clientSecret);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TOKEN_FETCH_TIMEOUT_MS);
   try {
-    const body = await req.json();
-    const csrfRejection = rejectCrossOrigin(req);
-    if (csrfRejection) return csrfRejection;
-
-    let domain = (process.env.NEXT_PUBLIC_APPKIT_DOMAIN || process.env.APPKIT_DOMAIN || 'https://appkits.up.railway.app').trim();
-    if (domain.endsWith('/')) domain = domain.slice(0, -1);
-    const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
-
-    if (!clientSecret) {
-      console.error('APPKIT_CLIENT_SECRET is missing or empty on the server');
-      return NextResponse.json(
-        { error: 'server_error', error_description: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    // Prepare the form data to send to AppKit
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(body)) {
-      if (value !== undefined && value !== null) {
-        params.append(key, String(value));
-      }
-    }
-
-    // Inject the client secret
-    params.append('client_secret', clientSecret);
-
-    debugLog('Proxying token request to AppKit.', {
-      grant_type: body.grant_type,
-      hasClientId: !!body.client_id,
-      domain,
-    });
-
-    const tokenRequest = () => fetch(`${domain}/oauth/token`, {
+    return await fetch(`${appKitDomain()}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
       body: params.toString(),
+      signal: controller.signal,
+      cache: 'no-store',
     });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
-    let response = await tokenRequest();
+export async function POST(req: Request) {
+  const csrfRejection = rejectCrossOrigin(req);
+  if (csrfRejection) return csrfRejection;
 
-    // Retry once on transient gateway errors (AppKit on Railway cold-starts / restarts)
-    if (response.status === 502 || response.status === 503 || response.status === 504) {
-      debugWarn(`BFF: AppKit returned ${response.status}, retrying after 800ms.`);
-      await new Promise(r => setTimeout(r, 800));
-      response = await tokenRequest();
+  try {
+    const body = await req.json().catch(() => null) as Record<string, unknown> | null;
+    if (!body) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+
+    const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
+    if (!clientSecret) {
+      console.error('APPKIT_CLIENT_SECRET is missing on the server');
+      return NextResponse.json({ error: 'server_error' }, { status: 500 });
     }
 
-    const data = await response.json();
+    let response = await tokenRequest(body, clientSecret);
+    if ([502, 503, 504].includes(response.status)) {
+      debugWarn(`BFF: AppKit returned ${response.status}; retrying token exchange once.`);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      response = await tokenRequest(body, clientSecret);
+    }
 
+    const data = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (!response.ok) {
-      console.error('AppKit token exchange error:', { status: response.status, data, clientId: body.client_id });
       return NextResponse.json(data, { status: response.status });
     }
 
-    // --- BFF: Set HttpOnly cookies ---
-    const cookieStore = await cookies();
-
-    if (data.access_token) {
-      cookieStore.set('appkit_access_token', data.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: data.expires_in || 3600,
-        path: '/',
-      });
+    const accessToken = typeof data.access_token === 'string' ? data.access_token : '';
+    if (!accessToken) {
+      return NextResponse.json({ error: 'invalid_token_response' }, { status: 502 });
     }
 
-    if (data.refresh_token) {
+    // Critical boundary: AppKit itself validates the token and supplies identity.
+    // Narinyland never authorizes from decoded-but-unverified JWT claims.
+    const user = await validateAppKitAccessToken(accessToken);
+    if (!user) {
+      return NextResponse.json({ error: 'identity_validation_failed' }, { status: 502 });
+    }
+
+    const cookieStore = await cookies();
+    const expiresIn = typeof data.expires_in === 'number' && Number.isFinite(data.expires_in)
+      ? Math.max(60, Math.floor(data.expires_in))
+      : 3600;
+
+    cookieStore.set('appkit_access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: expiresIn,
+      path: '/',
+    });
+
+    if (typeof data.refresh_token === 'string' && data.refresh_token) {
       cookieStore.set('appkit_refresh_token', data.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -88,81 +110,34 @@ export async function POST(req: Request) {
       });
     }
 
+    const sessionId = await createSession(user);
+    cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_TTL_SECONDS,
+      path: '/',
+    });
     cookieStore.set('narinyland_is_auth', 'true', {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 3600,
+      maxAge: SESSION_TTL_SECONDS,
       path: '/',
     });
+    // Remove obsolete subject cookie from pre-hardening sessions.
+    cookieStore.delete('narinyland_sub');
 
-    debugLog('BFF: Cookies set:', {
-      hasAccess: !!data.access_token,
-      hasRefresh: !!data.refresh_token,
-      hasIdToken: !!data.id_token,
-      expiresIn: data.expires_in,
-      scopes: data.scope || 'none',
-      responseKeys: Object.keys(data),
-    });
+    debugLog('BFF: Validated AppKit session established.', { hasUser: true });
 
-    // --- REDIS SESSION CACHE (from ID Token) ---
-    // The id_token is a signed OIDC JWT containing user claims (sub, name, email, picture).
-    // Decode it directly — no extra network call needed, no dependency on /users/me.
-    if (data.id_token) {
-      try {
-        const padded = data.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-        const idClaims = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-        debugLog('BFF: ID token claims decoded.', {
-          hasSub: !!idClaims.sub,
-          hasName: !!idClaims.name,
-          hasEmail: !!idClaims.email,
-          hasPicture: !!(idClaims.picture || idClaims.avatar || idClaims.profile_image || idClaims.image),
-          hasAttributes: !!idClaims.attributes,
-        });
-
-        const sub = idClaims.sub;
-        if (sub) {
-          const userInfo = {
-            id: sub,
-            sub,
-            name: idClaims.name || `${idClaims.given_name || ''} ${idClaims.family_name || ''}`.trim(),
-            email: idClaims.email || '',
-            avatar: idClaims.picture || idClaims.avatar || idClaims.profile_image || idClaims.image || '',
-            attributes: idClaims.attributes || {},
-          };
-          // 7-day TTL: user info outlives the 1-hour access token so the soft
-          // session in /api/auth/me can serve user data without a valid token.
-          const SESSION_TTL = 7 * 24 * 3600;
-          await redis.setex(`user_session:${sub}`, SESSION_TTL, JSON.stringify(userInfo));
-          debugLog('BFF: User session cached from ID token.', { hasSub: !!sub, ttl: SESSION_TTL });
-
-          // Server-only soft-session marker. This lets /api/auth/me serve from
-          // Redis even after the access token expires.
-          cookieStore.set('narinyland_sub', sub, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: SESSION_TTL,
-            path: '/',
-          });
-        }
-      } catch (e) {
-        debugWarn('BFF: Failed to cache user info from ID token.', e);
-      }
-    }
-
-    // --- TOKEN STRIPPING ---
     const safeData = { ...data };
     delete safeData.access_token;
     delete safeData.refresh_token;
-
+    delete safeData.id_token;
+    delete safeData.token;
     return NextResponse.json(safeData);
-
   } catch (error) {
-    console.error('Token proxy error:', error);
-    return NextResponse.json(
-      { error: 'server_error', error_description: 'Failed to proxy token request' },
-      { status: 500 }
-    );
+    console.error('Token proxy error:', error instanceof Error ? error.message : 'unknown error');
+    return NextResponse.json({ error: 'server_error', error_description: 'Authentication service unavailable' }, { status: 503 });
   }
 }
