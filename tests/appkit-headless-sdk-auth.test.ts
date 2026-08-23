@@ -106,9 +106,10 @@ test('credentials BFF accepts social continuation and still strips AppKit tokens
   assert.match(route, /delete safeData\.refreshToken/);
 });
 
-test('AppKit server helper can append the exact OAuth redirect URI without replacing existing redirects', async () => {
-  const server = await readSource('lib/appkit-server.ts');
-  assert.match(server, /ensureOAuthRedirectUriConfigured/);
-  assert.match(server, /oauthRedirectUris/);
-  assert.match(server, /new Set/);
+test('OAuth redirect helper appends the exact callback without replacing existing redirects', async () => {
+  const helper = await readSource('lib/appkit-oauth-redirect.ts');
+  assert.match(helper, /ensureOAuthRedirectUriConfigured/);
+  assert.match(helper, /oauthRedirectUris/);
+  assert.match(helper, /new Set/);
+  assert.match(helper, /\.\.\.existing/);
 });
