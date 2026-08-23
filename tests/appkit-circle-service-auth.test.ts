@@ -38,3 +38,14 @@ test('read-only AppKit calls can use the application id learned from the token e
   assert.match(source, /\/api\/v1\/admin\/applications\/\$\{applicationId\}\/branding/);
   assert.match(source, /\/api\/v1\/admin\/applications\/\$\{applicationId\}\/circles\/\$\{circleId\}\/members/);
 });
+
+test('SSO launch URL sync uses the supported application update method instead of PATCH', async () => {
+  const source = await readFile(sourceUrl, 'utf8');
+  const start = source.indexOf('export async function ensureSsoLaunchUrlConfigured');
+  const end = source.indexOf('// ─── Branding', start);
+  assert.ok(start >= 0 && end > start, 'could not isolate ensureSsoLaunchUrlConfigured');
+  const syncSource = source.slice(start, end);
+
+  assert.match(syncSource, /method:\s*'PUT'/);
+  assert.doesNotMatch(syncSource, /method:\s*'PATCH'/);
+});
