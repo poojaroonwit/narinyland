@@ -41,15 +41,21 @@ test('public auth config is obtained through the SDK adapter', async () => {
 test('Narinyland auth UI owns credentials and renders SDK continuation states locally', async () => {
   const ui = await readSource('components/auth/NarinylandAuthPage.tsx');
   assert.match(ui, /\/api\/auth\/config/);
-  assert.match(ui, /status:\s*['"]mfa_required['"]/);
-  assert.match(ui, /status:\s*['"]email_verification_required['"]/);
+  assert.match(ui, /['"]mfa_required['"]/);
+  assert.match(ui, /['"]email_verification_required['"]/);
   assert.match(ui, /password_reset_required/);
+  assert.match(ui, /mfa_enrollment_required/);
+  assert.match(ui, /recovery_codes/);
   assert.match(ui, /forgot-password/);
   assert.match(ui, /reset-password/);
   assert.doesNotMatch(ui, /launchAppKitLogin/);
 });
 
-test('legacy alphayard-appkit import is absent from application source', async () => {
+test('legacy browser SDK construction is absent from the auth facade', async () => {
   const auth = await readSource('lib/auth.ts');
   assert.doesNotMatch(auth, /from ['"]alphayard-appkit['"]/);
+  assert.doesNotMatch(auth, /new AppKit\(/);
+  assert.doesNotMatch(auth, /sessionStorage/);
+  assert.match(auth, /window\.location\.assign\(['"]\/login['"]\)/);
+  assert.match(auth, /\/api\/auth\/profile/);
 });
