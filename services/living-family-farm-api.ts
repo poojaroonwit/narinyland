@@ -1,12 +1,12 @@
 import { getActiveCircleId } from '@/lib/circle-store';
-import type { ProgressionFamilyFarmState, ProgressionFarmAction } from '@/lib/family-farm-progression';
+import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-life-engine';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export type LivingFamilyFarmApiResponse = {
   landId: string;
   revision: number;
-  state: ProgressionFamilyFarmState;
+  state: HomesteadLifeState;
   message?: string;
 };
 
@@ -36,7 +36,7 @@ export const livingFamilyFarmAPI = {
   get: (landId: string) =>
     requestLivingFamilyFarm(`/family-farm?landId=${encodeURIComponent(landId)}`),
 
-  act: (landId: string, action: ProgressionFarmAction) =>
+  act: (landId: string, action: HomesteadLifeAction) =>
     requestLivingFamilyFarm('/family-farm', {
       method: 'POST',
       body: JSON.stringify({ landId, action }),

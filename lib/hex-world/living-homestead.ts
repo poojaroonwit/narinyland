@@ -10,7 +10,7 @@ import {
 } from '@/lib/family-farm-progression';
 import type { HexBuildingDTO } from './types';
 
-export type LivingBuildingRole = 'home' | 'garden' | 'pond' | 'forage' | 'family' | 'storage' | 'workshop' | 'flowers' | null;
+export type LivingBuildingRole = 'home' | 'barn' | 'garden' | 'pond' | 'forage' | 'family' | 'storage' | 'workshop' | 'flowers' | null;
 export type GardenActionKind = 'plant' | 'water' | 'harvest';
 
 export type GardenSummary = {
@@ -36,6 +36,7 @@ export type CropVisualSample = {
 export function getLivingBuildingRole(buildingKey: string): LivingBuildingRole {
   switch (buildingKey) {
     case 'home': return 'home';
+    case 'barn': return 'barn';
     case 'garden_patch': return 'garden';
     case 'pond': return 'pond';
     case 'tree': return 'forage';

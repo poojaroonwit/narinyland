@@ -7,11 +7,17 @@ import {
   RESOURCE_KEYS,
   WORKSHOP_UPGRADE_KEYS,
   type ProgressionCropKey,
-  type ProgressionFarmAction,
   type RecipeKey,
   type ResourceKey,
   type WorkshopUpgradeKey,
 } from '@/lib/family-farm-progression';
+import { isProgressionBuildingKey } from '@/lib/building-progression';
+import { isPetKind } from '@/lib/homestead-animals';
+import {
+  HOMESTEAD_CRAFT_KEYS,
+  type HomesteadCraftKey,
+} from '@/lib/homestead-crafting';
+import type { HomesteadLifeAction } from '@/lib/homestead-life-engine';
 
 function readLandId(request: Request, body?: unknown): string | null {
   if (body && typeof body === 'object' && 'landId' in body) {
@@ -43,11 +49,15 @@ function isWorkshopUpgradeKey(value: unknown): value is WorkshopUpgradeKey {
   return typeof value === 'string' && WORKSHOP_UPGRADE_KEYS.includes(value as WorkshopUpgradeKey);
 }
 
+function isHomesteadCraftKey(value: unknown): value is HomesteadCraftKey {
+  return typeof value === 'string' && HOMESTEAD_CRAFT_KEYS.includes(value as HomesteadCraftKey);
+}
+
 function isQuantity(value: unknown) {
   return value === undefined || value === 'all' || typeof value === 'number';
 }
 
-function parseFarmAction(value: unknown): ProgressionFarmAction | null {
+function parseFarmAction(value: unknown): HomesteadLifeAction | null {
   if (!value || typeof value !== 'object') return null;
   const action = value as Record<string, unknown>;
 
@@ -104,6 +114,36 @@ function parseFarmAction(value: unknown): ProgressionFarmAction | null {
         : null;
     case 'tend_flowers':
       return { type: 'tend_flowers' };
+    case 'upgrade_building':
+      return isProgressionBuildingKey(action.buildingKey)
+        ? { type: 'upgrade_building', buildingKey: action.buildingKey }
+        : null;
+    case 'buy_cow':
+      return { type: 'buy_cow' };
+    case 'feed_cow':
+      return { type: 'feed_cow' };
+    case 'collect_milk':
+      return { type: 'collect_milk' };
+    case 'buy_sheep':
+      return { type: 'buy_sheep' };
+    case 'care_sheep':
+      return { type: 'care_sheep' };
+    case 'collect_wool':
+      return { type: 'collect_wool' };
+    case 'choose_pet':
+      return isPetKind(action.petKind)
+        ? { type: 'choose_pet', petKind: action.petKind }
+        : null;
+    case 'pet_time':
+      return { type: 'pet_time' };
+    case 'resolve_event':
+      return typeof action.choiceKey === 'string' && action.choiceKey.trim()
+        ? { type: 'resolve_event', choiceKey: action.choiceKey.trim() }
+        : null;
+    case 'craft_homestead_item':
+      return isHomesteadCraftKey(action.craftKey)
+        ? { type: 'craft_homestead_item', craftKey: action.craftKey }
+        : null;
     default:
       return null;
   }
@@ -151,6 +191,7 @@ export async function POST(request: Request) {
       'needs more',
       'do not have',
       'fully upgraded',
+      'maximum',
       'does not exist',
       'too late',
       'go home',
@@ -168,6 +209,14 @@ export async function POST(request: Request) {
       'workshop',
       'crafted',
       'flowers',
+      'barn',
+      'cow',
+      'sheep',
+      'pet',
+      'milk',
+      'wool',
+      'homestead event',
+      'event choice',
     ].some((fragment) => message.toLowerCase().includes(fragment));
     const status = message.includes('not found') ? 404 : isGameRuleError ? 409 : 500;
     console.error('Error applying family farm action:', error);

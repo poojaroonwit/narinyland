@@ -1,4 +1,4 @@
-// Progression v2 contracts intentionally land before production implementation.
+// Progression v3 contracts intentionally land before production implementation.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -27,7 +27,7 @@ test('four-season year uses stable seven-day seasons and repeats every 28 days',
   assert.notEqual(weatherForProgressionDay(8), undefined);
 });
 
-test('v3 saves normalize into schema v4 without losing valid progress', () => {
+test('v3 saves normalize into schema v5 without losing valid progress', () => {
   const migrated = normalizeProgressionFarmState({
     schemaVersion: 3,
     day: 9,
@@ -47,8 +47,13 @@ test('v3 saves normalize into schema v4 without losing valid progress', () => {
       resources: { egg: 1, berries: 2, mushroom: 3, wood: 11, fish: 1 },
     },
   });
+  const v5 = migrated as unknown as {
+    schemaVersion: number;
+    family?: { stage?: string; milestones?: { growingTogether?: boolean } };
+    buildingTiers?: { home?: number; barn?: number; workshop?: number; storage?: number };
+  };
 
-  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(v5.schemaVersion, 5);
   assert.equal(migrated.day, 9);
   assert.equal(migrated.season, 'summer');
   assert.equal(migrated.coins, 777);
@@ -57,6 +62,56 @@ test('v3 saves normalize into schema v4 without losing valid progress', () => {
   assert.equal(migrated.inventory.seeds.corn, 0);
   assert.equal(migrated.workshopUpgrades.market_crate, false);
   assert.equal(migrated.stats.seasonsCompleted, 0);
+  assert.equal(v5.family?.stage, 'partners');
+  assert.equal(v5.family?.milestones?.growingTogether, false);
+  assert.deepEqual(v5.buildingTiers, { home: 2, barn: 1, workshop: 1, storage: 1 });
+});
+
+test('v4 saves migrate to v5 with deterministic family defaults and preserve v4 progression', () => {
+  const migrated = normalizeProgressionFarmState({
+    schemaVersion: 4,
+    day: 18,
+    coins: 640,
+    hearts: 76,
+    homeLevel: 2,
+    level: 5,
+    inventory: {
+      seeds: { carrot: 1, lettuce: 2, tomato: 3, strawberry: 4, corn: 5, pumpkin: 6, potato: 7, cabbage: 8 },
+      produce: { carrot: 8, lettuce: 7, tomato: 6, strawberry: 5, corn: 4, pumpkin: 3, potato: 2, cabbage: 1 },
+      resources: { egg: 2, berries: 3, mushroom: 4, wood: 20, fish: 5 },
+    },
+    workshopUpgrades: { sturdy_watering_can: true, market_crate: true, cozy_basket: false },
+    journey: { harvest_10: true, home_level_2: true, first_craft: true, first_season: false, hearts_50: true },
+  });
+  const v5 = migrated as unknown as {
+    schemaVersion: number;
+    family?: { stage?: string; milestones?: { growingTogether?: boolean } };
+    buildingTiers?: { home?: number; barn?: number; workshop?: number; storage?: number };
+  };
+
+  assert.equal(v5.schemaVersion, 5);
+  assert.equal(migrated.day, 18);
+  assert.equal(migrated.coins, 640);
+  assert.equal(migrated.hearts, 76);
+  assert.equal(migrated.inventory.seeds.pumpkin, 6);
+  assert.equal(migrated.inventory.produce.cabbage, 1);
+  assert.equal(migrated.inventory.resources.wood, 20);
+  assert.equal(migrated.workshopUpgrades.market_crate, true);
+  assert.equal(migrated.journey.first_craft, true);
+  assert.equal(v5.family?.stage, 'partners');
+  assert.equal(v5.family?.milestones?.growingTogether, false);
+  assert.deepEqual(v5.buildingTiers, { home: 2, barn: 1, workshop: 1, storage: 1 });
+});
+
+test('initial progression state starts with two partners in schema v5', () => {
+  const initial = createInitialProgressionFarmState() as unknown as {
+    schemaVersion: number;
+    family?: { stage?: string; milestones?: { growingTogether?: boolean } };
+  };
+
+  assert.equal(initial.schemaVersion, 5);
+  assert.equal(initial.family?.stage, 'partners');
+  assert.equal(initial.family?.milestones?.growingTogether, false);
 });
 
 test('crop progression enforces level and season while bonus season adds yield', () => {

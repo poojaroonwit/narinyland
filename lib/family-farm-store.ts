@@ -1,15 +1,15 @@
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { createInitialProgressionFarmState } from '@/lib/family-farm-progression';
 import {
-  createInitialProgressionFarmState,
-  normalizeProgressionFarmState,
-  performProgressionFarmAction,
-  type ProgressionFamilyFarmState,
-  type ProgressionFarmAction,
-} from '@/lib/family-farm-progression';
+  normalizeHomesteadLifeState,
+  performHomesteadLifeAction,
+  type HomesteadLifeAction,
+  type HomesteadLifeState,
+} from '@/lib/homestead-life-engine';
 
-// Keep the original key so existing v1/v2/v3 farm saves migrate in place through
-// the progression normalizer instead of creating a second parallel save record.
+// Keep the original key so every previous Family Farm save migrates in place
+// instead of creating a second parallel gameplay record.
 const FARM_SAVE_ITEM_KEY = 'family-farm-state-v1';
 const FARM_SAVE_SLOT = 'system';
 const FARM_SAVE_NAME = 'Family Life Save';
@@ -25,7 +25,7 @@ type FarmDb = Pick<Prisma.TransactionClient, 'land' | 'appConfig' | 'worldInvent
 export type FamilyFarmSave = {
   landId: string;
   revision: number;
-  state: ProgressionFamilyFarmState;
+  state: HomesteadLifeState;
 };
 
 function farmSaveUserId(landId: string) {
@@ -75,7 +75,7 @@ async function readFamilyFarmSave(db: FarmDb, configId: string, landId: string):
     return {
       landId,
       revision: 0,
-      state: createInitialProgressionFarmState(context.familyName),
+      state: normalizeHomesteadLifeState(createInitialProgressionFarmState(context.familyName)),
     };
   }
 
@@ -85,7 +85,7 @@ async function readFamilyFarmSave(db: FarmDb, configId: string, landId: string):
     revision: typeof metadata.revision === 'number' && Number.isFinite(metadata.revision)
       ? Math.max(0, Math.floor(metadata.revision))
       : 0,
-    state: normalizeProgressionFarmState(metadata.state, context.familyName),
+    state: normalizeHomesteadLifeState(metadata.state),
   };
 }
 
@@ -100,7 +100,7 @@ function isSerializableRetry(error: unknown) {
 export async function applyFamilyFarmAction(
   configId: string,
   landId: string,
-  action: ProgressionFarmAction
+  action: HomesteadLifeAction,
 ): Promise<FamilyFarmSave & { message: string }> {
   let lastError: unknown;
 
@@ -108,7 +108,7 @@ export async function applyFamilyFarmAction(
     try {
       return await prisma.$transaction(async (tx) => {
         const current = await readFamilyFarmSave(tx, configId, landId);
-        const result = performProgressionFarmAction(current.state, action);
+        const result = performHomesteadLifeAction(current.state, action);
         const revision = current.revision + 1;
         const userId = farmSaveUserId(landId);
         const metadata = {

@@ -3,6 +3,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { BuildingProgressionState, BuildingTier, ProgressionBuildingKey } from '@/lib/building-progression';
 import { axialToWorld } from '@/lib/hex-world/hex-grid';
 import { expSmoothingAlpha, type HexMotionProfile } from '@/lib/hex-world/motion';
 import { hexRotationToRadians } from '@/lib/hex-world/rendering';
@@ -14,9 +15,18 @@ function angleDelta(from: number, to: number): number {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
-function AnimatedHexBuilding({ building, height, selected, visualEvent, motionProfile, reducedMotion, onSelect }: {
+function isProgressionBuildingKey(value: string): value is ProgressionBuildingKey {
+  return value === 'home' || value === 'barn' || value === 'workshop' || value === 'storage';
+}
+
+function tierForBuilding(buildingKey: string, buildingTiers?: BuildingProgressionState): BuildingTier {
+  return isProgressionBuildingKey(buildingKey) ? (buildingTiers?.[buildingKey] ?? 1) : 1;
+}
+
+function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, motionProfile, reducedMotion, onSelect }: {
   building: HexBuildingDTO;
   height: number;
+  tier: BuildingTier;
   selected: boolean;
   visualEvent: HexConfirmedVisualEvent;
   motionProfile: HexMotionProfile;
@@ -59,12 +69,13 @@ function AnimatedHexBuilding({ building, height, selected, visualEvent, motionPr
     group.rotation.y += angleDelta(group.rotation.y, targetYaw) * rotateAlpha;
   });
 
-  return <group ref={ref} onClick={(event) => { event.stopPropagation(); onSelect?.(building); }}><HexBuildingModel buildingKey={building.buildingKey} selected={selected} /></group>;
+  return <group ref={ref} onClick={(event) => { event.stopPropagation(); onSelect?.(building); }}><HexBuildingModel buildingKey={building.buildingKey} selected={selected} tier={tier} /></group>;
 }
 
-export function HexBuildings({ buildings, tiles, selectedBuildingId, visualEvent = null, motionProfile, reducedMotion, onSelect }: {
+export function HexBuildings({ buildings, tiles, buildingTiers, selectedBuildingId, visualEvent = null, motionProfile, reducedMotion, onSelect }: {
   buildings: HexBuildingDTO[];
   tiles: HexTileDTO[];
+  buildingTiers?: BuildingProgressionState;
   selectedBuildingId?: string | null;
   visualEvent?: HexConfirmedVisualEvent;
   motionProfile: HexMotionProfile;
@@ -72,5 +83,8 @@ export function HexBuildings({ buildings, tiles, selectedBuildingId, visualEvent
   onSelect?: (building: HexBuildingDTO) => void;
 }) {
   const tileHeight = new Map(tiles.map((tile) => [`${tile.q}:${tile.r}`, tile.height]));
-  return <>{buildings.map((building) => <AnimatedHexBuilding key={building.id} building={building} height={tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0} selected={selectedBuildingId === building.id} visualEvent={visualEvent} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={onSelect} />)}</>;
+  return <>{buildings.map((building) => {
+    const tier = tierForBuilding(building.buildingKey, buildingTiers);
+    return <AnimatedHexBuilding key={building.id} building={building} height={tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0} tier={tier} selected={selectedBuildingId === building.id} visualEvent={visualEvent} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={onSelect} />;
+  })}</>;
 }

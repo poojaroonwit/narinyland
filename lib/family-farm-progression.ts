@@ -29,6 +29,7 @@ import {
   type RecipeKey,
   type ResourceKey,
 } from './family-farm-game';
+import { normalizeFamilyLifeState, type FamilyLifeState } from './family-life';
 
 export type FarmSeason = 'spring' | 'summer' | 'autumn' | 'winter';
 
@@ -132,6 +133,14 @@ export const HOMESTEAD_JOURNEY_KEYS = ['harvest_10', 'home_level_2', 'first_craf
 export type HomesteadJourneyKey = (typeof HOMESTEAD_JOURNEY_KEYS)[number];
 export type HomesteadJourneyState = Record<HomesteadJourneyKey, boolean>;
 
+export type BuildingTier = 1 | 2 | 3;
+export type BuildingProgressionState = {
+  home: BuildingTier;
+  barn: BuildingTier;
+  workshop: BuildingTier;
+  storage: BuildingTier;
+};
+
 export type ProgressionFarmDaySummary = BaseFarmDaySummary & {
   completedSeason?: FarmSeason;
   nextSeason?: FarmSeason;
@@ -143,7 +152,7 @@ export type ProgressionFamilyFarmState = Omit<
   BaseFamilyFarmState,
   'schemaVersion' | 'season' | 'plots' | 'inventory' | 'daily' | 'stats' | 'lastDaySummary'
 > & {
-  schemaVersion: 4;
+  schemaVersion: 5;
   season: FarmSeason;
   plots: ProgressionFarmPlot[];
   inventory: ProgressionFarmInventory;
@@ -151,6 +160,8 @@ export type ProgressionFamilyFarmState = Omit<
   stats: ProgressionFarmStats;
   workshopUpgrades: WorkshopUpgradeState;
   journey: HomesteadJourneyState;
+  family: FamilyLifeState;
+  buildingTiers: BuildingProgressionState;
   lastDaySummary: ProgressionFarmDaySummary | null;
 };
 
@@ -222,6 +233,21 @@ function safeInt(value: unknown, fallback: number, min = 0, max = 999999): numbe
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function normalizeBuildingTier(value: unknown, fallback: BuildingTier): BuildingTier {
+  const normalized = safeInt(value, fallback, 1, 3);
+  return normalized as BuildingTier;
+}
+
+function normalizeBuildingTiers(raw: unknown, homeLevel: number): BuildingProgressionState {
+  const source = asRecord(raw);
+  return {
+    home: normalizeBuildingTier(source.home, normalizeBuildingTier(homeLevel, 1)),
+    barn: normalizeBuildingTier(source.barn, 1),
+    workshop: normalizeBuildingTier(source.workshop, 1),
+    storage: normalizeBuildingTier(source.storage, 1),
+  };
 }
 
 export function isProgressionCropKey(value: unknown): value is ProgressionCropKey {
@@ -340,7 +366,7 @@ export function normalizeProgressionFarmState(raw: unknown, fallbackName = 'Our 
 
   return {
     ...base,
-    schemaVersion: 4,
+    schemaVersion: 5,
     day,
     season: seasonForDay(day),
     weather: weatherForProgressionDay(day),
@@ -362,6 +388,8 @@ export function normalizeProgressionFarmState(raw: unknown, fallbackName = 'Our 
     },
     workshopUpgrades: normalizeWorkshopUpgrades(source.workshopUpgrades),
     journey: normalizeJourney(source.journey),
+    family: normalizeFamilyLifeState(source.family),
+    buildingTiers: normalizeBuildingTiers(source.buildingTiers, base.homeLevel),
     lastDaySummary: normalizeProgressionSummary(source.lastDaySummary, base.lastDaySummary),
   };
 }
@@ -373,6 +401,7 @@ export function createInitialProgressionFarmState(familyName = 'Our Family Farm'
 function cloneProgressionState(state: ProgressionFamilyFarmState): ProgressionFamilyFarmState {
   return {
     ...state,
+    schemaVersion: 5,
     plots: state.plots.map((plot) => ({ ...plot })),
     inventory: {
       seeds: { ...state.inventory.seeds },
@@ -385,6 +414,11 @@ function cloneProgressionState(state: ProgressionFamilyFarmState): ProgressionFa
     milestones: { ...state.milestones },
     workshopUpgrades: { ...state.workshopUpgrades },
     journey: { ...state.journey },
+    family: {
+      ...state.family,
+      milestones: { ...state.family.milestones },
+    },
+    buildingTiers: { ...state.buildingTiers },
     lastDaySummary: state.lastDaySummary ? { ...state.lastDaySummary } : null,
   };
 }
@@ -536,6 +570,9 @@ function finalizeProgression(state: ProgressionFamilyFarmState, baseMessage: str
 function delegatedBaseAction(state: ProgressionFamilyFarmState, action: BaseFarmAction): ProgressionFarmActionResult {
   const result = performBaseFarmAction(state as unknown as BaseFamilyFarmState, action);
   const next = cloneProgressionState(result.state as unknown as ProgressionFamilyFarmState);
+  if (action.type === 'upgrade_home') {
+    next.buildingTiers.home = normalizeBuildingTier(next.homeLevel, next.buildingTiers.home);
+  }
   if (action.type === 'family_time' && next.workshopUpgrades.cozy_basket) {
     const before = next.hearts;
     next.hearts = Math.min(100, next.hearts + 1);

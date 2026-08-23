@@ -8,9 +8,9 @@ import {
   getProgressionDailyGoals,
   getSeasonPresentation,
   xpToNextLevel,
-  type ProgressionFamilyFarmState,
-  type ProgressionFarmAction,
 } from '@/lib/family-farm-progression';
+import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-life-engine';
+import { getHomesteadEventDefinition } from '@/lib/homestead-events';
 import { getWeatherPresentation } from '@/lib/hex-world/living-homestead';
 
 type DetailPanel = 'goals' | 'journey' | null;
@@ -26,14 +26,14 @@ export function HexLivingHUD({
   onAction,
   onRetry,
 }: {
-  state: ProgressionFamilyFarmState | null;
+  state: HomesteadLifeState | null;
   points: number;
   loading: boolean;
   error: string | null;
   busy: boolean;
   musicMuted: boolean;
   onToggleMusic: () => void;
-  onAction: (action: ProgressionFarmAction) => Promise<boolean>;
+  onAction: (action: HomesteadLifeAction) => Promise<boolean>;
   onRetry: () => void;
 }) {
   const [detailPanel, setDetailPanel] = React.useState<DetailPanel>(null);
@@ -65,6 +65,10 @@ export function HexLivingHUD({
   const rewardReady = completedGoals === goals.length && !state.daily.rewardClaimed;
   const seasonSummary = state.lastDaySummary?.completedSeason ? state.lastDaySummary : null;
   const showSeasonSummary = !!seasonSummary && dismissedSeasonDay !== seasonSummary.completedDay;
+  const currentEvent = state.events.current;
+  const currentEventDefinition = currentEvent && !currentEvent.resolved
+    ? getHomesteadEventDefinition(currentEvent.key)
+    : null;
 
   return (
     <div className="pointer-events-auto fixed left-1/2 top-3 z-[95] w-[min(96vw,860px)] -translate-x-1/2 md:top-4">
@@ -79,20 +83,8 @@ export function HexLivingHUD({
           <span className="shrink-0 rounded-full bg-pink-50 px-2.5 py-1.5">💗 Hearts {state.hearts}</span>
           <span className="shrink-0 rounded-full bg-violet-50 px-2.5 py-1.5">✨ Points {points.toLocaleString()}</span>
           <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1.5">Lv {state.level} · {state.xp}/{nextXp} XP</span>
-          <button
-            type="button"
-            onClick={() => setDetailPanel((value) => value === 'goals' ? null : 'goals')}
-            className="min-h-[36px] shrink-0 rounded-full bg-stone-900 px-3 py-1.5 text-white"
-          >
-            Goals {completedGoals}/{goals.length}
-          </button>
-          <button
-            type="button"
-            onClick={() => setDetailPanel((value) => value === 'journey' ? null : 'journey')}
-            className="min-h-[36px] shrink-0 rounded-full bg-emerald-700 px-3 py-1.5 text-white"
-          >
-            Journey {completedJourney}/{journey.length}
-          </button>
+          <button type="button" onClick={() => setDetailPanel((value) => value === 'goals' ? null : 'goals')} className="min-h-[36px] shrink-0 rounded-full bg-stone-900 px-3 py-1.5 text-white">Goals {completedGoals}/{goals.length}</button>
+          <button type="button" onClick={() => setDetailPanel((value) => value === 'journey' ? null : 'journey')} className="min-h-[36px] shrink-0 rounded-full bg-emerald-700 px-3 py-1.5 text-white">Journey {completedJourney}/{journey.length}</button>
           <MusicButton muted={musicMuted} onToggle={onToggleMusic} compact />
         </div>
 
@@ -104,58 +96,40 @@ export function HexLivingHUD({
           <div className="mt-2 grid gap-1.5 border-t border-stone-900/[0.06] pt-2 sm:grid-cols-2">
             {goals.map((goal) => (
               <div key={goal.key} className="flex min-h-[40px] items-center gap-2 rounded-xl bg-white/65 px-3 py-2">
-                <span>{goal.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[10px] font-black text-stone-700">{goal.label}</p>
-                  <p className="text-[9px] font-bold text-stone-400">{goal.progress}/{goal.target}</p>
-                </div>
-                <span className={`text-[10px] font-black ${goal.complete ? 'text-emerald-600' : 'text-stone-300'}`}>{goal.complete ? '✓' : '○'}</span>
+                <span>{goal.emoji}</span><div className="min-w-0 flex-1"><p className="truncate text-[10px] font-black text-stone-700">{goal.label}</p><p className="text-[9px] font-bold text-stone-400">{goal.progress}/{goal.target}</p></div><span className={`text-[10px] font-black ${goal.complete ? 'text-emerald-600' : 'text-stone-300'}`}>{goal.complete ? '✓' : '○'}</span>
               </div>
             ))}
-            <button
-              type="button"
-              disabled={!rewardReady || busy}
-              onClick={() => void onAction({ type: 'claim_daily_reward' })}
-              className="min-h-[42px] rounded-xl bg-emerald-700 px-3 text-[10px] font-black text-white shadow-md disabled:bg-stone-300 sm:col-span-2"
-            >
-              {state.daily.rewardClaimed ? 'Daily reward claimed' : rewardReady ? 'Claim daily family reward' : 'Complete all Goals for reward'}
-            </button>
+            <button type="button" disabled={!rewardReady || busy} onClick={() => void onAction({ type: 'claim_daily_reward' })} className="min-h-[42px] rounded-xl bg-emerald-700 px-3 text-[10px] font-black text-white shadow-md disabled:bg-stone-300 sm:col-span-2">{state.daily.rewardClaimed ? 'Daily reward claimed' : rewardReady ? 'Claim daily family reward' : 'Complete all Goals for reward'}</button>
           </div>
         )}
 
         {detailPanel === 'journey' && (
           <div className="mt-2 border-t border-stone-900/[0.06] pt-2">
             <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Homestead Journey</p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
-              {journey.map((entry) => (
-                <div key={entry.key} className="flex min-h-[48px] items-center gap-2 rounded-xl bg-white/65 px-3 py-2">
-                  <span className="text-base">{entry.emoji}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[10px] font-black text-stone-700">{entry.label}</p>
-                    <p className="truncate text-[8px] font-bold text-stone-400">{entry.progress}/{entry.target} · {entry.rewardLabel}</p>
-                  </div>
-                  <span className={entry.complete ? 'text-emerald-600' : 'text-stone-300'}>{entry.complete ? '✓' : '○'}</span>
-                </div>
-              ))}
-            </div>
+            <div className="grid gap-1.5 sm:grid-cols-2">{journey.map((entry) => <div key={entry.key} className="flex min-h-[48px] items-center gap-2 rounded-xl bg-white/65 px-3 py-2"><span className="text-base">{entry.emoji}</span><div className="min-w-0 flex-1"><p className="truncate text-[10px] font-black text-stone-700">{entry.label}</p><p className="truncate text-[8px] font-bold text-stone-400">{entry.progress}/{entry.target} · {entry.rewardLabel}</p></div><span className={entry.complete ? 'text-emerald-600' : 'text-stone-300'}>{entry.complete ? '✓' : '○'}</span></div>)}</div>
           </div>
         )}
       </div>
 
+      {currentEvent && currentEventDefinition && (
+        <div className="mx-auto mt-2 w-[min(92vw,500px)] rounded-[1.4rem] border border-white/80 bg-[#fffdf7]/95 p-3 shadow-xl shadow-pink-950/[0.06] backdrop-blur-xl">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-xl">{currentEvent.key === 'growing_together' ? '💗' : currentEvent.kind === 'seasonal' ? season.emoji : '✨'}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-pink-600">{currentEvent.key === 'growing_together' ? 'Growing Together' : currentEvent.kind === 'seasonal' ? 'Seasonal family moment' : 'Homestead moment'}</p>
+              <p className="mt-0.5 text-sm font-black text-stone-800">{currentEventDefinition.title}</p>
+              <p className="mt-1 text-[10px] font-semibold leading-relaxed text-stone-500">{currentEventDefinition.description}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {currentEventDefinition.choices.map((choice) => <button key={choice.key} type="button" disabled={busy} onClick={() => void onAction({ type: 'resolve_event', choiceKey: choice.key })} className="min-h-[38px] rounded-xl bg-pink-500 px-3 text-[9px] font-black text-white shadow-sm disabled:bg-stone-300">{choice.label}</button>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSeasonSummary && seasonSummary && (
         <div className="mx-auto mt-2 w-[min(92vw,460px)] rounded-[1.4rem] border border-white/80 bg-[#fffdf7]/94 p-3 shadow-xl backdrop-blur-xl">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Season complete</p>
-              <p className="mt-0.5 text-sm font-black text-stone-800">
-                {getSeasonPresentation(seasonSummary.completedSeason!).emoji} {getSeasonPresentation(seasonSummary.completedSeason!).label} together
-              </p>
-              <p className="mt-1 text-[10px] font-bold text-stone-500">
-                +{seasonSummary.seasonRewardCoins ?? 0} coins · +{seasonSummary.seasonRewardHearts ?? 0} Hearts · {getSeasonPresentation(seasonSummary.nextSeason ?? state.season).label} begins
-              </p>
-            </div>
-            <button type="button" onClick={() => setDismissedSeasonDay(seasonSummary.completedDay)} className="min-h-[36px] rounded-full bg-stone-100 px-3 text-[9px] font-black text-stone-500">Got it</button>
-          </div>
+          <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Season complete</p><p className="mt-0.5 text-sm font-black text-stone-800">{getSeasonPresentation(seasonSummary.completedSeason!).emoji} {getSeasonPresentation(seasonSummary.completedSeason!).label} together</p><p className="mt-1 text-[10px] font-bold text-stone-500">+{seasonSummary.seasonRewardCoins ?? 0} coins · +{seasonSummary.seasonRewardHearts ?? 0} Hearts · {getSeasonPresentation(seasonSummary.nextSeason ?? state.season).label} begins</p></div><button type="button" onClick={() => setDismissedSeasonDay(seasonSummary.completedDay)} className="min-h-[36px] rounded-full bg-stone-100 px-3 text-[9px] font-black text-stone-500">Got it</button></div>
         </div>
       )}
     </div>
@@ -163,15 +137,5 @@ export function HexLivingHUD({
 }
 
 function MusicButton({ muted, onToggle, compact = false }: { muted: boolean; onToggle: () => void; compact?: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-label={muted ? 'Unmute Music' : 'Mute Music'}
-      title={muted ? 'Unmute Music' : 'Mute Music'}
-      onClick={onToggle}
-      className={`${compact ? 'min-h-[36px]' : 'min-h-[42px]'} shrink-0 rounded-full border border-white/70 bg-white/82 px-3 text-[10px] font-black text-stone-600 shadow-sm backdrop-blur-xl`}
-    >
-      {muted ? '🔇 Music' : '🔊 Music'}
-    </button>
-  );
+  return <button type="button" aria-label={muted ? 'Unmute Music' : 'Mute Music'} title={muted ? 'Unmute Music' : 'Mute Music'} onClick={onToggle} className={`${compact ? 'min-h-[36px]' : 'min-h-[42px]'} shrink-0 rounded-full border border-white/70 bg-white/82 px-3 text-[10px] font-black text-stone-600 shadow-sm backdrop-blur-xl`}>{muted ? '🔇 Music' : '🔊 Music'}</button>;
 }
