@@ -231,10 +231,7 @@ export async function buyLeaf(configId: string) {
 
       await tx.partner.update({
         where: { id: partner.id },
-        data: {
-          points: { decrement: deduct },
-          lifetimePoints: { increment: deduct },
-        },
+        data: { points: { decrement: deduct } },
       });
       remainingCost -= deduct;
     }

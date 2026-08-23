@@ -1,12 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthSession } from '@/lib/auth-server';
 
-export async function GET() {
-  const cookieStore = await cookies();
-  const isAuth = cookieStore.get('narinyland_is_auth')?.value === 'true';
-  
-  return NextResponse.json({ 
-    authenticated: isAuth,
-    // We don't return the token here, just the status
-  });
+export async function GET(request: Request) {
+  const session = await getAuthSession(request);
+  return NextResponse.json({ authenticated: !session.error && Boolean(session.userId) });
 }
