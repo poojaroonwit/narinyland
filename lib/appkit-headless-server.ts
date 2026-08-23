@@ -2,6 +2,7 @@ import {
   createHeadlessAppKit,
   type HeadlessAuthResult,
   type HeadlessMfaChannel,
+  type HeadlessMfaEnrollmentMethod,
 } from '@alphayard/appkit/headless-auth';
 import { getAppKitApplicationId, getAppKitDomain, getServiceToken } from '@/lib/appkit-server';
 
@@ -12,6 +13,8 @@ export type HeadlessAuthAction =
   | 'register'
   | 'mfa-request'
   | 'mfa-verify'
+  | 'mfa-enroll-start'
+  | 'mfa-enroll-verify'
   | 'email-verify'
   | 'email-resend'
   | 'forgot-password'
@@ -21,7 +24,9 @@ export type HeadlessAuthActionResult =
   | HeadlessAuthResult
   | { success: boolean; message?: string; otpChallengeId?: string | null; passkeyChallengeToken?: string; publicKey?: JsonMap }
   | { success: boolean; verificationToken: string; message?: string }
-  | { success: boolean; resetToken: string; message?: string };
+  | { success: boolean; resetToken: string; message?: string }
+  | { success: true; method: 'totp'; setupToken: string; secret: string; otpauthUri: string; message?: string }
+  | { success: true; method: 'passkey'; challengeToken: string; publicKey: JsonMap; message?: string };
 
 const APPKIT_AUTH_TIMEOUT_MS = 8_000;
 
@@ -36,6 +41,10 @@ function booleanValue(value: unknown): boolean | undefined {
 function mfaChannel(value: unknown): HeadlessMfaChannel {
   if (value === 'sms' || value === 'totp' || value === 'passkey') return value;
   return 'email';
+}
+
+function enrollmentMethod(value: unknown): HeadlessMfaEnrollmentMethod {
+  return value === 'passkey' ? 'passkey' : 'totp';
 }
 
 async function resolveApplicationId(): Promise<string> {
@@ -118,6 +127,16 @@ export async function runHeadlessAuthAction(
         code: stringValue(payload.code) || undefined,
         otpChallengeId: stringValue(payload.otpChallengeId) || undefined,
         trustDevice: payload.trustDevice === true,
+      }));
+    case 'mfa-enroll-start':
+      return withTimeout(appkit.auth.startMfaEnrollment({
+        enrollmentToken: stringValue(payload.enrollmentToken),
+        method: enrollmentMethod(payload.method),
+      }));
+    case 'mfa-enroll-verify':
+      return withTimeout(appkit.auth.verifyTotpEnrollment({
+        setupToken: stringValue(payload.setupToken),
+        code: stringValue(payload.code),
       }));
     case 'email-verify':
       return withTimeout(appkit.auth.verifyEmail({
