@@ -24,6 +24,13 @@ function messageFrom(data: SocialContinuation, fallback: string) {
   return data.message || data.error || fallback;
 }
 
+function ssoErrorMessage(code: string) {
+  if (code === 'sso_temporarily_unavailable') {
+    return 'Sign-in is temporarily unavailable. Please try again.';
+  }
+  return 'Social sign-in was not completed. Please try again.';
+}
+
 export default function SocialCompletePage() {
   const startedRef = React.useRef(false);
   const [error, setError] = React.useState('');
@@ -36,13 +43,15 @@ export default function SocialCompletePage() {
       try {
         const url = new URL(window.location.href);
         const resumeCode = url.searchParams.get('appkit_sso_code');
-        const providerError = url.searchParams.get('error');
+        const appkitError = url.searchParams.get('appkit_sso_error');
+        const providerError = appkitError || url.searchParams.get('error');
         url.searchParams.delete('appkit_sso_code');
+        url.searchParams.delete('appkit_sso_error');
         url.searchParams.delete('error');
         url.searchParams.delete('error_description');
         window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
 
-        if (providerError) throw new Error('Social sign-in was not completed. Please try again.');
+        if (providerError) throw new Error(ssoErrorMessage(providerError));
         if (!resumeCode) throw new Error('Missing social sign-in continuation. Please start again.');
 
         const response = await fetch('/api/auth/credentials', {
