@@ -42,7 +42,7 @@ test('read-only AppKit calls can use the application id learned from the token e
 test('SSO launch URL sync uses the supported application update method instead of PATCH', async () => {
   const source = await readFile(sourceUrl, 'utf8');
   const start = source.indexOf('export async function ensureSsoLaunchUrlConfigured');
-  const end = source.indexOf('// ─── Branding', start);
+  const end = source.indexOf('export interface AppBranding', start);
   assert.ok(start >= 0 && end > start, 'could not isolate ensureSsoLaunchUrlConfigured');
   const syncSource = source.slice(start, end);
 
