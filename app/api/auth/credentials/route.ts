@@ -22,6 +22,8 @@ const AUTH_ACTIONS = new Set<HeadlessAuthAction>([
   'register',
   'mfa-request',
   'mfa-verify',
+  'mfa-enroll-start',
+  'mfa-enroll-verify',
   'email-verify',
   'email-resend',
   'forgot-password',
@@ -129,6 +131,7 @@ function browserResult(action: HeadlessAuthAction, result: HeadlessAuthActionRes
   const safe = stripSecrets(result) as JsonMap;
   if (typeof safe.status === 'string') return safe;
   if (action === 'mfa-request') return { status: 'mfa_requested', ...safe };
+  if (action === 'mfa-enroll-start') return { status: 'mfa_enrollment_started', ...safe };
   if (action === 'email-resend') return { status: 'email_verification_resent', ...safe };
   if (action === 'forgot-password') return { status: 'password_reset_challenge', ...safe };
   return { status: safe.success === true ? 'complete' : 'failed', ...safe };
