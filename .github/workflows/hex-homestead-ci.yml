@@ -150,5 +150,5 @@ jobs:
 
           cat /tmp/health.json
           grep -q '"database":"ok"' /tmp/health.json
-          curl --fail --silent http://127.0.0.1:3000/login > /tmp/login.html
+          curl --fail --silent --user-agent 'Mozilla/5.0 (Narinyland CI Smoke)' http://127.0.0.1:3000/login > /tmp/login.html
           test -s /tmp/login.html
