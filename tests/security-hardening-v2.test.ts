@@ -1,14 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 const source = (path: string) => readFileSync(path, 'utf8');
 
 test('server auth never authorizes directly from narinyland_sub or unsigned JWT payloads', () => {
   const auth = source('lib/auth-server.ts');
+  const sessionStore = source('lib/session-store.ts');
   assert.doesNotMatch(auth, /cookieStore\.get\(['"]narinyland_sub['"]\)/);
   assert.doesNotMatch(auth, /JSON\.parse\(Buffer\.from\(parts\[1\]/);
-  assert.match(auth, /narinyland_session/);
+  assert.match(auth, /SESSION_COOKIE_NAME/);
+  assert.match(sessionStore, /narinyland_session/);
+  assert.match(sessionStore, /randomBytes\(32\)/);
 });
 
 test('circle list does not auto-claim the first global config', () => {
@@ -18,9 +22,9 @@ test('circle list does not auto-claim the first global config', () => {
 });
 
 test('circle join verifies existing AppKit visibility instead of service-token self-add', () => {
-  const join = source('app/api/circles/join/route.ts');
-  assert.match(join, /verify.*circle|user.*can.*see.*circle|is.*circle.*member/i);
-  assert.doesNotMatch(join, /addCircleMemberViaServer\(circleId, session\.userId/);
+  const joinRoute = source('app/api/circles/join/route.ts');
+  assert.match(joinRoute, /userCanSeeCircleWithToken/);
+  assert.doesNotMatch(joinRoute, /addCircleMemberViaServer\(circleId, session\.userId/);
 });
 
 test('circle rename and delete require admin authority', () => {
@@ -29,12 +33,13 @@ test('circle rename and delete require admin authority', () => {
   assert.doesNotMatch(route, /function userCanAccessCircle/);
 });
 
-test('generic config PUT does not bulk synchronize coupons gallery or timeline', () => {
+test('generic config PUT does not bulk synchronize coupons gallery or timeline entities', () => {
   const route = source('app/api/config/route.ts');
   const put = route.slice(route.indexOf('export async function PUT'));
-  assert.doesNotMatch(put, /body\.coupons/);
-  assert.doesNotMatch(put, /body\.gallery/);
-  assert.doesNotMatch(put, /body\.timeline/);
+  assert.doesNotMatch(put, /prisma\.coupon\./);
+  assert.doesNotMatch(put, /prisma\.memory\./);
+  assert.doesNotMatch(put, /prisma\.timelineEvent\./);
+  assert.doesNotMatch(put, /incomingIds|incomingUrls|Sync Coupons|Sync Gallery|Sync Timeline/);
 });
 
 test('leaf purchases do not inflate lifetime points', () => {
@@ -46,21 +51,22 @@ test('leaf purchases do not inflate lifetime points', () => {
 test('letter routes bind sender to authenticated user and protect locked content', () => {
   const letters = source('app/api/letters/route.ts');
   assert.match(letters, /access\.userId/);
-  assert.match(letters, /unlockDate/);
-  assert.match(letters, /locked|isLocked|canReadContent/);
+  assert.match(letters, /isLocked/);
   assert.match(letters, /letter_reward:/);
+  assert.doesNotMatch(letters, /fromId\s*=\s*typeof body/);
 });
 
 test('upload validation rejects active SVG content', () => {
   const upload = source('lib/upload-validation.ts');
-  assert.match(upload, /svg/i);
   assert.match(upload, /image\/svg\+xml/);
+  assert.match(upload, /\.svg/);
 });
 
 test('legacy purchased-item endpoint uses server catalog and shared point spending', () => {
   const items = source('app/api/purchased-items/route.ts');
   assert.match(items, /purchased-item-catalog/);
   assert.match(items, /spendSharedPoints/);
+  assert.match(items, /Serializable/);
 });
 
 test('credential-bearing scratch scripts are not tracked', () => {
@@ -72,6 +78,27 @@ test('credential-bearing scratch scripts are not tracked', () => {
     'seed_narinyland_client.js',
   ]) {
     assert.equal(existsSync(path), false, `${path} must not be tracked`);
+  }
+});
+
+function walkTextFiles(root: string, results: string[] = []): string[] {
+  for (const name of readdirSync(root)) {
+    if (['.git', '.next', 'node_modules'].includes(name)) continue;
+    const path = join(root, name);
+    const stats = statSync(path);
+    if (stats.isDirectory()) {
+      walkTextFiles(path, results);
+    } else if (/\.(?:ts|tsx|js|cjs|mjs|json|md|ya?ml|toml|prisma|sh)$/i.test(name)) {
+      results.push(path);
+    }
+  }
+  return results;
+}
+
+test('tracked source contains no Railway proxy PostgreSQL credential literal', () => {
+  const credentialPattern = /postgres(?:ql)?:\/\/[^\s:'"`]+:[^\s@'"`]+@(?:[^\s/'"`]*\.)?proxy\.rlwy\.net(?::\d+)?\//i;
+  for (const path of walkTextFiles('.')) {
+    assert.doesNotMatch(source(path), credentialPattern, `credential-like Railway PostgreSQL URL found in ${path}`);
   }
 });
 
