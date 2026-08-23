@@ -8,12 +8,7 @@ import {
 } from '@/lib/appkit-headless-server';
 import { debugWarn } from '@/lib/logger';
 import { rejectCrossOrigin } from '@/lib/security';
-import {
-  createSession,
-  SESSION_COOKIE_NAME,
-  SESSION_TTL_SECONDS,
-  type NarinylandSessionUser,
-} from '@/lib/session-store';
+import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/session-store';
 
 type JsonMap = Record<string, unknown>;
 
@@ -38,33 +33,13 @@ function isRecord(value: unknown): value is JsonMap {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function trustedUserFromResponse(data: JsonMap): NarinylandSessionUser | null {
-  const raw = isRecord(data.user) ? data.user : null;
-  if (!raw) return null;
-  const sub = stringValue(raw.id) || stringValue(raw.sub);
-  if (!sub) return null;
-  const firstName = stringValue(raw.firstName) || stringValue(raw.given_name);
-  const lastName = stringValue(raw.lastName) || stringValue(raw.family_name);
-  return {
-    id: sub,
-    sub,
-    name: stringValue(raw.name) || `${firstName} ${lastName}`.trim(),
-    email: stringValue(raw.email),
-    avatar: stringValue(raw.avatar) || stringValue(raw.avatarUrl) || stringValue(raw.picture),
-    attributes: isRecord(raw.attributes) ? raw.attributes : {},
-    authSource: 'appkit',
-  };
-}
-
 function authenticatedPayload(result: HeadlessAuthActionResult): JsonMap | null {
   const record = result as unknown as JsonMap;
   const resultStatus = stringValue(record.status);
   if (resultStatus === 'authenticated') return record;
 
   const next = isRecord(record.next) ? record.next : null;
-  if (resultStatus === 'recovery_codes' && next && stringValue(next.status) === 'authenticated') {
-    return next;
-  }
+  if (resultStatus === 'recovery_codes' && next && stringValue(next.status) === 'authenticated') return next;
   return null;
 }
 
@@ -76,8 +51,8 @@ async function persistSession(result: HeadlessAuthActionResult) {
   const refreshToken = stringValue(data.refreshToken);
   if (!accessToken) throw new Error('AppKit authenticated without an access token');
 
-  const user = await validateAppKitAccessToken(accessToken) || trustedUserFromResponse(data);
-  if (!user) throw new Error('AppKit login response did not contain a validated identity');
+  const user = await validateAppKitAccessToken(accessToken);
+  if (!user) throw new Error('AppKit access token could not be validated');
 
   const cookieStore = await cookies();
   cookieStore.set('appkit_access_token', accessToken, {
