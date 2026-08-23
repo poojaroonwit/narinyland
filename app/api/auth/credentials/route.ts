@@ -57,10 +57,13 @@ function trustedUserFromResponse(data: JsonMap): NarinylandSessionUser | null {
 }
 
 function authenticatedPayload(result: HeadlessAuthActionResult): JsonMap | null {
-  if (!isRecord(result)) return null;
-  if (result.status === 'authenticated') return result;
-  if (result.status === 'recovery_codes' && isRecord(result.next) && result.next.status === 'authenticated') {
-    return result.next;
+  const record = result as unknown as JsonMap;
+  const resultStatus = stringValue(record.status);
+  if (resultStatus === 'authenticated') return record;
+
+  const next = isRecord(record.next) ? record.next : null;
+  if (resultStatus === 'recovery_codes' && next && stringValue(next.status) === 'authenticated') {
+    return next;
   }
   return null;
 }
