@@ -62,11 +62,13 @@ async function fetchUserCircles(token: string): Promise<Response> {
   }
 }
 
-async function localCirclesForUser(userId: string) {
+async function localCirclesForUser(userId: string, isNameLogin: boolean) {
   return prisma.appConfig.findMany({
     where: {
       partners: {
-        some: { OR: [{ partnerId: userId }, { userId }] },
+        some: isNameLogin
+          ? { OR: [{ id: userId }, { userId }] }
+          : { userId },
       },
     },
     include: { lands: { orderBy: { createdAt: 'asc' } } },
@@ -82,6 +84,7 @@ export async function GET(req: NextRequest) {
     if (error || !userId) {
       return NextResponse.json({ error: error || 'unauthorized' }, { status: status || 401 });
     }
+    const isNameLogin = session.user?.authSource === 'name-login';
 
     // When a live AppKit token is available, reconcile only circles AppKit says
     // this user can see. A long-lived opaque Narinyland session can still use
@@ -129,7 +132,7 @@ export async function GET(req: NextRequest) {
           });
         }
 
-        const localConfigs = await localCirclesForUser(userId);
+        const localConfigs = await localCirclesForUser(userId, isNameLogin);
         const localMap = new Map(localConfigs.map((config) => [config.id, config]));
         return NextResponse.json(circles.map((circle) => {
           const id = extractCircleId(circle);
@@ -143,7 +146,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const configs = await localCirclesForUser(userId);
+    const configs = await localCirclesForUser(userId, isNameLogin);
     debugLog('BFF /api/circles: returning existing local memberships.', { count: configs.length });
     return NextResponse.json(configs
       .filter((config) => Boolean(config.id) && config.id !== 'undefined')
@@ -192,7 +195,6 @@ export async function POST(req: NextRequest) {
     try {
       await addCircleMemberViaServer(circleId, session.userId, 'owner', token);
     } catch (memberErr: unknown) {
-      // A service-created circle without a proven owner is unsafe to expose.
       debugWarn('AppKit creator owner association failed.', getErrorMessage(memberErr));
       return NextResponse.json({ error: 'Could not associate circle owner' }, { status: 502 });
     }
