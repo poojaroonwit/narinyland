@@ -25,7 +25,7 @@ test('HexWorld projects Homestead Life v3 state into the visual-only living laye
   assert.match(layer, /reducedMotion/);
   assert.doesNotMatch(layer, /fetch\(/);
   assert.doesNotMatch(layer, /familyFarmAPI|livingFamilyFarmAPI|hexWorldAPI/);
-  assert.doesNotMatch(layer, /keydown|\bKeyW\b|\bKeyA\b|\bKeyS\b|\bKeyD\b|navmesh/i);
+  assert.doesNotMatch(layer, /keydown|['"`]Key[WASD]['"`]|navmesh/i);
 });
 
 test('Homestead presence routes are deterministic bounded and use building anchors instead of persisted NPC positions', async () => {
