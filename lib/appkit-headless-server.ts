@@ -7,6 +7,7 @@ import {
 import { getAppKitApplicationId, getAppKitDomain, getServiceToken } from '@/lib/appkit-server';
 
 type JsonMap = Record<string, unknown>;
+type TokenSeed = { accessToken?: string; refreshToken?: string };
 
 export type HeadlessAuthAction =
   | 'login'
@@ -47,6 +48,16 @@ function enrollmentMethod(value: unknown): HeadlessMfaEnrollmentMethod {
   return value === 'passkey' ? 'passkey' : 'totp';
 }
 
+function createTokenStorage(seed: TokenSeed) {
+  const values = new Map<string, string>();
+  if (seed.accessToken || seed.refreshToken) values.set('appkit_tokens', JSON.stringify(seed));
+  return {
+    get(key: string) { return values.get(key) ?? null; },
+    set(key: string, value: string) { values.set(key, value); },
+    remove(key: string) { values.delete(key); },
+  };
+}
+
 async function resolveApplicationId(): Promise<string> {
   let applicationId = getAppKitApplicationId();
   if (!applicationId) {
@@ -63,14 +74,14 @@ function resolveClientId(): string {
   return clientId;
 }
 
-async function createServerHeadlessAppKit() {
+async function createServerHeadlessAppKit(seed: TokenSeed = {}) {
   const applicationId = await resolveApplicationId();
   return createHeadlessAppKit({
     clientId: resolveClientId(),
     appId: applicationId,
     applicationId,
     domain: getAppKitDomain().replace(/\/+$/, ''),
-    storage: 'memory',
+    storage: seed.accessToken || seed.refreshToken ? createTokenStorage(seed) : 'memory',
   });
 }
 
@@ -93,12 +104,21 @@ export async function getHeadlessAuthConfig(): Promise<JsonMap> {
   return withTimeout(appkit.auth.getConfig()) as Promise<JsonMap>;
 }
 
+export async function refreshHeadlessSession(refreshToken: string): Promise<HeadlessAuthResult> {
+  const appkit = await createServerHeadlessAppKit({ refreshToken });
+  return withTimeout(appkit.auth.refreshToken());
+}
+
+export async function logoutHeadlessSession(tokens: TokenSeed): Promise<void> {
+  const appkit = await createServerHeadlessAppKit(tokens);
+  await withTimeout(appkit.auth.logout());
+}
+
 export async function runHeadlessAuthAction(
   action: HeadlessAuthAction,
   payload: JsonMap,
 ): Promise<HeadlessAuthActionResult> {
   const appkit = await createServerHeadlessAppKit();
-
   switch (action) {
     case 'login':
       return withTimeout(appkit.auth.loginWithCredentials({
@@ -116,10 +136,7 @@ export async function runHeadlessAuthAction(
         acceptTerms: payload.acceptTerms === true,
       }));
     case 'mfa-request':
-      return withTimeout(appkit.auth.requestMfa({
-        challengeToken: stringValue(payload.challengeToken),
-        channel: mfaChannel(payload.channel),
-      }));
+      return withTimeout(appkit.auth.requestMfa({ challengeToken: stringValue(payload.challengeToken), channel: mfaChannel(payload.channel) }));
     case 'mfa-verify':
       return withTimeout(appkit.auth.verifyMfa({
         challengeToken: stringValue(payload.challengeToken),
@@ -129,24 +146,13 @@ export async function runHeadlessAuthAction(
         trustDevice: payload.trustDevice === true,
       }));
     case 'mfa-enroll-start':
-      return withTimeout(appkit.auth.startMfaEnrollment({
-        enrollmentToken: stringValue(payload.enrollmentToken),
-        method: enrollmentMethod(payload.method),
-      }));
+      return withTimeout(appkit.auth.startMfaEnrollment({ enrollmentToken: stringValue(payload.enrollmentToken), method: enrollmentMethod(payload.method) }));
     case 'mfa-enroll-verify':
-      return withTimeout(appkit.auth.verifyTotpEnrollment({
-        setupToken: stringValue(payload.setupToken),
-        code: stringValue(payload.code),
-      }));
+      return withTimeout(appkit.auth.verifyTotpEnrollment({ setupToken: stringValue(payload.setupToken), code: stringValue(payload.code) }));
     case 'email-verify':
-      return withTimeout(appkit.auth.verifyEmail({
-        verificationToken: stringValue(payload.verificationToken),
-        code: stringValue(payload.code),
-      }));
+      return withTimeout(appkit.auth.verifyEmail({ verificationToken: stringValue(payload.verificationToken), code: stringValue(payload.code) }));
     case 'email-resend':
-      return withTimeout(appkit.auth.resendEmailVerification({
-        verificationToken: stringValue(payload.verificationToken),
-      }));
+      return withTimeout(appkit.auth.resendEmailVerification({ verificationToken: stringValue(payload.verificationToken) }));
     case 'forgot-password':
       return withTimeout(appkit.auth.forgotPassword({ email: stringValue(payload.email) }));
     case 'reset-password':
