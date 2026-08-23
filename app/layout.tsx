@@ -1,11 +1,6 @@
 import { Metadata, Viewport } from 'next';
-import prisma from '@/lib/prisma';
 import AuthBoundary from '@/components/AuthBoundary';
 import './globals.css';
-
-type RuntimeAppConfig = {
-  appName?: string | null;
-};
 
 const ENV_APP_NAME = process.env.PWA_NAME || process.env.NEXT_PUBLIC_APP_NAME;
 const ENV_APP_SHORT = process.env.PWA_SHORT_NAME;
@@ -13,21 +8,13 @@ const ENV_APP_DESC = process.env.PWA_DESCRIPTION;
 const ENV_THEME_COLOR = process.env.PWA_THEME_COLOR;
 const ENV_ICON_URL = process.env.PWA_ICON_URL;
 
-async function getConfig(): Promise<RuntimeAppConfig | null> {
-  try {
-    return await prisma.appConfig.findUnique({
-      where: { id: 'default' },
-      select: { appName: true },
-    });
-  } catch (e) {
-    console.error('Layout Config Error', e);
-    return null;
-  }
-}
-
-export async function generateMetadata(): Promise<Metadata> {
-  const config = await getConfig();
-  const appName = ENV_APP_NAME || config?.appName || 'Narinyland';
+/**
+ * Root metadata must be build-safe. Runtime branding/config still comes from
+ * authenticated application APIs, but `next build` must never require a live
+ * Railway Postgres connection just to render static metadata.
+ */
+export function generateMetadata(): Metadata {
+  const appName = ENV_APP_NAME || 'Narinyland';
   const shortName = ENV_APP_SHORT || appName;
 
   return {
@@ -46,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export async function generateViewport(): Promise<Viewport> {
+export function generateViewport(): Viewport {
   return {
     themeColor: ENV_THEME_COLOR || '#ec4899',
     width: 'device-width',
