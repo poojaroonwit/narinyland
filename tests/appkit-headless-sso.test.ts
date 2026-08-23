@@ -31,6 +31,13 @@ test('social callback consumes opaque AppKit code through the BFF and removes it
   assert.doesNotMatch(callback, /accessToken|refreshToken/);
 });
 
+test('social callback recognizes AppKit client errors and removes them from browser history', async () => {
+  const callback = await readSource('app/auth/social-complete/page.tsx');
+  assert.match(callback, /appkit_sso_error/);
+  assert.match(callback, /searchParams\.delete\(['"]appkit_sso_error['"]\)/);
+  assert.match(callback, /sso_temporarily_unavailable/);
+});
+
 test('Narinyland login renders only AppKit-configured social providers', async () => {
   const ui = await readSource('components/auth/NarinylandAuthPage.tsx');
   assert.match(ui, /providers/);
