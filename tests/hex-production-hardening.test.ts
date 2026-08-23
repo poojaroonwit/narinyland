@@ -84,6 +84,14 @@ test('media cleanup keeps transiently unreachable media instead of deleting it',
   assert.match(source, /health === 'broken'/);
 });
 
+test('health check keeps serving when only optional Redis is degraded', async () => {
+  const source = await read('app/api/health/route.ts');
+
+  assert.match(source, /const serving = checks\.database === 'ok'/);
+  assert.match(source, /status: serving \? 200 : 503/);
+  assert.doesNotMatch(source, /const ok = checks\.database === 'ok' && checks\.redis === 'ok'/);
+});
+
 test('garden action hook restores TypeScript checking at its boundary', async () => {
   const source = await read('app/garden/_components/useGardenActions.ts');
 
