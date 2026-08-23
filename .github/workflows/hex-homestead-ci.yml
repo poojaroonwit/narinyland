@@ -6,6 +6,7 @@ on:
     paths:
       - 'app/**'
       - 'components/hex-world/**'
+      - 'components/Shop.tsx'
       - 'lib/**'
       - 'services/**'
       - 'prisma/schema.prisma'
@@ -13,9 +14,12 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'Dockerfile'
+      - 'tsconfig.json'
+      - '.gitignore'
       - 'tests/hex-*.test.ts'
       - 'tests/garden-hex-integration.test.ts'
       - 'tests/production-startup.test.ts'
+      - 'tests/security-hardening-v2.test.ts'
       - '.github/workflows/hex-homestead-ci.yml'
 
 permissions:
@@ -72,6 +76,11 @@ jobs:
 
       - name: Apply migrations to CI Postgres
         run: npx prisma migrate deploy
+
+      - name: Security hardening v2 regressions
+        env:
+          NODE_ENV: production
+        run: node --import tsx --test tests/security-hardening-v2.test.ts
 
       - name: Hex Homestead pure tests
         env:
