@@ -175,3 +175,15 @@ export async function updateProfile(data: { name?: string; avatar?: string; attr
     return false;
   }
 }
+
+/**
+ * Compatibility shape for older callers that only persisted user attributes.
+ * This is not an AppKit SDK instance; it routes through Narinyland's BFF.
+ */
+export function getAppKit() {
+  return {
+    updateAttributes(attributes: Record<string, unknown>) {
+      return updateProfile({ attributes });
+    },
+  };
+}
