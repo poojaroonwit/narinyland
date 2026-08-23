@@ -94,3 +94,24 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Production runtime smoke
+        env:
+          NODE_ENV: production
+          REDIS_URL: redis://127.0.0.1:6379
+          PORT: 3000
+          HOSTNAME: 127.0.0.1
+        run: |
+          node .next/standalone/server.js > /tmp/narinyland-smoke.log 2>&1 &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health > /tmp/health.json; then
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/health.json
+          grep -q '"database":"ok"' /tmp/health.json
+          curl --fail --silent http://127.0.0.1:3000/login > /tmp/login.html
+          test -s /tmp/login.html
