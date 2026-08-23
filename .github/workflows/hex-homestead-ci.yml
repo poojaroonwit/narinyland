@@ -4,15 +4,14 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'app/api/hex-world/**'
-      - 'app/garden/**'
+      - 'app/**'
       - 'components/hex-world/**'
-      - 'lib/hex-world/**'
-      - 'lib/stats-service.ts'
-      - 'lib/redis.ts'
-      - 'services/hex-world-api.ts'
+      - 'lib/**'
+      - 'services/**'
       - 'prisma/schema.prisma'
       - 'prisma/migrations/**'
+      - 'package.json'
+      - 'package-lock.json'
       - 'Dockerfile'
       - 'tests/hex-*.test.ts'
       - 'tests/garden-hex-integration.test.ts'
@@ -64,6 +63,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Production dependency audit report
+        run: npm audit --omit=dev --json || true
 
       - name: Validate Prisma schema
         run: npx prisma validate
