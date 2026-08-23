@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
 import { rejectCrossOrigin } from '@/lib/security';
 import { debugLog } from '@/lib/logger';
+import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/session-store';
 
 const RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
 const RATE_LIMIT_MAX_ATTEMPTS = 5;
@@ -23,9 +24,7 @@ function safeEquals(a: string, b: string): boolean {
 async function isRateLimited(req: Request): Promise<boolean> {
   const key = `name_login_attempts:${getRequestIp(req)}`;
   const current = Number((await redis.get(key)) || '0');
-
   if (current >= RATE_LIMIT_MAX_ATTEMPTS) return true;
-
   await redis.setex(key, RATE_LIMIT_WINDOW_SECONDS, String(current + 1));
   return false;
 }
@@ -35,11 +34,9 @@ function isProductionNameLoginAllowed(req: Request, body: { loginSecret?: unknow
   if (process.env.ENABLE_NAME_LOGIN !== 'true') return false;
 
   const expectedSecret = process.env.NAME_LOGIN_SECRET || '';
-  const providedSecret =
-    typeof body.loginSecret === 'string'
-      ? body.loginSecret
-      : req.headers.get('x-name-login-secret') || '';
-
+  const providedSecret = typeof body.loginSecret === 'string'
+    ? body.loginSecret
+    : req.headers.get('x-name-login-secret') || '';
   return Boolean(expectedSecret) && safeEquals(providedSecret, expectedSecret);
 }
 
@@ -48,77 +45,54 @@ export async function POST(req: Request) {
     const csrfRejection = rejectCrossOrigin(req);
     if (csrfRejection) return csrfRejection;
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({})) as { firstname?: unknown; loginSecret?: unknown };
     if (!isProductionNameLoginAllowed(req, body)) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
-
     if (await isRateLimited(req)) {
       return NextResponse.json({ error: 'Too many attempts' }, { status: 429 });
     }
 
-    const { firstname } = body;
-
-    if (!firstname || typeof firstname !== 'string' || firstname.trim().length > 80) {
+    const firstname = typeof body.firstname === 'string' ? body.firstname.trim() : '';
+    if (!firstname || firstname.length > 80) {
       return NextResponse.json({ error: 'Firstname is required' }, { status: 400 });
     }
 
-    // Search for a partner with this name (case-insensitive)
     const partner = await prisma.partner.findFirst({
-      where: {
-        name: {
-          equals: firstname.trim(),
-          mode: 'insensitive',
-        },
-      },
+      where: { name: { equals: firstname, mode: 'insensitive' } },
     });
+    if (!partner) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    if (!partner) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Prepare user info for Redis session (matching the AppKit BFF logic)
-    const userInfo = {
+    const user = {
       id: partner.id,
       sub: partner.id,
       name: partner.name,
       avatar: partner.avatar || '',
-      attributes: {}, // Name-based login might not have attributes
+      attributes: {},
+      authSource: 'name-login' as const,
     };
-
-    const sub = partner.id;
-    const SESSION_TTL = 7 * 24 * 3600; // 7 days
-
-    // Cache user session in Redis
-    await redis.setex(`user_session:${sub}`, SESSION_TTL, JSON.stringify(userInfo));
-
-    // Set cookies
+    const sessionId = await createSession(user);
     const cookieStore = await cookies();
-
-    cookieStore.set('narinyland_sub', sub, {
+    cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: SESSION_TTL,
+      maxAge: SESSION_TTL_SECONDS,
       path: '/',
     });
-
     cookieStore.set('narinyland_is_auth', 'true', {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: SESSION_TTL,
+      maxAge: SESSION_TTL_SECONDS,
       path: '/',
     });
+    cookieStore.delete('narinyland_sub');
 
-    debugLog('[NameLogin] Soft session created.', { partnerId: partner.id });
-
-    return NextResponse.json({ success: true, user: userInfo });
+    debugLog('[NameLogin] Opaque local session created.', { partnerId: partner.id });
+    return NextResponse.json({ success: true, user });
   } catch (error) {
-    console.error('[NameLogin] Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('[NameLogin] Unexpected error:', error instanceof Error ? error.message : 'unknown error');
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
