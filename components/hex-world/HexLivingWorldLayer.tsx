@@ -3,8 +3,14 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { FarmSeason, ProgressionFamilyFarmState } from '@/lib/family-farm-progression';
+import type { FarmSeason } from '@/lib/family-farm-progression';
+import type { HomesteadLifeState } from '@/lib/homestead-life-engine';
 import { axialToWorld, hexKey } from '@/lib/hex-world/hex-grid';
+import {
+  getHomesteadPresencePosition,
+  type HomesteadPresenceAnchor,
+  type HomesteadPresenceRole,
+} from '@/lib/hex-world/homestead-presence';
 import { getCropVisualSamples } from '@/lib/hex-world/living-homestead';
 import type { HexBuildingDTO, HexTileDTO } from '@/lib/hex-world/types';
 import { useReducedHexMotion } from './useReducedHexMotion';
@@ -37,6 +43,17 @@ const SEASON_POSITIONS = Array.from({ length: SEASON_PARTICLE_COUNT }, (_, index
   z: -7 + ((index * 53) % 140) / 10,
   phase: (index * 0.73) % (Math.PI * 2),
 }));
+
+const PRESENCE_ROLE_BY_BUILDING: Partial<Record<string, HomesteadPresenceRole>> = {
+  home: 'home',
+  garden_patch: 'garden',
+  pond: 'pond',
+  workshop: 'workshop',
+  bench: 'bench',
+  barn: 'barn',
+};
+
+type PresenceId = 'partner-1' | 'partner-2' | 'child' | 'cow' | 'sheep' | 'pet';
 
 function CropVisual({ sample, baseY, reducedMotion }: {
   sample: ReturnType<typeof getCropVisualSamples>[number];
@@ -82,6 +99,143 @@ function ChickenVisual({ index, home, baseY, fed, reducedMotion }: { index: numb
       <mesh position={[0.13, 0.18, 0.02]} castShadow><sphereGeometry args={[0.13, 8, 6]} /><meshStandardMaterial color="#fffaf0" roughness={1} /></mesh>
       <mesh position={[0.245, 0.18, 0.02]} rotation={[0, 0, -Math.PI / 2]}><coneGeometry args={[0.055, 0.12, 5]} /><meshStandardMaterial color="#d9964c" roughness={1} /></mesh>
       <mesh position={[0.1, 0.3, 0.02]}><sphereGeometry args={[0.045, 6, 5]} /><meshStandardMaterial color="#d86b5d" roughness={1} /></mesh>
+    </group>
+  );
+}
+
+function usePresenceMotion({
+  id,
+  state,
+  anchors,
+  reducedMotion,
+}: {
+  id: PresenceId;
+  state: HomesteadLifeState;
+  anchors: HomesteadPresenceAnchor[];
+  reducedMotion: boolean;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  const initial = getHomesteadPresencePosition({
+    id,
+    day: state.day,
+    timeMinutes: state.timeMinutes,
+    elapsedSeconds: 0,
+    anchors,
+    reducedMotion,
+  });
+
+  useFrame(({ clock }) => {
+    if (!ref.current || document.visibilityState === 'hidden') return;
+    const next = getHomesteadPresencePosition({
+      id,
+      day: state.day,
+      timeMinutes: state.timeMinutes,
+      elapsedSeconds: clock.elapsedTime,
+      anchors,
+      reducedMotion,
+    });
+    const bob = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 2 + id.length) * 0.018;
+    ref.current.position.set(next.x, next.y + bob, next.z);
+    ref.current.rotation.y = next.heading;
+  });
+
+  return { ref, initial };
+}
+
+function FamilyMemberVisual({
+  id,
+  state,
+  anchors,
+  reducedMotion,
+  child = false,
+  palette,
+}: {
+  id: 'partner-1' | 'partner-2' | 'child';
+  state: HomesteadLifeState;
+  anchors: HomesteadPresenceAnchor[];
+  reducedMotion: boolean;
+  child?: boolean;
+  palette: { shirt: string; hair: string };
+}) {
+  const { ref, initial } = usePresenceMotion({ id, state, anchors, reducedMotion });
+  const scale = child ? 0.72 : 0.9;
+  return (
+    <group ref={ref} position={[initial.x, initial.y, initial.z]} rotation={[0, initial.heading, 0]} scale={scale}>
+      <mesh position={[0, 0.38, 0]} castShadow><capsuleGeometry args={[0.16, 0.34, 5, 8]} /><meshStandardMaterial color={palette.shirt} roughness={0.95} /></mesh>
+      <mesh position={[0, 0.79, 0]} castShadow><sphereGeometry args={[0.19, 10, 8]} /><meshStandardMaterial color="#e5b58c" roughness={1} /></mesh>
+      <mesh position={[0, 0.91, -0.02]} castShadow><sphereGeometry args={[0.185, 9, 7, 0, Math.PI * 2, 0, Math.PI * 0.56]} /><meshStandardMaterial color={palette.hair} roughness={1} /></mesh>
+      <mesh position={[-0.08, 0.78, 0.17]}><sphereGeometry args={[0.018, 5, 4]} /><meshStandardMaterial color="#3d342f" roughness={1} /></mesh>
+      <mesh position={[0.08, 0.78, 0.17]}><sphereGeometry args={[0.018, 5, 4]} /><meshStandardMaterial color="#3d342f" roughness={1} /></mesh>
+      <mesh position={[-0.07, 0.08, 0]} castShadow><cylinderGeometry args={[0.045, 0.055, 0.34, 6]} /><meshStandardMaterial color="#6f675e" roughness={1} /></mesh>
+      <mesh position={[0.07, 0.08, 0]} castShadow><cylinderGeometry args={[0.045, 0.055, 0.34, 6]} /><meshStandardMaterial color="#6f675e" roughness={1} /></mesh>
+    </group>
+  );
+}
+
+function CowVisual({ state, anchors, reducedMotion }: { state: HomesteadLifeState; anchors: HomesteadPresenceAnchor[]; reducedMotion: boolean }) {
+  const { ref, initial } = usePresenceMotion({ id: 'cow', state, anchors, reducedMotion });
+  return (
+    <group ref={ref} position={[initial.x, initial.y, initial.z]} rotation={[0, initial.heading, 0]} scale={0.78}>
+      <mesh position={[0, 0.42, 0]} castShadow><boxGeometry args={[0.82, 0.48, 0.45]} /><meshStandardMaterial color="#f0e4cc" roughness={1} /></mesh>
+      <mesh position={[0.47, 0.52, 0]} castShadow><boxGeometry args={[0.34, 0.34, 0.32]} /><meshStandardMaterial color="#f5ead6" roughness={1} /></mesh>
+      <mesh position={[0.52, 0.48, 0.17]}><sphereGeometry args={[0.055, 6, 5]} /><meshStandardMaterial color="#4d4339" roughness={1} /></mesh>
+      <mesh position={[0.52, 0.48, -0.17]}><sphereGeometry args={[0.055, 6, 5]} /><meshStandardMaterial color="#4d4339" roughness={1} /></mesh>
+      {[[-0.25, 0.12, -0.14], [-0.25, 0.12, 0.14], [0.25, 0.12, -0.14], [0.25, 0.12, 0.14]].map(([x, y, z], index) => <mesh key={index} position={[x, y, z]} castShadow><cylinderGeometry args={[0.05, 0.055, 0.35, 6]} /><meshStandardMaterial color="#6b5a48" roughness={1} /></mesh>)}
+      <mesh position={[-0.2, 0.57, 0.22]} castShadow><sphereGeometry args={[0.16, 7, 6]} /><meshStandardMaterial color="#6c5b4a" roughness={1} /></mesh>
+    </group>
+  );
+}
+
+function SheepVisual({ state, anchors, reducedMotion }: { state: HomesteadLifeState; anchors: HomesteadPresenceAnchor[]; reducedMotion: boolean }) {
+  const { ref, initial } = usePresenceMotion({ id: 'sheep', state, anchors, reducedMotion });
+  return (
+    <group ref={ref} position={[initial.x, initial.y, initial.z]} rotation={[0, initial.heading, 0]} scale={0.74}>
+      <mesh position={[0, 0.38, 0]} castShadow><sphereGeometry args={[0.46, 8, 7]} /><meshStandardMaterial color="#f2eee0" roughness={1} /></mesh>
+      <mesh position={[0.4, 0.47, 0]} castShadow><sphereGeometry args={[0.22, 8, 6]} /><meshStandardMaterial color="#6d6257" roughness={1} /></mesh>
+      {[[-0.18, 0.08, -0.13], [-0.18, 0.08, 0.13], [0.18, 0.08, -0.13], [0.18, 0.08, 0.13]].map(([x, y, z], index) => <mesh key={index} position={[x, y, z]} castShadow><cylinderGeometry args={[0.04, 0.045, 0.3, 6]} /><meshStandardMaterial color="#655a50" roughness={1} /></mesh>)}
+    </group>
+  );
+}
+
+function PetVisual({ kind, state, anchors, reducedMotion }: { kind: 'cat' | 'dog'; state: HomesteadLifeState; anchors: HomesteadPresenceAnchor[]; reducedMotion: boolean }) {
+  const { ref, initial } = usePresenceMotion({ id: 'pet', state, anchors, reducedMotion });
+  const color = kind === 'cat' ? '#b6a58f' : '#c58d5c';
+  return (
+    <group ref={ref} position={[initial.x, initial.y, initial.z]} rotation={[0, initial.heading, 0]} scale={0.58}>
+      <mesh position={[0, 0.26, 0]} castShadow><capsuleGeometry args={[0.16, 0.34, 5, 8]} /><meshStandardMaterial color={color} roughness={1} /></mesh>
+      <mesh position={[0.28, 0.36, 0]} castShadow><sphereGeometry args={[0.2, 8, 6]} /><meshStandardMaterial color={color} roughness={1} /></mesh>
+      <mesh position={[0.31, 0.5, 0.12]} rotation={[0, 0, 0.2]}><coneGeometry args={[0.07, 0.17, 5]} /><meshStandardMaterial color={color} roughness={1} /></mesh>
+      <mesh position={[0.31, 0.5, -0.12]} rotation={[0, 0, 0.2]}><coneGeometry args={[0.07, 0.17, 5]} /><meshStandardMaterial color={color} roughness={1} /></mesh>
+      <mesh position={[-0.23, 0.36, 0]} rotation={[0, 0, kind === 'cat' ? 0.9 : 0.55]}><cylinderGeometry args={[0.025, 0.035, 0.42, 6]} /><meshStandardMaterial color={color} roughness={1} /></mesh>
+    </group>
+  );
+}
+
+function BuildingTierAccents({ state, buildings, tileHeight }: { state: HomesteadLifeState; buildings: HexBuildingDTO[]; tileHeight: Map<string, number> }) {
+  const keys = ['home', 'barn', 'workshop', 'storage'] as const;
+  return (
+    <group>
+      {keys.map((buildingKey) => {
+        const tier = state.buildingTiers[buildingKey];
+        const building = buildings.find((candidate) => candidate.buildingKey === buildingKey);
+        if (!building || tier <= 1) return null;
+        const baseY = tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0;
+        const world = axialToWorld({ q: building.anchorQ, r: building.anchorR }, 1, baseY + 0.08);
+        return (
+          <group key={`tier-accent-${buildingKey}`} position={[world.x, world.y, world.z]}>
+            <mesh position={[-0.72, 0.28, 0.78]} castShadow><cylinderGeometry args={[0.07, 0.09, 0.52, 6]} /><meshStandardMaterial color="#806a4e" roughness={1} /></mesh>
+            <mesh position={[-0.72, 0.58, 0.78]}><sphereGeometry args={[0.105, 7, 5]} /><meshStandardMaterial color="#f2c36b" emissive="#e5a946" emissiveIntensity={0.35} roughness={0.7} /></mesh>
+            <mesh position={[0.72, 0.28, 0.78]} castShadow><cylinderGeometry args={[0.07, 0.09, 0.52, 6]} /><meshStandardMaterial color="#806a4e" roughness={1} /></mesh>
+            <mesh position={[0.72, 0.58, 0.78]}><sphereGeometry args={[0.105, 7, 5]} /><meshStandardMaterial color="#f2c36b" emissive="#e5a946" emissiveIntensity={0.35} roughness={0.7} /></mesh>
+            {tier >= 3 && (
+              <group position={[0, 1.55, -0.62]}>
+                <mesh castShadow><cylinderGeometry args={[0.028, 0.035, 0.9, 6]} /><meshStandardMaterial color="#745e49" roughness={1} /></mesh>
+                <mesh position={[0.22, 0.27, 0]} rotation={[0, 0, -Math.PI / 2]}><coneGeometry args={[0.18, 0.42, 3]} /><meshStandardMaterial color="#d39a5b" roughness={0.9} /></mesh>
+              </group>
+            )}
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -136,19 +290,33 @@ function SeasonAtmosphere({ season, reducedMotion }: { season: FarmSeason; reduc
   );
 }
 
-export function HexLivingWorldLayer({ state, buildings, tiles }: { state: ProgressionFamilyFarmState; buildings: HexBuildingDTO[]; tiles: HexTileDTO[] }) {
+export function HexLivingWorldLayer({ state, buildings, tiles }: { state: HomesteadLifeState; buildings: HexBuildingDTO[]; tiles: HexTileDTO[] }) {
   const reducedMotion = useReducedHexMotion();
   const gardenBuildings = useMemo(() => buildings.filter((building) => building.buildingKey === 'garden_patch'), [buildings]);
   const home = useMemo(() => buildings.find((building) => building.buildingKey === 'home') ?? null, [buildings]);
   const tileHeight = useMemo(() => new Map(tiles.map((tile) => [hexKey(tile), tile.height])), [tiles]);
   const crops = useMemo(() => getCropVisualSamples(state, gardenBuildings, 12), [gardenBuildings, state]);
+  const anchors = useMemo<HomesteadPresenceAnchor[]>(() => buildings.flatMap((building) => {
+    const role = PRESENCE_ROLE_BY_BUILDING[building.buildingKey];
+    if (!role) return [];
+    const baseY = tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0;
+    const world = axialToWorld({ q: building.anchorQ, r: building.anchorR }, 1, baseY + 0.14);
+    return [{ role, x: world.x, y: world.y, z: world.z }];
+  }), [buildings, tileHeight]);
   const chickenCount = Math.min(6, state.livestock.chickens);
 
   return (
     <group>
       <SeasonAtmosphere season={state.season} reducedMotion={reducedMotion} />
+      <BuildingTierAccents state={state} buildings={buildings} tileHeight={tileHeight} />
       {crops.map((sample) => <CropVisual key={sample.plotId} sample={sample} baseY={tileHeight.get(`${sample.anchorQ}:${sample.anchorR}`) ?? 0} reducedMotion={reducedMotion} />)}
       {home && Array.from({ length: chickenCount }, (_, index) => <ChickenVisual key={`living-chicken-${index}`} index={index} home={home} baseY={tileHeight.get(`${home.anchorQ}:${home.anchorR}`) ?? 0} fed={state.livestock.fedToday} reducedMotion={reducedMotion} />)}
+      <FamilyMemberVisual id="partner-1" state={state} anchors={anchors} reducedMotion={reducedMotion} palette={{ shirt: '#7fa58f', hair: '#5a4438' }} />
+      <FamilyMemberVisual id="partner-2" state={state} anchors={anchors} reducedMotion={reducedMotion} palette={{ shirt: '#c8877d', hair: '#40352f' }} />
+      {state.family.stage === 'child' && <FamilyMemberVisual id="child" child state={state} anchors={anchors} reducedMotion={reducedMotion} palette={{ shirt: '#e2b96f', hair: '#735443' }} />}
+      {state.animals.cow.owned && <CowVisual state={state} anchors={anchors} reducedMotion={reducedMotion} />}
+      {state.animals.sheep.owned && <SheepVisual state={state} anchors={anchors} reducedMotion={reducedMotion} />}
+      {state.animals.pet.kind && <PetVisual kind={state.animals.pet.kind} state={state} anchors={anchors} reducedMotion={reducedMotion} />}
       {state.weather === 'rainy' && <RainField reducedMotion={reducedMotion} />}
     </group>
   );
