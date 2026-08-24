@@ -6,17 +6,20 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), 'utf8');
 }
 
-test('world scene uses bounded premium atmosphere without heavy postprocessing', async () => {
+test('world scene uses bounded naturalistic atmosphere without heavy postprocessing', async () => {
   const scene = await source('../components/hex-world/HexWorld3D.tsx');
-  assert.match(scene, /HexIslandUnderside/);
+  assert.match(scene, /HexIslandCliffShell/);
+  assert.match(scene, /HexNaturalTerrain/);
   assert.match(scene, /HexWorldParticles/);
   assert.match(scene, /HexWaterSurface/);
+  assert.doesNotMatch(scene, /HexIslandUnderside/);
   assert.doesNotMatch(scene, /EffectComposer|DepthOfField|Bloom|MeshReflectorMaterial/);
 });
 
 test('premium atmosphere components stay visual-only', async () => {
   const files = [
-    '../components/hex-world/HexIslandUnderside.tsx',
+    '../components/hex-world/terrain/HexIslandCliffShell.tsx',
+    '../components/hex-world/terrain/HexNaturalTerrain.tsx',
     '../components/hex-world/HexWorldParticles.tsx',
     '../components/hex-world/HexWaterSurface.tsx',
   ];

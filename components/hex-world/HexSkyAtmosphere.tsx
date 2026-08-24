@@ -30,10 +30,29 @@ function Cloud({ x, y, z, scale, layer, profile, motionProfile, index, tint }: {
     ref.current.position.z = baseZ + Math.cos(clock.elapsedTime * speed * 0.61 + phase) * 0.14 * strength;
   });
   return (
-    <mesh ref={ref} position={[baseX, baseY, baseZ]} scale={[scale, scale * (0.38 + layer * 0.03), scale * 0.72]} raycast={() => {}}>
+    <mesh ref={ref} position={[baseX, baseY, baseZ]} scale={[scale, scale * (0.34 + layer * 0.025), scale * 0.72]} raycast={() => {}}>
       <sphereGeometry args={[1, 14, 10]} />
-      <meshStandardMaterial color={tint} transparent opacity={0.46 - layer * 0.042} roughness={1} depthWrite={false} />
+      <meshStandardMaterial color={tint} transparent opacity={0.36 - layer * 0.035} roughness={1} depthWrite={false} />
     </mesh>
+  );
+}
+
+function BelowIslandHaze({ profile, rainy }: { profile: HexQualityProfile; rainy: boolean }) {
+  const layers = profile.name === 'high' ? 3 : profile.name === 'medium' ? 2 : 1;
+  return (
+    <group raycast={() => {}}>
+      {Array.from({ length: layers }, (_, index) => {
+        const y = -3.4 - index * 2.25;
+        const size = 19 + index * 6;
+        const opacity = (rainy ? 0.11 : 0.075) - index * 0.012;
+        return (
+          <mesh key={index} position={[0, y, 0]} rotation={[-Math.PI / 2, 0, index * 0.2]} scale={[1.25, 0.82, 1]}>
+            <circleGeometry args={[size, 32]} />
+            <meshBasicMaterial color={HEX_VISUAL_THEME.atmosphere.horizonHaze} transparent opacity={Math.max(0.035, opacity)} depthWrite={false} />
+          </mesh>
+        );
+      })}
+    </group>
   );
 }
 
@@ -41,11 +60,11 @@ function moodColor(environment?: HexVisualEnvironment) {
   const base = new THREE.Color(HEX_VISUAL_THEME.atmosphere.day);
   if (!environment) return `#${base.getHexString()}`;
   const season = new THREE.Color(HEX_VISUAL_THEME.atmosphere[environment.season]);
-  base.lerp(season, 0.22);
+  base.lerp(season, 0.18);
   if (environment.weather === 'rainy') base.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.rain), 0.58);
   else if (environment.weather === 'cloudy') base.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.cloudy), 0.42);
-  else if (environment.weather === 'breezy') base.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.breezy), 0.28);
-  base.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.evening), environment.evening * 0.42);
+  else if (environment.weather === 'breezy') base.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.breezy), 0.24);
+  base.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.evening), environment.evening * 0.38);
   return `#${base.getHexString()}`;
 }
 
@@ -62,15 +81,17 @@ export function HexSkyAtmosphere({
   const background = React.useMemo(() => moodColor(environment), [environment]);
   const fog = React.useMemo(() => {
     const color = new THREE.Color(background);
-    color.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.fog), 0.2);
+    color.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.horizonHaze), 0.26);
     return `#${color.getHexString()}`;
   }, [background]);
-  const cloudTint = environment?.weather === 'rainy' ? '#eef2ef' : environment?.evening ? '#fff5e9' : '#fbfcf8';
+  const cloudTint = environment?.weather === 'rainy' ? '#dfe5e2' : environment?.evening ? '#e9e1d7' : '#edf0ea';
+  const rainy = environment?.weather === 'rainy';
 
   return (
     <>
       <color attach="background" args={[background]} />
-      <fog attach="fog" args={[fog, environment?.weather === 'rainy' ? 25 : 29, 66]} />
+      <fog attach="fog" args={[fog, rainy ? 22 : 27, rainy ? 58 : 64]} />
+      <BelowIslandHaze profile={profile} rainy={rainy} />
       <group>
         {CLOUDS.slice(0, visibleCount).map(([x, y, z, scale], index) => {
           const layer = index % Math.max(1, profile.cloudLayers);

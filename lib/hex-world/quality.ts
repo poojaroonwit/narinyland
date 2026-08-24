@@ -18,6 +18,9 @@ export type HexQualityProfile = {
   exploreGroundPerTile: 4 | 3 | 1;
   exploreDecorPerTile: 3 | 2 | 1;
   exploreStructureDetail: 1 | 0.75 | 0.4;
+  groundCoverPerTile: 5 | 3 | 1;
+  treeLeafClusters: 7 | 5 | 3;
+  cliffDetailScale: 1 | 0.7 | 0.4;
 };
 
 const HIGH: HexQualityProfile = {
@@ -38,6 +41,9 @@ const HIGH: HexQualityProfile = {
   exploreGroundPerTile: 4,
   exploreDecorPerTile: 3,
   exploreStructureDetail: 1,
+  groundCoverPerTile: 5,
+  treeLeafClusters: 7,
+  cliffDetailScale: 1,
 };
 
 const MEDIUM: HexQualityProfile = {
@@ -58,6 +64,9 @@ const MEDIUM: HexQualityProfile = {
   exploreGroundPerTile: 3,
   exploreDecorPerTile: 2,
   exploreStructureDetail: 0.75,
+  groundCoverPerTile: 3,
+  treeLeafClusters: 5,
+  cliffDetailScale: 0.7,
 };
 
 const MOBILE: HexQualityProfile = {
@@ -78,6 +87,9 @@ const MOBILE: HexQualityProfile = {
   exploreGroundPerTile: 1,
   exploreDecorPerTile: 1,
   exploreStructureDetail: 0.4,
+  groundCoverPerTile: 1,
+  treeLeafClusters: 3,
+  cliffDetailScale: 0.4,
 };
 
 const QUALITY_RANK: Record<HexQualityName, number> = {

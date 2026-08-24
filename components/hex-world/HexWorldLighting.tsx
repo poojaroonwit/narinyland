@@ -26,15 +26,16 @@ export function HexWorldLighting({
   const initializedRef = useRef(false);
   const daylight = environment?.daylight ?? 1;
   const rainy = environment?.weather === 'rainy';
+  const cloudy = environment?.weather === 'cloudy';
   const evening = environment?.evening ?? 0;
   const explore = viewMode === 'person';
-  const sunIntensity = (rainy ? 1.75 : explore ? 2.62 : 2.45) * (0.72 + daylight * 0.28);
-  const hemisphereIntensity = (rainy ? 0.88 : 0.98) * (explore ? 0.86 : 1);
-  const ambientIntensity = (0.2 + evening * 0.06) * (explore ? 0.78 : 1);
-  const sunColorValue = rainy ? '#f3e8d4' : HEX_VISUAL_THEME.structures.window;
-  const hemisphereColorValue = rainy ? '#e8f1f1' : explore ? '#eaf3ee' : '#fff5df';
-  const hemisphereGroundValue = explore ? '#536d60' : '#667f71';
-  const ambientColorValue = explore ? '#dce9e5' : '#edf3ef';
+  const sunIntensity = (rainy ? 1.5 : cloudy ? 1.78 : explore ? 2.24 : 2.08) * (0.7 + daylight * 0.3);
+  const hemisphereIntensity = (rainy ? 0.7 : cloudy ? 0.76 : 0.82) * (explore ? 0.9 : 1);
+  const ambientIntensity = (0.13 + evening * 0.045) * (explore ? 0.84 : 1);
+  const sunColorValue = rainy ? '#dce3df' : HEX_VISUAL_THEME.atmosphere.sunDay;
+  const hemisphereColorValue = rainy ? '#cbd7d7' : explore ? '#d7e0db' : '#dfe6df';
+  const hemisphereGroundValue = explore ? '#4e5c51' : '#59665a';
+  const ambientColorValue = explore ? '#cbd5d1' : '#d8ded9';
   const targetSunColor = useMemo(() => new THREE.Color(sunColorValue), [sunColorValue]);
   const targetHemisphereColor = useMemo(() => new THREE.Color(hemisphereColorValue), [hemisphereColorValue]);
   const targetHemisphereGround = useMemo(() => new THREE.Color(hemisphereGroundValue), [hemisphereGroundValue]);
@@ -80,13 +81,13 @@ export function HexWorldLighting({
 
   return (
     <>
-      <hemisphereLight ref={hemisphereRef} intensity={1} color="#ffffff" groundColor="#667f71" />
-      <ambientLight ref={ambientRef} intensity={0.2} color="#edf3ef" />
+      <hemisphereLight ref={hemisphereRef} intensity={1} color="#dfe6df" groundColor="#59665a" />
+      <ambientLight ref={ambientRef} intensity={0.13} color="#d8ded9" />
       <directionalLight
         ref={directionalRef}
         position={explore ? [9, 16, 6] : [12, 20, 8]}
         intensity={1}
-        color="#ffffff"
+        color={HEX_VISUAL_THEME.atmosphere.sunDay}
         castShadow
         shadow-mapSize={[profile.shadowMapSize, profile.shadowMapSize]}
         shadow-bias={-0.00014}

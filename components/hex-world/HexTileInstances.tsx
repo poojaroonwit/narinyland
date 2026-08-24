@@ -14,6 +14,7 @@ type Props = {
   tiles: HexTileDTO[];
   profile: HexQualityProfile;
   motionProfile: HexMotionProfile;
+  presentation?: 'visible' | 'proxy';
   hoveredKey?: string | null;
   selectedKey?: string | null;
   validKeys?: Set<string>;
@@ -42,6 +43,7 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
   const riseStartedAt = useRef<number | null>(null);
   const riseSignature = [...(props.riseKeys ?? [])].sort().join('|');
   const terrainPresentation = getTerrainPresentation(terrain);
+  const proxy = props.presentation === 'proxy';
   const riseStaggerMs = useMemo(() => {
     const rising = tiles
       .filter((tile) => props.riseKeys?.has(hexKey(tile)))
@@ -63,6 +65,16 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
     tiles.forEach((tile, index) => {
       const transform = getHexTileTransform(tile);
       const key = hexKey(tile);
+
+      if (proxy) {
+        dummy.position.set(transform.position.x, transform.position.y - HEX_TILE_DEPTH / 2, transform.position.z);
+        dummy.rotation.set(0, Math.PI / 6, 0);
+        dummy.scale.set(transform.scale.x, 1, transform.scale.z);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(index, dummy.matrix);
+        return;
+      }
+
       const rising = props.riseKeys?.has(key) ?? false;
       let riseProgress = 1;
       if (rising && riseElapsedSeconds !== null) {
@@ -98,20 +110,20 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
       })));
     });
     mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (!proxy && mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     return { stillSettling, riseIncomplete };
   };
 
   useLayoutEffect(() => {
     riseStartedAt.current = null;
-    needsSettle.current = true;
-    applyTransforms(props.riseKeys?.size ? null : Number.POSITIVE_INFINITY, 0);
+    needsSettle.current = !proxy;
+    applyTransforms(proxy || !props.riseKeys?.size ? Number.POSITIVE_INFINITY : null, 0);
   // Set content signatures and interactive keys are intentional animation dependencies.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tiles, terrain, props.hoveredKey, props.selectedKey, props.validKeys, props.invalidKeys, props.expansionKeys, props.profile.materialVariation, riseSignature]);
+  }, [tiles, terrain, proxy, props.hoveredKey, props.selectedKey, props.validKeys, props.invalidKeys, props.expansionKeys, props.profile.materialVariation, riseSignature]);
 
   useFrame((state, delta) => {
-    if (!ref.current) return;
+    if (!ref.current || proxy) return;
     const hasRise = !!props.riseKeys?.size;
     if (!needsSettle.current && !hasRise) return;
     let riseElapsedSeconds: number | null = Number.POSITIVE_INFINITY;
@@ -128,8 +140,8 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
     <instancedMesh
       ref={ref}
       args={[undefined, undefined, tiles.length]}
-      castShadow={terrain !== 'water'}
-      receiveShadow
+      castShadow={!proxy && terrain !== 'water'}
+      receiveShadow={!proxy}
       onPointerMove={(event) => {
         event.stopPropagation();
         const tile = event.instanceId === undefined ? null : tiles[event.instanceId];
@@ -144,12 +156,16 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
       }}
     >
       <cylinderGeometry args={[1, 1, HEX_TILE_DEPTH, 6]} />
-      <meshStandardMaterial
-        roughness={terrainPresentation.roughness}
-        metalness={0}
-        transparent={terrain === 'water'}
-        opacity={terrain === 'water' ? 0.7 : 1}
-      />
+      {proxy ? (
+        <meshBasicMaterial transparent opacity={0} colorWrite={false} depthWrite={false} />
+      ) : (
+        <meshStandardMaterial
+          roughness={terrainPresentation.roughness}
+          metalness={0}
+          transparent={terrain === 'water'}
+          opacity={terrain === 'water' ? 0.7 : 1}
+        />
+      )}
     </instancedMesh>
   );
 }
