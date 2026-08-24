@@ -50,6 +50,27 @@ test('lighting keeps one shadow owner and atmosphere accepts visual environment 
   assert.doesNotMatch(sky, /HomesteadLifeState|HomesteadLifeAction/);
 });
 
+test('World lighting interpolates target intensities and colors through Three refs', async () => {
+  const lighting = await source('components/hex-world/HexWorldLighting.tsx');
+  const world = await source('components/hex-world/HexWorld3D.tsx');
+  assert.match(lighting, /motionProfile/);
+  assert.match(lighting, /lightingResponse/);
+  assert.match(lighting, /useFrame/);
+  assert.match(lighting, /DirectionalLight/);
+  assert.match(lighting, /HemisphereLight/);
+  assert.match(lighting, /AmbientLight/);
+  assert.match(lighting, /Color/);
+  assert.match(lighting, /\.lerp\(/);
+  assert.match(lighting, /expSmoothingAlpha/);
+  assert.doesNotMatch(lighting, /useState/);
+  assert.equal((lighting.match(/<directionalLight\b/g) ?? []).length, 1);
+  assert.match(lighting, /0\.22/);
+  assert.match(lighting, /0\.19/);
+  assert.match(lighting, /3\.2/);
+  assert.match(lighting, /3\.8/);
+  assert.match(world, /<HexWorldLighting[^>]*motionProfile=\{motionProfile\}/);
+});
+
 test('vegetation and water stay quality-aware and batched', async () => {
   const decor = await source('components/hex-world/HexAmbientDecor.tsx');
   const water = await source('components/hex-world/HexWaterSurface.tsx');
@@ -59,6 +80,25 @@ test('vegetation and water stay quality-aware and batched', async () => {
   assert.match(water, /waterDetail/);
   assert.match(water, /waterGlintCount/);
   assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial/);
+});
+
+test('World water uses bounded two-frequency motion shimmer and quality ripple budgets', async () => {
+  const water = await source('components/hex-world/HexWaterSurface.tsx');
+  assert.match(water, /waterMotionScale/);
+  assert.match(water, /0\.010|0\.01/);
+  assert.match(water, /0\.004/);
+  assert.match(water, /1\.73/);
+  assert.match(water, /materialRef/);
+  assert.match(water, /roughness/);
+  assert.match(water, /opacity/);
+  assert.match(water, /0\.035/);
+  assert.match(water, /0\.025/);
+  assert.match(water, /0\.72/);
+  assert.match(water, /1\.18/);
+  assert.match(water, /profile\.waterDetail === ['"]full['"]/);
+  assert.match(water, /profile\.waterDetail === ['"]reduced['"]/);
+  assert.match(water, /instancedMesh/);
+  assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial|EffectComposer|SSR/);
 });
 
 test('structure models share miniature construction primitives', async () => {

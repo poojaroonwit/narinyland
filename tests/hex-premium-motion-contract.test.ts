@@ -42,6 +42,22 @@ test('building transforms initialize once so first selection and rotation can in
   assert.doesNotMatch(buildings, /if \(lastEventNonce\.current === null\) \{/);
 });
 
+test('World building feedback is stronger but remains presentation-only', async () => {
+  const buildings = await source('../components/hex-world/HexBuildings.tsx');
+  assert.match(buildings, /buildingFeedbackScale/);
+  assert.match(buildings, /1\.045/);
+  assert.match(buildings, /0\.055/);
+  assert.match(buildings, /0\.72/);
+  assert.match(buildings, /0\.30|0\.3/);
+  assert.match(buildings, /0\.94/);
+  assert.match(buildings, /0\.97/);
+  assert.match(buildings, /0\.975/);
+  assert.match(buildings, /confirmed\.kind === ['"]placed['"]/);
+  assert.match(buildings, /confirmed\.kind === ['"]moved['"]/);
+  assert.match(buildings, /confirmed\.kind === ['"]rotated['"]/);
+  assert.doesNotMatch(buildings, /fetch\(|hexWorldAPI|prisma\.|DATABASE_URL/);
+});
+
 test('placement effects stay visual-only and invalid clicks use local pulse feedback', async () => {
   const world = await source('../components/hex-world/HexWorld3D.tsx');
   const controller = await source('../components/hex-world/HexBuildController.tsx');
@@ -63,6 +79,24 @@ test('vegetation sway is applied to instance-local transforms instead of rotatin
   assert.match(ambient, /AnimatedInstanceBatch|SwayInstanceBatch/);
   assert.match(ambient, /mesh\.setMatrixAt/);
   assert.doesNotMatch(ambient, /ref\.current\.rotation\.[xz]\s*=/);
+});
+
+test('World vegetation uses layered deterministic wind while remaining instanced', async () => {
+  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
+  assert.match(ambient, /worldWindScale/);
+  assert.match(ambient, /worldWindSecondaryScale/);
+  assert.match(ambient, /primary/);
+  assert.match(ambient, /secondary/);
+  assert.match(ambient, /0\.47/);
+  assert.match(ambient, /1\.83/);
+  assert.match(ambient, /secondaryPhaseOffset/);
+  assert.match(ambient, /0\.0025/);
+  assert.match(ambient, /0\.020|0\.02/);
+  assert.match(ambient, /0\.030|0\.03/);
+  assert.match(ambient, /0\.012/);
+  assert.match(ambient, /0\.014/);
+  assert.match(ambient, /instancedMesh/);
+  assert.doesNotMatch(ambient, /Math\.random/);
 });
 
 test('sky parallax remains bounded and uses shared motion profile', async () => {

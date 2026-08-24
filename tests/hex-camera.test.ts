@@ -105,5 +105,8 @@ test('manual OrbitControls zoom stays authoritative until the semantic camera co
   assert.match(source, /getCameraScriptCommandKey/);
   assert.match(source, /lastScriptCommandKey/);
   assert.match(source, /lastScriptCommandKey\.current === scriptCommandKey/);
-  assert.match(source, /onStart=\{\(\) => \{ scriptedMotion\.current = false; \}\}/);
+  assert.match(source, /onStart/);
+  assert.match(source, /scriptedMotion\.current\s*=\s*false/);
+  assert.match(source, /idleTargetBaselineRef/);
+  assert.match(source, /onEnd/);
 });

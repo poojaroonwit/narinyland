@@ -47,6 +47,7 @@ function SwayInstanceBatch({
   amplitude,
   speed,
   motionProfile,
+  secondaryPhaseOffset = 0,
   castShadow = false,
   receiveShadow = false,
 }: {
@@ -56,6 +57,7 @@ function SwayInstanceBatch({
   amplitude: number;
   speed: number;
   motionProfile: HexMotionProfile;
+  secondaryPhaseOffset?: number;
   castShadow?: boolean;
   receiveShadow?: boolean;
 }) {
@@ -81,9 +83,12 @@ function SwayInstanceBatch({
   }, [placements]);
 
   useFrame(({ clock }) => {
-    if (motionProfile.ambientScale <= 0 || document.visibilityState === 'hidden') return;
+    if (motionProfile.worldWindScale <= 0 || document.visibilityState === 'hidden') return;
     const phase = bucketIndex * 1.73;
-    const sway = Math.sin(clock.elapsedTime * speed + phase) * amplitude * motionProfile.ambientScale;
+    const primary = Math.sin(clock.elapsedTime * speed + phase);
+    const secondary = Math.sin(clock.elapsedTime * speed * 0.47 + phase * 1.83 + secondaryPhaseOffset);
+    const wind = primary + secondary * 0.35 * motionProfile.worldWindSecondaryScale;
+    const sway = wind * amplitude * motionProfile.worldWindScale;
     applyTransforms(sway);
   });
 
@@ -141,15 +146,15 @@ export function HexAmbientDecor({ tiles, profile, motionProfile }: { tiles: HexT
         });
         return (
           <React.Fragment key={`tree-${index}`}>
-            <SwayInstanceBatch placements={trunks} bucketIndex={index} amplitude={0.004} speed={0.75} motionProfile={motionProfile} castShadow>
+            <SwayInstanceBatch placements={trunks} bucketIndex={index} amplitude={0.0025} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.12} castShadow>
               <cylinderGeometry args={[0.13, 0.21, 0.96, 7]} />
               <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.trunk} roughness={0.97} />
             </SwayInstanceBatch>
-            <SwayInstanceBatch placements={canopyBase} bucketIndex={index} amplitude={0.015} speed={0.75} motionProfile={motionProfile} castShadow>
+            <SwayInstanceBatch placements={canopyBase} bucketIndex={index} amplitude={0.020} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.24} castShadow>
               <dodecahedronGeometry args={[1, 0]} />
               <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafLight} roughness={0.94} />
             </SwayInstanceBatch>
-            <SwayInstanceBatch placements={canopyCrown} bucketIndex={index} amplitude={0.018} speed={0.75} motionProfile={motionProfile} castShadow>
+            <SwayInstanceBatch placements={canopyCrown} bucketIndex={index} amplitude={0.030} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.55} castShadow>
               <dodecahedronGeometry args={[1, 0]} />
               <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafDark} roughness={0.94} />
             </SwayInstanceBatch>
@@ -160,11 +165,13 @@ export function HexAmbientDecor({ tiles, profile, motionProfile }: { tiles: HexT
         const stems = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.18); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.85 }; }));
         const heads = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.43); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.1 + ((Math.abs(tile.q + itemIndex) % 3) * 0.015) }; }));
         const flowerColor = HEX_VISUAL_THEME.vegetation.flower[index % HEX_VISUAL_THEME.vegetation.flower.length];
-        return <React.Fragment key={`flower-${index}`}><SwayInstanceBatch placements={stems} bucketIndex={index} amplitude={0.008} speed={1.1} motionProfile={motionProfile}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.grass} roughness={1} /></SwayInstanceBatch><SwayInstanceBatch placements={heads} bucketIndex={index} amplitude={0.012} speed={1.1} motionProfile={motionProfile}><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={flowerColor} roughness={0.88} /></SwayInstanceBatch></React.Fragment>;
+        const flowerSpeed = 1.02 + index * 0.04;
+        return <React.Fragment key={`flower-${index}`}><SwayInstanceBatch placements={stems} bucketIndex={index} amplitude={0.012} speed={flowerSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.18}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.grass} roughness={1} /></SwayInstanceBatch><SwayInstanceBatch placements={heads} bucketIndex={index} amplitude={0.020} speed={flowerSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.42}><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={flowerColor} roughness={0.88} /></SwayInstanceBatch></React.Fragment>;
       })}
       {gardenBuckets.map((bucket, index) => {
         const sprouts = bucket.flatMap((tile) => [-0.24, 0, 0.24].map((offset, itemIndex) => { const p = getPlacement(tile, 0.2); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.12, scale: 0.14 + (itemIndex % 2) * 0.02 }; }));
-        return <SwayInstanceBatch key={`garden-${index}`} placements={sprouts} bucketIndex={index} amplitude={0.008} speed={0.95} motionProfile={motionProfile}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leaf} roughness={0.94} /></SwayInstanceBatch>;
+        const gardenSpeed = 0.95 + index * 0.05;
+        return <SwayInstanceBatch key={`garden-${index}`} placements={sprouts} bucketIndex={index} amplitude={0.014} speed={gardenSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.33}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leaf} roughness={0.94} /></SwayInstanceBatch>;
       })}
       <InstanceBatch placements={rockPlacements} castShadow receiveShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.base} roughness={1} /></InstanceBatch>
       <InstanceBatch placements={pathPlacements} receiveShadow><cylinderGeometry args={[0.55, 0.6, 0.12, 8]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.accent} roughness={1} /></InstanceBatch>
