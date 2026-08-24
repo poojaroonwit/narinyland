@@ -9,6 +9,13 @@ on:
       - assets/hex-world/pbr-source-catalog.json
       - scripts/resolve-hex-pbr-manifest.mjs
       - .github/workflows/resolve-hex-pbr-assets.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - assets/hex-world/pbr-source-catalog.json
+      - scripts/resolve-hex-pbr-manifest.mjs
+      - .github/workflows/resolve-hex-pbr-assets.yml
 
 permissions:
   contents: read
