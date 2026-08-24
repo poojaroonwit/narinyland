@@ -106,15 +106,16 @@ test('server expansion authority accepts exact placement and supports moving onl
   assert.match(api, /moveExpansion/);
 });
 
-test('Expand Land is a ghost placement flow and purchased land exposes Move Land', async () => {
+test('Grow Land is a ghost placement flow and purchased land remains repositionable', async () => {
   const builder = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
   const controller = await readFile(new URL('../components/hex-world/HexExpansionController.tsx', import.meta.url), 'utf8');
   const world = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
 
   assert.match(builder, /expansionPlacementPreview/);
   assert.match(builder, /onHoverTile/);
-  assert.match(controller, /Choose where to place/);
-  assert.match(controller, /Move Land/);
+  assert.match(controller, /Grow your island/);
+  assert.match(controller, /Tap the ghost land to choose this spot/);
+  assert.match(controller, /Move/);
   assert.match(controller, /moveExpansion/);
   assert.match(world, /expansionPlacementPreview/);
   assert.match(world, /valid.*expansion/i);
@@ -130,7 +131,7 @@ test('game music is real Web Audio, gesture-gated, persistently mutable, and the
   assert.match(audio, /pointerdown/);
   assert.match(audio, /localStorage/);
   assert.match(audio, /muted/);
-  assert.match(hud, /Music/);
+  assert.match(hud, /MusicButton/);
   assert.match(hud, /musicMuted/);
   assert.match(builder, /useGardenMusic/);
 });
