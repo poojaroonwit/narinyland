@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import { PerformanceMonitor, Preload } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HomesteadLifeState } from '@/lib/homestead-life-engine';
@@ -8,7 +9,7 @@ import type { HexExploreInteractionTarget, HexResidentInteractionSample } from '
 import type { HexExploreMovementInput } from '@/lib/hex-world/explore-movement-input';
 import { axialToWorld, hexKey, worldToAxial } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionPhase, resolveHexMotionProfile, type HexMotionProfile } from '@/lib/hex-world/motion';
-import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
+import { resolveAdaptiveHexQuality, resolveHexQualityProfile } from '@/lib/hex-world/quality';
 import { hexRotationToRadians } from '@/lib/hex-world/rendering';
 import type { HexCameraIntent } from '@/lib/hex-world/camera';
 import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexExpansionPlacementPreview, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
@@ -85,9 +86,12 @@ function ExpansionPlacementGhost({ preview }: { preview: HexExpansionPlacementPr
 function ExpansionPlacementPlane({ onHover,onSelect }: { onHover:(coord:HexCoord)=>void;onSelect:(coord:HexCoord)=>void }) { const coordFromPoint=(point:THREE.Vector3)=>worldToAxial(point.x,point.z); return <mesh position={[0,0.38,0]} rotation={[-Math.PI/2,0,0]} onPointerMove={(event)=>{event.stopPropagation();onHover(coordFromPoint(event.point));}} onClick={(event)=>{event.stopPropagation();onSelect(coordFromPoint(event.point));}}><planeGeometry args={[90,90]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>; }
 
 export function HexWorld3D({ snapshot, ...props }: Props) {
-  const [device,setDevice]=useState({viewportWidth:1280,devicePixelRatio:1}); const reducedMotion=useReducedHexMotion();
+  const [device,setDevice]=useState({viewportWidth:1280,devicePixelRatio:1});
+  const [performanceFactor,setPerformanceFactor]=useState(1);
+  const reducedMotion=useReducedHexMotion();
   useEffect(()=>{const update=()=>setDevice({viewportWidth:window.innerWidth,devicePixelRatio:window.devicePixelRatio||1});update();window.addEventListener('resize',update);return()=>window.removeEventListener('resize',update);},[]);
-  const profile=resolveHexQualityProfile({graphicsQuality:props.graphicsQuality??'medium',viewportWidth:device.viewportWidth,devicePixelRatio:device.devicePixelRatio});
+  const staticProfile=resolveHexQualityProfile({graphicsQuality:props.graphicsQuality??'medium',viewportWidth:device.viewportWidth,devicePixelRatio:device.devicePixelRatio});
+  const profile=resolveAdaptiveHexQuality(staticProfile,performanceFactor);
   const motionProfile=resolveHexMotionProfile({quality:profile,reducedMotion});
   const visualEnvironment=getHexVisualEnvironment({season:props.livingState?.season,weather:props.livingState?.weather,timeMinutes:props.livingState?.timeMinutes});
   const tileHeight=new Map(snapshot.tiles.map((tile)=>[hexKey(tile),tile.height])); const hoveredKey=props.hoveredCoord?hexKey(props.hoveredCoord):null; const selectedKey=props.selectedCoord?hexKey(props.selectedCoord):null;
@@ -95,6 +99,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   const cameraIntent=props.cameraIntent??({kind:'overview'} as const); const viewMode=props.viewMode??'world'; const residentSamples=props.residentSamples??[];
   return <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-[#edf6e9] to-[#d7ead6]">
     <Canvas shadows dpr={[1,profile.maxDpr]} camera={{fov:42,near:0.1,far:160}} onPointerMissed={()=>props.onSelectBuilding?.(null)}>
+      <PerformanceMonitor onChange={({factor})=>setPerformanceFactor((previous)=>resolveAdaptiveHexQuality(staticProfile,previous).name===resolveAdaptiveHexQuality(staticProfile,factor).name?previous:factor)} />
       <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexWorldLighting profile={profile} environment={visualEnvironment} viewMode={viewMode} />
       {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}<HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><FloatingFragments />
       <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} /><HexPlacementEffects event={props.visualEvent??null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
@@ -109,6 +114,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       {preview&&previewPosition&&<AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}{props.expansionPlacementPreview&&<ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
       {props.expansionPlacementPreview&&props.onHoverExpansionAnchor&&props.onSelectExpansionAnchor&&<ExpansionPlacementPlane onHover={props.onHoverExpansionAnchor} onSelect={props.onSelectExpansionAnchor} />}
       {viewMode==='person'?<HexPlayerController tiles={snapshot.tiles} buildings={snapshot.buildings} residentSamples={residentSamples} reducedMotion={reducedMotion} resetNonce={props.resetNonce??0} movementInputRef={props.movementInputRef} movementSuspended={props.movementSuspended} onInteractionTargetChange={props.onInteractionTargetChange} />:<HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce??0} reframeCoords={props.reframeCoords??[]} />}
+      <Preload all />
     </Canvas>
   </div>;
 }
