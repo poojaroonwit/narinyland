@@ -69,9 +69,9 @@ export function getOverviewCameraPose(bounds: HexIslandBounds, aspect: number): 
   return {
     target: bounds.center,
     position: [
-      bounds.center[0] + distance * 0.58,
-      bounds.center[1] + distance * 0.64,
-      bounds.center[2] + distance * 0.74,
+      bounds.center[0] + distance * 0.64,
+      bounds.center[1] + distance * 0.56,
+      bounds.center[2] + distance * 0.72,
     ],
     distance,
   };
@@ -103,10 +103,10 @@ export function getFocusCameraPose(bounds: HexIslandBounds, focus: HexCoord, asp
     Math.max(bounds.center[1], 0.45),
     bounds.center[2] * 0.35 + focusWorld.z * 0.65,
   ];
-  const distance = Math.max(10, overview.distance * 0.72);
+  const distance = Math.max(10, overview.distance * 0.76);
   return {
     target,
-    position: [target[0] + distance * 0.58, target[1] + distance * 0.64, target[2] + distance * 0.74],
+    position: [target[0] + distance * 0.64, target[1] + distance * 0.56, target[2] + distance * 0.72],
     distance,
   };
 }
