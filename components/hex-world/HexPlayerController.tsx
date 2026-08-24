@@ -5,6 +5,10 @@ import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
+  getExploreInteractionTarget,
+  type HexExploreInteractionTarget,
+} from '@/lib/hex-world/explore-interactions';
+import {
   combineExploreMovementInputs,
   ZERO_HEX_EXPLORE_MOVEMENT,
   type HexExploreMovementInput,
@@ -43,17 +47,22 @@ export function HexPlayerController({
   reducedMotion,
   resetNonce = 0,
   movementInputRef,
+  movementSuspended = false,
+  onInteractionTargetChange,
 }: {
   tiles: HexTileDTO[];
   buildings: HexBuildingDTO[];
   reducedMotion: boolean;
   resetNonce?: number;
   movementInputRef?: React.MutableRefObject<HexExploreMovementInput>;
+  movementSuspended?: boolean;
+  onInteractionTargetChange?: (target: HexExploreInteractionTarget | null) => void;
 }) {
   const { camera } = useThree();
   const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null);
   const avatarRef = useRef<THREE.Group>(null);
   const pressedRef = useRef(new Set<string>());
+  const lastInteractionTargetIdRef = useRef<string | null>(null);
   const [moving, setMoving] = useState(false);
   const movingRef = useRef(false);
   const spawn = useMemo(() => getHexPlayerSpawn({ tiles, buildings }), [buildings, tiles]);
@@ -71,7 +80,7 @@ export function HexPlayerController({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!MOVEMENT_CODES.has(event.code) || isEditableTarget(event.target)) return;
+      if (movementSuspended || !MOVEMENT_CODES.has(event.code) || isEditableTarget(event.target)) return;
       event.preventDefault();
       pressedRef.current.add(event.code);
     };
@@ -82,7 +91,8 @@ export function HexPlayerController({
     const clearPressed = () => {
       pressedRef.current.clear();
       if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
-      setMovingIfChanged(false);
+      movingRef.current = false;
+      setMoving(false);
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -93,7 +103,19 @@ export function HexPlayerController({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', clearPressed);
     };
-  }, [movementInputRef]);
+  }, [movementInputRef, movementSuspended]);
+
+  useEffect(() => {
+    if (!movementSuspended) return;
+    pressedRef.current.clear();
+    if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    movingRef.current = false;
+    setMoving(false);
+  }, [movementInputRef, movementSuspended]);
+
+  useEffect(() => () => {
+    onInteractionTargetChange?.(null);
+  }, [onInteractionTargetChange]);
 
   useLayoutEffect(() => {
     const controls = controlsRef.current;
@@ -109,8 +131,10 @@ export function HexPlayerController({
     controls.update();
     pressedRef.current.clear();
     if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    lastInteractionTargetIdRef.current = null;
+    onInteractionTargetChange?.(null);
     setMovingIfChanged(false);
-  }, [camera, movementInputRef, resetNonce, spawn]);
+  }, [camera, movementInputRef, onInteractionTargetChange, resetNonce, spawn]);
 
   useFrame((_, frameDelta) => {
     const controls = controlsRef.current;
@@ -119,11 +143,15 @@ export function HexPlayerController({
 
     const delta = Math.min(frameDelta, 0.05);
     const pressed = pressedRef.current;
-    const keyboardInput = {
-      forward: pressedAxis(pressed, ['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']),
-      right: pressedAxis(pressed, ['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']),
-    };
-    const touchInput = movementInputRef ? movementInputRef.current : ZERO_HEX_EXPLORE_MOVEMENT;
+    const keyboardInput = movementSuspended
+      ? ZERO_HEX_EXPLORE_MOVEMENT
+      : {
+          forward: pressedAxis(pressed, ['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']),
+          right: pressedAxis(pressed, ['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']),
+        };
+    const touchInput = movementSuspended
+      ? ZERO_HEX_EXPLORE_MOVEMENT
+      : movementInputRef?.current ?? ZERO_HEX_EXPLORE_MOVEMENT;
     const combinedInput = combineExploreMovementInputs(keyboardInput, touchInput);
     const inputMagnitude = Math.min(1, Math.hypot(combinedInput.forward, combinedInput.right));
 
@@ -150,6 +178,13 @@ export function HexPlayerController({
     setMovingIfChanged(didMove);
     positionRef.current = next;
     avatar.position.set(next.x, next.y, next.z);
+
+    const interactionTarget = getExploreInteractionTarget(next, buildings);
+    const interactionTargetId = interactionTarget?.buildingId ?? null;
+    if (interactionTargetId !== lastInteractionTargetIdRef.current) {
+      lastInteractionTargetIdRef.current = interactionTargetId;
+      onInteractionTargetChange?.(interactionTarget);
+    }
 
     if (didMove) {
       const targetHeading = Math.atan2(movement.x, movement.z);
