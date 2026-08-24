@@ -6,7 +6,7 @@ const KEYS = ['home', 'barn', 'storage', 'workshop', 'tree', 'flower_patch', 'po
 
 test('premium model modules cover every MVP building key exactly once', async () => {
   const paths = [
-    '../components/hex-world/models/HexStructureModels.tsx',
+    '../components/hex-world/pbr/HexPBRBuildings.tsx',
     '../components/hex-world/models/HexNatureModels.tsx',
     '../components/hex-world/models/HexDecorModels.tsx',
   ];
@@ -19,24 +19,24 @@ test('premium model modules cover every MVP building key exactly once', async ()
 
 test('core building visuals dispatch locally and do not require remote model urls', async () => {
   const dispatcher = await readFile(new URL('../components/hex-world/HexBuildingModels.tsx', import.meta.url), 'utf8');
-  assert.match(dispatcher, /HexStructureModel/);
+  assert.match(dispatcher, /HexPBRStructureModel/);
   assert.match(dispatcher, /HexNatureModel/);
   assert.match(dispatcher, /HexDecorModel/);
   assert.doesNotMatch(dispatcher, /modelUrl|fetch\(|GLTFLoader|useGLTF/);
 });
 
-test('Homestead Life building tiers project through the existing building renderer without changing Hex persistence', async () => {
+test('Homestead Life building tiers project through the PBR building renderer without changing Hex persistence', async () => {
   const world = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
   const buildings = await readFile(new URL('../components/hex-world/HexBuildings.tsx', import.meta.url), 'utf8');
   const dispatcher = await readFile(new URL('../components/hex-world/HexBuildingModels.tsx', import.meta.url), 'utf8');
-  const structures = await readFile(new URL('../components/hex-world/models/HexStructureModels.tsx', import.meta.url), 'utf8');
+  const structures = await readFile(new URL('../components/hex-world/pbr/HexPBRBuildings.tsx', import.meta.url), 'utf8');
 
   assert.match(world, /buildingTiers=\{props\.livingState\?\.buildingTiers\}/);
   assert.match(buildings, /BuildingProgressionState/);
   assert.match(buildings, /buildingTiers\?: BuildingProgressionState/);
   assert.match(buildings, /tier=\{tier\}/);
   assert.match(dispatcher, /tier\?: BuildingTier/);
-  assert.match(dispatcher, /HexStructureModel buildingKey=\{buildingKey\} ghost=\{ghost\} selected=\{selected\} tier=\{tier\}/);
+  assert.match(dispatcher, /HexPBRStructureModel buildingKey=\{buildingKey\} ghost=\{ghost\} selected=\{selected\} tier=\{tier\}/);
   assert.match(structures, /tier\?: BuildingTier/);
   assert.match(structures, /tier >= 2/);
   assert.match(structures, /tier >= 3/);
