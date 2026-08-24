@@ -56,7 +56,7 @@ export function resolveHexMotionProfile(input: { quality: HexQualityProfile; red
     rotationDurationMs: 230,
     removalDurationMs: 220,
     expansionDurationMs: 950,
-    cameraResponse: 5.2,
+    cameraResponse: 3.6,
     ambientScale: input.quality.windStrength,
     ghostBobScale: input.quality.name === 'mobile' ? 0.35 : 1,
   };

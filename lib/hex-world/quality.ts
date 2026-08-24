@@ -42,7 +42,7 @@ const HIGH: HexQualityProfile = {
 
 const MEDIUM: HexQualityProfile = {
   name: 'medium',
-  maxDpr: 1.35,
+  maxDpr: 1.5,
   shadowMapSize: 1024,
   contactShadowResolution: 256,
   cloudLayers: 2,
