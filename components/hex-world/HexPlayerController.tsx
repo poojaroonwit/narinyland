@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import {
   getExploreInteractionTarget,
   type HexExploreInteractionTarget,
+  type HexResidentInteractionSample,
 } from '@/lib/hex-world/explore-interactions';
 import {
   combineExploreMovementInputs,
@@ -44,6 +45,7 @@ function pressedAxis(pressed: Set<string>, positive: string[], negative: string[
 export function HexPlayerController({
   tiles,
   buildings,
+  residentSamples = [],
   reducedMotion,
   resetNonce = 0,
   movementInputRef,
@@ -52,6 +54,7 @@ export function HexPlayerController({
 }: {
   tiles: HexTileDTO[];
   buildings: HexBuildingDTO[];
+  residentSamples?: HexResidentInteractionSample[];
   reducedMotion: boolean;
   resetNonce?: number;
   movementInputRef?: React.MutableRefObject<HexExploreMovementInput>;
@@ -179,8 +182,8 @@ export function HexPlayerController({
     positionRef.current = next;
     avatar.position.set(next.x, next.y, next.z);
 
-    const interactionTarget = getExploreInteractionTarget(next, buildings);
-    const interactionTargetId = interactionTarget?.buildingId ?? null;
+    const interactionTarget = getExploreInteractionTarget(next, buildings, residentSamples);
+    const interactionTargetId = interactionTarget?.id ?? null;
     if (interactionTargetId !== lastInteractionTargetIdRef.current) {
       lastInteractionTargetIdRef.current = interactionTargetId;
       onInteractionTargetChange?.(interactionTarget);
