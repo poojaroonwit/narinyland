@@ -24,17 +24,23 @@ test('gameplay toolbar prioritizes Farm Build Bag and Goals while reset is a uti
   assert.doesNotMatch(toolbar, />[^<]*Reset View[^<]*</);
 });
 
-test('controller keeps primary gameplay navigation stable and coordinates mutually exclusive sheets', async () => {
+test('controller delegates gameplay chrome to a focused overlay and keeps Farm world-aware', async () => {
   const controller = await source('components/hex-world/HexBuildController.tsx');
-  assert.match(controller, /HexInventorySheet/);
-  assert.match(controller, /HexQuickActionPanel/);
+  assert.match(controller, /HexGameplayOverlay/);
   assert.match(controller, /handleFarm/);
-  assert.match(controller, /hudPanel/);
-  assert.match(controller, /inventoryOpen/);
-  assert.match(controller, /onFarm=/);
-  assert.match(controller, /onBag=/);
-  assert.match(controller, /onGoals=/);
-  assert.match(controller, /buildingKey === 'garden_patch'/);
+  assert.match(controller, /onFarm=\{handleFarm\}/);
+  assert.match(controller, /building\.buildingKey === 'garden_patch'/);
+  assert.match(controller, /Add a Garden Patch to start farming/);
+
+  const overlay = await source('components/hex-world/HexGameplayOverlay.tsx');
+  assert.match(overlay, /HexInventorySheet/);
+  assert.match(overlay, /HexQuickActionPanel/);
+  assert.match(overlay, /HexLivingActionPanel/);
+  assert.match(overlay, /hudPanel/);
+  assert.match(overlay, /inventoryOpen/);
+  assert.match(overlay, /detailsOpen/);
+  assert.match(overlay, /onBag=\{toggleBag\}/);
+  assert.match(overlay, /onGoals=\{toggleGoals\}/);
 });
 
 test('bag uses the existing homestead inventory without introducing a new economy', async () => {
@@ -52,9 +58,9 @@ test('living building actions use a quick layer before the existing full details
   assert.match(quick, />More</);
   for (const label of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Family Time']) assert.match(quick, new RegExp(label));
   assert.match(quick, /max-w-\[|w-\[min/);
-  const controller = await source('components/hex-world/HexBuildController.tsx');
-  assert.match(controller, /detailsOpen/);
-  assert.match(controller, /HexLivingActionPanel/);
+  const overlay = await source('components/hex-world/HexGameplayOverlay.tsx');
+  assert.match(overlay, /detailsOpen/);
+  assert.match(overlay, /HexLivingActionPanel/);
 });
 
 test('build and expansion surfaces use purpose-led cozy-game presentation', async () => {
