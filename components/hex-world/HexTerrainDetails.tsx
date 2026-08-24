@@ -64,47 +64,68 @@ export function HexTerrainDetails({
   profile: HexQualityProfile;
 }) {
   const details = useMemo(() => {
-    const grass: Placement[] = [];
+    const blades: Placement[] = [];
     const flecks: Placement[] = [];
     const soilRows: Placement[] = [];
-    const density = profile.ambientDensity;
-    const maxPerKind = profile.name === 'high' ? 160 : profile.name === 'medium' ? 96 : 42;
+    const maxFlecks = profile.name === 'high' ? 220 : profile.name === 'medium' ? 128 : 56;
 
     for (const tile of tiles) {
       if (!tile.unlocked) continue;
-      const ratio = deterministicVisualRatio(seed, tile.q, tile.r, 'terrain-detail');
       const world = axialToWorld(tile, 1, tile.height);
-      const angle = deterministicVisualRatio(seed, tile.q, tile.r, 'terrain-angle') * Math.PI * 2;
-      const offsetRadius = 0.18 + deterministicVisualRatio(seed, tile.q, tile.r, 'terrain-radius') * 0.28;
-      const x = world.x + Math.cos(angle) * offsetRadius;
-      const z = world.z + Math.sin(angle) * offsetRadius;
 
-      if (tile.terrainType === 'grass' && ratio < 0.58 * density && grass.length < maxPerKind) {
-        const height = 0.12 + deterministicVisualRatio(seed, tile.q, tile.r, 'grass-height') * 0.12;
-        grass.push({ x, y: world.y + 0.11, z, rotation: angle, scale: [0.08, height, 0.08] });
+      if (tile.terrainType === 'grass') {
+        for (let index = 0; index < profile.groundCoverPerTile; index += 1) {
+          const angle = deterministicVisualRatio(seed, tile.q, tile.r, `blade-angle:${index}`) * Math.PI * 2;
+          const radius = 0.13 + deterministicVisualRatio(seed, tile.q, tile.r, `blade-radius:${index}`) * 0.55;
+          const height = 0.72 + deterministicVisualRatio(seed, tile.q, tile.r, `blade-height:${index}`) * 0.5;
+          const width = 0.74 + deterministicVisualRatio(seed, tile.q, tile.r, `blade-width:${index}`) * 0.42;
+          blades.push({
+            x: world.x + Math.cos(angle) * radius,
+            y: world.y + 0.16 * height,
+            z: world.z + Math.sin(angle) * radius,
+            rotation: angle,
+            scale: [width, height, 1],
+          });
+        }
       }
 
-      if ((tile.terrainType === 'grass' || tile.terrainType === 'stone') && ratio > 0.3 && ratio < 0.72 * density + 0.2 && flecks.length < maxPerKind) {
-        const size = 0.07 + deterministicVisualRatio(seed, tile.q, tile.r, 'fleck-size') * 0.07;
-        flecks.push({ x, y: world.y + 0.075, z, rotation: angle, scale: [size * 1.4, size * 0.45, size] });
+      const stoneRatio = deterministicVisualRatio(seed, tile.q, tile.r, 'stone-fleck');
+      if ((tile.terrainType === 'grass' || tile.terrainType === 'stone') && stoneRatio > 0.46 && flecks.length < maxFlecks) {
+        const angle = deterministicVisualRatio(seed, tile.q, tile.r, 'stone-angle') * Math.PI * 2;
+        const radius = 0.2 + deterministicVisualRatio(seed, tile.q, tile.r, 'stone-radius') * 0.44;
+        const size = 0.045 + deterministicVisualRatio(seed, tile.q, tile.r, 'stone-size') * 0.06;
+        flecks.push({
+          x: world.x + Math.cos(angle) * radius,
+          y: world.y + 0.055,
+          z: world.z + Math.sin(angle) * radius,
+          rotation: angle,
+          scale: [size * 1.55, size * 0.52, size],
+        });
       }
 
-      if (tile.terrainType === 'soil' && ratio < 0.74 * density && soilRows.length < maxPerKind) {
-        soilRows.push({ x: world.x, y: world.y + 0.08, z: world.z, rotation: Math.PI / 6, scale: [0.62, 0.03, 0.045] });
+      if (tile.terrainType === 'soil') {
+        const rowRotation = Math.PI / 6 + (deterministicVisualRatio(seed, tile.q, tile.r, 'soil-row') - 0.5) * 0.12;
+        soilRows.push({
+          x: world.x,
+          y: world.y + 0.045,
+          z: world.z,
+          rotation: rowRotation,
+          scale: [0.68, 0.018, 0.032],
+        });
       }
     }
 
-    return { grass, flecks, soilRows };
-  }, [profile.ambientDensity, profile.name, seed, tiles]);
+    return { blades, flecks, soilRows };
+  }, [profile.groundCoverPerTile, profile.name, seed, tiles]);
 
   return (
     <group>
-      <DetailBatch placements={details.grass} castShadow>
-        <coneGeometry args={[1, 2.8, 5]} />
-        <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.grass} roughness={1} />
+      <DetailBatch placements={details.blades} castShadow={profile.name === 'high'}>
+        <planeGeometry args={[0.055, 0.28]} />
+        <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.grass} roughness={1} side={THREE.DoubleSide} />
       </DetailBatch>
       <DetailBatch placements={details.flecks}>
-        <dodecahedronGeometry args={[1, 0]} />
+        <icosahedronGeometry args={[1, 0]} />
         <meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.dark} roughness={1} />
       </DetailBatch>
       <DetailBatch placements={details.soilRows}>
