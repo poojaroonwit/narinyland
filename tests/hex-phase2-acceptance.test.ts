@@ -42,7 +42,7 @@ test('phase 2 keeps authoritative one-step undo and non-undoable expansion', asy
   assert.match(undoRoute, /access\.userId/);
 });
 
-test('phase 2 remains mobile-safe without exposing legacy game modes or character controls', async () => {
+test('phase 2 remains mobile-safe while person exploration is opt-in', async () => {
   const controller = await source('../components/hex-world/HexBuildController.tsx');
   const toolbar = await source('../components/hex-world/HexWorldToolbar.tsx');
   const placement = await source('../components/hex-world/HexPlacementBar.tsx');
@@ -52,10 +52,14 @@ test('phase 2 remains mobile-safe without exposing legacy game modes or characte
 
   assert.match(toolbar, /min-h-\[(?:44|48)px\]/);
   assert.match(toolbar, /safe-area-inset-bottom/);
+  assert.match(toolbar, />Explore</);
+  assert.match(toolbar, /movement requires a keyboard/);
+  assert.match(controller, /useState<HexViewMode>\('world'\)/);
+  assert.match(controller, /setViewMode\('person'\)/);
   assert.match(undoToast, /min-h-11/);
   assert.match(undoToast, /data-hex-undo-toast/);
   assert.match(globals, /data-hex-undo-toast[\s\S]*safe-area-inset-bottom/);
-  assert.doesNotMatch(combined, /\bWASD\b|Explore\/Orbit|LAND\/WORLD|game mode|worldMode\s*===/i);
+  assert.doesNotMatch(combined, /Explore\/Orbit|LAND\/WORLD|game mode|worldMode\s*===/i);
 });
 
 test('phase 2 keeps visual-wow rendering bounded and avoids mandatory heavy postprocessing', async () => {
