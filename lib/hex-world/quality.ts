@@ -15,6 +15,9 @@ export type HexQualityProfile = {
   waterGlintCount: 3 | 1 | 0;
   cloudParallaxScale: 1 | 0.6 | 0.25;
   materialVariation: 'full' | 'reduced';
+  exploreGroundPerTile: 4 | 3 | 1;
+  exploreDecorPerTile: 3 | 2 | 1;
+  exploreStructureDetail: 1 | 0.75 | 0.4;
 };
 
 const HIGH: HexQualityProfile = {
@@ -32,6 +35,9 @@ const HIGH: HexQualityProfile = {
   waterGlintCount: 3,
   cloudParallaxScale: 1,
   materialVariation: 'full',
+  exploreGroundPerTile: 4,
+  exploreDecorPerTile: 3,
+  exploreStructureDetail: 1,
 };
 
 const MEDIUM: HexQualityProfile = {
@@ -49,6 +55,9 @@ const MEDIUM: HexQualityProfile = {
   waterGlintCount: 1,
   cloudParallaxScale: 0.6,
   materialVariation: 'reduced',
+  exploreGroundPerTile: 3,
+  exploreDecorPerTile: 2,
+  exploreStructureDetail: 0.75,
 };
 
 const MOBILE: HexQualityProfile = {
@@ -66,6 +75,9 @@ const MOBILE: HexQualityProfile = {
   waterGlintCount: 0,
   cloudParallaxScale: 0.25,
   materialVariation: 'reduced',
+  exploreGroundPerTile: 1,
+  exploreDecorPerTile: 1,
+  exploreStructureDetail: 0.4,
 };
 
 export function resolveHexQualityProfile(input: {

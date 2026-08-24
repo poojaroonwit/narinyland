@@ -18,7 +18,7 @@ const MOVEMENT_CODES = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
 ]);
 const PLAYER_SPEED = 1.7;
-const PLAYER_CAMERA_TARGET_HEIGHT = 0.82;
+const PLAYER_CAMERA_TARGET_HEIGHT = 0.93;
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -96,7 +96,7 @@ export function HexPlayerController({
     avatar.position.set(spawn.x, spawn.y, spawn.z);
     avatar.rotation.y = Math.PI;
     controls.target.set(spawn.x, spawn.y + PLAYER_CAMERA_TARGET_HEIGHT, spawn.z);
-    camera.position.set(spawn.x + 3.25, spawn.y + 2.45, spawn.z + 3.25);
+    camera.position.set(spawn.x + 2.55, spawn.y + 2.2, spawn.z + 2.45);
     camera.lookAt(controls.target);
     controls.update();
     pressedRef.current.clear();
@@ -149,7 +149,7 @@ export function HexPlayerController({
 
     desiredTarget.set(next.x, next.y + PLAYER_CAMERA_TARGET_HEIGHT, next.z);
     previousTarget.copy(controls.target);
-    const cameraAlpha = reducedMotion ? 1 : 1 - Math.exp(-delta * 11);
+    const cameraAlpha = reducedMotion ? 1 : 1 - Math.exp(-delta * 10.5);
     controls.target.lerp(desiredTarget, cameraAlpha);
     targetShift.copy(controls.target).sub(previousTarget);
     camera.position.add(targetShift);
@@ -164,11 +164,11 @@ export function HexPlayerController({
         makeDefault
         enablePan={false}
         enableDamping
-        dampingFactor={0.09}
-        minDistance={2.5}
-        maxDistance={5}
-        minPolarAngle={Math.PI / 4.2}
-        maxPolarAngle={Math.PI / 2.25}
+        dampingFactor={0.085}
+        minDistance={2.6}
+        maxDistance={5.2}
+        minPolarAngle={Math.PI / 3.7}
+        maxPolarAngle={Math.PI / 2.18}
       />
     </>
   );
