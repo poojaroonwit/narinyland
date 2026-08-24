@@ -6,7 +6,7 @@ const readJson = async (path: string) => JSON.parse(await readFile(new URL(`../$
 
 const expectedSourceIds = [
   'leafy_grass', 'dirt', 'raked_dirt', 'rock_face', 'weathered_planks', 'plastered_wall', 'roof_tiles',
-  'jacaranda_tree', 'shrub_03', 'fern_02', 'grass_medium_01', 'rock_moss_set_01', 'tree_stump_01', 'meadow',
+  'shrub_02', 'shrub_03', 'fern_02', 'grass_medium_01', 'rock_moss_set_01', 'tree_stump_01', 'meadow',
 ].sort();
 
 function filesFor(asset: any) {
