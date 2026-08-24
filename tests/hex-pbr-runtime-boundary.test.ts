@@ -15,13 +15,17 @@ test('PBR runtime path resolver emits local asset paths only', async () => {
 test('Hex World runtime code never depends on Poly Haven hosts', async () => {
   const runtimePaths = [
     'components/hex-world/HexWorld3D.tsx',
-    'components/hex-world/terrain/HexNaturalTerrain.tsx',
-    'components/hex-world/terrain/HexIslandCliffShell.tsx',
+    'components/hex-world/pbr/HexPBRTerrain.tsx',
+    'components/hex-world/pbr/HexPBRCliff.tsx',
+    'components/hex-world/pbr/HexPBRAssetPreloader.tsx',
     'components/hex-world/HexAmbientDecor.tsx',
     'components/hex-world/HexTerrainDetails.tsx',
     'components/hex-world/HexWaterSurface.tsx',
     'components/hex-world/models/HexStructureModels.tsx',
     'components/hex-world/models/HexNatureModels.tsx',
+    'lib/hex-world/pbr/asset-manifest.ts',
+    'lib/hex-world/pbr/asset-paths.ts',
+    'lib/hex-world/pbr/quality-assets.ts',
     'lib/hex-world/natural-terrain.ts',
     'lib/hex-world/island-boundary.ts',
   ];
