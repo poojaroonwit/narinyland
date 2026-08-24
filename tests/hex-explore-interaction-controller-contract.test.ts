@@ -10,12 +10,12 @@ test('player controller reports proximity targets only when target identity chan
   assert.match(playerSource, /getExploreInteractionTarget/);
   assert.match(playerSource, /lastInteractionTargetIdRef/);
   assert.match(playerSource, /onInteractionTargetChange/);
-  assert.match(playerSource, /buildingId/);
+  assert.match(playerSource, /interactionTarget\?\.id|interactionTargetId/);
 });
 
 test('world passes interaction reporting only into the person controller path', async () => {
   const worldSource = await readFile(worldPath, 'utf8');
   assert.match(worldSource, /onInteractionTargetChange/);
-  assert.match(worldSource, /viewMode === 'person'/);
+  assert.match(worldSource, /viewMode\s*===\s*['"]person['"]/);
   assert.match(worldSource, /HexPlayerController/);
 });
