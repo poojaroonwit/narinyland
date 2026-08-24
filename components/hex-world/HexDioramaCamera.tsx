@@ -6,6 +6,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   getBuildCameraPose,
+  getCameraScriptCommandKey,
   getFocusCameraPose,
   getOpeningCameraPose,
   getOverviewCameraPose,
@@ -34,39 +35,59 @@ export function HexDioramaCamera({
   const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null);
   const scriptedMotion = useRef(true);
   const mounted = useRef(false);
+  const lastScriptCommandKey = useRef<string | null>(null);
   const bounds = useMemo(() => getUnlockedIslandBounds(tiles), [tiles]);
+  const aspect = size.height > 0 ? size.width / size.height : 1;
   const pose = useMemo(() => {
-    const aspect = size.height > 0 ? size.width / size.height : 1;
     if (intent.kind === 'focus') return getFocusCameraPose(bounds, intent.coord, aspect);
     if (intent.kind === 'build') return getBuildCameraPose(bounds, aspect);
     return getOverviewCameraPose(bounds, aspect);
-  }, [bounds, intent, size.height, size.width, resetNonce, reframeCoords]);
+  }, [aspect, bounds, intent]);
+  const overviewPose = useMemo(() => getOverviewCameraPose(bounds, aspect), [aspect, bounds]);
+  const poseRef = useRef(pose);
+  const overviewPoseRef = useRef(overviewPose);
+
+  useLayoutEffect(() => {
+    poseRef.current = pose;
+    overviewPoseRef.current = overviewPose;
+  }, [overviewPose, pose]);
+
+  const scriptCommandKey = getCameraScriptCommandKey({
+    bounds,
+    intent,
+    aspect,
+    resetNonce,
+    reframeCoords,
+  });
 
   useLayoutEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
     if (!mounted.current) {
-      const aspect = size.height > 0 ? size.width / size.height : 1;
-      const overview = getOverviewCameraPose(bounds, aspect);
-      const initial = reducedMotion ? pose : getOpeningCameraPose(overview);
+      const desiredPose = poseRef.current;
+      const initial = reducedMotion ? desiredPose : getOpeningCameraPose(overviewPoseRef.current);
       camera.position.set(...initial.position);
-      controls.target.set(...pose.target);
+      controls.target.set(...desiredPose.target);
       controls.update();
       mounted.current = true;
+      lastScriptCommandKey.current = scriptCommandKey;
       scriptedMotion.current = !reducedMotion;
       return;
     }
 
+    if (lastScriptCommandKey.current === scriptCommandKey) return;
+    lastScriptCommandKey.current = scriptCommandKey;
     scriptedMotion.current = true;
-  }, [bounds, camera, pose, reducedMotion, size.height, size.width]);
+  }, [camera, reducedMotion, scriptCommandKey]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
     if (!controls || !scriptedMotion.current) return;
+    const desiredPose = poseRef.current;
     const alpha = expSmoothingAlpha(delta, motionProfile.cameraResponse);
-    const desiredPosition = new THREE.Vector3(...pose.position);
-    const desiredTarget = new THREE.Vector3(...pose.target);
+    const desiredPosition = new THREE.Vector3(...desiredPose.position);
+    const desiredTarget = new THREE.Vector3(...desiredPose.target);
     camera.position.lerp(desiredPosition, alpha);
     controls.target.lerp(desiredTarget, alpha);
     controls.update();

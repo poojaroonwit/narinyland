@@ -30,6 +30,43 @@ const FALLBACK_BOUNDS: HexIslandBounds = {
   radius: 5,
 };
 
+function stableCameraNumber(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(6) : '0';
+}
+
+export function getCameraScriptCommandKey({
+  bounds,
+  intent,
+  aspect,
+  resetNonce,
+  reframeCoords,
+}: {
+  bounds: HexIslandBounds;
+  intent: HexCameraIntent;
+  aspect: number;
+  resetNonce: number;
+  reframeCoords: HexCoord[];
+}): string {
+  const intentKey = intent.kind === 'focus'
+    ? `focus:${intent.coord.q}:${intent.coord.r}`
+    : intent.kind;
+  const boundsKey = [
+    bounds.minX,
+    bounds.maxX,
+    bounds.minZ,
+    bounds.maxZ,
+    bounds.center[0],
+    bounds.center[1],
+    bounds.center[2],
+    bounds.radius,
+  ].map(stableCameraNumber).join(':');
+  const reframeKey = [...new Set(reframeCoords.map((coord) => `${coord.q}:${coord.r}`))]
+    .sort()
+    .join(',');
+
+  return `${intentKey}|bounds:${boundsKey}|aspect:${stableCameraNumber(aspect)}|reset:${resetNonce}|reframe:${reframeKey}`;
+}
+
 export function getUnlockedIslandBounds(tiles: HexTileDTO[]): HexIslandBounds {
   const unlocked = tiles.filter((tile) => tile.unlocked);
   if (unlocked.length === 0) return { ...FALLBACK_BOUNDS };

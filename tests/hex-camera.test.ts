@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { getBuildCameraPose, getFocusCameraPose, getOpeningCameraPose, getOverviewCameraPose, getUnlockedIslandBounds, shouldReframeForCoords } from '@/lib/hex-world/camera';
+import { getBuildCameraPose, getCameraScriptCommandKey, getFocusCameraPose, getOpeningCameraPose, getOverviewCameraPose, getUnlockedIslandBounds, shouldReframeForCoords } from '@/lib/hex-world/camera';
 import type { HexTileDTO } from '@/lib/hex-world/types';
 
 const tile = (q: number, r: number, height = 0) => ({ q, r, terrainType: 'grass' as const, height, unlocked: true });
@@ -61,4 +62,48 @@ test('opening pose starts wider and higher than final overview', () => {
   const opening = getOpeningCameraPose(overview);
   assert.ok(opening.distance > overview.distance);
   assert.ok(opening.position[1] > overview.position[1]);
+});
+
+test('camera script command ignores equivalent React prop identities but changes for real camera commands', () => {
+  const bounds = getUnlockedIslandBounds(motionTiles);
+  const first = getCameraScriptCommandKey({
+    bounds,
+    intent: { kind: 'overview' },
+    aspect: 16 / 9,
+    resetNonce: 0,
+    reframeCoords: [{ q: 2, r: 1 }, { q: 1, r: 0 }],
+  });
+  const equivalent = getCameraScriptCommandKey({
+    bounds: { ...bounds, center: [...bounds.center] },
+    intent: { kind: 'overview' },
+    aspect: 16 / 9,
+    resetNonce: 0,
+    reframeCoords: [{ q: 1, r: 0 }, { q: 2, r: 1 }],
+  });
+  const reset = getCameraScriptCommandKey({
+    bounds,
+    intent: { kind: 'overview' },
+    aspect: 16 / 9,
+    resetNonce: 1,
+    reframeCoords: [{ q: 2, r: 1 }, { q: 1, r: 0 }],
+  });
+  const focus = getCameraScriptCommandKey({
+    bounds,
+    intent: { kind: 'focus', coord: { q: 2, r: 1 } },
+    aspect: 16 / 9,
+    resetNonce: 0,
+    reframeCoords: [{ q: 2, r: 1 }, { q: 1, r: 0 }],
+  });
+
+  assert.equal(first, equivalent, 'new object/array identities must not re-arm scripted motion');
+  assert.notEqual(first, reset, 'explicit reset must re-arm scripted motion');
+  assert.notEqual(first, focus, 'real camera intent changes must re-arm scripted motion');
+});
+
+test('manual OrbitControls zoom stays authoritative until the semantic camera command changes', async () => {
+  const source = await readFile(new URL('../components/hex-world/HexDioramaCamera.tsx', import.meta.url), 'utf8');
+  assert.match(source, /getCameraScriptCommandKey/);
+  assert.match(source, /lastScriptCommandKey/);
+  assert.match(source, /lastScriptCommandKey\.current === scriptCommandKey/);
+  assert.match(source, /onStart=\{\(\) => \{ scriptedMotion\.current = false; \}\}/);
 });
