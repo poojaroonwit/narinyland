@@ -110,10 +110,14 @@ test('World water uses bounded two-frequency motion shimmer and quality ripple b
   assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial|EffectComposer|SSR/);
 });
 
-test('structure models use authored rural construction helpers', async () => {
-  const structures = await source('components/hex-world/models/HexStructureModels.tsx');
-  for (const helper of ['StoneFoundation', 'WallPanel', 'PitchedRoof', 'NaturalWindow', 'TimberBeam']) assert.match(structures, new RegExp(`function ${helper}|const ${helper}`));
+test('structure models use authored UV-mapped PBR rural construction helpers', async () => {
+  const structures = await source('components/hex-world/pbr/HexPBRBuildings.tsx');
+  for (const helper of ['StoneFoundation', 'WallPanel', 'PitchedRoof', 'NaturalWindow', 'TimberBeam', 'GablePanel']) assert.match(structures, new RegExp(`function ${helper}|const ${helper}`));
   for (const key of ['home', 'barn', 'storage', 'workshop']) assert.match(structures, new RegExp(`case '${key}'`));
+  assert.match(structures, /map=/);
+  assert.match(structures, /normalMap=/);
+  assert.match(structures, /roughnessMap=/);
+  assert.match(structures, /Float32BufferAttribute/);
   assert.doesNotMatch(structures, /coneGeometry/);
   assert.doesNotMatch(structures, /https?:\/\//);
 });
