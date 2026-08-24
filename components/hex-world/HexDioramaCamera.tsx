@@ -104,7 +104,7 @@ export function HexDioramaCamera({
       makeDefault
       enablePan={false}
       enableDamping
-      dampingFactor={0.07}
+      dampingFactor={0.05}
       minDistance={10}
       maxDistance={52}
       minPolarAngle={Math.PI / 5}
