@@ -3,14 +3,16 @@
 import React, { forwardRef, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { HEX_SMOOTHNESS_DEFAULTS, smoothScalar } from '@/lib/hex-world/smooth-motion';
 import { HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 
 const palette = HEX_VISUAL_THEME.explore.character;
 
 export const HexPlayerAvatar = forwardRef<THREE.Group, {
   moving: boolean;
+  movementAmountRef: React.MutableRefObject<number>;
   reducedMotion: boolean;
-}>(function HexPlayerAvatar({ moving, reducedMotion }, ref) {
+}>(function HexPlayerAvatar({ moving: movingState, movementAmountRef, reducedMotion }, ref) {
   const motionRootRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
@@ -18,8 +20,9 @@ export const HexPlayerAvatar = forwardRef<THREE.Group, {
   const leftLegRef = useRef<THREE.Group>(null);
   const rightLegRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
+  const gaitAmountRef = useRef(0);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, frameDelta) => {
     const motionRoot = motionRootRef.current;
     const torso = torsoRef.current;
     const leftArm = leftArmRef.current;
@@ -29,20 +32,49 @@ export const HexPlayerAvatar = forwardRef<THREE.Group, {
     const head = headRef.current;
     if (!motionRoot || !torso || !leftArm || !rightArm || !leftLeg || !rightLeg || !head) return;
 
+    const delta = Math.min(frameDelta, 0.05);
+    const targetMovementAmount = Math.max(0, Math.min(1, movementAmountRef.current));
+    gaitAmountRef.current = reducedMotion
+      ? targetMovementAmount
+      : smoothScalar(
+          gaitAmountRef.current,
+          targetMovementAmount,
+          HEX_SMOOTHNESS_DEFAULTS.gait,
+          delta,
+        );
+
+    const movementAmount = gaitAmountRef.current;
+    const moving = movementAmount > 0.01 || (movingState && targetMovementAmount > 0);
+    const idleWeight = 1 - movementAmount;
     const time = clock.elapsedTime;
     const walkPhase = time * 7.2;
-    const stride = moving ? Math.sin(walkPhase) : 0;
-    const lift = moving ? Math.max(0, Math.sin(walkPhase * 2)) : 0;
+    const stride = Math.sin(walkPhase) * movementAmount;
+    const lift = Math.max(0, Math.sin(walkPhase * 2)) * movementAmount;
     const decorativeScale = reducedMotion ? 0 : 1;
 
     leftArm.rotation.x = stride * 0.62;
     rightArm.rotation.x = -stride * 0.62;
     leftLeg.rotation.x = -stride * 0.48;
     rightLeg.rotation.x = stride * 0.48;
-    torso.rotation.z = moving ? -stride * 0.025 * decorativeScale : Math.sin(time * 1.35) * 0.012 * decorativeScale;
-    torso.rotation.x = moving ? 0.025 : Math.sin(time * 1.15) * 0.008 * decorativeScale;
-    head.rotation.z = moving ? stride * 0.012 * decorativeScale : Math.sin(time * 0.9) * 0.01 * decorativeScale;
-    motionRoot.position.y = moving ? lift * 0.014 * decorativeScale : Math.sin(time * 1.4) * 0.008 * decorativeScale;
+    torso.rotation.z = (
+      -stride * 0.025 + Math.sin(time * 1.35) * 0.012 * idleWeight
+    ) * decorativeScale;
+    torso.rotation.x = (
+      0.025 * movementAmount + Math.sin(time * 1.15) * 0.008 * idleWeight
+    ) * decorativeScale;
+    head.rotation.z = (
+      stride * 0.012 + Math.sin(time * 0.9) * 0.01 * idleWeight
+    ) * decorativeScale;
+    motionRoot.position.y = (
+      lift * 0.014 + Math.sin(time * 1.4) * 0.008 * idleWeight
+    ) * decorativeScale;
+
+    if (!moving && reducedMotion) {
+      leftArm.rotation.x = 0;
+      rightArm.rotation.x = 0;
+      leftLeg.rotation.x = 0;
+      rightLeg.rotation.x = 0;
+    }
   });
 
   return (
