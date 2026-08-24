@@ -10,6 +10,7 @@ import { getPlacementMessage } from '@/lib/hex-world/placement-message';
 import { validatePlacement } from '@/lib/hex-world/rules';
 import type { HexBuildingDTO, HexCoord, HexExpansionPlacementPreview, HexWorldSnapshot } from '@/lib/hex-world/types';
 import type { HexUndoMeta } from '@/lib/hex-world/undo-types';
+import type { HexViewMode } from '@/lib/hex-world/view-mode';
 import type { HexConfirmedVisualEvent } from '@/lib/hex-world/visual-events';
 import { HexWorldApiError, hexWorldAPI } from '@/services/hex-world-api';
 import { HexBuildCatalog } from './HexBuildCatalog';
@@ -40,6 +41,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   graphicsQuality?: string;
 }) {
   const [state, dispatch] = useReducer(hexBuildReducer, undefined, createInitialHexBuildState);
+  const [viewMode, setViewMode] = useState<HexViewMode>('world');
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -67,6 +69,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     placementLockRef.current = false;
     visualEventNonceRef.current = 0;
     dispatch({ type: 'cancel' });
+    setViewMode('world');
     setCatalogOpen(false);
     setRemoveOpen(false);
     setNewlyAddedKeys(new Set());
@@ -81,6 +84,10 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     if (animationTimer.current) { clearTimeout(animationTimer.current); animationTimer.current = null; }
     return () => { if (activeLandRef.current === landId) activeLandRef.current = null; };
   }, [landId]);
+
+  useEffect(() => {
+    if (state.mode !== 'idle') setViewMode('world');
+  }, [state.mode]);
 
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
   const preview = useMemo(() => {
@@ -298,9 +305,23 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     }, 1100);
   };
 
-  const openBuild = () => { cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
-  const openExpand = () => { setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
+  const changeViewMode = (next: HexViewMode) => {
+    if (next === 'person') {
+      if (state.mode !== 'idle' || busy || catalogOpen) return;
+      setCatalogOpen(false);
+      setRemoveOpen(false);
+      setExpansionAnchor(null);
+      setExpansionPinned(false);
+      dispatch({ type: 'select_existing', buildingId: null });
+      setViewMode('person');
+      return;
+    }
+    setViewMode('world');
+  };
+  const openBuild = () => { setViewMode('world'); cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
+  const openExpand = () => { setViewMode('world'); setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
   const handleFarm = () => {
+    setViewMode('world');
     setCatalogOpen(false);
     setRemoveOpen(false);
     const garden = snapshot.buildings.find((building) => building.buildingKey === 'garden_patch');
@@ -311,6 +332,11 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     setCatalogOpen(true);
     showToast('Add a Garden Patch to start farming 🌱');
   };
+  const startMoveSelected = () => {
+    if (!selectedBuilding) return;
+    setViewMode('world');
+    dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation });
+  };
   const selectedDefinition = selectedBuilding ? getBuildingDefinition(selectedBuilding.buildingKey) : null;
   const expireUndo = useCallback(() => { setUndo(null); setUndoLabel(''); }, []);
 
@@ -319,6 +345,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
       <HexWorld3D
         snapshot={snapshot}
         cameraIntent={cameraIntent}
+        viewMode={viewMode}
         resetNonce={resetNonce}
         reframeCoords={reframeCoords}
         graphicsQuality={graphicsQuality}
@@ -339,7 +366,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         onSelectExpansion={chooseExpansion}
         onHoverExpansionAnchor={handleExpansionHover}
         onSelectExpansionAnchor={handleExpansionSelect}
-        onSelectBuilding={(building: HexBuildingDTO | null) => { if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }}
+        onSelectBuilding={(building: HexBuildingDTO | null) => { if (viewMode === 'world' && state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }}
       />
 
       <HexGameplayOverlay
@@ -354,6 +381,8 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         onLivingRetry={living.retry}
         selectedBuilding={selectedBuilding}
         interactive={state.mode === 'idle' && !catalogOpen}
+        viewMode={viewMode}
+        onViewModeChange={changeViewMode}
         onFarm={handleFarm}
         onBuild={openBuild}
         onExpand={openExpand}
@@ -361,9 +390,9 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         onClearSelection={() => dispatch({ type: 'select_existing', buildingId: null })}
       />
 
-      <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
+      <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { setViewMode('world'); dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
       {(state.mode === 'placing' || state.mode === 'moving') && <HexPlacementBar mode={state.mode} busy={busy} valid={!!preview?.result.ok} reason={placementReason} onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })} onRotateRight={() => dispatch({ type: 'rotate_clockwise' })} onConfirm={confirmMove} onCancel={() => dispatch({ type: 'cancel' })} />}
-      {state.mode === 'idle' && selectedBuilding && selectedDefinition && <HexBuildingContextToolbar removable={selectedDefinition.removable} busy={busy} onMove={() => dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation })} onRotate={rotateSelected} onRemove={() => setRemoveOpen(true)} onClose={() => dispatch({ type: 'select_existing', buildingId: null })} />}
+      {state.mode === 'idle' && selectedBuilding && selectedDefinition && <HexBuildingContextToolbar removable={selectedDefinition.removable} busy={busy} onMove={startMoveSelected} onRotate={rotateSelected} onRemove={() => setRemoveOpen(true)} onClose={() => dispatch({ type: 'select_existing', buildingId: null })} />}
       {state.mode === 'expanding' && <HexExpansionController landId={landId} snapshot={snapshot} activeExpansionKey={state.expansionKey} placementPreview={expansionPlacementPreview} placementPinned={expansionPinned} onChooseExpansion={chooseExpansion} onReposition={() => setExpansionPinned(false)} onCancelPreview={cancelExpansion} onConfirmed={handleExpansionConfirmed} showToast={showToast} />}
       {removeOpen && selectedBuilding && selectedDefinition?.removable && <HexRemovalConfirm name={selectedDefinition.name} important={selectedDefinition.category === 'main'} busy={busy} onConfirm={removeSelected} onCancel={() => setRemoveOpen(false)} />}
       {undo && <HexUndoToast undo={undo} label={undoLabel} busy={busy} onUndo={performUndo} onExpire={expireUndo} />}
