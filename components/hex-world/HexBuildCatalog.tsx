@@ -42,7 +42,7 @@ export function HexBuildCatalog({ open, activeBuildingKey, onSelect, onClose }: 
       <div className="sticky top-0 z-10 -mx-1 -mt-1 mb-2 flex items-start justify-between gap-3 rounded-2xl bg-[#fffdf7]/96 px-1 pb-2 pt-1 backdrop-blur-xl">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-700">Build</p>
-          <h2 className="text-base font-black text-stone-850">Shape your homestead</h2>
+          <h2 className="text-base font-black text-stone-900">Shape your homestead</h2>
           <p className="mt-0.5 text-[9px] font-bold text-stone-400">Choose something, then place it directly in the world.</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close build catalog" className="h-10 w-10 rounded-full bg-stone-100 text-stone-500">×</button>
