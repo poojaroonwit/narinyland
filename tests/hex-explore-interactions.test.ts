@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { axialToWorld } from '@/lib/hex-world/hex-grid';
 import type { HexBuildingDTO } from '@/lib/hex-world/types';
 
 async function loadInteractions() {
@@ -50,12 +49,9 @@ test('unsupported building type is ignored', async () => {
 
 test('exact-distance ties resolve by building id', async () => {
   const { getExploreInteractionTarget } = await loadInteractions();
-  const left = axialToWorld({ q: -1, r: 0 });
-  const right = axialToWorld({ q: 1, r: 0 });
-  const midpoint = { x: (left.x + right.x) / 2, z: (left.z + right.z) / 2 };
-  const target = getExploreInteractionTarget(midpoint, [
-    building('z', 'home', -1, 0),
-    building('a', 'pond', 1, 0),
+  const target = getExploreInteractionTarget({ x: 0, z: 0 }, [
+    building('z', 'home', 0, 0),
+    building('a', 'pond', 0, 0),
   ]);
   assert.equal(target?.buildingId, 'a');
 });
