@@ -5,6 +5,11 @@ import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
+  combineExploreMovementInputs,
+  ZERO_HEX_EXPLORE_MOVEMENT,
+  type HexExploreMovementInput,
+} from '@/lib/hex-world/explore-movement-input';
+import {
   getCameraRelativeMoveVector,
   getHexPlayerSpawn,
   resolveWalkablePlayerPosition,
@@ -37,11 +42,13 @@ export function HexPlayerController({
   buildings,
   reducedMotion,
   resetNonce = 0,
+  movementInputRef,
 }: {
   tiles: HexTileDTO[];
   buildings: HexBuildingDTO[];
   reducedMotion: boolean;
   resetNonce?: number;
+  movementInputRef?: React.MutableRefObject<HexExploreMovementInput>;
 }) {
   const { camera } = useThree();
   const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null);
@@ -74,6 +81,7 @@ export function HexPlayerController({
     };
     const clearPressed = () => {
       pressedRef.current.clear();
+      if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
       setMovingIfChanged(false);
     };
 
@@ -85,7 +93,7 @@ export function HexPlayerController({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', clearPressed);
     };
-  }, []);
+  }, [movementInputRef]);
 
   useLayoutEffect(() => {
     const controls = controlsRef.current;
@@ -100,8 +108,9 @@ export function HexPlayerController({
     camera.lookAt(controls.target);
     controls.update();
     pressedRef.current.clear();
+    if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setMovingIfChanged(false);
-  }, [camera, resetNonce, spawn]);
+  }, [camera, movementInputRef, resetNonce, spawn]);
 
   useFrame((_, frameDelta) => {
     const controls = controlsRef.current;
@@ -110,12 +119,17 @@ export function HexPlayerController({
 
     const delta = Math.min(frameDelta, 0.05);
     const pressed = pressedRef.current;
-    const forwardInput = pressedAxis(pressed, ['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']);
-    const rightInput = pressedAxis(pressed, ['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
+    const keyboardInput = {
+      forward: pressedAxis(pressed, ['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']),
+      right: pressedAxis(pressed, ['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']),
+    };
+    const touchInput = movementInputRef ? movementInputRef.current : ZERO_HEX_EXPLORE_MOVEMENT;
+    const combinedInput = combineExploreMovementInputs(keyboardInput, touchInput);
+    const inputMagnitude = Math.min(1, Math.hypot(combinedInput.forward, combinedInput.right));
 
     camera.getWorldDirection(cameraForward);
     const movement = getCameraRelativeMoveVector(
-      { forward: forwardInput, right: rightInput },
+      combinedInput,
       { x: cameraForward.x, z: cameraForward.z },
     );
 
@@ -125,8 +139,8 @@ export function HexPlayerController({
       next = resolveWalkablePlayerPosition({
         current,
         proposed: {
-          x: current.x + movement.x * PLAYER_SPEED * delta,
-          z: current.z + movement.z * PLAYER_SPEED * delta,
+          x: current.x + movement.x * PLAYER_SPEED * inputMagnitude * delta,
+          z: current.z + movement.z * PLAYER_SPEED * inputMagnitude * delta,
         },
         tiles,
       });

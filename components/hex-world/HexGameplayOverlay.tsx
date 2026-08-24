@@ -2,6 +2,10 @@
 
 import React from 'react';
 import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-life-engine';
+import {
+  ZERO_HEX_EXPLORE_MOVEMENT,
+  type HexExploreMovementInput,
+} from '@/lib/hex-world/explore-movement-input';
 import type { HexBuildingDTO, HexWorldSnapshot } from '@/lib/hex-world/types';
 import type { HexViewMode } from '@/lib/hex-world/view-mode';
 import { HexExploreHUD } from './HexExploreHUD';
@@ -24,6 +28,7 @@ export function HexGameplayOverlay({
   selectedBuilding,
   interactive,
   viewMode,
+  movementInputRef,
   onViewModeChange,
   onFarm,
   onBuild,
@@ -43,6 +48,7 @@ export function HexGameplayOverlay({
   selectedBuilding: HexBuildingDTO | null;
   interactive: boolean;
   viewMode: HexViewMode;
+  movementInputRef: React.MutableRefObject<HexExploreMovementInput>;
   onViewModeChange: (mode: HexViewMode) => void;
   onFarm: () => void;
   onBuild: () => void;
@@ -66,6 +72,18 @@ export function HexGameplayOverlay({
     }
   }, [interactive]);
 
+  const touchControlsEnabled = viewMode === 'person'
+    && interactive
+    && !inventoryOpen
+    && hudPanel === null
+    && !detailsOpen;
+
+  React.useEffect(() => {
+    if (!touchControlsEnabled) {
+      movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    }
+  }, [movementInputRef, touchControlsEnabled]);
+
   const closePrimarySheets = () => {
     setInventoryOpen(false);
     setHudPanel(null);
@@ -74,23 +92,27 @@ export function HexGameplayOverlay({
 
   const handleViewModeChange = (next: HexViewMode) => {
     closePrimarySheets();
+    movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     onClearSelection();
     onViewModeChange(next);
   };
 
   const openBuild = () => {
     closePrimarySheets();
+    movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     onClearSelection();
     onBuild();
   };
 
   const handleFarm = () => {
     closePrimarySheets();
+    movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     onFarm();
   };
 
   const toggleBag = () => {
     const next = !inventoryOpen;
+    if (next) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setInventoryOpen(next);
     setHudPanel(null);
     setDetailsOpen(false);
@@ -98,12 +120,14 @@ export function HexGameplayOverlay({
   };
 
   const toggleGoals = () => {
+    movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setInventoryOpen(false);
     setDetailsOpen(false);
     setHudPanel((current) => current === 'goals' ? null : 'goals');
   };
 
   const changeHudPanel = (next: HexHudPanel) => {
+    movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setInventoryOpen(false);
     setDetailsOpen(false);
     setHudPanel(next);
@@ -161,6 +185,8 @@ export function HexGameplayOverlay({
               state={livingState}
               points={snapshot.points}
               musicMuted={musicMuted}
+              movementInputRef={movementInputRef}
+              touchControlsEnabled={touchControlsEnabled}
               onToggleMusic={onToggleMusic}
               onBag={toggleBag}
               onGoals={toggleGoals}
@@ -173,7 +199,7 @@ export function HexGameplayOverlay({
               onBuild={openBuild}
               onBag={toggleBag}
               onGoals={toggleGoals}
-              onExpand={() => { closePrimarySheets(); onClearSelection(); onExpand(); }}
+              onExpand={() => { closePrimarySheets(); movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; onClearSelection(); onExpand(); }}
               onResetView={onResetView}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}

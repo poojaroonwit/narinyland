@@ -4,6 +4,10 @@ import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } 
 import { getBuildingDefinition, getBuildingFootprint, type HexBuildingKey } from '@/lib/hex-world/building-catalog';
 import { createInitialHexBuildState, hexBuildReducer } from '@/lib/hex-world/build-state';
 import { getUnlockedIslandBounds, shouldReframeForCoords, type HexCameraIntent } from '@/lib/hex-world/camera';
+import {
+  ZERO_HEX_EXPLORE_MOVEMENT,
+  type HexExploreMovementInput,
+} from '@/lib/hex-world/explore-movement-input';
 import { getExpansionPlacementTiles, validateExpansionPlacement } from '@/lib/hex-world/expansions';
 import { hexKey } from '@/lib/hex-world/hex-grid';
 import { getPlacementMessage } from '@/lib/hex-world/placement-message';
@@ -58,6 +62,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const activeLandRef = useRef<string | null>(landId);
   const placementLockRef = useRef(false);
   const visualEventNonceRef = useRef(0);
+  const exploreMovementInputRef = useRef<HexExploreMovementInput>(ZERO_HEX_EXPLORE_MOVEMENT);
   const living = useLivingHomestead(landId, showToast);
   const { musicMuted, toggleMusic } = useGardenMusic();
   const nextVisualNonce = () => { visualEventNonceRef.current += 1; return visualEventNonceRef.current; };
@@ -68,6 +73,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     activeLandRef.current = landId;
     placementLockRef.current = false;
     visualEventNonceRef.current = 0;
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     dispatch({ type: 'cancel' });
     setViewMode('world');
     setCatalogOpen(false);
@@ -86,7 +92,10 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   }, [landId]);
 
   useEffect(() => {
-    if (state.mode !== 'idle') setViewMode('world');
+    if (state.mode !== 'idle') {
+      exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+      setViewMode('world');
+    }
   }, [state.mode]);
 
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
@@ -263,6 +272,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const scenePreview = preview && state.anchor && state.buildingKey ? { buildingKey: state.buildingKey, anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation, valid: preview.result.ok } : null;
 
   const cancelExpansion = () => {
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setExpansionAnchor(null);
     setExpansionPinned(false);
     dispatch({ type: 'cancel' });
@@ -316,11 +326,13 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
       setViewMode('person');
       return;
     }
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setViewMode('world');
   };
-  const openBuild = () => { setViewMode('world'); cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
-  const openExpand = () => { setViewMode('world'); setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
+  const openBuild = () => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setViewMode('world'); cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
+  const openExpand = () => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setViewMode('world'); setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
   const handleFarm = () => {
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setViewMode('world');
     setCatalogOpen(false);
     setRemoveOpen(false);
@@ -334,6 +346,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   };
   const startMoveSelected = () => {
     if (!selectedBuilding) return;
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setViewMode('world');
     dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation });
   };
@@ -346,6 +359,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         snapshot={snapshot}
         cameraIntent={cameraIntent}
         viewMode={viewMode}
+        movementInputRef={exploreMovementInputRef}
         resetNonce={resetNonce}
         reframeCoords={reframeCoords}
         graphicsQuality={graphicsQuality}
@@ -382,15 +396,16 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         selectedBuilding={selectedBuilding}
         interactive={state.mode === 'idle' && !catalogOpen}
         viewMode={viewMode}
+        movementInputRef={exploreMovementInputRef}
         onViewModeChange={changeViewMode}
         onFarm={handleFarm}
         onBuild={openBuild}
         onExpand={openExpand}
-        onResetView={() => setResetNonce((value) => value + 1)}
+        onResetView={() => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setResetNonce((value) => value + 1); }}
         onClearSelection={() => dispatch({ type: 'select_existing', buildingId: null })}
       />
 
-      <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { setViewMode('world'); dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
+      <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setViewMode('world'); dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
       {(state.mode === 'placing' || state.mode === 'moving') && <HexPlacementBar mode={state.mode} busy={busy} valid={!!preview?.result.ok} reason={placementReason} onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })} onRotateRight={() => dispatch({ type: 'rotate_clockwise' })} onConfirm={confirmMove} onCancel={() => dispatch({ type: 'cancel' })} />}
       {state.mode === 'idle' && selectedBuilding && selectedDefinition && <HexBuildingContextToolbar removable={selectedDefinition.removable} busy={busy} onMove={startMoveSelected} onRotate={rotateSelected} onRemove={() => setRemoveOpen(true)} onClose={() => dispatch({ type: 'select_existing', buildingId: null })} />}
       {state.mode === 'expanding' && <HexExpansionController landId={landId} snapshot={snapshot} activeExpansionKey={state.expansionKey} placementPreview={expansionPlacementPreview} placementPinned={expansionPinned} onChooseExpansion={chooseExpansion} onReposition={() => setExpansionPinned(false)} onCancelPreview={cancelExpansion} onConfirmed={handleExpansionConfirmed} showToast={showToast} />}
