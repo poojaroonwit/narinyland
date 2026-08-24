@@ -20,6 +20,12 @@ import {
   resolveWalkablePlayerPosition,
   type HexPlayerPosition,
 } from '@/lib/hex-world/player-exploration';
+import {
+  HEX_SMOOTHNESS_DEFAULTS,
+  smoothAngle,
+  smoothScalar,
+  smoothVector2,
+} from '@/lib/hex-world/smooth-motion';
 import type { HexBuildingDTO, HexTileDTO } from '@/lib/hex-world/types';
 import { HexPlayerAvatar } from './HexPlayerAvatar';
 
@@ -29,6 +35,7 @@ const MOVEMENT_CODES = new Set([
 ]);
 const PLAYER_SPEED = 1.7;
 const PLAYER_CAMERA_TARGET_HEIGHT = 0.93;
+const VELOCITY_EPSILON = 0.0005;
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -66,6 +73,8 @@ export function HexPlayerController({
   const avatarRef = useRef<THREE.Group>(null);
   const pressedRef = useRef(new Set<string>());
   const lastInteractionTargetIdRef = useRef<string | null>(null);
+  const velocityRef = useRef({ x: 0, z: 0 });
+  const movementAmountRef = useRef(0);
   const [moving, setMoving] = useState(false);
   const movingRef = useRef(false);
   const spawn = useMemo(() => getHexPlayerSpawn({ tiles, buildings }), [buildings, tiles]);
@@ -81,6 +90,13 @@ export function HexPlayerController({
     setMoving(next);
   };
 
+  const stopMotion = () => {
+    velocityRef.current = { x: 0, z: 0 };
+    movementAmountRef.current = 0;
+    movingRef.current = false;
+    setMoving(false);
+  };
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (movementSuspended || !MOVEMENT_CODES.has(event.code) || isEditableTarget(event.target)) return;
@@ -94,8 +110,7 @@ export function HexPlayerController({
     const clearPressed = () => {
       pressedRef.current.clear();
       if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
-      movingRef.current = false;
-      setMoving(false);
+      stopMotion();
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -112,6 +127,8 @@ export function HexPlayerController({
     if (!movementSuspended) return;
     pressedRef.current.clear();
     if (movementInputRef) movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    velocityRef.current = { x: 0, z: 0 };
+    movementAmountRef.current = 0;
     movingRef.current = false;
     setMoving(false);
   }, [movementInputRef, movementSuspended]);
@@ -126,6 +143,8 @@ export function HexPlayerController({
     if (!controls || !avatar) return;
 
     positionRef.current = spawn;
+    velocityRef.current = { x: 0, z: 0 };
+    movementAmountRef.current = 0;
     avatar.position.set(spawn.x, spawn.y, spawn.z);
     avatar.rotation.y = Math.PI;
     controls.target.set(spawn.x, spawn.y + PLAYER_CAMERA_TARGET_HEIGHT, spawn.z);
@@ -163,22 +182,43 @@ export function HexPlayerController({
       combinedInput,
       { x: cameraForward.x, z: cameraForward.z },
     );
+    const requestedVelocity = movementSuspended
+      ? { x: 0, z: 0 }
+      : {
+          x: movement.x * PLAYER_SPEED * inputMagnitude,
+          z: movement.z * PLAYER_SPEED * inputMagnitude,
+        };
+    const requestedSpeed = Math.hypot(requestedVelocity.x, requestedVelocity.z);
+    const response = requestedSpeed > VELOCITY_EPSILON
+      ? HEX_SMOOTHNESS_DEFAULTS.acceleration
+      : HEX_SMOOTHNESS_DEFAULTS.deceleration;
+    let velocity = reducedMotion
+      ? requestedVelocity
+      : smoothVector2(velocityRef.current, requestedVelocity, response, delta);
+
+    if (movementSuspended) velocity = { x: 0, z: 0 };
+    if (Math.abs(velocity.x) < VELOCITY_EPSILON) velocity.x = 0;
+    if (Math.abs(velocity.z) < VELOCITY_EPSILON) velocity.z = 0;
 
     const current = positionRef.current;
     let next = current;
-    if (movement.x !== 0 || movement.z !== 0) {
-      next = resolveWalkablePlayerPosition({
-        current,
-        proposed: {
-          x: current.x + movement.x * PLAYER_SPEED * inputMagnitude * delta,
-          z: current.z + movement.z * PLAYER_SPEED * inputMagnitude * delta,
-        },
-        tiles,
-      });
+    if (velocity.x !== 0 || velocity.z !== 0) {
+      const proposed = {
+        x: current.x + velocity.x * delta,
+        z: current.z + velocity.z * delta,
+      };
+      next = resolveWalkablePlayerPosition({ current, proposed, tiles });
+
+      if (Math.abs(next.x - current.x) <= 1e-6 && Math.abs(proposed.x - current.x) > 1e-6) velocity.x = 0;
+      if (Math.abs(next.z - current.z) <= 1e-6 && Math.abs(proposed.z - current.z) > 1e-6) velocity.z = 0;
     }
 
+    velocityRef.current = velocity;
+    const movementAmount = Math.min(1, Math.hypot(velocity.x, velocity.z) / PLAYER_SPEED);
+    movementAmountRef.current = movementAmount;
+
     const didMove = Math.abs(next.x - current.x) > 1e-6 || Math.abs(next.z - current.z) > 1e-6;
-    setMovingIfChanged(didMove);
+    setMovingIfChanged(didMove || movementAmount > 0.01);
     positionRef.current = next;
     avatar.position.set(next.x, next.y, next.z);
 
@@ -189,19 +229,23 @@ export function HexPlayerController({
       onInteractionTargetChange?.(interactionTarget);
     }
 
-    if (didMove) {
-      const targetHeading = Math.atan2(movement.x, movement.z);
-      const headingDelta = Math.atan2(
-        Math.sin(targetHeading - avatar.rotation.y),
-        Math.cos(targetHeading - avatar.rotation.y),
-      );
-      const headingAlpha = reducedMotion ? 1 : 1 - Math.exp(-delta * 14);
-      avatar.rotation.y += headingDelta * headingAlpha;
+    if (movementAmount > 0.01) {
+      const targetHeading = Math.atan2(velocity.x, velocity.z);
+      avatar.rotation.y = reducedMotion
+        ? targetHeading
+        : smoothAngle(
+            avatar.rotation.y,
+            targetHeading,
+            HEX_SMOOTHNESS_DEFAULTS.heading,
+            delta,
+          );
     }
 
     desiredTarget.set(next.x, next.y + PLAYER_CAMERA_TARGET_HEIGHT, next.z);
     previousTarget.copy(controls.target);
-    const cameraAlpha = reducedMotion ? 1 : 1 - Math.exp(-delta * 10.5);
+    const cameraAlpha = reducedMotion
+      ? 1
+      : smoothScalar(0, 1, HEX_SMOOTHNESS_DEFAULTS.camera, delta);
     controls.target.lerp(desiredTarget, cameraAlpha);
     targetShift.copy(controls.target).sub(previousTarget);
     camera.position.add(targetShift);
@@ -210,7 +254,12 @@ export function HexPlayerController({
 
   return (
     <>
-      <HexPlayerAvatar ref={avatarRef} moving={moving} reducedMotion={reducedMotion} />
+      <HexPlayerAvatar
+        ref={avatarRef}
+        moving={moving}
+        movementAmountRef={movementAmountRef}
+        reducedMotion={reducedMotion}
+      />
       <OrbitControls
         ref={controlsRef}
         makeDefault
