@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } 
 import { getBuildingDefinition, getBuildingFootprint, type HexBuildingKey } from '@/lib/hex-world/building-catalog';
 import { createInitialHexBuildState, hexBuildReducer } from '@/lib/hex-world/build-state';
 import { getUnlockedIslandBounds, shouldReframeForCoords, type HexCameraIntent } from '@/lib/hex-world/camera';
+import type { HexExploreInteractionTarget } from '@/lib/hex-world/explore-interactions';
 import {
   ZERO_HEX_EXPLORE_MOVEMENT,
   type HexExploreMovementInput,
@@ -58,6 +59,8 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const [invalidPulseNonce, setInvalidPulseNonce] = useState(0);
   const [expansionAnchor, setExpansionAnchor] = useState<HexCoord | null>(null);
   const [expansionPinned, setExpansionPinned] = useState(false);
+  const [exploreInteractionTarget, setExploreInteractionTarget] = useState<HexExploreInteractionTarget | null>(null);
+  const [exploreInteractionBuildingId, setExploreInteractionBuildingId] = useState<string | null>(null);
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeLandRef = useRef<string | null>(landId);
   const placementLockRef = useRef(false);
@@ -67,13 +70,19 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const { musicMuted, toggleMusic } = useGardenMusic();
   const nextVisualNonce = () => { visualEventNonceRef.current += 1; return visualEventNonceRef.current; };
 
+  const clearExploreInteraction = useCallback(() => {
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    setExploreInteractionTarget(null);
+    setExploreInteractionBuildingId(null);
+  }, []);
+
   useEffect(() => () => { if (animationTimer.current) clearTimeout(animationTimer.current); }, []);
 
   useEffect(() => {
     activeLandRef.current = landId;
     placementLockRef.current = false;
     visualEventNonceRef.current = 0;
-    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    clearExploreInteraction();
     dispatch({ type: 'cancel' });
     setViewMode('world');
     setCatalogOpen(false);
@@ -89,14 +98,21 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     setBusy(false);
     if (animationTimer.current) { clearTimeout(animationTimer.current); animationTimer.current = null; }
     return () => { if (activeLandRef.current === landId) activeLandRef.current = null; };
-  }, [landId]);
+  }, [clearExploreInteraction, landId]);
 
   useEffect(() => {
     if (state.mode !== 'idle') {
-      exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+      clearExploreInteraction();
       setViewMode('world');
     }
-  }, [state.mode]);
+  }, [clearExploreInteraction, state.mode]);
+
+  useEffect(() => {
+    if (!exploreInteractionBuildingId) return;
+    if (!snapshot.buildings.some((building) => building.id === exploreInteractionBuildingId)) {
+      setExploreInteractionBuildingId(null);
+    }
+  }, [exploreInteractionBuildingId, snapshot.buildings]);
 
   const selectedBuilding = snapshot.buildings.find((item) => item.id === state.selectedBuildingId) ?? null;
   const preview = useMemo(() => {
@@ -272,7 +288,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const scenePreview = preview && state.anchor && state.buildingKey ? { buildingKey: state.buildingKey, anchorQ: state.anchor.q, anchorR: state.anchor.r, rotation: state.rotation, valid: preview.result.ok } : null;
 
   const cancelExpansion = () => {
-    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    clearExploreInteraction();
     setExpansionAnchor(null);
     setExpansionPinned(false);
     dispatch({ type: 'cancel' });
@@ -315,7 +331,24 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
     }, 1100);
   };
 
+  const openExploreInteraction = () => {
+    if (!exploreInteractionTarget || viewMode !== 'person' || state.mode !== 'idle') return;
+    const currentBuilding = snapshot.buildings.find((building) => building.id === exploreInteractionTarget.buildingId);
+    if (!currentBuilding) {
+      setExploreInteractionTarget(null);
+      return;
+    }
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    setExploreInteractionBuildingId(currentBuilding.id);
+  };
+
+  const closeExploreInteraction = () => {
+    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    setExploreInteractionBuildingId(null);
+  };
+
   const changeViewMode = (next: HexViewMode) => {
+    clearExploreInteraction();
     if (next === 'person') {
       if (state.mode !== 'idle' || busy || catalogOpen) return;
       setCatalogOpen(false);
@@ -326,13 +359,12 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
       setViewMode('person');
       return;
     }
-    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
     setViewMode('world');
   };
-  const openBuild = () => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setViewMode('world'); cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
-  const openExpand = () => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setViewMode('world'); setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
+  const openBuild = () => { clearExploreInteraction(); setViewMode('world'); cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
+  const openExpand = () => { clearExploreInteraction(); setViewMode('world'); setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
   const handleFarm = () => {
-    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    clearExploreInteraction();
     setViewMode('world');
     setCatalogOpen(false);
     setRemoveOpen(false);
@@ -346,9 +378,13 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   };
   const startMoveSelected = () => {
     if (!selectedBuilding) return;
-    exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    clearExploreInteraction();
     setViewMode('world');
     dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation });
+  };
+  const handleResetView = () => {
+    clearExploreInteraction();
+    setResetNonce((value) => value + 1);
   };
   const selectedDefinition = selectedBuilding ? getBuildingDefinition(selectedBuilding.buildingKey) : null;
   const expireUndo = useCallback(() => { setUndo(null); setUndoLabel(''); }, []);
@@ -360,6 +396,8 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         cameraIntent={cameraIntent}
         viewMode={viewMode}
         movementInputRef={exploreMovementInputRef}
+        movementSuspended={exploreInteractionBuildingId !== null}
+        onInteractionTargetChange={viewMode === 'person' ? setExploreInteractionTarget : undefined}
         resetNonce={resetNonce}
         reframeCoords={reframeCoords}
         graphicsQuality={graphicsQuality}
@@ -397,15 +435,19 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         interactive={state.mode === 'idle' && !catalogOpen}
         viewMode={viewMode}
         movementInputRef={exploreMovementInputRef}
+        exploreInteractionTarget={exploreInteractionTarget}
+        exploreInteractionBuildingId={exploreInteractionBuildingId}
+        onExploreInteract={openExploreInteraction}
+        onCloseExploreInteraction={closeExploreInteraction}
         onViewModeChange={changeViewMode}
         onFarm={handleFarm}
         onBuild={openBuild}
         onExpand={openExpand}
-        onResetView={() => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setResetNonce((value) => value + 1); }}
+        onResetView={handleResetView}
         onClearSelection={() => dispatch({ type: 'select_existing', buildingId: null })}
       />
 
-      <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { exploreMovementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT; setViewMode('world'); dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
+      <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { clearExploreInteraction(); setViewMode('world'); dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
       {(state.mode === 'placing' || state.mode === 'moving') && <HexPlacementBar mode={state.mode} busy={busy} valid={!!preview?.result.ok} reason={placementReason} onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })} onRotateRight={() => dispatch({ type: 'rotate_clockwise' })} onConfirm={confirmMove} onCancel={() => dispatch({ type: 'cancel' })} />}
       {state.mode === 'idle' && selectedBuilding && selectedDefinition && <HexBuildingContextToolbar removable={selectedDefinition.removable} busy={busy} onMove={startMoveSelected} onRotate={rotateSelected} onRemove={() => setRemoveOpen(true)} onClose={() => dispatch({ type: 'select_existing', buildingId: null })} />}
       {state.mode === 'expanding' && <HexExpansionController landId={landId} snapshot={snapshot} activeExpansionKey={state.expansionKey} placementPreview={expansionPlacementPreview} placementPinned={expansionPinned} onChooseExpansion={chooseExpansion} onReposition={() => setExpansionPinned(false)} onCancelPreview={cancelExpansion} onConfirmed={handleExpansionConfirmed} showToast={showToast} />}
