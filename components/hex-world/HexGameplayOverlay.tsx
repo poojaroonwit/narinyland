@@ -3,6 +3,7 @@
 import React from 'react';
 import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-life-engine';
 import type { HexBuildingDTO, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexViewMode } from '@/lib/hex-world/view-mode';
 import { HexInventorySheet } from './HexInventorySheet';
 import { HexLivingActionPanel } from './HexLivingActionPanel';
 import { HexLivingHUD, type HexHudPanel } from './HexLivingHUD';
@@ -21,6 +22,8 @@ export function HexGameplayOverlay({
   onLivingRetry,
   selectedBuilding,
   interactive,
+  viewMode,
+  onViewModeChange,
   onFarm,
   onBuild,
   onExpand,
@@ -38,6 +41,8 @@ export function HexGameplayOverlay({
   onLivingRetry: () => void;
   selectedBuilding: HexBuildingDTO | null;
   interactive: boolean;
+  viewMode: HexViewMode;
+  onViewModeChange: (mode: HexViewMode) => void;
   onFarm: () => void;
   onBuild: () => void;
   onExpand: () => void;
@@ -64,6 +69,12 @@ export function HexGameplayOverlay({
     setInventoryOpen(false);
     setHudPanel(null);
     setDetailsOpen(false);
+  };
+
+  const handleViewModeChange = (next: HexViewMode) => {
+    closePrimarySheets();
+    onClearSelection();
+    onViewModeChange(next);
   };
 
   const openBuild = () => {
@@ -112,7 +123,9 @@ export function HexGameplayOverlay({
         ? 'details'
         : selectedBuilding
           ? 'quick'
-          : 'base';
+          : viewMode === 'person'
+            ? 'person'
+            : 'base';
 
   return (
     <div className="contents" data-hex-overlay-state={overlayState}>
@@ -132,7 +145,7 @@ export function HexGameplayOverlay({
 
       {interactive && (
         <>
-          {selectedBuilding && livingState && !inventoryOpen && hudPanel === null && (
+          {viewMode === 'world' && selectedBuilding && livingState && !inventoryOpen && hudPanel === null && (
             detailsOpen
               ? <HexLivingActionPanel building={selectedBuilding} state={livingState} busy={livingBusy} onAction={onLivingAction} />
               : <HexQuickActionPanel building={selectedBuilding} state={livingState} busy={livingBusy} onAction={onLivingAction} onMore={() => setDetailsOpen(true)} />
@@ -147,6 +160,8 @@ export function HexGameplayOverlay({
             onGoals={toggleGoals}
             onExpand={() => { closePrimarySheets(); onClearSelection(); onExpand(); }}
             onResetView={onResetView}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
             activeAction={activeAction}
           />
         </>
