@@ -62,16 +62,19 @@ test('living action panel maps buildings to progression actions and market utili
   assert.match(source, /getGardenActionTarget/);
 });
 
-test('HexBuildController integrates Living Homestead without replacing builder controls', async () => {
-  const source = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
+test('HexBuildController integrates Living Homestead through the gameplay overlay without replacing builder controls', async () => {
+  const controller = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
+  const overlay = await readFile(new URL('../components/hex-world/HexGameplayOverlay.tsx', import.meta.url), 'utf8');
 
-  assert.match(source, /useLivingHomestead/);
-  assert.match(source, /HexLivingHUD/);
-  assert.match(source, /HexLivingActionPanel/);
-  assert.match(source, /livingState=\{living\.state\}/);
-  assert.match(source, /HexWorldToolbar/);
-  assert.match(source, /HexBuildingContextToolbar/);
-  assert.match(source, /HexExpansionController/);
+  assert.match(controller, /useLivingHomestead/);
+  assert.match(controller, /HexGameplayOverlay/);
+  assert.match(controller, /livingState=\{living\.state\}/);
+  assert.match(controller, /HexBuildingContextToolbar/);
+  assert.match(controller, /HexExpansionController/);
+  assert.match(overlay, /HexLivingHUD/);
+  assert.match(overlay, /HexLivingActionPanel/);
+  assert.match(overlay, /HexQuickActionPanel/);
+  assert.match(overlay, /HexWorldToolbar/);
 });
 
 test('HexWorld living presentation covers four seasons and remains bounded visual-only state', async () => {
