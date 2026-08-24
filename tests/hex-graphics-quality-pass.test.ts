@@ -9,9 +9,9 @@ test('premium graphics pass keeps bounded PBR naturalistic architecture', async 
   const quality = await source('lib/hex-world/quality.ts');
   assert.match(world, /HexPBRTerrain/);
   assert.match(world, /HexPBRCliff/);
-  assert.match(world, /HexTerrainDetails/);
+  assert.match(world, /HexPBRVegetation/);
   assert.match(world, /getHexVisualEnvironment/);
-  assert.doesNotMatch(world, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain/);
+  assert.doesNotMatch(world, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|HexTerrainDetails|HexAmbientDecor/);
   assert.doesNotMatch(world, /EffectComposer|Bloom|DepthOfField|SSAO|SSR/);
   assert.match(quality, /maxDpr:\s*1\.75/);
   assert.match(quality, /maxDpr:\s*1\.5/);
@@ -75,12 +75,14 @@ test('World lighting interpolates target intensities and colors through Three re
 });
 
 test('vegetation and water stay quality-aware and batched', async () => {
-  const decor = await source('components/hex-world/HexAmbientDecor.tsx');
+  const vegetation = await source('components/hex-world/pbr/HexPBRVegetation.tsx');
   const water = await source('components/hex-world/HexWaterSurface.tsx');
-  assert.match(decor, /SwayInstanceBatch/);
-  assert.match(decor, /branches/);
-  assert.match(decor, /treeLeafClusters/);
-  assert.doesNotMatch(decor, /dodecahedronGeometry/);
+  assert.match(vegetation, /useGLTF/);
+  assert.match(vegetation, /instancedMesh/);
+  assert.match(vegetation, /buildPBRVegetationScatter/);
+  assert.match(vegetation, /worldWindScale/);
+  assert.match(vegetation, /worldWindSecondaryScale/);
+  assert.doesNotMatch(vegetation, /Math\.random|https?:\/\//);
   assert.match(water, /waterDetail/);
   assert.match(water, /waterGlintCount/);
   assert.match(water, /meshPhysicalMaterial/);
