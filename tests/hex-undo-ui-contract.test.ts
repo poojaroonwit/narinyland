@@ -31,9 +31,10 @@ test('undo toast expires from server expiresAt and cannot fire while busy', asyn
   assert.match(toast, />Undo</);
 });
 
-test('switching Land clears builder transient and undo state', async () => {
+test('switching Land clears builder transient, Explore interaction, and undo state', async () => {
   const controller = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
-  assert.match(controller, /\[landId\]/);
+  assert.match(controller, /\[clearExploreInteraction, landId\]/);
+  assert.match(controller, /clearExploreInteraction\(\)/);
   assert.match(controller, /setUndo\(null\)/);
   assert.match(controller, /setCatalogOpen\(false\)/);
   assert.match(controller, /setRemoveOpen\(false\)/);
