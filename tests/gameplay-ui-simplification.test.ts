@@ -27,6 +27,7 @@ test('gameplay toolbar prioritizes Farm Build Bag and Goals while reset is a uti
 test('controller keeps primary gameplay navigation stable and coordinates mutually exclusive sheets', async () => {
   const controller = await source('components/hex-world/HexBuildController.tsx');
   assert.match(controller, /HexInventorySheet/);
+  assert.match(controller, /HexQuickActionPanel/);
   assert.match(controller, /handleFarm/);
   assert.match(controller, /hudPanel/);
   assert.match(controller, /inventoryOpen/);
@@ -46,12 +47,14 @@ test('bag uses the existing homestead inventory without introducing a new econom
   assert.match(bag, /RESOURCE_CATALOG/);
 });
 
-test('living building actions reveal advanced management progressively', async () => {
-  const panel = await source('components/hex-world/HexLivingActionPanel.tsx');
-  assert.match(panel, /detailsOpen/);
-  assert.match(panel, />More</);
-  for (const label of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Family Time']) assert.match(panel, new RegExp(label));
-  assert.match(panel, /max-h-\[48vh\]|max-h-\[50vh\]|max-h-\[52vh\]/);
+test('living building actions use a quick layer before the existing full details layer', async () => {
+  const quick = await source('components/hex-world/HexQuickActionPanel.tsx');
+  assert.match(quick, />More</);
+  for (const label of ['Plant', 'Water', 'Harvest', 'Fish', 'Forage', 'Family Time']) assert.match(quick, new RegExp(label));
+  assert.match(quick, /max-w-\[|w-\[min/);
+  const controller = await source('components/hex-world/HexBuildController.tsx');
+  assert.match(controller, /detailsOpen/);
+  assert.match(controller, /HexLivingActionPanel/);
 });
 
 test('build and expansion surfaces use purpose-led cozy-game presentation', async () => {
