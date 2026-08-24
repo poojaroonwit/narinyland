@@ -42,10 +42,12 @@ test('Homestead presence routes are deterministic bounded and use building ancho
   assert.doesNotMatch(source, /localStorage|fetch\(|Prisma/);
 });
 
-test('Barn has a local structure model and no remote model dependency', async () => {
+test('Barn has a local PBR structure model and no remote model dependency', async () => {
   const dispatcher = await readFile(new URL('../components/hex-world/HexBuildingModels.tsx', import.meta.url), 'utf8');
-  const structures = await readFile(new URL('../components/hex-world/models/HexStructureModels.tsx', import.meta.url), 'utf8');
+  const structures = await readFile(new URL('../components/hex-world/pbr/HexPBRBuildings.tsx', import.meta.url), 'utf8');
   assert.match(dispatcher, /buildingKey === 'barn'/);
+  assert.match(dispatcher, /HexPBRStructureModel/);
   assert.match(structures, /case 'barn'/);
+  assert.match(structures, /getPBRTextureSet/);
   assert.doesNotMatch(structures, /https?:\/\//);
 });
