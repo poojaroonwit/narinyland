@@ -56,6 +56,40 @@ export const HEX_VISUAL_THEME = {
     winter: '#dce8eb',
     fog: '#dceef0',
   },
+  explore: {
+    character: {
+      skin: '#e7b58a',
+      hair: '#4e3d34',
+      hairLight: '#675044',
+      tunic: '#4f806c',
+      tunicLight: '#6a9b82',
+      shirt: '#f0e1c7',
+      trousers: '#5b5650',
+      leather: '#76513a',
+      leatherDark: '#513a2e',
+      scarf: '#557c86',
+      metal: '#b99a69',
+    },
+    ground: {
+      turfLight: '#9cbc78',
+      turfDark: '#719455',
+      packedEarth: '#a47a58',
+      pathLight: '#c6baa4',
+    },
+    props: {
+      lantern: '#ffd38a',
+      planter: '#a86f4f',
+      barrel: '#8a6248',
+      rope: '#c4a475',
+    },
+    atmosphere: {
+      fogDay: '#dcecf0',
+      fogEvening: '#e6d8cb',
+      distantRock: '#7f9990',
+      distantGrass: '#86a675',
+      cloud: '#f4f5ee',
+    },
+  },
 } as const;
 
 export function getTerrainPresentation(terrainType: HexTerrainType) {
