@@ -21,14 +21,16 @@ test('overview camera frames unlocked island around its actual bounds', () => {
   assert.equal(shouldReframeForCoords(bounds, [{ q: 20, r: 20 }]), true);
 });
 
-test('overview uses a lower handcrafted diorama angle without losing portrait framing', () => {
+test('overview uses a location-scale outdoor angle without losing portrait framing', () => {
   const bounds = getUnlockedIslandBounds([tile(-5, 0), tile(5, 0)]);
   const landscape = getOverviewCameraPose(bounds, 16 / 9);
   const portrait = getOverviewCameraPose(bounds, 9 / 16);
   const lateral = Math.abs(landscape.position[0] - landscape.target[0]);
   const vertical = Math.abs(landscape.position[1] - landscape.target[1]);
+  const slope = vertical / lateral;
 
   assert.ok(lateral > vertical, 'landscape overview should feel more lateral than top-down');
+  assert.ok(slope < 0.7, 'World overview should read as a place rather than a tabletop');
   assert.ok(portrait.distance > landscape.distance, 'portrait framing keeps the existing distance penalty');
 });
 
