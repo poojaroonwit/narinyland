@@ -22,7 +22,7 @@ test('person mode mounts detail atmosphere and keeps one primary shadow light wi
   ]);
   assert.match(world, /HexExploreStructureDetails/);
   assert.match(world, /HexExploreAtmosphere/);
-  assert.match(world, /viewMode === 'person'/);
+  assert.match(world, /viewMode\s*===\s*['"]person['"]/);
   assert.equal((lighting.match(/<directionalLight\b/g) ?? []).length, 1);
   assert.doesNotMatch(`${world}\n${lighting}`, /EffectComposer|Bloom|DepthOfField|volumetric/i);
 });
