@@ -65,6 +65,24 @@ test('vegetation sway is applied to instance-local transforms instead of rotatin
   assert.doesNotMatch(ambient, /ref\.current\.rotation\.[xz]\s*=/);
 });
 
+test('World vegetation uses layered deterministic wind while remaining instanced', async () => {
+  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
+  assert.match(ambient, /worldWindScale/);
+  assert.match(ambient, /worldWindSecondaryScale/);
+  assert.match(ambient, /primary/);
+  assert.match(ambient, /secondary/);
+  assert.match(ambient, /0\.47/);
+  assert.match(ambient, /1\.83/);
+  assert.match(ambient, /secondaryPhaseOffset/);
+  assert.match(ambient, /0\.0025/);
+  assert.match(ambient, /0\.020|0\.02/);
+  assert.match(ambient, /0\.030|0\.03/);
+  assert.match(ambient, /0\.012/);
+  assert.match(ambient, /0\.014/);
+  assert.match(ambient, /instancedMesh/);
+  assert.doesNotMatch(ambient, /Math\.random/);
+});
+
 test('sky parallax remains bounded and uses shared motion profile', async () => {
   const sky = await source('../components/hex-world/HexSkyAtmosphere.tsx');
   const lighting = await source('../components/hex-world/HexWorldLighting.tsx');
