@@ -4,6 +4,7 @@ import React from 'react';
 import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-life-engine';
 import type { HexBuildingDTO, HexWorldSnapshot } from '@/lib/hex-world/types';
 import type { HexViewMode } from '@/lib/hex-world/view-mode';
+import { HexExploreHUD } from './HexExploreHUD';
 import { HexInventorySheet } from './HexInventorySheet';
 import { HexLivingActionPanel } from './HexLivingActionPanel';
 import { HexLivingHUD, type HexHudPanel } from './HexLivingHUD';
@@ -129,19 +130,21 @@ export function HexGameplayOverlay({
 
   return (
     <div className="contents" data-hex-overlay-state={overlayState}>
-      <HexLivingHUD
-        state={livingState}
-        points={snapshot.points}
-        loading={livingLoading}
-        error={livingError}
-        busy={livingBusy}
-        musicMuted={musicMuted}
-        onToggleMusic={onToggleMusic}
-        onAction={onLivingAction}
-        onRetry={onLivingRetry}
-        panel={hudPanel}
-        onPanelChange={changeHudPanel}
-      />
+      {(viewMode === 'world' || hudPanel !== null) && (
+        <HexLivingHUD
+          state={livingState}
+          points={snapshot.points}
+          loading={livingLoading}
+          error={livingError}
+          busy={livingBusy}
+          musicMuted={musicMuted}
+          onToggleMusic={onToggleMusic}
+          onAction={onLivingAction}
+          onRetry={onLivingRetry}
+          panel={hudPanel}
+          onPanelChange={changeHudPanel}
+        />
+      )}
 
       {interactive && (
         <>
@@ -153,17 +156,30 @@ export function HexGameplayOverlay({
 
           <HexInventorySheet open={inventoryOpen} state={livingState} onClose={() => setInventoryOpen(false)} />
 
-          <HexWorldToolbar
-            onFarm={handleFarm}
-            onBuild={openBuild}
-            onBag={toggleBag}
-            onGoals={toggleGoals}
-            onExpand={() => { closePrimarySheets(); onClearSelection(); onExpand(); }}
-            onResetView={onResetView}
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-            activeAction={activeAction}
-          />
+          {viewMode === 'person' ? (
+            <HexExploreHUD
+              state={livingState}
+              points={snapshot.points}
+              musicMuted={musicMuted}
+              onToggleMusic={onToggleMusic}
+              onBag={toggleBag}
+              onGoals={toggleGoals}
+              onWorld={() => handleViewModeChange('world')}
+              onResetView={onResetView}
+            />
+          ) : (
+            <HexWorldToolbar
+              onFarm={handleFarm}
+              onBuild={openBuild}
+              onBag={toggleBag}
+              onGoals={toggleGoals}
+              onExpand={() => { closePrimarySheets(); onClearSelection(); onExpand(); }}
+              onResetView={onResetView}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+              activeAction={activeAction}
+            />
+          )}
         </>
       )}
     </div>
