@@ -61,7 +61,7 @@ No mandatory `EffectComposer`, bloom, depth-of-field, screen-space AO, SSR, or r
 
 ### 1. Shared visual theme
 
-Create `lib/hex-world/visual-theme.ts` with reusable presentation constants:
+Create `lib/hex-world/visual-theme.ts` with reusable presentation constants and pure helpers:
 
 - terrain palettes and roughness ranges;
 - structure wall / roof / wood / trim palettes;
@@ -69,13 +69,32 @@ Create `lib/hex-world/visual-theme.ts` with reusable presentation constants:
 - water colors;
 - atmosphere colors;
 - controlled emissive values;
-- deterministic variation helpers where presentation-only values are required.
+- deterministic presentation variation helpers;
+- pure crop-visual-stage mapping.
 
 This centralizes art direction and prevents different scene modules from drifting into unrelated colors/materials.
 
 The module must contain presentation data only. It must not depend on persistence, economy, gameplay state transitions, or APIs.
 
-### 2. Terrain surface richness
+### 2. Small visual-environment projection
+
+Create `lib/hex-world/visual-environment.ts` to isolate living-state presentation from renderer components.
+
+It exposes a small presentation type such as:
+
+```ts
+type HexVisualEnvironment = {
+  season: FarmSeason | null;
+  weather: string | null;
+  timePhase: 'morning' | 'day' | 'evening' | 'night';
+};
+```
+
+`HexWorld3D` derives this object from optional `HomesteadLifeState` and passes only the visual environment to `HexSkyAtmosphere` and `HexWorldLighting`.
+
+The projection is one-way and pure. Atmosphere and lighting must not import the homestead engine or mutate gameplay state.
+
+### 3. Terrain surface richness
 
 Keep `HexTileInstances` as the authoritative instanced terrain renderer.
 
@@ -90,14 +109,14 @@ Add a lightweight presentation-only `HexTerrainDetails.tsx` layer that derives e
 
 - small dirt/stone flecks;
 - sparse grass tufts;
-- moss/ground accents near selected edge-safe terrain;
-- subtle soil row accents where appropriate.
+- moss/ground accents on suitable terrain;
+- subtle soil-row accents where appropriate.
 
 All detail placement must be deterministic from world seed + coordinates. Density must scale through `profile.ambientDensity`.
 
 The layer must use a small fixed number of instanced batches, not one React mesh per detail.
 
-### 3. Floating-island silhouette and underside
+### 4. Floating-island silhouette and underside
 
 Replace the current center-ring look of `HexIslandUnderside` with a silhouette derived from the actual unlocked island.
 
@@ -110,11 +129,13 @@ Presentation behavior:
 - add sparse moss/root accents at the upper perimeter on medium/high quality;
 - keep the underside clearly below gameplay collision and interaction space.
 
+`HexIslandUnderside` may accept `profile` in addition to existing tiles/seed so optional detail remains quality-bounded.
+
 The island should read as one floating landmass rather than a flat board above unrelated rocks.
 
 No terrain persistence or tile-height mutation is allowed.
 
-### 4. Lighting and contact depth
+### 5. Lighting and contact depth
 
 Update `HexWorldLighting` to strengthen miniature depth while keeping the current single primary shadow owner.
 
@@ -123,12 +144,13 @@ Direction:
 - warm main sun;
 - cooler hemisphere/fill;
 - slightly stronger contact darkening around buildings and terrain contact points;
-- tuned shadow camera/bias to improve contact without acne;
+- tuned shadow bias/normal bias to improve contact without acne;
+- small color/intensity shifts from `HexVisualEnvironment`;
 - profile-controlled contact shadow resolution stays intact.
 
 Performance rule: keep one shadow-casting directional light. Do not add multiple dynamic shadow lights.
 
-### 5. Vegetation and natural dressing
+### 6. Vegetation and natural dressing
 
 Upgrade `HexAmbientDecor` while preserving instancing and motion buckets.
 
@@ -142,7 +164,7 @@ Trees:
 Flowers and grass:
 
 - add 2–4 deterministic small silhouettes/palettes rather than one repeated pink flower;
-- add sparse grass tufts on eligible visual-only terrain details;
+- add sparse grass tufts through the visual-only terrain-detail layer;
 - avoid uniform density.
 
 Rocks and paths:
@@ -152,7 +174,7 @@ Rocks and paths:
 
 No new gameplay resources or harvestables are introduced by these visual decorations.
 
-### 6. Water and pond treatment
+### 7. Water and pond treatment
 
 Upgrade `HexWaterSurface` with a layered but low-cost treatment:
 
@@ -163,14 +185,16 @@ Upgrade `HexWaterSurface` with a layered but low-cost treatment:
 - keep glint counts controlled by `profile.waterGlintCount`;
 - avoid real-time reflection/refraction.
 
-Upgrade the `pond` model in `HexNatureModels` with:
+Upgrade the `pond` model in `HexNatureModels` with fixed, bounded local geometry:
 
 - clearer shoreline ring;
-- a few deterministic reeds;
-- 1–2 lily pads on medium/high presentation;
+- a few reeds;
+- one or two lily-pad shapes;
 - better rock placement and silhouette.
 
-### 7. Building art-family cohesion
+Pond model detail remains small enough to render on every quality tier, avoiding a new quality prop through the building-model hierarchy. Terrain-water detail remains quality-controlled in `HexWaterSurface`.
+
+### 8. Building art-family cohesion
 
 Keep structures procedural and local.
 
@@ -186,9 +210,11 @@ Update `HexStructureModels` so Home, Barn, Storage, and Workshop share a coheren
 
 Use shared helper components for repeated trim/window/foundation/roof-detail primitives where that reduces duplication.
 
+Window/lamp emissive accents stay bounded and local; the first pass does not thread time-of-day props through every building model.
+
 Do not introduce remote model URLs or external asset loading.
 
-### 8. Garden and crop graphics
+### 9. Garden and crop graphics
 
 Garden graphics are the hero of the active loop.
 
@@ -202,36 +228,30 @@ Upgrade `garden_patch` and crop rendering:
 - use crop-specific silhouettes in addition to color differences;
 - harvest-ready crops gain a very subtle presentation-only emphasis (small scale/bob/emissive accent), not a large UI marker.
 
-Crop stage policy:
+Visual crop stages:
 
 - 0–0.24: sprout;
 - 0.25–0.54: young plant;
 - 0.55–0.84: mature plant;
 - 0.85–1.0: harvest-ready silhouette.
 
-The exact gameplay readiness threshold remains authoritative in the existing homestead engine. These ranges are visual interpolation only and must not determine game actions.
+The exact gameplay readiness threshold remains authoritative in the existing homestead engine. The stage ranges are visual interpolation only and must not determine game actions.
 
-### 9. Living atmosphere
+### 10. Living atmosphere
 
-Allow `HexSkyAtmosphere` and selected presentation components to receive a small visual-state projection from `HomesteadLifeState`.
-
-Allowed visual inputs:
-
-- season;
-- weather;
-- time of day / `timeMinutes`.
+`HexSkyAtmosphere` and `HexWorldLighting` receive only `HexVisualEnvironment`.
 
 Presentation effects:
 
-- very small background/fog temperature shifts by season/time;
-- rain can make the world slightly cooler/darker and retain existing bounded rain effects;
+- small background/fog temperature shifts by season/time;
+- rain makes the scene slightly cooler/darker while retaining existing bounded rain effects;
 - sunny conditions remain warmer;
-- evening increases window/lamp warmth;
+- evening/night uses slightly cooler environment light while existing building emissives become more visually prominent by contrast;
 - lower-island mist/clouds remain slow and bounded.
 
-This must be a one-way visual projection. Atmosphere never changes gameplay state.
+Atmosphere never changes gameplay state.
 
-### 10. Camera composition
+### 11. Camera composition
 
 Keep the smart camera system and orbit controls.
 
@@ -245,7 +265,7 @@ Tune `lib/hex-world/camera.ts` and/or `HexDioramaCamera` only enough to improve 
 
 Do not add cinematic camera takeover during normal play.
 
-### 11. Placement and reward feedback
+### 12. Placement and reward feedback
 
 Keep existing placement effects and expansion-rise system.
 
@@ -287,7 +307,7 @@ The existing `high`, `medium`, and `mobile` profiles remain the source of truth.
 - minimal vegetation motion;
 - basic water;
 - lowest terrain-detail density;
-- no optional lily/glint/detail batches where they are not necessary;
+- no optional glint/detail batches where they are not necessary;
 - no additional per-frame loops proportional to all tiles beyond existing bounded systems.
 
 ### Hard performance rules
@@ -306,6 +326,7 @@ The existing `high`, `medium`, and `mobile` profiles remain the source of truth.
 Expected new modules:
 
 - `lib/hex-world/visual-theme.ts`
+- `lib/hex-world/visual-environment.ts`
 - `components/hex-world/HexTerrainDetails.tsx`
 
 Expected modified modules:
@@ -338,9 +359,10 @@ No expected changes to:
 
 1. Existing `HexWorldSnapshot` and optional `HomesteadLifeState` enter `HexWorld3D`.
 2. `resolveHexQualityProfile` selects high / medium / mobile budget exactly as today.
-3. Terrain/building/decor modules derive deterministic presentation data from seed, coordinates, quality profile, and allowed living-state fields.
-4. All visual derivation stays client-side and ephemeral.
-5. Existing server-authoritative game actions remain untouched.
+3. `HexWorld3D` derives a small `HexVisualEnvironment` from living state.
+4. Terrain/building/decor modules derive deterministic presentation data from seed, coordinates, quality profile, and allowed visual-environment fields.
+5. All visual derivation stays client-side and ephemeral.
+6. Existing server-authoritative game actions remain untouched.
 
 ## Testing Strategy
 
@@ -348,6 +370,7 @@ Add source-contract and pure deterministic tests covering:
 
 - no heavy post-processing introduced;
 - quality caps remain unchanged unless explicitly tested/approved;
+- visual environment is pure and limited to season/weather/time phase;
 - terrain details are deterministic and density-bounded;
 - underside placement derives from island boundary rather than fixed unrelated ring positions;
 - repeated terrain/decor remains instanced;
@@ -355,7 +378,7 @@ Add source-contract and pure deterministic tests covering:
 - water detail respects quality tiers;
 - crop visual-stage mapping is deterministic and presentation-only;
 - mobile quality omits expensive optional details;
-- atmosphere inputs are limited to visual state and do not mutate game state;
+- atmosphere never imports or mutates gameplay engine actions;
 - no remote model URLs are introduced;
 - existing Hex Homestead, farm, auth, security, DB/Redis undo, lint, production build, and runtime-smoke suites remain green.
 
