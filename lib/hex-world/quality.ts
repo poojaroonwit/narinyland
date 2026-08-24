@@ -80,6 +80,18 @@ const MOBILE: HexQualityProfile = {
   exploreStructureDetail: 0.4,
 };
 
+const QUALITY_RANK: Record<HexQualityName, number> = {
+  mobile: 0,
+  medium: 1,
+  high: 2,
+};
+
+const QUALITY_PROFILE: Record<HexQualityName, HexQualityProfile> = {
+  high: HIGH,
+  medium: MEDIUM,
+  mobile: MOBILE,
+};
+
 export function resolveHexQualityProfile(input: {
   graphicsQuality?: string | null;
   viewportWidth: number;
@@ -89,4 +101,22 @@ export function resolveHexQualityProfile(input: {
   if (input.graphicsQuality === 'high') return HIGH;
   if (input.graphicsQuality === 'medium') return MEDIUM;
   return MOBILE;
+}
+
+export function resolveAdaptiveHexQuality(
+  staticProfile: HexQualityProfile,
+  performanceFactor: number,
+): HexQualityProfile {
+  const factor = Number.isFinite(performanceFactor)
+    ? Math.max(0, Math.min(1, performanceFactor))
+    : 1;
+  const requestedName: HexQualityName = factor < 0.4
+    ? 'mobile'
+    : factor < 0.7
+      ? 'medium'
+      : staticProfile.name;
+  const effectiveName = QUALITY_RANK[requestedName] > QUALITY_RANK[staticProfile.name]
+    ? staticProfile.name
+    : requestedName;
+  return QUALITY_PROFILE[effectiveName];
 }
