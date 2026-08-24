@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HomesteadLifeState } from '@/lib/homestead-life-engine';
+import type { HexExploreMovementInput } from '@/lib/hex-world/explore-movement-input';
 import { axialToWorld, hexKey, worldToAxial } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionPhase, resolveHexMotionProfile, type HexMotionProfile } from '@/lib/hex-world/motion';
 import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
@@ -57,6 +58,7 @@ type Props = {
   reframeCoords?: HexCoord[];
   graphicsQuality?: string;
   livingState?: HomesteadLifeState | null;
+  movementInputRef?: React.MutableRefObject<HexExploreMovementInput>;
   onHoverTile?: (coord: HexCoord | null) => void;
   onSelectTile?: (coord: HexCoord) => void;
   onSelectBuilding?: (building: HexBuildingDTO | null) => void;
@@ -180,6 +182,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
             buildings={snapshot.buildings}
             reducedMotion={reducedMotion}
             resetNonce={props.resetNonce ?? 0}
+            movementInputRef={props.movementInputRef}
           />
         ) : (
           <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
