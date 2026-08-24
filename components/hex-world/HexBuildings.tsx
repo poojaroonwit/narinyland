@@ -38,6 +38,9 @@ function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, mo
   const lastEventNonce = useRef<number | null>(null);
   const target = axialToWorld({ q: building.anchorQ, r: building.anchorR }, 1, height + 0.02);
   const targetYaw = hexRotationToRadians(building.rotation);
+  const buildingFeedbackScale = reducedMotion
+    ? Math.min(0.35, motionProfile.buildingFeedbackScale)
+    : motionProfile.buildingFeedbackScale;
 
   useLayoutEffect(() => {
     const group = ref.current;
@@ -50,10 +53,20 @@ function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, mo
     }
     const confirmed = visualEvent && 'buildingId' in visualEvent && visualEvent.buildingId === building.id ? visualEvent : null;
     if (!confirmed || confirmed.nonce === lastEventNonce.current) return;
-    if (!reducedMotion && confirmed.kind === 'placed') group.position.y = target.y + 0.65;
-    if (!reducedMotion && confirmed.kind === 'moved') group.position.y = target.y + 0.25;
+
+    if (confirmed.kind === 'placed') {
+      group.position.y = target.y + 0.72 * buildingFeedbackScale;
+      group.scale.setScalar(1 - (1 - 0.94) * buildingFeedbackScale);
+    }
+    if (confirmed.kind === 'moved') {
+      group.position.y = target.y + 0.30 * buildingFeedbackScale;
+      group.scale.setScalar(1 - (1 - 0.97) * buildingFeedbackScale);
+    }
+    if (confirmed.kind === 'rotated') {
+      group.scale.setScalar(1 - (1 - 0.975) * buildingFeedbackScale);
+    }
     lastEventNonce.current = confirmed.nonce;
-  }, [building.id, reducedMotion, target.x, target.y, target.z, targetYaw, visualEvent]);
+  }, [building.id, buildingFeedbackScale, target.x, target.y, target.z, targetYaw, visualEvent]);
 
   useFrame((_, delta) => {
     const group = ref.current;
@@ -61,10 +74,12 @@ function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, mo
     const selectAlpha = expSmoothingAlpha(delta, motionProfile.selectResponse);
     const settleAlpha = expSmoothingAlpha(delta, Math.max(6, 2400 / Math.max(80, motionProfile.placementDurationMs)));
     const rotateAlpha = expSmoothingAlpha(delta, Math.max(7, 2400 / Math.max(80, motionProfile.rotationDurationMs)));
+    const selectedLift = 0.055 * buildingFeedbackScale;
+    const selectedScale = 1 + (1.045 - 1) * buildingFeedbackScale;
     group.position.x = THREE.MathUtils.lerp(group.position.x, target.x, selectAlpha);
     group.position.z = THREE.MathUtils.lerp(group.position.z, target.z, selectAlpha);
-    group.position.y = THREE.MathUtils.lerp(group.position.y, target.y + (selected ? 0.04 : 0), settleAlpha);
-    const scale = THREE.MathUtils.lerp(group.scale.x, selected ? 1.035 : 1, selectAlpha);
+    group.position.y = THREE.MathUtils.lerp(group.position.y, target.y + (selected ? selectedLift : 0), settleAlpha);
+    const scale = THREE.MathUtils.lerp(group.scale.x, selected ? selectedScale : 1, selectAlpha);
     group.scale.setScalar(scale);
     group.rotation.y += angleDelta(group.rotation.y, targetYaw) * rotateAlpha;
   });
