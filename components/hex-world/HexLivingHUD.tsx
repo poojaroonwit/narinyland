@@ -51,7 +51,7 @@ export function HexLivingHUD({
 
   if (!state) {
     return (
-      <div className="pointer-events-auto fixed left-1/2 top-4 z-[95] flex -translate-x-1/2 items-center gap-2">
+      <div className="pointer-events-auto fixed left-1/2 top-4 z-[95] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-2">
         <div className="rounded-full border border-white/70 bg-white/86 px-4 py-2 text-xs font-bold text-stone-600 shadow-xl backdrop-blur-xl">
           {loading ? 'Waking the homestead…' : (
             <button type="button" onClick={onRetry} className="min-h-[36px] font-black text-rose-600">
@@ -79,6 +79,7 @@ export function HexLivingHUD({
   const currentEventDefinition = currentEvent && !currentEvent.resolved
     ? getHomesteadEventDefinition(currentEvent.key)
     : null;
+  const hasNotices = !!(currentEvent && currentEventDefinition) || !!(showSeasonSummary && seasonSummary);
 
   return (
     <>
@@ -108,7 +109,11 @@ export function HexLivingHUD({
       </div>
 
       {activePanel && (
-        <div className="pointer-events-auto fixed right-3 top-[4.75rem] z-[96] max-h-[52vh] w-[min(92vw,390px)] overflow-y-auto rounded-[1.4rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl md:right-5 md:top-[5.25rem]">
+        <div
+          data-hex-hud-panel={activePanel}
+          data-has-notices={hasNotices ? 'true' : 'false'}
+          className={`pointer-events-auto fixed right-3 top-[4.75rem] z-[96] w-[min(92vw,390px)] overflow-y-auto rounded-[1.4rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl md:right-5 md:top-[5.25rem] ${hasNotices ? 'max-h-[34vh]' : 'max-h-[52vh]'}`}
+        >
           <div className="mb-2 flex items-start justify-between gap-3">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">
@@ -170,27 +175,36 @@ export function HexLivingHUD({
         </div>
       )}
 
-      {currentEvent && currentEventDefinition && (
-        <div className="pointer-events-auto fixed left-1/2 top-[5.1rem] z-[94] w-[min(90vw,440px)] -translate-x-1/2 rounded-[1.3rem] border border-white/80 bg-[#fffdf7]/95 p-3 shadow-xl shadow-pink-950/[0.06] backdrop-blur-xl md:top-[5.5rem]">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 text-xl">{currentEvent.key === 'growing_together' ? '💗' : currentEvent.kind === 'seasonal' ? season.emoji : '✨'}</span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-pink-600">{currentEvent.key === 'growing_together' ? 'Growing Together' : currentEvent.kind === 'seasonal' ? 'Seasonal moment' : 'Homestead moment'}</p>
-              <p className="mt-0.5 text-sm font-black text-stone-800">{currentEventDefinition.title}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {currentEventDefinition.choices.map((choice) => <button key={choice.key} type="button" disabled={busy} onClick={() => void onAction({ type: 'resolve_event', choiceKey: choice.key })} className="min-h-[40px] rounded-xl bg-pink-500 px-3 text-[9px] font-black text-white shadow-sm disabled:bg-stone-300">{choice.label}</button>)}
+      {hasNotices && (
+        <div
+          data-hex-hud-notice-stack
+          className={activePanel
+            ? 'pointer-events-none fixed bottom-[calc(15.2rem+env(safe-area-inset-bottom))] right-3 z-[95] flex max-h-[18vh] w-[min(92vw,390px)] flex-col gap-2 overflow-y-auto md:right-5'
+            : 'pointer-events-none fixed left-1/2 top-[9.75rem] z-[94] flex max-h-[38vh] w-[min(90vw,440px)] -translate-x-1/2 flex-col gap-2 overflow-y-auto md:top-[10.25rem]'}
+        >
+          {currentEvent && currentEventDefinition && (
+            <div className="pointer-events-auto rounded-[1.3rem] border border-white/80 bg-[#fffdf7]/95 p-3 shadow-xl shadow-pink-950/[0.06] backdrop-blur-xl">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 text-xl">{currentEvent.key === 'growing_together' ? '💗' : currentEvent.kind === 'seasonal' ? season.emoji : '✨'}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-pink-600">{currentEvent.key === 'growing_together' ? 'Growing Together' : currentEvent.kind === 'seasonal' ? 'Seasonal moment' : 'Homestead moment'}</p>
+                  <p className="mt-0.5 text-sm font-black text-stone-800">{currentEventDefinition.title}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {currentEventDefinition.choices.map((choice) => <button key={choice.key} type="button" disabled={busy} onClick={() => void onAction({ type: 'resolve_event', choiceKey: choice.key })} className="min-h-[40px] rounded-xl bg-pink-500 px-3 text-[9px] font-black text-white shadow-sm disabled:bg-stone-300">{choice.label}</button>)}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {showSeasonSummary && seasonSummary && (
-        <div className="pointer-events-auto fixed left-1/2 top-[5.1rem] z-[94] w-[min(90vw,420px)] -translate-x-1/2 rounded-[1.3rem] border border-white/80 bg-[#fffdf7]/96 p-3 shadow-xl backdrop-blur-xl md:top-[5.5rem]">
-          <div className="flex items-start justify-between gap-3">
-            <div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Season complete</p><p className="mt-0.5 text-sm font-black text-stone-800">{getSeasonPresentation(seasonSummary.completedSeason!).emoji} {getSeasonPresentation(seasonSummary.completedSeason!).label} together</p><p className="mt-1 text-[9px] font-bold text-stone-500">+{seasonSummary.seasonRewardCoins ?? 0} coins · +{seasonSummary.seasonRewardHearts ?? 0} Hearts</p></div>
-            <button type="button" onClick={() => setDismissedSeasonDay(seasonSummary.completedDay)} className="min-h-[40px] rounded-full bg-stone-100 px-3 text-[9px] font-black text-stone-500">Got it</button>
-          </div>
+          {showSeasonSummary && seasonSummary && (
+            <div className="pointer-events-auto rounded-[1.3rem] border border-white/80 bg-[#fffdf7]/96 p-3 shadow-xl backdrop-blur-xl">
+              <div className="flex items-start justify-between gap-3">
+                <div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Season complete</p><p className="mt-0.5 text-sm font-black text-stone-800">{getSeasonPresentation(seasonSummary.completedSeason!).emoji} {getSeasonPresentation(seasonSummary.completedSeason!).label} together</p><p className="mt-1 text-[9px] font-bold text-stone-500">+{seasonSummary.seasonRewardCoins ?? 0} coins · +{seasonSummary.seasonRewardHearts ?? 0} Hearts</p></div>
+                <button type="button" onClick={() => setDismissedSeasonDay(seasonSummary.completedDay)} className="min-h-[40px] rounded-full bg-stone-100 px-3 text-[9px] font-black text-stone-500">Got it</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

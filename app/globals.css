@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Pacifico&family=Instrument+Serif:ital@0;1&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,6 +7,7 @@
     --radius: 9999px;
     --background: 213 45% 67%;
     --foreground: 0 0% 100%;
+    --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   }
 }
 
@@ -91,22 +90,59 @@
   --z-index-tooltip: 10001;
 }
 
+html,
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-ui);
+}
+
 body {
-    font-family: 'DM Sans', 'Prompt', sans-serif;
-    background-color: #fdf2f8; /* pink-50 */
-    overflow-x: hidden;
+  background-color: #fdf2f8; /* pink-50 */
+  overflow-x: hidden;
 }
 
-.font-pacifico {
-    font-family: 'Pacifico', cursive;
-}
-
-.font-dmsans {
-    font-family: 'DM Sans', sans-serif;
-}
-
+/* Legacy utility names stay compatible while the product uses one UI font. */
+.font-pacifico,
+.font-dmsans,
 .font-prompt {
-    font-family: 'Prompt', sans-serif;
+  font-family: var(--font-ui);
+}
+
+/* HexWorld overlay collision contract. */
+[data-hex-edit-toolbar] {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+body:has([data-hex-hud-panel]) [data-hex-edit-toolbar] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(0.5rem);
+}
+
+body:has([data-hex-overlay-state="hud"]) [data-hex-undo-toast] {
+  top: auto;
+  left: 50%;
+  bottom: calc(10.6rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+}
+
+body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > aside {
+  max-height: calc(100dvh - 17rem - env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > aside {
+    max-height: calc(100dvh - 12rem);
+  }
+}
+
+@media (max-height: 640px) {
+  [data-hex-hud-panel][data-has-notices="true"] {
+    max-height: 28vh;
+  }
 }
 
 @keyframes holographic-sweep {
@@ -140,10 +176,10 @@ body {
 }
 
 .glass-morphism {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 @media (prefers-reduced-motion: reduce) {

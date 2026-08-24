@@ -104,9 +104,18 @@ export function HexGameplayOverlay({
       : selectedBuilding?.buildingKey === 'garden_patch' && !detailsOpen
         ? 'farm'
         : null;
+  const overlayState = hudPanel
+    ? 'hud'
+    : inventoryOpen
+      ? 'inventory'
+      : detailsOpen
+        ? 'details'
+        : selectedBuilding
+          ? 'quick'
+          : 'base';
 
   return (
-    <>
+    <div className="contents" data-hex-overlay-state={overlayState}>
       <HexLivingHUD
         state={livingState}
         points={snapshot.points}
@@ -142,6 +151,6 @@ export function HexGameplayOverlay({
           />
         </>
       )}
-    </>
+    </div>
   );
 }
