@@ -28,7 +28,7 @@ test('PBR source catalog pins the approved asset set exactly', async () => {
   assert.match(catalog.userAgent, /NarinylandAssetResolver/);
 });
 
-test('resolved PBR manifest contains immutable file hashes and CC0 provenance', async () => {
+test('resolved PBR manifest contains immutable SHA-256 locks and CC0 provenance', async () => {
   const manifest = await readJson('assets/hex-world/pbr-manifest.json');
   assert.equal(manifest.version, 1);
   assert.equal(manifest.provider, 'polyhaven');
@@ -38,16 +38,20 @@ test('resolved PBR manifest contains immutable file hashes and CC0 provenance', 
   for (const asset of manifest.assets) {
     assert.equal(asset.license, 'CC0');
     assert.match(asset.sourcePage, /^https:\/\/polyhaven\.com\/a\//);
-    assert.match(asset.filesHash, /^[a-f0-9]{40}$/);
     const files = filesFor(asset);
     assert.ok(files.length > 0, `${asset.id} must resolve at least one file`);
     for (const file of files) {
       assert.match(file.url, /^https:\/\/dl\.polyhaven\.org\//);
-      assert.match(file.md5, /^[a-f0-9]{32}$/);
       assert.match(file.sha256, /^[a-f0-9]{64}$/);
       assert.ok(Number.isInteger(file.size) && file.size > 0);
       assert.match(file.out, /^[a-z0-9_./-]+$/i);
       assert.equal(file.out.includes('..'), false);
     }
   }
+});
+
+test('pinned PBR v1 source payload stays bounded before browser texture decode', async () => {
+  const manifest = await readJson('assets/hex-world/pbr-manifest.json');
+  const bytes = manifest.assets.flatMap(filesFor).reduce((sum: number, file: any) => sum + file.size, 0);
+  assert.ok(bytes < 64 * 1024 * 1024, `pinned PBR payload is ${(bytes / 1024 / 1024).toFixed(1)} MB`);
 });
