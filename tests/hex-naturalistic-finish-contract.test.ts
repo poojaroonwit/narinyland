@@ -4,11 +4,11 @@ import { test } from 'node:test';
 
 const source = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('World uses the organic cliff shell and retires the old underside renderer', async () => {
+test('World uses the organic PBR cliff shell and retires legacy underside renderers', async () => {
   const world = await source('components/hex-world/HexWorld3D.tsx');
-  assert.match(world, /HexIslandCliffShell/);
-  assert.match(world, /<HexIslandCliffShell[^>]*tiles=\{snapshot\.tiles\}[^>]*seed=\{snapshot\.world\.seed\}/);
-  assert.doesNotMatch(world, /HexIslandUnderside/);
+  assert.match(world, /HexPBRCliff/);
+  assert.match(world, /<HexPBRCliff[^>]*tiles=\{snapshot\.tiles\}[^>]*seed=\{snapshot\.world\.seed\}/);
+  assert.doesNotMatch(world, /HexIslandUnderside|HexIslandCliffShell/);
 });
 
 test('quality tiers expose bounded natural detail budgets without adding tier names', async () => {
