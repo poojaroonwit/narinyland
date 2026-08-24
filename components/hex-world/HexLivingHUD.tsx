@@ -114,7 +114,7 @@ export function HexLivingHUD({
               <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">
                 {activePanel === 'wallet' ? 'Family Wallet' : activePanel === 'goals' ? 'Today' : 'Progress'}
               </p>
-              <p className="text-sm font-black text-stone-850">
+              <p className="text-sm font-black text-stone-900">
                 {activePanel === 'wallet' ? 'What you share' : activePanel === 'goals' ? 'Daily Goals' : 'Homestead Journey'}
               </p>
             </div>
