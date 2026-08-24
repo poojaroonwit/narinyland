@@ -12,7 +12,7 @@ test('premium graphics pass keeps bounded procedural architecture', async () => 
   assert.match(world, /getHexVisualEnvironment/);
   assert.doesNotMatch(world, /EffectComposer|Bloom|DepthOfField|SSAO|SSR/);
   assert.match(quality, /maxDpr:\s*1\.75/);
-  assert.match(quality, /maxDpr:\s*1\.35/);
+  assert.match(quality, /maxDpr:\s*1\.5/);
   assert.match(quality, /maxDpr:\s*1,/);
 });
 
