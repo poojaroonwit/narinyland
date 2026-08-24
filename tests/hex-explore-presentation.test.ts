@@ -20,8 +20,8 @@ test('hex world mounts premium explore presentation only in person mode', async 
   const world = await source('components/hex-world/HexWorld3D.tsx');
   assert.match(world, /HexExploreGroundLayer/);
   assert.match(world, /HexExploreEnvironmentLayer/);
-  assert.match(world, /viewMode === 'person'[\s\S]*HexExploreGroundLayer/s);
-  assert.match(world, /viewMode === 'person'[\s\S]*HexExploreEnvironmentLayer/s);
+  assert.match(world, /viewMode\s*===\s*['"]person['"][\s\S]*HexExploreGroundLayer/s);
+  assert.match(world, /viewMode\s*===\s*['"]person['"][\s\S]*HexExploreEnvironmentLayer/s);
   assert.match(world, /HexTileInstances/);
   assert.match(world, /HexTerrainDetails/);
   assert.match(world, /HexAmbientDecor/);
