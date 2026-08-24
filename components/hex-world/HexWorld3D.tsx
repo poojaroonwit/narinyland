@@ -37,6 +37,8 @@ import { HexTileInstances } from './HexTileInstances';
 import { HexWaterSurface } from './HexWaterSurface';
 import { HexWorldLighting } from './HexWorldLighting';
 import { HexWorldParticles } from './HexWorldParticles';
+import { HexBuildGridOverlay } from './terrain/HexBuildGridOverlay';
+import { HexNaturalTerrain } from './terrain/HexNaturalTerrain';
 import { useReducedHexMotion } from './useReducedHexMotion';
 
 export type HexBuildingPreview = { buildingKey: string; anchorQ: number; anchorR: number; rotation: HexRotation; valid: boolean };
@@ -82,7 +84,7 @@ function AnimatedBuildingPreview({ preview, position, motionProfile }: { preview
   useFrame(({clock})=>{ if(!ref.current||document.visibilityState==='hidden')return; ref.current.position.y=position.y+Math.sin(clock.elapsedTime*1.6+phase)*0.02*motionProfile.ghostBobScale; });
   return <group ref={ref} position={[position.x,position.y,position.z]} rotation={[0,hexRotationToRadians(preview.rotation),0]}><HexBuildingModel buildingKey={preview.buildingKey} ghost /></group>;
 }
-function ExpansionPlacementGhost({ preview }: { preview: HexExpansionPlacementPreview }) { const color=preview.valid?'#e3b24a':'#ef7567'; return <group>{preview.tiles.map((coord)=>{const world=axialToWorld(coord,1,0.12);return <mesh key={`expansion-ghost-${hexKey(coord)}`} position={[world.x,world.y,world.z]}><cylinderGeometry args={[0.93,0.93,0.2,6]} /><meshStandardMaterial color={color} transparent opacity={0.62} roughness={0.85} depthWrite={false} /></mesh>;})}</group>; }
+function ExpansionPlacementGhost({ preview }: { preview: HexExpansionPlacementPreview }) { const color=preview.valid?'#e3b24a':'#ef7567'; return <group>{preview.tiles.map((coord)=>{const world=axialToWorld(coord,1,0.12);return <mesh key={`expansion-ghost-${hexKey(coord)}`} position={[world.x,world.y,world.z]}><cylinderGeometry args={[0.93,0.93,0.2,6]} /><meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.85} depthWrite={false} /></mesh>;})}</group>; }
 function ExpansionPlacementPlane({ onHover,onSelect }: { onHover:(coord:HexCoord)=>void;onSelect:(coord:HexCoord)=>void }) { const coordFromPoint=(point:THREE.Vector3)=>worldToAxial(point.x,point.z); return <mesh position={[0,0.38,0]} rotation={[-Math.PI/2,0,0]} onPointerMove={(event)=>{event.stopPropagation();onHover(coordFromPoint(event.point));}} onClick={(event)=>{event.stopPropagation();onSelect(coordFromPoint(event.point));}}><planeGeometry args={[90,90]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>; }
 
 export function HexWorld3D({ snapshot, ...props }: Props) {
@@ -97,13 +99,16 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   const tileHeight=new Map(snapshot.tiles.map((tile)=>[hexKey(tile),tile.height])); const hoveredKey=props.hoveredCoord?hexKey(props.hoveredCoord):null; const selectedKey=props.selectedCoord?hexKey(props.selectedCoord):null;
   const preview=props.buildingPreview; const previewHeight=preview?(tileHeight.get(`${preview.anchorQ}:${preview.anchorR}`)??0):0; const previewPosition=preview?axialToWorld({q:preview.anchorQ,r:preview.anchorR},1,previewHeight+0.03):null;
   const cameraIntent=props.cameraIntent??({kind:'overview'} as const); const viewMode=props.viewMode??'world'; const residentSamples=props.residentSamples??[];
+  const showBuildGrid=!!preview||!!props.validKeys?.size||!!props.invalidKeys?.size||!!props.expansionPlacementPreview;
   return <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-[#edf6e9] to-[#d7ead6]">
     <Canvas shadows="soft" gl={{antialias:true,powerPreference:'high-performance'}} dpr={[1,profile.maxDpr]} camera={{fov:42,near:0.1,far:160}} onPointerMissed={()=>props.onSelectBuilding?.(null)}>
       <PerformanceMonitor onChange={({factor})=>setPerformanceFactor((previous)=>resolveAdaptiveHexQuality(staticProfile,previous).name===resolveAdaptiveHexQuality(staticProfile,factor).name?previous:factor)} />
       <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
       {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}<HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><FloatingFragments />
       <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} /><HexPlacementEffects event={props.visualEvent??null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
-      <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
+      <HexNaturalTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+      <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} presentation="proxy" hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
+      {showBuildGrid&&<HexBuildGridOverlay tiles={snapshot.tiles} validKeys={props.validKeys} invalidKeys={props.invalidKeys} expansionPlacementPreview={props.expansionPlacementPreview} />}
       <HexTerrainDetails tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
       <HexWaterSurface tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} /><HexAmbientDecor tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
       {viewMode==='person'&&<><HexExploreGroundLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
