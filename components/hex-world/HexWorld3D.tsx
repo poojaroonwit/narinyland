@@ -18,6 +18,8 @@ import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
 import { HexCropEnhancements } from './HexCropEnhancements';
 import { HexDioramaCamera } from './HexDioramaCamera';
+import { HexExploreEnvironmentLayer } from './HexExploreEnvironmentLayer';
+import { HexExploreGroundLayer } from './HexExploreGroundLayer';
 import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
@@ -156,6 +158,12 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexAmbientDecor tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
+        {viewMode === 'person' && (
+          <>
+            <HexExploreGroundLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+            <HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} />
+          </>
+        )}
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {props.livingState && <HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
         {props.livingState && <HexCropEnhancements state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} reducedMotion={reducedMotion} />}
