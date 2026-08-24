@@ -75,12 +75,12 @@ export function HexExpansionController({
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-600">Grow your island</p>
           {!active ? (
             <>
-              <p className="mt-0.5 text-base font-black text-stone-850">Choose how the homestead grows</p>
+              <p className="mt-0.5 text-base font-black text-stone-900">Choose how the homestead grows</p>
               <p className="mt-0.5 text-[9px] font-bold text-stone-400">✨ {snapshot.points.toLocaleString()} shared Points available</p>
             </>
           ) : (
             <>
-              <p className="mt-0.5 text-base font-black text-stone-850">{presentation?.emoji} {isMove ? `Move ${presentation?.name ?? 'Land'}` : presentation?.name}</p>
+              <p className="mt-0.5 text-base font-black text-stone-900">{presentation?.emoji} {isMove ? `Move ${presentation?.name ?? 'Land'}` : presentation?.name}</p>
               <p className="mt-0.5 text-[9px] font-bold text-stone-500">
                 {!placementPreview ? 'Move the glowing land around the island.'
                   : !placementPinned ? 'Tap the ghost land to choose this spot.'
