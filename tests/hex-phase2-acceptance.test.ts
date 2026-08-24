@@ -47,12 +47,14 @@ test('phase 2 remains mobile-safe without exposing legacy game modes or characte
   const toolbar = await source('../components/hex-world/HexWorldToolbar.tsx');
   const placement = await source('../components/hex-world/HexPlacementBar.tsx');
   const undoToast = await source('../components/hex-world/HexUndoToast.tsx');
+  const globals = await source('../app/globals.css');
   const combined = `${controller}\n${toolbar}\n${placement}\n${undoToast}`;
 
   assert.match(toolbar, /min-h-\[(?:44|48)px\]/);
   assert.match(toolbar, /safe-area-inset-bottom/);
   assert.match(undoToast, /min-h-11/);
-  assert.match(undoToast, /safe-area-inset-bottom/);
+  assert.match(undoToast, /data-hex-undo-toast/);
+  assert.match(globals, /data-hex-undo-toast[\s\S]*safe-area-inset-bottom/);
   assert.doesNotMatch(combined, /\bWASD\b|Explore\/Orbit|LAND\/WORLD|game mode|worldMode\s*===/i);
 });
 
