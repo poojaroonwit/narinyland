@@ -8,7 +8,7 @@ test('player controller resolves buildings and moving residents through one targ
   assert.match(source, /residentSamples\?/);
   assert.match(source, /getExploreInteractionTarget\([\s\S]*buildings[\s\S]*residentSamples/);
   assert.match(source, /lastInteractionTargetIdRef/);
-  assert.match(source, /target\?\.id/);
+  assert.match(source, /interactionTarget\?\.id|interactionTargetId/);
 });
 
 test('world forwards resident samples only to the person controller path', async () => {
