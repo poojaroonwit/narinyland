@@ -10,6 +10,7 @@ import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
 import { hexRotationToRadians } from '@/lib/hex-world/rendering';
 import type { HexCameraIntent } from '@/lib/hex-world/camera';
 import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexExpansionPlacementPreview, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
+import type { HexViewMode } from '@/lib/hex-world/view-mode';
 import type { HexConfirmedVisualEvent } from '@/lib/hex-world/visual-events';
 import { getHexVisualEnvironment, HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 import { HexAmbientDecor } from './HexAmbientDecor';
@@ -20,6 +21,7 @@ import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
+import { HexPlayerController } from './HexPlayerController';
 import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
 import { HexTerrainDetails } from './HexTerrainDetails';
@@ -46,6 +48,7 @@ type Props = {
   newlyAddedKeys?: Set<string>;
   buildingPreview?: HexBuildingPreview | null;
   cameraIntent?: HexCameraIntent;
+  viewMode?: HexViewMode;
   resetNonce?: number;
   reframeCoords?: HexCoord[];
   graphicsQuality?: string;
@@ -137,6 +140,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   const previewHeight = preview ? (tileHeight.get(`${preview.anchorQ}:${preview.anchorR}`) ?? 0) : 0;
   const previewPosition = preview ? axialToWorld({ q: preview.anchorQ, r: preview.anchorR }, 1, previewHeight + 0.03) : null;
   const cameraIntent = props.cameraIntent ?? ({ kind: 'overview' } as const);
+  const viewMode = props.viewMode ?? 'world';
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-[#edf6e9] to-[#d7ead6]">
@@ -158,7 +162,16 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
         {props.expansionPlacementPreview && <ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
         {props.expansionPlacementPreview && props.onHoverExpansionAnchor && props.onSelectExpansionAnchor && <ExpansionPlacementPlane onHover={props.onHoverExpansionAnchor} onSelect={props.onSelectExpansionAnchor} />}
-        <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
+        {viewMode === 'person' ? (
+          <HexPlayerController
+            tiles={snapshot.tiles}
+            buildings={snapshot.buildings}
+            reducedMotion={reducedMotion}
+            resetNonce={props.resetNonce ?? 0}
+          />
+        ) : (
+          <HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce ?? 0} reframeCoords={props.reframeCoords ?? []} />
+        )}
       </Canvas>
     </div>
   );
