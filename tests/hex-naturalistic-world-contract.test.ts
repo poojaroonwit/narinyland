@@ -44,8 +44,8 @@ test('normal World no longer uses visible stacked hex cylinders as primary groun
   const tiles = await source('components/hex-world/HexTileInstances.tsx');
 
   assert.match(world, /presentation=["']proxy["']/);
-  const proxyBranch = tiles.match(/presentation\s*===\s*['"]proxy['"][\s\S]*?(?:return|meshBasicMaterial)/)?.[0] ?? tiles;
-  assert.match(proxyBranch, /colorWrite=\{false\}/);
+  assert.match(tiles, /const proxy = props\.presentation === ['"]proxy['"]/);
+  assert.match(tiles, /proxy\s*\?\s*\([\s\S]*?<meshBasicMaterial[\s\S]*?colorWrite=\{false\}[\s\S]*?depthWrite=\{false\}/);
   assert.doesNotMatch(world, /HEX_TILE_DEPTH/);
 });
 
