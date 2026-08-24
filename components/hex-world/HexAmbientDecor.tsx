@@ -7,9 +7,27 @@ import { axialToWorld } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionBucket, type HexMotionProfile } from '@/lib/hex-world/motion';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
-import { HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
+import { deterministicVisualRatio, HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 
-type Placement = { x: number; y: number; z: number; scale?: number; rotation?: number; scaleVector?: [number, number, number] };
+type Placement = {
+  x: number;
+  y: number;
+  z: number;
+  scale?: number;
+  rotation?: number;
+  scaleVector?: [number, number, number];
+  rotationVector?: [number, number, number];
+};
+
+const LEAF_CLUSTER_OFFSETS = [
+  [-0.34, 1.2, 0.05, 0.34],
+  [0.31, 1.22, -0.02, 0.36],
+  [-0.12, 1.48, -0.2, 0.32],
+  [0.18, 1.53, 0.18, 0.33],
+  [-0.43, 1.42, -0.17, 0.28],
+  [0.42, 1.46, 0.16, 0.29],
+  [0.02, 1.72, -0.02, 0.31],
+] as const;
 
 function getPlacement(tile: HexTileDTO, yOffset = 0): Placement {
   const world = axialToWorld({ q: tile.q, r: tile.r }, 1, tile.height + yOffset);
@@ -21,6 +39,11 @@ function applyScale(dummy: THREE.Object3D, placement: Placement) {
   else dummy.scale.setScalar(placement.scale ?? 1);
 }
 
+function applyRotation(dummy: THREE.Object3D, placement: Placement, sway = 0) {
+  const base = placement.rotationVector ?? [0, placement.rotation ?? 0, 0];
+  dummy.rotation.set(base[0] + sway * 0.35, base[1], base[2] + sway);
+}
+
 function InstanceBatch({ placements, children, castShadow = false, receiveShadow = false }: { placements: Placement[]; children: React.ReactNode; castShadow?: boolean; receiveShadow?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -29,7 +52,7 @@ function InstanceBatch({ placements, children, castShadow = false, receiveShadow
     if (!mesh) return;
     placements.forEach((placement, index) => {
       dummy.position.set(placement.x, placement.y, placement.z);
-      dummy.rotation.set(0, placement.rotation ?? 0, 0);
+      applyRotation(dummy, placement);
       applyScale(dummy, placement);
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
@@ -68,7 +91,7 @@ function SwayInstanceBatch({
     if (!mesh) return;
     placements.forEach((placement, index) => {
       dummy.position.set(placement.x, placement.y, placement.z);
-      dummy.rotation.set(sway * 0.35, placement.rotation ?? 0, sway);
+      applyRotation(dummy, placement, sway);
       applyScale(dummy, placement);
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
@@ -110,6 +133,7 @@ export function HexAmbientDecor({ tiles, profile, motionProfile }: { tiles: HexT
     const paths: HexTileDTO[] = [];
     const gardens: HexTileDTO[] = [];
     for (const tile of tiles) {
+      if (!tile.unlocked) continue;
       const decorType = tile.metadata?.decor;
       const feature = tile.metadata?.feature;
       if (decorType === 'tree') trees.push(tile);
@@ -125,56 +149,70 @@ export function HexAmbientDecor({ tiles, profile, motionProfile }: { tiles: HexT
   const treeBuckets = tileBuckets(decor.trees, 'tree', bucketCount);
   const flowerBuckets = tileBuckets(decor.flowers, 'flower', bucketCount);
   const gardenBuckets = tileBuckets(decor.gardens, 'garden', bucketCount);
-  const rockPlacements = decor.rocks.map((tile) => ({ ...getPlacement(tile, 0.24), scaleVector: [0.28 + (Math.abs(tile.q) % 3) * 0.04, 0.22 + (Math.abs(tile.r) % 3) * 0.035, 0.32 + (Math.abs(tile.q + tile.r) % 4) * 0.035] as [number, number, number] }));
-  const pathPlacements = decor.paths.map((tile) => ({ ...getPlacement(tile, 0.075), scaleVector: [0.62 + (Math.abs(tile.q) % 3) * 0.035, 0.08, 0.68 + (Math.abs(tile.r) % 3) * 0.03] as [number, number, number] }));
+  const rockPlacements = decor.rocks.map((tile) => ({ ...getPlacement(tile, 0.19), scaleVector: [0.24 + (Math.abs(tile.q) % 3) * 0.035, 0.16 + (Math.abs(tile.r) % 3) * 0.03, 0.28 + (Math.abs(tile.q + tile.r) % 4) * 0.03] as [number, number, number] }));
+  const pathPlacements = decor.paths.map((tile) => ({ ...getPlacement(tile, 0.05), scaleVector: [0.72 + (Math.abs(tile.q) % 3) * 0.03, 0.055, 0.78 + (Math.abs(tile.r) % 3) * 0.025] as [number, number, number] }));
 
   return (
     <group>
       {treeBuckets.map((bucket, index) => {
-        const trunks = bucket.map((tile) => ({ ...getPlacement(tile, 0.48), scaleVector: [0.9, 1, 0.9] as [number, number, number] }));
-        const canopyBase = bucket.flatMap((tile) => {
-          const p = getPlacement(tile, 1.22);
-          const scale = 0.52 + ((Math.abs(tile.q + tile.r) % 3) * 0.055);
+        const trunks = bucket.map((tile) => ({ ...getPlacement(tile, 0.5), scaleVector: [0.88, 1.05, 0.88] as [number, number, number] }));
+        const branches = bucket.flatMap((tile) => {
+          const base = getPlacement(tile, 0);
+          const yaw = base.rotation ?? 0;
           return [
-            { ...p, x: p.x - 0.28, y: p.y - 0.03, z: p.z + 0.04, scale },
-            { ...p, x: p.x + 0.27, y: p.y + 0.02, z: p.z, scale: scale * 0.96 },
+            { x: base.x - 0.13, y: base.y + 0.98, z: base.z, scaleVector: [0.72, 0.78, 0.72] as [number, number, number], rotationVector: [0, yaw, 0.72] as [number, number, number] },
+            { x: base.x + 0.14, y: base.y + 1.12, z: base.z - 0.04, scaleVector: [0.68, 0.72, 0.68] as [number, number, number], rotationVector: [0, yaw + Math.PI, -0.66] as [number, number, number] },
+            { x: base.x, y: base.y + 1.28, z: base.z + 0.04, scaleVector: [0.58, 0.62, 0.58] as [number, number, number], rotationVector: [0.55, yaw + 0.7, 0.22] as [number, number, number] },
           ];
         });
-        const canopyCrown = bucket.map((tile) => {
-          const p = getPlacement(tile, 1.56);
-          return { ...p, x: p.x + ((tile.q % 2) * 0.08), z: p.z - 0.05, scale: 0.55 + ((Math.abs(tile.r) % 3) * 0.045) };
+        const leafPlacements = bucket.flatMap((tile) => {
+          const base = getPlacement(tile, 0);
+          const sizeVariation = 0.88 + deterministicVisualRatio('ambient-tree', tile.q, tile.r, 'leaf-size') * 0.2;
+          return LEAF_CLUSTER_OFFSETS.slice(0, profile.treeLeafClusters).map(([dx, dy, dz, scale], clusterIndex) => ({
+            x: base.x + dx,
+            y: base.y + dy,
+            z: base.z + dz,
+            rotation: (base.rotation ?? 0) + clusterIndex * 0.37,
+            scaleVector: [scale * (1.08 + (clusterIndex % 2) * 0.08), scale * sizeVariation, scale * (0.9 + (clusterIndex % 3) * 0.06)] as [number, number, number],
+          }));
         });
+        const lowerLeaves = leafPlacements.filter((_, leafIndex) => leafIndex % profile.treeLeafClusters < Math.ceil(profile.treeLeafClusters * 0.58));
+        const crownLeaves = leafPlacements.filter((_, leafIndex) => leafIndex % profile.treeLeafClusters >= Math.ceil(profile.treeLeafClusters * 0.58));
         return (
           <React.Fragment key={`tree-${index}`}>
             <SwayInstanceBatch placements={trunks} bucketIndex={index} amplitude={0.0025} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.12} castShadow>
-              <cylinderGeometry args={[0.13, 0.21, 0.96, 7]} />
-              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.trunk} roughness={0.97} />
+              <cylinderGeometry args={[0.13, 0.21, 0.96, 8]} />
+              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.trunk} roughness={0.98} />
             </SwayInstanceBatch>
-            <SwayInstanceBatch placements={canopyBase} bucketIndex={index} amplitude={0.020} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.24} castShadow>
-              <dodecahedronGeometry args={[1, 0]} />
-              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafLight} roughness={0.94} />
+            <SwayInstanceBatch placements={branches} bucketIndex={index} amplitude={0.012} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.18} castShadow>
+              <cylinderGeometry args={[0.055, 0.085, 0.78, 7]} />
+              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.trunkDark} roughness={0.98} />
             </SwayInstanceBatch>
-            <SwayInstanceBatch placements={canopyCrown} bucketIndex={index} amplitude={0.030} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.55} castShadow>
-              <dodecahedronGeometry args={[1, 0]} />
-              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafDark} roughness={0.94} />
+            <SwayInstanceBatch placements={lowerLeaves} bucketIndex={index} amplitude={0.020} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.24} castShadow>
+              <icosahedronGeometry args={[1, 1]} />
+              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafLight} roughness={0.96} />
+            </SwayInstanceBatch>
+            <SwayInstanceBatch placements={crownLeaves} bucketIndex={index} amplitude={0.030} speed={0.62} motionProfile={motionProfile} secondaryPhaseOffset={0.55} castShadow>
+              <icosahedronGeometry args={[1, 1]} />
+              <meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafDark} roughness={0.96} />
             </SwayInstanceBatch>
           </React.Fragment>
         );
       })}
       {flowerBuckets.map((bucket, index) => {
         const stems = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.18); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.85 }; }));
-        const heads = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.43); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scale: 0.1 + ((Math.abs(tile.q + itemIndex) % 3) * 0.015) }; }));
+        const heads = bucket.flatMap((tile) => [-0.22, 0, 0.22].map((offset, itemIndex) => { const p = getPlacement(tile, 0.43); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.08, scaleVector: [0.11, 0.065, 0.11] as [number, number, number] }; }));
         const flowerColor = HEX_VISUAL_THEME.vegetation.flower[index % HEX_VISUAL_THEME.vegetation.flower.length];
         const flowerSpeed = 1.02 + index * 0.04;
-        return <React.Fragment key={`flower-${index}`}><SwayInstanceBatch placements={stems} bucketIndex={index} amplitude={0.012} speed={flowerSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.18}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.grass} roughness={1} /></SwayInstanceBatch><SwayInstanceBatch placements={heads} bucketIndex={index} amplitude={0.020} speed={flowerSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.42}><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={flowerColor} roughness={0.88} /></SwayInstanceBatch></React.Fragment>;
+        return <React.Fragment key={`flower-${index}`}><SwayInstanceBatch placements={stems} bucketIndex={index} amplitude={0.012} speed={flowerSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.18}><cylinderGeometry args={[0.025, 0.035, 0.42, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.grass} roughness={1} /></SwayInstanceBatch><SwayInstanceBatch placements={heads} bucketIndex={index} amplitude={0.020} speed={flowerSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.42}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color={flowerColor} roughness={0.9} /></SwayInstanceBatch></React.Fragment>;
       })}
       {gardenBuckets.map((bucket, index) => {
         const sprouts = bucket.flatMap((tile) => [-0.24, 0, 0.24].map((offset, itemIndex) => { const p = getPlacement(tile, 0.2); return { ...p, x: p.x + offset, z: p.z + (itemIndex - 1) * 0.12, scale: 0.14 + (itemIndex % 2) * 0.02 }; }));
         const gardenSpeed = 0.95 + index * 0.05;
-        return <SwayInstanceBatch key={`garden-${index}`} placements={sprouts} bucketIndex={index} amplitude={0.014} speed={gardenSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.33}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leaf} roughness={0.94} /></SwayInstanceBatch>;
+        return <SwayInstanceBatch key={`garden-${index}`} placements={sprouts} bucketIndex={index} amplitude={0.014} speed={gardenSpeed} motionProfile={motionProfile} secondaryPhaseOffset={0.33}><coneGeometry args={[1, 2.2, 5]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leaf} roughness={0.96} /></SwayInstanceBatch>;
       })}
-      <InstanceBatch placements={rockPlacements} castShadow receiveShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.base} roughness={1} /></InstanceBatch>
-      <InstanceBatch placements={pathPlacements} receiveShadow><cylinderGeometry args={[0.55, 0.6, 0.12, 8]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.accent} roughness={1} /></InstanceBatch>
+      <InstanceBatch placements={rockPlacements} castShadow receiveShadow><icosahedronGeometry args={[1, 0]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.base} roughness={1} /></InstanceBatch>
+      <InstanceBatch placements={pathPlacements} receiveShadow><cylinderGeometry args={[0.55, 0.6, 0.12, 16]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.pathDirt} roughness={1} /></InstanceBatch>
     </group>
   );
 }
