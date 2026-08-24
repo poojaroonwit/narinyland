@@ -25,3 +25,50 @@ test('visual theme centralizes terrain structure water and atmosphere palettes',
   assert.match(theme, /HexVisualEnvironment/);
   assert.match(theme, /getHexVisualEnvironment/);
 });
+
+test('terrain detail and underside remain deterministic and instanced', async () => {
+  const details = await source('components/hex-world/HexTerrainDetails.tsx');
+  const underside = await source('components/hex-world/HexIslandUnderside.tsx');
+  const tiles = await source('components/hex-world/HexTileInstances.tsx');
+
+  assert.match(details, /instancedMesh/);
+  assert.match(details, /ambientDensity/);
+  assert.match(details, /seed/);
+  assert.doesNotMatch(details, /Math\.random/);
+  assert.match(underside, /getBoundaryTiles/);
+  assert.match(underside, /instancedMesh/);
+  assert.match(tiles, /getTerrainPresentation|HEX_VISUAL_THEME/);
+});
+
+test('lighting keeps one shadow owner and atmosphere accepts visual environment only', async () => {
+  const lighting = await source('components/hex-world/HexWorldLighting.tsx');
+  const sky = await source('components/hex-world/HexSkyAtmosphere.tsx');
+
+  assert.equal((lighting.match(/<directionalLight/g) ?? []).length, 1);
+  assert.match(lighting, /HexVisualEnvironment/);
+  assert.match(sky, /HexVisualEnvironment/);
+  assert.doesNotMatch(sky, /HomesteadLifeState|HomesteadLifeAction/);
+});
+
+test('vegetation and water stay quality-aware and batched', async () => {
+  const decor = await source('components/hex-world/HexAmbientDecor.tsx');
+  const water = await source('components/hex-world/HexWaterSurface.tsx');
+
+  assert.match(decor, /SwayInstanceBatch/);
+  assert.match(decor, /canop/i);
+  assert.match(water, /waterDetail/);
+  assert.match(water, /waterGlintCount/);
+  assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial/);
+});
+
+test('structure models share miniature construction primitives', async () => {
+  const structures = await source('components/hex-world/models/HexStructureModels.tsx');
+
+  for (const helper of ['Foundation', 'RoofTrim', 'Window', 'DoorFrame']) {
+    assert.match(structures, new RegExp(`function ${helper}|const ${helper}`));
+  }
+  for (const key of ['home', 'barn', 'storage', 'workshop']) {
+    assert.match(structures, new RegExp(`case '${key}'`));
+  }
+  assert.doesNotMatch(structures, /https?:\/\//);
+});
