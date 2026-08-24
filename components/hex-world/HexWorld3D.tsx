@@ -36,9 +36,9 @@ import { HexTileInstances } from './HexTileInstances';
 import { HexWaterSurface } from './HexWaterSurface';
 import { HexWorldLighting } from './HexWorldLighting';
 import { HexWorldParticles } from './HexWorldParticles';
+import { HexPBRCliff } from './pbr/HexPBRCliff';
+import { HexPBRTerrain } from './pbr/HexPBRTerrain';
 import { HexBuildGridOverlay } from './terrain/HexBuildGridOverlay';
-import { HexIslandCliffShell } from './terrain/HexIslandCliffShell';
-import { HexNaturalTerrain } from './terrain/HexNaturalTerrain';
 import { useReducedHexMotion } from './useReducedHexMotion';
 
 export type HexBuildingPreview = { buildingKey: string; anchorQ: number; anchorR: number; rotation: HexRotation; valid: boolean };
@@ -105,10 +105,10 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <PerformanceMonitor onChange={({factor})=>setPerformanceFactor((previous)=>resolveAdaptiveHexQuality(staticProfile,previous).name===resolveAdaptiveHexQuality(staticProfile,factor).name?previous:factor)} />
       <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
       {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}
-      <HexIslandCliffShell tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+      <HexPBRCliff tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
       <FloatingFragments />
       <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} /><HexPlacementEffects event={props.visualEvent??null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
-      <HexNaturalTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+      <HexPBRTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
       <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} presentation="proxy" hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
       {showBuildGrid&&<HexBuildGridOverlay tiles={snapshot.tiles} validKeys={props.validKeys} invalidKeys={props.invalidKeys} expansionPlacementPreview={props.expansionPlacementPreview} />}
       <HexTerrainDetails tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
