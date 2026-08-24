@@ -50,6 +50,27 @@ test('lighting keeps one shadow owner and atmosphere accepts visual environment 
   assert.doesNotMatch(sky, /HomesteadLifeState|HomesteadLifeAction/);
 });
 
+test('World lighting interpolates target intensities and colors through Three refs', async () => {
+  const lighting = await source('components/hex-world/HexWorldLighting.tsx');
+  const world = await source('components/hex-world/HexWorld3D.tsx');
+  assert.match(lighting, /motionProfile/);
+  assert.match(lighting, /lightingResponse/);
+  assert.match(lighting, /useFrame/);
+  assert.match(lighting, /DirectionalLight/);
+  assert.match(lighting, /HemisphereLight/);
+  assert.match(lighting, /AmbientLight/);
+  assert.match(lighting, /Color/);
+  assert.match(lighting, /\.lerp\(/);
+  assert.match(lighting, /expSmoothingAlpha/);
+  assert.doesNotMatch(lighting, /useState/);
+  assert.equal((lighting.match(/<directionalLight\b/g) ?? []).length, 1);
+  assert.match(lighting, /0\.22/);
+  assert.match(lighting, /0\.19/);
+  assert.match(lighting, /3\.2/);
+  assert.match(lighting, /3\.8/);
+  assert.match(world, /<HexWorldLighting[^>]*motionProfile=\{motionProfile\}/);
+});
+
 test('vegetation and water stay quality-aware and batched', async () => {
   const decor = await source('components/hex-world/HexAmbientDecor.tsx');
   const water = await source('components/hex-world/HexWaterSurface.tsx');
