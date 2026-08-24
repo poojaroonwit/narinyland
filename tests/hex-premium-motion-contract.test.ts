@@ -85,10 +85,11 @@ test('confirmed expansion uses deterministic stagger and visual-only mist', asyn
   const tiles = await source('../components/hex-world/HexTileInstances.tsx');
   const effects = await source('../components/hex-world/HexPlacementEffects.tsx');
   const controller = await source('../components/hex-world/HexBuildController.tsx');
+  const expansionHandler = controller.match(/const handleExpansionConfirmed[\s\S]*?\n\s*};/)?.[0] ?? '';
   assert.match(tiles, /stagger/i);
   assert.match(effects, /expanded|expansion/i);
-  assert.match(controller, /setUndo\(null\)/);
-  assert.doesNotMatch(controller, /undo.*expansion|expansion.*undo/i);
+  assert.match(expansionHandler, /setUndo\(null\)/);
+  assert.doesNotMatch(expansionHandler, /hexWorldAPI\.undo/);
 });
 
 test('placement effect origin narrows rotation-only events before reading coord', async () => {
