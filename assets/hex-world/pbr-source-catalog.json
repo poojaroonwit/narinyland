@@ -10,7 +10,7 @@
     {"id":"wood_surface","sourceAssetId":"weathered_planks","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
     {"id":"plaster_surface","sourceAssetId":"plastered_wall","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
     {"id":"roof_surface","sourceAssetId":"roof_tiles","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
-    {"id":"tree","sourceAssetId":"tree_small_02","kind":"model","resolutions":["1k"]},
+    {"id":"tree","sourceAssetId":"jacaranda_tree","kind":"model","resolutions":["1k"]},
     {"id":"shrub","sourceAssetId":"shrub_03","kind":"model","resolutions":["1k"]},
     {"id":"fern","sourceAssetId":"fern_02","kind":"model","resolutions":["1k"]},
     {"id":"grass_tuft","sourceAssetId":"grass_medium_01","kind":"model","resolutions":["1k"]},
