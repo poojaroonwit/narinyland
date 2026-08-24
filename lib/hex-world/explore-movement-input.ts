@@ -14,6 +14,10 @@ function safeAxis(value: number): number {
   return Number.isFinite(value) ? value : 0;
 }
 
+function cleanZero(value: number): number {
+  return Object.is(value, -0) || Math.abs(value) < Number.EPSILON ? 0 : value;
+}
+
 export function getJoystickMovementInput({
   dx,
   dy,
@@ -48,8 +52,8 @@ export function getJoystickMovementInput({
 
   const directionScale = analogMagnitude / rawMagnitude;
   return {
-    forward: rawForward * directionScale,
-    right: rawRight * directionScale,
+    forward: cleanZero(rawForward * directionScale),
+    right: cleanZero(rawRight * directionScale),
   };
 }
 
@@ -68,10 +72,10 @@ export function combineExploreMovementInputs(
   if (!Number.isFinite(magnitude) || magnitude <= 0) {
     return ZERO_HEX_EXPLORE_MOVEMENT;
   }
-  if (magnitude <= 1) return { forward, right };
+  if (magnitude <= 1) return { forward: cleanZero(forward), right: cleanZero(right) };
 
   return {
-    forward: forward / magnitude,
-    right: right / magnitude,
+    forward: cleanZero(forward / magnitude),
+    right: cleanZero(right / magnitude),
   };
 }
