@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+const systemFont = ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Arial', 'sans-serif'];
+
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -13,11 +15,11 @@ const config: Config = {
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
       fontFamily: {
-        dmsans: ['DM Sans', 'sans-serif'],
-        prompt: ['Prompt', 'sans-serif'],
-        pacifico: ['Pacifico', 'cursive'],
-        heading: ["'Instrument Serif'", 'serif'],
-        body: ["'DM Sans'", "'Prompt'", 'sans-serif'],
+        dmsans: systemFont,
+        prompt: systemFont,
+        pacifico: systemFont,
+        heading: systemFont,
+        body: systemFont,
       },
     },
   },
