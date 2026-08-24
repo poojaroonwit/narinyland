@@ -12,6 +12,7 @@ import {
   type HomesteadPresenceRole,
 } from '@/lib/hex-world/homestead-presence';
 import { getCropVisualSamples } from '@/lib/hex-world/living-homestead';
+import { HEX_SMOOTHNESS_DEFAULTS, smoothAngle, smoothScalar } from '@/lib/hex-world/smooth-motion';
 import type { HexBuildingDTO, HexTileDTO } from '@/lib/hex-world/types';
 import { useReducedHexMotion } from './useReducedHexMotion';
 
@@ -123,8 +124,9 @@ function usePresenceMotion({
     anchors,
     reducedMotion,
   });
+  const visualYRef = useRef(initial.y);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, frameDelta) => {
     if (!ref.current || document.visibilityState === 'hidden') return;
     const next = getHomesteadPresencePosition({
       id,
@@ -134,9 +136,17 @@ function usePresenceMotion({
       anchors,
       reducedMotion,
     });
+    const delta = Math.min(frameDelta, 0.05);
+    const response = HEX_SMOOTHNESS_DEFAULTS.resident;
+    const visualX = reducedMotion ? next.x : smoothScalar(ref.current.position.x, next.x, response, delta);
+    const visualZ = reducedMotion ? next.z : smoothScalar(ref.current.position.z, next.z, response, delta);
+    visualYRef.current = reducedMotion ? next.y : smoothScalar(visualYRef.current, next.y, response, delta);
+    const heading = reducedMotion
+      ? next.heading
+      : smoothAngle(ref.current.rotation.y, next.heading, response, delta);
     const bob = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 2 + id.length) * 0.018;
-    ref.current.position.set(next.x, next.y + bob, next.z);
-    ref.current.rotation.y = next.heading;
+    ref.current.position.set(visualX, visualYRef.current + bob, visualZ);
+    ref.current.rotation.y = heading;
   });
 
   return { ref, initial };
