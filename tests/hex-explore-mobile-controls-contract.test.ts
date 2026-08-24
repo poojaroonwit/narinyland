@@ -45,6 +45,6 @@ test('player controller combines keyboard and touch before authoritative travers
 test('world passes shared movement input only into person controller path', async () => {
   const world = await read('components/hex-world/HexWorld3D.tsx');
   assert.match(world, /movementInputRef/);
-  assert.match(world, /viewMode === 'person'/);
+  assert.match(world, /viewMode\s*===\s*['"]person['"]/);
   assert.match(world, /<HexPlayerController/);
 });
