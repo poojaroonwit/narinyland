@@ -10,6 +10,12 @@ export type HexMotionProfile = {
   cameraResponse: number;
   ambientScale: number;
   ghostBobScale: number;
+  worldWindScale: number;
+  worldWindSecondaryScale: number;
+  waterMotionScale: number;
+  buildingFeedbackScale: number;
+  worldIdleCameraScale: number;
+  lightingResponse: number;
 };
 
 function stableHash(value: string): number {
@@ -46,9 +52,16 @@ export function resolveHexMotionProfile(input: { quality: HexQualityProfile; red
       cameraResponse: 28,
       ambientScale: 0,
       ghostBobScale: 0,
+      worldWindScale: 0,
+      worldWindSecondaryScale: 0,
+      waterMotionScale: 0,
+      buildingFeedbackScale: 0.35,
+      worldIdleCameraScale: 0,
+      lightingResponse: 18,
     };
   }
 
+  const qualityName = input.quality.name;
   return {
     hoverResponse: 12,
     selectResponse: 9,
@@ -58,6 +71,12 @@ export function resolveHexMotionProfile(input: { quality: HexQualityProfile; red
     expansionDurationMs: 950,
     cameraResponse: 3.6,
     ambientScale: input.quality.windStrength,
-    ghostBobScale: input.quality.name === 'mobile' ? 0.35 : 1,
+    ghostBobScale: qualityName === 'mobile' ? 0.35 : 1,
+    worldWindScale: qualityName === 'high' ? 1 : qualityName === 'medium' ? 0.78 : 0.35,
+    worldWindSecondaryScale: qualityName === 'mobile' ? 0 : 1,
+    waterMotionScale: qualityName === 'high' ? 1 : qualityName === 'medium' ? 0.8 : 0.4,
+    buildingFeedbackScale: qualityName === 'mobile' ? 0.72 : 1,
+    worldIdleCameraScale: qualityName === 'high' ? 1 : qualityName === 'medium' ? 0.8 : 0.45,
+    lightingResponse: 2.8,
   };
 }
