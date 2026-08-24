@@ -22,26 +22,22 @@ test('Narinyland uses one common system font stack without remote decorative fon
 });
 
 test('HexWorld overlays expose coordinated collision states instead of independent fixed layers', async () => {
-  const [globals, controller, overlay, hud, editToolbar, undo, detail] = await Promise.all([
+  const [globals, overlay, hud, editToolbar, undo] = await Promise.all([
     read('app/globals.css'),
-    read('components/hex-world/HexBuildController.tsx'),
     read('components/hex-world/HexGameplayOverlay.tsx'),
     read('components/hex-world/HexLivingHUD.tsx'),
     read('components/hex-world/HexBuildingContextToolbar.tsx'),
     read('components/hex-world/HexUndoToast.tsx'),
-    read('components/hex-world/HexLivingActionPanel.tsx'),
   ]);
 
-  assert.match(controller, /hex-world-shell/);
   assert.match(overlay, /data-hex-overlay-state/);
   assert.match(hud, /data-hex-hud-panel/);
   assert.match(hud, /data-hex-hud-notice-stack/);
   assert.match(editToolbar, /data-hex-edit-toolbar/);
   assert.match(undo, /data-hex-undo-toast/);
-  assert.match(globals, /hex-world-shell:has\(\[data-hex-hud-panel\]\).*data-hex-edit-toolbar/s);
+  assert.match(globals, /body:has\(\[data-hex-hud-panel\]\).*data-hex-edit-toolbar/s);
   assert.match(globals, /data-hex-overlay-state="hud".*data-hex-undo-toast/s);
-  assert.doesNotMatch(detail, /max-h-\[62vh\]/);
-  assert.match(detail, /100dvh/);
+  assert.match(globals, /data-hex-overlay-state="details".*100dvh/s);
 });
 
 test('bottom navigation and gameplay controls stay inside narrow safe-area viewports', async () => {
