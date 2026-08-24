@@ -42,6 +42,22 @@ test('building transforms initialize once so first selection and rotation can in
   assert.doesNotMatch(buildings, /if \(lastEventNonce\.current === null\) \{/);
 });
 
+test('World building feedback is stronger but remains presentation-only', async () => {
+  const buildings = await source('../components/hex-world/HexBuildings.tsx');
+  assert.match(buildings, /buildingFeedbackScale/);
+  assert.match(buildings, /1\.045/);
+  assert.match(buildings, /0\.055/);
+  assert.match(buildings, /0\.72/);
+  assert.match(buildings, /0\.30|0\.3/);
+  assert.match(buildings, /0\.94/);
+  assert.match(buildings, /0\.97/);
+  assert.match(buildings, /0\.975/);
+  assert.match(buildings, /confirmed\.kind === ['"]placed['"]/);
+  assert.match(buildings, /confirmed\.kind === ['"]moved['"]/);
+  assert.match(buildings, /confirmed\.kind === ['"]rotated['"]/);
+  assert.doesNotMatch(buildings, /fetch\(|hexWorldAPI|prisma\.|DATABASE_URL/);
+});
+
 test('placement effects stay visual-only and invalid clicks use local pulse feedback', async () => {
   const world = await source('../components/hex-world/HexWorld3D.tsx');
   const controller = await source('../components/hex-world/HexBuildController.tsx');
