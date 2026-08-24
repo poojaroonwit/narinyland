@@ -33,7 +33,7 @@ export function HexUndoToast({
   if (remainingMs <= 0) return null;
 
   return (
-    <div className="pointer-events-auto fixed left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/60 bg-white/92 px-3 py-2 shadow-lg backdrop-blur-md bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] md:bottom-6">
+    <div data-hex-undo-toast className="pointer-events-auto fixed left-3 top-[5.5rem] z-[93] max-w-[calc(100vw-1.5rem)] rounded-full border border-white/60 bg-white/92 px-3 py-2 shadow-lg backdrop-blur-md md:left-5">
       <div className="flex items-center gap-3 text-sm text-slate-700">
         <span className="max-w-[62vw] truncate font-medium">{label}</span>
         <button
