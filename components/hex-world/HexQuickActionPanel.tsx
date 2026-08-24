@@ -51,7 +51,7 @@ export function HexQuickActionPanel({ building, state, busy, onAction, onMore }:
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-700">Selected</p>
-          <h3 className="truncate text-sm font-black text-stone-850">{title}</h3>
+          <h3 className="truncate text-sm font-black text-stone-900">{title}</h3>
           {role === 'garden' && <p className="text-[8px] font-bold text-stone-400">{gardenSummary.ready} ready · {gardenSummary.growing} growing · {gardenSummary.empty} empty</p>}
         </div>
         <button type="button" onClick={onMore} className="min-h-[42px] rounded-xl bg-stone-100 px-3 text-[9px] font-black text-stone-600">More</button>
