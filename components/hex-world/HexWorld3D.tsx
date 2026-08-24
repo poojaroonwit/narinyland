@@ -15,6 +15,7 @@ import { getHexVisualEnvironment, HEX_VISUAL_THEME } from '@/lib/hex-world/visua
 import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
+import { HexCropEnhancements } from './HexCropEnhancements';
 import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
@@ -153,6 +154,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
         <HexAmbientDecor tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {props.livingState && <HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
+        {props.livingState && <HexCropEnhancements state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} reducedMotion={reducedMotion} />}
         {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
         {props.expansionPlacementPreview && <ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
         {props.expansionPlacementPreview && props.onHoverExpansionAnchor && props.onSelectExpansionAnchor && <ExpansionPlacementPlane onHover={props.onHoverExpansionAnchor} onSelect={props.onSelectExpansionAnchor} />}
