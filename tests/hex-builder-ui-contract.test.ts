@@ -2,18 +2,22 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-test('builder exposes one world toolbar and in-product contextual actions', async () => {
+test('builder exposes one gameplay overlay plus contextual edit actions', async () => {
   const controller = await readFile(new URL('../components/hex-world/HexBuildController.tsx', import.meta.url), 'utf8');
-  for (const name of ['HexWorldToolbar', 'HexPlacementBar', 'HexBuildingContextToolbar', 'HexRemovalConfirm']) {
+  for (const name of ['HexGameplayOverlay', 'HexPlacementBar', 'HexBuildingContextToolbar', 'HexRemovalConfirm']) {
     assert.match(controller, new RegExp(name));
   }
+  const overlay = await readFile(new URL('../components/hex-world/HexGameplayOverlay.tsx', import.meta.url), 'utf8');
+  for (const name of ['HexWorldToolbar', 'HexQuickActionPanel', 'HexInventorySheet']) assert.match(overlay, new RegExp(name));
   assert.doesNotMatch(controller, /window\.confirm/);
 });
 
-test('world toolbar carries Build Expand and Reset View with mobile-safe controls', async () => {
+test('world toolbar carries Farm Build Bag Goals plus compact grow/reset utilities', async () => {
   const toolbar = await readFile(new URL('../components/hex-world/HexWorldToolbar.tsx', import.meta.url), 'utf8');
-  for (const label of ['Build', 'Expand', 'Reset View']) assert.match(toolbar, new RegExp(label));
-  assert.match(toolbar, /min-h-\[44px\]|h-11|h-12/);
+  for (const label of ['Farm', 'Build', 'Bag', 'Goals']) assert.match(toolbar, new RegExp(label));
+  assert.match(toolbar, /aria-label="Grow land"/i);
+  assert.match(toolbar, /aria-label="Reset view"/i);
+  assert.match(toolbar, /min-h-\[48px\]|min-h-\[44px\]|h-11|h-12/);
   assert.match(toolbar, /safe-area-inset-bottom/);
 });
 
