@@ -11,15 +11,18 @@ import { hexRotationToRadians } from '@/lib/hex-world/rendering';
 import type { HexCameraIntent } from '@/lib/hex-world/camera';
 import type { HexBuildingDTO, HexCoord, HexExpansionDTO, HexExpansionPlacementPreview, HexRotation, HexWorldSnapshot } from '@/lib/hex-world/types';
 import type { HexConfirmedVisualEvent } from '@/lib/hex-world/visual-events';
+import { getHexVisualEnvironment, HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 import { HexAmbientDecor } from './HexAmbientDecor';
 import { HexBuildingModel } from './HexBuildingModels';
 import { HexBuildings } from './HexBuildings';
+import { HexCropEnhancements } from './HexCropEnhancements';
 import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
 import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
+import { HexTerrainDetails } from './HexTerrainDetails';
 import { HexTileInstances } from './HexTileInstances';
 import { HexWaterSurface } from './HexWaterSurface';
 import { HexWorldLighting } from './HexWorldLighting';
@@ -56,7 +59,16 @@ type Props = {
 };
 
 function FloatingFragments() {
-  return <group>{[[-9, -2.4, 2, 0.7], [9, -3.1, 4, 0.55], [6, -2.2, -10, 0.45], [-6, -3.5, -9, 0.5]].map(([x, y, z, scale], index) => <mesh key={index} position={[x, y, z]} rotation={[0.2, index * 0.8, 0.12]} scale={scale} castShadow><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color="#8e8877" roughness={1} /></mesh>)}</group>;
+  return (
+    <group>
+      {[[-9, -2.4, 2, 0.7], [9, -3.1, 4, 0.55], [6, -2.2, -10, 0.45], [-6, -3.5, -9, 0.5]].map(([x, y, z, scale], index) => (
+        <mesh key={index} position={[x, y, z]} rotation={[0.2, index * 0.8, 0.12]} scale={scale} castShadow raycast={() => {}}>
+          <dodecahedronGeometry args={[1, 0]} />
+          <meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.dark} roughness={1} />
+        </mesh>
+      ))}
+    </group>
+  );
 }
 
 function AnimatedBuildingPreview({ preview, position, motionProfile }: { preview: HexBuildingPreview; position: { x: number; y: number; z: number }; motionProfile: HexMotionProfile }) {
@@ -113,6 +125,11 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
 
   const profile = resolveHexQualityProfile({ graphicsQuality: props.graphicsQuality ?? 'medium', viewportWidth: device.viewportWidth, devicePixelRatio: device.devicePixelRatio });
   const motionProfile = resolveHexMotionProfile({ quality: profile, reducedMotion });
+  const visualEnvironment = getHexVisualEnvironment({
+    season: props.livingState?.season,
+    weather: props.livingState?.weather,
+    timeMinutes: props.livingState?.timeMinutes,
+  });
   const tileHeight = new Map(snapshot.tiles.map((tile) => [hexKey(tile), tile.height]));
   const hoveredKey = props.hoveredCoord ? hexKey(props.hoveredCoord) : null;
   const selectedKey = props.selectedCoord ? hexKey(props.selectedCoord) : null;
@@ -124,18 +141,20 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-[#edf6e9] to-[#d7ead6]">
       <Canvas shadows dpr={[1, profile.maxDpr]} camera={{ fov: 42, near: 0.1, far: 160 }} onPointerMissed={() => props.onSelectBuilding?.(null)}>
-        <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} />
-        <HexWorldLighting profile={profile} />
-        <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} />
+        <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} />
+        <HexWorldLighting profile={profile} environment={visualEnvironment} />
+        <HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
         <FloatingFragments />
         <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
         <HexPlacementEffects event={props.visualEvent ?? null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
         <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
+        <HexTerrainDetails tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
         <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
         <HexWaterSurface tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexAmbientDecor tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
         <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent ?? null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building) => props.onSelectBuilding?.(building)} />
         {props.livingState && <HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
+        {props.livingState && <HexCropEnhancements state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} reducedMotion={reducedMotion} />}
         {preview && previewPosition && <AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}
         {props.expansionPlacementPreview && <ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
         {props.expansionPlacementPreview && props.onHoverExpansionAnchor && props.onSelectExpansionAnchor && <ExpansionPlacementPlane onHover={props.onHoverExpansionAnchor} onSelect={props.onSelectExpansionAnchor} />}

@@ -8,6 +8,7 @@ import { expSmoothingAlpha, type HexMotionProfile } from '@/lib/hex-world/motion
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import { getHexTileTransform, getTerrainDisplayColor, HEX_TILE_DEPTH } from '@/lib/hex-world/rendering';
 import type { HexCoord, HexTerrainType, HexTileDTO } from '@/lib/hex-world/types';
+import { getTerrainPresentation } from '@/lib/hex-world/visual-theme';
 
 type Props = {
   tiles: HexTileDTO[];
@@ -40,6 +41,7 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
   const needsSettle = useRef(true);
   const riseStartedAt = useRef<number | null>(null);
   const riseSignature = [...(props.riseKeys ?? [])].sort().join('|');
+  const terrainPresentation = getTerrainPresentation(terrain);
   const riseStaggerMs = useMemo(() => {
     const rising = tiles
       .filter((tile) => props.riseKeys?.has(hexKey(tile)))
@@ -142,7 +144,12 @@ function TerrainBatch({ terrain, tiles, ...props }: { terrain: HexTerrainType; t
       }}
     >
       <cylinderGeometry args={[1, 1, HEX_TILE_DEPTH, 6]} />
-      <meshStandardMaterial roughness={terrain === 'water' ? 0.42 : 0.92} metalness={0} transparent={terrain === 'water'} opacity={terrain === 'water' ? 0.78 : 1} />
+      <meshStandardMaterial
+        roughness={terrainPresentation.roughness}
+        metalness={0}
+        transparent={terrain === 'water'}
+        opacity={terrain === 'water' ? 0.7 : 1}
+      />
     </instancedMesh>
   );
 }

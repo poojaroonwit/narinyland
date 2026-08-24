@@ -7,8 +7,9 @@ import { axialToWorld } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionBucket, type HexMotionProfile } from '@/lib/hex-world/motion';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
+import { HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 
-function WaterBucket({ tiles, bucketIndex, motionProfile }: { tiles: HexTileDTO[]; bucketIndex: number; motionProfile: HexMotionProfile }) {
+function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: HexTileDTO[]; bucketIndex: number; motionProfile: HexMotionProfile; profile: HexQualityProfile }) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -28,16 +29,37 @@ function WaterBucket({ tiles, bucketIndex, motionProfile }: { tiles: HexTileDTO[
   useFrame(({ clock }) => {
     if (!groupRef.current || motionProfile.ambientScale <= 0 || document.visibilityState === 'hidden') return;
     const phase = bucketIndex * 1.4;
-    groupRef.current.position.y = Math.sin(clock.elapsedTime * (0.72 + bucketIndex * 0.08) + phase) * 0.009 * motionProfile.ambientScale;
+    groupRef.current.position.y = Math.sin(clock.elapsedTime * (0.72 + bucketIndex * 0.08) + phase) * 0.008 * motionProfile.ambientScale;
   });
   if (!tiles.length) return null;
+  const opacity = profile.waterDetail === 'full' ? 0.74 : profile.waterDetail === 'reduced' ? 0.7 : 0.66;
+  const roughness = profile.waterDetail === 'full' ? 0.42 : profile.waterDetail === 'reduced' ? 0.5 : 0.58;
   return (
     <group ref={groupRef}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, tiles.length]}>
+      <instancedMesh ref={meshRef} args={[undefined, undefined, tiles.length]} raycast={() => {}}>
         <cylinderGeometry args={[1, 1, 0.12, 6]} />
-        <meshStandardMaterial color="#66c4c1" transparent opacity={0.77} metalness={0.01} roughness={0.54} depthWrite={false} />
+        <meshStandardMaterial color={HEX_VISUAL_THEME.water.surface} transparent opacity={opacity} metalness={0.01} roughness={roughness} depthWrite={false} />
       </instancedMesh>
     </group>
+  );
+}
+
+function WaterRipple({ tile, index, motionProfile }: { tile: HexTileDTO; index: number; motionProfile: HexMotionProfile }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const world = axialToWorld(tile, 1, tile.height + 0.135);
+  useFrame(({ clock }) => {
+    if (!ref.current || !materialRef.current || document.visibilityState === 'hidden') return;
+    const wave = (Math.sin(clock.elapsedTime * 0.7 + index * 1.7) + 1) * 0.5;
+    const scale = 0.78 + wave * 0.32 * motionProfile.ambientScale;
+    ref.current.scale.setScalar(scale);
+    materialRef.current.opacity = (0.07 + wave * 0.09) * Math.max(0.45, motionProfile.ambientScale);
+  });
+  return (
+    <mesh ref={ref} position={[world.x, world.y, world.z]} rotation={[-Math.PI / 2, 0, index * 0.7]} raycast={() => {}}>
+      <ringGeometry args={[0.2, 0.225, 20]} />
+      <meshBasicMaterial ref={materialRef} color={HEX_VISUAL_THEME.water.highlight} transparent opacity={0.12} depthWrite={false} />
+    </mesh>
   );
 }
 
@@ -49,21 +71,14 @@ export function HexWaterSurface({ tiles, profile, motionProfile }: { tiles: HexT
     for (const tile of waterTiles) result[deterministicMotionBucket(`water:${tile.q}:${tile.r}`, bucketCount)].push(tile);
     return result;
   }, [bucketCount, waterTiles]);
-  const glintTiles = waterTiles.slice(0, profile.waterGlintCount);
+  const rippleCount = profile.waterDetail === 'full' ? Math.max(1, profile.waterGlintCount) : profile.waterDetail === 'reduced' ? 1 : 0;
+  const glintTiles = waterTiles.slice(0, rippleCount);
 
   if (waterTiles.length === 0) return null;
   return (
     <group>
-      {buckets.map((bucket, index) => <WaterBucket key={index} tiles={bucket} bucketIndex={index} motionProfile={motionProfile} />)}
-      {glintTiles.map((tile, index) => {
-        const world = axialToWorld(tile, 1, tile.height + 0.13);
-        return (
-          <mesh key={`${tile.q}:${tile.r}:glint`} position={[world.x, world.y, world.z]} rotation={[-Math.PI / 2, 0, index * 0.5]}>
-            <ringGeometry args={[0.2 + index * 0.06, 0.225 + index * 0.06, 24]} />
-            <meshBasicMaterial color="#e4ffff" transparent opacity={0.16} depthWrite={false} />
-          </mesh>
-        );
-      })}
+      {buckets.map((bucket, index) => <WaterBucket key={index} tiles={bucket} bucketIndex={index} motionProfile={motionProfile} profile={profile} />)}
+      {glintTiles.map((tile, index) => <WaterRipple key={`${tile.q}:${tile.r}:ripple`} tile={tile} index={index} motionProfile={motionProfile} />)}
     </group>
   );
 }

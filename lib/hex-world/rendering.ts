@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { axialToWorld } from './hex-grid';
 import type { HexRotation, HexTerrainType, HexTileDTO } from './types';
+import { getTerrainPresentation } from './visual-theme';
 
 export const HEX_TILE_DEPTH = 0.72;
 
 export const HEX_TERRAIN_COLORS: Record<HexTerrainType, string> = {
-  grass: '#8fae6f',
-  soil: '#b98b63',
-  stone: '#a9a79d',
-  water: '#71c9c2',
+  grass: getTerrainPresentation('grass').base,
+  soil: getTerrainPresentation('soil').base,
+  stone: getTerrainPresentation('stone').base,
+  water: getTerrainPresentation('water').base,
 };
 
 const INTERACTION_COLORS = {
@@ -38,10 +39,10 @@ export function getTerrainDisplayColor(input: {
   if (input.state !== 'normal') return INTERACTION_COLORS[input.state];
   const base = new THREE.Color(HEX_TERRAIN_COLORS[input.terrainType]);
   if (input.terrainType === 'water') return `#${base.getHexString()}`;
-  const maxVariation = input.terrainType === 'grass' ? 0.055 : input.terrainType === 'soil' ? 0.05 : 0.04;
+  const maxVariation = input.terrainType === 'grass' ? 0.06 : input.terrainType === 'soil' ? 0.052 : 0.04;
   const strength = input.materialVariation === 'full' ? 1 : 0.55;
   const offset = (coordinateRatio(input.q, input.r) * 2 - 1) * maxVariation * strength;
-  base.offsetHSL(0, 0, offset);
+  base.offsetHSL(input.terrainType === 'grass' ? offset * 0.07 : 0, 0, offset);
   return `#${base.getHexString()}`;
 }
 
