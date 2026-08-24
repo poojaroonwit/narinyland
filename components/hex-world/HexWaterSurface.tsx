@@ -12,10 +12,11 @@ import { HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: HexTileDTO[]; bucketIndex: number; motionProfile: HexMotionProfile; profile: HexQualityProfile }) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const materialRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const baseOpacity = profile.waterDetail === 'full' ? 0.74 : profile.waterDetail === 'reduced' ? 0.7 : 0.66;
-  const baseRoughness = profile.waterDetail === 'full' ? 0.42 : profile.waterDetail === 'reduced' ? 0.5 : 0.58;
+  const baseOpacity = profile.waterDetail === 'full' ? 0.72 : profile.waterDetail === 'reduced' ? 0.68 : 0.64;
+  const baseRoughness = profile.waterDetail === 'full' ? 0.3 : profile.waterDetail === 'reduced' ? 0.38 : 0.46;
+  const surfaceColor = bucketIndex % 2 === 0 ? HEX_VISUAL_THEME.water.surface : HEX_VISUAL_THEME.water.deep;
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -24,7 +25,7 @@ function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: He
       const world = axialToWorld(tile, 1, tile.height + 0.075);
       dummy.position.set(world.x, world.y, world.z);
       dummy.rotation.set(0, Math.PI / 6, 0);
-      dummy.scale.set(0.92, 0.02, 0.92);
+      dummy.scale.set(0.96, 0.018, 0.96);
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
     });
@@ -53,22 +54,35 @@ function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: He
     const opacityWave = Math.sin(time * 0.53 + phase * 1.2);
     material.roughness = THREE.MathUtils.clamp(
       baseRoughness + roughnessWave * 0.035 * motionProfile.waterMotionScale,
-      0.08,
-      1,
+      0.18,
+      0.72,
     );
     material.opacity = THREE.MathUtils.clamp(
       baseOpacity + opacityWave * 0.025 * motionProfile.waterMotionScale,
       0.5,
-      0.85,
+      0.82,
     );
   });
 
   if (!tiles.length) return null;
   return (
     <group ref={groupRef}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, tiles.length]} raycast={() => {}}>
-        <cylinderGeometry args={[1, 1, 0.12, 6]} />
-        <meshStandardMaterial ref={materialRef} color={HEX_VISUAL_THEME.water.surface} transparent opacity={baseOpacity} metalness={0.01} roughness={baseRoughness} depthWrite={false} />
+      <instancedMesh ref={meshRef} args={[undefined, undefined, tiles.length]} raycast={() => {}} receiveShadow>
+        <cylinderGeometry args={[1, 1, 0.08, 24]} />
+        <meshPhysicalMaterial
+          ref={materialRef}
+          color={surfaceColor}
+          transparent
+          opacity={baseOpacity}
+          metalness={0}
+          roughness={baseRoughness}
+          ior={1.33}
+          transmission={profile.waterDetail === 'full' ? 0.12 : 0.06}
+          thickness={0.24}
+          clearcoat={profile.waterDetail === 'full' ? 0.16 : 0.06}
+          clearcoatRoughness={0.28}
+          depthWrite={false}
+        />
       </instancedMesh>
     </group>
   );
@@ -92,13 +106,23 @@ function WaterRipple({ tile, index, motionProfile }: { tile: HexTileDTO; index: 
     const cycle = (Math.sin(clock.elapsedTime * 0.62 + phase) + 1) * 0.5;
     const scale = 0.72 + cycle * (1.18 - 0.72);
     mesh.scale.setScalar(scale);
-    material.opacity = (0.15 - cycle * (0.15 - 0.035)) * motionProfile.waterMotionScale;
+    material.opacity = (0.13 - cycle * (0.13 - 0.03)) * motionProfile.waterMotionScale;
   });
 
   return (
     <mesh ref={ref} position={[world.x, world.y, world.z]} rotation={[-Math.PI / 2, 0, index * 0.7]} scale={0.72} raycast={() => {}}>
-      <ringGeometry args={[0.2, 0.225, 20]} />
-      <meshBasicMaterial ref={materialRef} color={HEX_VISUAL_THEME.water.highlight} transparent opacity={0.15} depthWrite={false} />
+      <ringGeometry args={[0.2, 0.222, 24]} />
+      <meshBasicMaterial ref={materialRef} color={HEX_VISUAL_THEME.water.highlight} transparent opacity={0.13} depthWrite={false} />
+    </mesh>
+  );
+}
+
+function ShallowWaterVeil({ tile }: { tile: HexTileDTO }) {
+  const world = axialToWorld(tile, 1, tile.height + 0.092);
+  return (
+    <mesh position={[world.x, world.y, world.z]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.72, 0.72, 1]} raycast={() => {}}>
+      <circleGeometry args={[1, 20]} />
+      <meshBasicMaterial color={HEX_VISUAL_THEME.water.shallow} transparent opacity={0.055} depthWrite={false} />
     </mesh>
   );
 }
@@ -117,11 +141,13 @@ export function HexWaterSurface({ tiles, profile, motionProfile }: { tiles: HexT
       ? 1
       : 0;
   const glintTiles = waterTiles.slice(0, rippleCount);
+  const shallowTiles = profile.waterDetail === 'full' ? waterTiles.slice(0, Math.min(4, waterTiles.length)) : [];
 
   if (waterTiles.length === 0) return null;
   return (
     <group>
       {buckets.map((bucket, index) => <WaterBucket key={index} tiles={bucket} bucketIndex={index} motionProfile={motionProfile} profile={profile} />)}
+      {shallowTiles.map((tile) => <ShallowWaterVeil key={`${tile.q}:${tile.r}:shallow`} tile={tile} />)}
       {glintTiles.map((tile, index) => <WaterRipple key={`${tile.q}:${tile.r}:ripple`} tile={tile} index={index} motionProfile={motionProfile} />)}
     </group>
   );
