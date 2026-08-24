@@ -10,10 +10,11 @@ test('hex world switches between diorama and person controller paths', async () 
   assert.match(source, /<HexDioramaCamera/);
 });
 
-test('person controller uses close third-person orbit bounds', async () => {
+test('person controller uses close cozy third-person orbit bounds', async () => {
   const source = await readFile(new URL('../components/hex-world/HexPlayerController.tsx', import.meta.url), 'utf8');
-  assert.match(source, /minDistance=\{2\.5\}/);
-  assert.match(source, /maxDistance=\{5\}/);
+  assert.match(source, /minDistance=\{2\.6\}/);
+  assert.match(source, /maxDistance=\{5\.2\}/);
+  assert.match(source, /PLAYER_CAMERA_TARGET_HEIGHT/);
   assert.match(source, /controls\.target/);
   assert.match(source, /getHexPlayerSpawn/);
   assert.match(source, /resolveWalkablePlayerPosition/);
