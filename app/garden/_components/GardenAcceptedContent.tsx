@@ -134,43 +134,43 @@ export const GardenAcceptedContent: React.FC = () => {
       </div>
 
       <nav
-        className="pointer-events-auto fixed bottom-6 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-6 rounded-full border border-white/50 bg-white/80 px-5 py-3 shadow-2xl backdrop-blur-md md:gap-8 md:px-6"
+        className="pointer-events-auto fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-white/50 bg-white/80 px-3 py-3 shadow-2xl backdrop-blur-md sm:gap-6 sm:px-5 md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] md:gap-8 md:px-6"
         aria-label="Garden navigation"
       >
         <button
           type="button"
           onClick={() => switchTab('home')}
-          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'scale-110 text-pink-500' : 'text-gray-400 hover:text-gray-600'}`}
+          className={`flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'scale-110 text-pink-500' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <i className="fas fa-home text-xl" />
-          <span className="text-[10px] font-bold uppercase tracking-wide">Home</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Home</span>
         </button>
 
         <button
           type="button"
           onClick={() => switchTab('timeline')}
-          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'scale-110 text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+          className={`flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'scale-110 text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <i className="fas fa-calendar-alt text-xl" />
-          <span className="text-[10px] font-bold uppercase tracking-wide">Timeline</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Timeline</span>
         </button>
 
         <button
           type="button"
           onClick={() => switchTab('coupons')}
-          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'scale-110 text-purple-500' : 'text-gray-400 hover:text-gray-600'}`}
+          className={`flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'scale-110 text-purple-500' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <i className="fas fa-ticket-alt text-xl" />
-          <span className="text-[10px] font-bold uppercase tracking-wide">Coupons</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Coupons</span>
         </button>
 
         <button
           type="button"
           onClick={() => switchTab('letters')}
-          className={`relative flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'letters' ? 'scale-110 text-rose-500' : 'text-gray-400 hover:text-gray-600'}`}
+          className={`relative flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'letters' ? 'scale-110 text-rose-500' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <i className="fas fa-envelope text-xl" />
-          <span className="text-[10px] font-bold uppercase tracking-wide">Letters</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Letters</span>
           {loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length > 0 && (
             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm">
               {loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length}
