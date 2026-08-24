@@ -59,7 +59,7 @@ test('walkable movement accepts unlocked tile positions and resolves their heigh
   const target = axialToWorld({ q: 1, r: 0 });
   const next = resolveWalkablePlayerPosition({ current, proposed: { x: target.x, z: target.z }, tiles });
   assert.deepEqual(next.coord, { q: 1, r: 0 });
-  assert.equal(next.y, 0.48);
+  assert.ok(Math.abs(next.y - 0.48) < 1e-9);
 });
 
 test('walkable movement rejects locked or missing tile positions', () => {
