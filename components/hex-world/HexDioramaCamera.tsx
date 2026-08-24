@@ -46,8 +46,11 @@ export function HexDioramaCamera({
   const overviewPose = useMemo(() => getOverviewCameraPose(bounds, aspect), [aspect, bounds]);
   const poseRef = useRef(pose);
   const overviewPoseRef = useRef(overviewPose);
-  poseRef.current = pose;
-  overviewPoseRef.current = overviewPose;
+
+  useLayoutEffect(() => {
+    poseRef.current = pose;
+    overviewPoseRef.current = overviewPose;
+  }, [overviewPose, pose]);
 
   const scriptCommandKey = getCameraScriptCommandKey({
     bounds,
