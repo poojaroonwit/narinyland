@@ -10,28 +10,29 @@ export type NaturalTerrainBoundaryEdge = {
   terrainType: HexTerrainType;
 };
 
+export type NaturalTerrainMaterial = 'grass' | 'soil' | 'path' | 'stone' | 'water';
+
+export type NaturalTerrainMaterialGroup = {
+  material: NaturalTerrainMaterial;
+  start: number;
+  count: number;
+};
+
 export type NaturalTerrainMeshData = {
   positions: number[];
   indices: number[];
   colors: number[];
+  uvs: number[];
+  groups: NaturalTerrainMaterialGroup[];
   boundaryEdges: NaturalTerrainBoundaryEdge[];
   tileCenters: Record<string, [number, number, number]>;
 };
 
-type CornerSample = {
-  x: number;
-  z: number;
-  heights: number[];
-};
+type CornerSample = { x: number; z: number; heights: number[] };
 
-const CORNER_EDGE_BY_NEIGHBOR = [
-  [0, 1],
-  [5, 0],
-  [4, 5],
-  [3, 4],
-  [2, 3],
-  [1, 2],
-] as const;
+const CORNER_EDGE_BY_NEIGHBOR = [[0,1],[5,0],[4,5],[3,4],[2,3],[1,2]] as const;
+const MATERIAL_ORDER: readonly NaturalTerrainMaterial[] = ['grass', 'soil', 'path', 'stone', 'water'];
+const UV_WORLD_SCALE = 0.34;
 
 function stableHash(value: string): number {
   let hash = 2166136261;
@@ -42,38 +43,34 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
-function deterministicRatio(key: string): number {
-  return stableHash(key) / 0xffffffff;
-}
-
-function quantizedXZKey(x: number, z: number): string {
-  return `${Math.round(x * 100000)}:${Math.round(z * 100000)}`;
-}
-
+function deterministicRatio(key: string): number { return stableHash(key) / 0xffffffff; }
+function quantizedXZKey(x: number, z: number): string { return `${Math.round(x * 100000)}:${Math.round(z * 100000)}`; }
 function hexCornerXZ(centerX: number, centerZ: number, corner: number): [number, number] {
   const angle = (Math.PI / 180) * (60 * corner - 30);
   return [centerX + Math.cos(angle), centerZ + Math.sin(angle)];
 }
-
 function resolveCornerHeight(sample: CornerSample, seed: string, key: string): number {
   const mean = sample.heights.reduce((sum, value) => sum + value, 0) / Math.max(1, sample.heights.length);
-  const microVariation = (deterministicRatio(`${seed}:terrain-corner:${key}`) * 2 - 1) * 0.018;
-  return mean + microVariation;
+  return mean + (deterministicRatio(`${seed}:terrain-corner:${key}`) * 2 - 1) * 0.018;
 }
-
 function hexToRgb(hex: string): [number, number, number] {
   const normalized = hex.replace('#', '');
-  const value = Number.parseInt(normalized.length === 3
-    ? normalized.split('').map((part) => `${part}${part}`).join('')
-    : normalized, 16);
+  const value = Number.parseInt(normalized.length === 3 ? normalized.split('').map((part) => `${part}${part}`).join('') : normalized, 16);
   return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255];
 }
-
 function terrainColor(terrainType: HexTerrainType, seed: string, tileKey: string): [number, number, number] {
   const base = hexToRgb(getTerrainPresentation(terrainType).base);
   const variation = (deterministicRatio(`${seed}:terrain-color:${tileKey}`) * 2 - 1) * 0.035;
   return base.map((component) => Math.max(0, Math.min(1, component + variation))) as [number, number, number];
 }
+function terrainMaterial(tile: HexTileDTO): NaturalTerrainMaterial {
+  if (tile.metadata?.feature === 'path') return 'path';
+  if (tile.terrainType === 'soil') return 'soil';
+  if (tile.terrainType === 'stone') return 'stone';
+  if (tile.terrainType === 'water') return 'water';
+  return 'grass';
+}
+function pushUv(uvs: number[], x: number, z: number) { uvs.push(x * UV_WORLD_SCALE, z * UV_WORLD_SCALE); }
 
 export function buildNaturalTerrainMesh(tiles: HexTileDTO[], seed: string): NaturalTerrainMeshData {
   const unlocked = tiles.filter((tile) => tile.unlocked);
@@ -92,13 +89,12 @@ export function buildNaturalTerrainMesh(tiles: HexTileDTO[], seed: string): Natu
   }
 
   const cornerHeights = new Map<string, number>();
-  for (const [key, sample] of cornerSamples) {
-    cornerHeights.set(key, resolveCornerHeight(sample, seed, key));
-  }
+  for (const [key, sample] of cornerSamples) cornerHeights.set(key, resolveCornerHeight(sample, seed, key));
 
   const positions: number[] = [];
   const colors: number[] = [];
-  const indices: number[] = [];
+  const uvs: number[] = [];
+  const indexBuckets = new Map<NaturalTerrainMaterial, number[]>(MATERIAL_ORDER.map((material) => [material, []]));
   const boundaryEdges: NaturalTerrainBoundaryEdge[] = [];
   const tileCenters: Record<string, [number, number, number]> = {};
 
@@ -107,10 +103,13 @@ export function buildNaturalTerrainMesh(tiles: HexTileDTO[], seed: string): Natu
     const center = axialToWorld(tile, 1, tile.height);
     tileCenters[tileKey] = [center.x, tile.height, center.z];
     const color = terrainColor(tile.terrainType, seed, tileKey);
+    const material = terrainMaterial(tile);
+    const bucket = indexBuckets.get(material)!;
     const baseIndex = positions.length / 3;
 
     positions.push(center.x, tile.height, center.z);
     colors.push(...color);
+    pushUv(uvs, center.x, center.z);
 
     const corners: Array<[number, number, number]> = [];
     for (let corner = 0; corner < 6; corner += 1) {
@@ -121,12 +120,11 @@ export function buildNaturalTerrainMesh(tiles: HexTileDTO[], seed: string): Natu
       corners.push(position);
       positions.push(...position);
       colors.push(...color);
+      pushUv(uvs, x, z);
     }
 
     for (let corner = 0; corner < 6; corner += 1) {
-      const current = baseIndex + 1 + corner;
-      const next = baseIndex + 1 + ((corner + 1) % 6);
-      indices.push(baseIndex, current, next);
+      bucket.push(baseIndex, baseIndex + 1 + corner, baseIndex + 1 + ((corner + 1) % 6));
     }
 
     const neighbors = hexNeighbors(tile);
@@ -140,15 +138,19 @@ export function buildNaturalTerrainMesh(tiles: HexTileDTO[], seed: string): Natu
       const dx = midpointX - center.x;
       const dz = midpointZ - center.z;
       const length = Math.hypot(dx, dz) || 1;
-      boundaryEdges.push({
-        tileKey,
-        start: [...start],
-        end: [...end],
-        outward: [dx / length, dz / length],
-        terrainType: tile.terrainType,
-      });
+      boundaryEdges.push({ tileKey, start: [...start], end: [...end], outward: [dx / length, dz / length], terrainType: tile.terrainType });
     }
   }
 
-  return { positions, indices, colors, boundaryEdges, tileCenters };
+  const indices: number[] = [];
+  const groups: NaturalTerrainMaterialGroup[] = [];
+  for (const material of MATERIAL_ORDER) {
+    const bucket = indexBuckets.get(material)!;
+    if (!bucket.length) continue;
+    const start = indices.length;
+    indices.push(...bucket);
+    groups.push({ material, start, count: bucket.length });
+  }
+
+  return { positions, indices, colors, uvs, groups, boundaryEdges, tileCenters };
 }
