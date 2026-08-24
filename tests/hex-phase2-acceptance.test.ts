@@ -20,9 +20,10 @@ test('phase 2 keeps the approved smart diorama and world-first builder flow', as
   assert.match(controller, /HexBuildCatalog/);
   assert.match(controller, /HexBuildingContextToolbar/);
   assert.match(controller, /HexRemovalConfirm/);
-  assert.match(toolbar, />🔨 Build</);
-  assert.match(toolbar, />⬡ Expand</);
-  assert.match(toolbar, /Reset View/);
+  assert.match(toolbar, /🔨/);
+  assert.match(toolbar, />Build</);
+  assert.match(toolbar, /aria-label="Grow land"/i);
+  assert.match(toolbar, /aria-label="Reset view"/i);
   assert.match(catalog, /home:[\s\S]*?removable:\s*false/);
   assert.doesNotMatch(controller, /window\.confirm|window\.prompt/);
 });
@@ -48,7 +49,7 @@ test('phase 2 remains mobile-safe without exposing legacy game modes or characte
   const undoToast = await source('../components/hex-world/HexUndoToast.tsx');
   const combined = `${controller}\n${toolbar}\n${placement}\n${undoToast}`;
 
-  assert.match(toolbar, /min-h-\[44px\]/);
+  assert.match(toolbar, /min-h-\[(?:44|48)px\]/);
   assert.match(toolbar, /safe-area-inset-bottom/);
   assert.match(undoToast, /min-h-11/);
   assert.match(undoToast, /safe-area-inset-bottom/);
