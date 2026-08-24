@@ -49,6 +49,26 @@ test('normal World no longer uses visible stacked hex cylinders as primary groun
   assert.doesNotMatch(world, /HEX_TILE_DEPTH/);
 });
 
+test('floating island side is one boundary-driven geological shell instead of per-hex rock masses', async () => {
+  const world = await source('components/hex-world/HexWorld3D.tsx');
+  const shell = await source('components/hex-world/terrain/HexIslandCliffShell.tsx');
+  const boundary = await source('lib/hex-world/island-boundary.ts');
+
+  assert.match(world, /HexIslandCliffShell/);
+  assert.match(world, /<HexIslandCliffShell[^>]*seed=\{snapshot\.world\.seed\}/);
+  assert.doesNotMatch(world, /<HexIslandUnderside\b/);
+  assert.match(shell, /buildNaturalTerrainMesh/);
+  assert.match(shell, /buildIslandCliffMesh/);
+  assert.match(shell, /BufferGeometry/);
+  assert.match(shell, /computeVertexNormals/);
+  assert.match(shell, /vertexColors/);
+  assert.doesNotMatch(shell, /dodecahedronGeometry|Math\.random|https?:\/\//);
+  assert.match(boundary, /soilLipDepth/);
+  assert.match(boundary, /rockWallDepth/);
+  assert.match(boundary, /lowerTaper/);
+  assert.doesNotMatch(boundary, /Math\.random/);
+});
+
 test('naturalistic world stays local deterministic and avoids heavyweight renderer dependencies', async () => {
   const files = await Promise.all([
     source('components/hex-world/terrain/HexNaturalTerrain.tsx'),
