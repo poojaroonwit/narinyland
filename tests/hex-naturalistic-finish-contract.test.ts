@@ -41,14 +41,19 @@ test('ground cover and ambient vegetation are deterministic scanned natural silh
   assert.doesNotMatch(`${vegetation}\n${scatter}`, /Math\.random|https?:\/\//);
 });
 
-test('core homestead structures use authored wall roof foundation window and timber helpers', async () => {
-  const structures = await source('components/hex-world/models/HexStructureModels.tsx');
-  for (const helper of ['StoneFoundation', 'WallPanel', 'PitchedRoof', 'NaturalWindow', 'TimberBeam']) {
+test('core homestead structures use local UV-mapped PBR construction and physical glass metal', async () => {
+  const structures = await source('components/hex-world/pbr/HexPBRBuildings.tsx');
+  for (const helper of ['StoneFoundation', 'WallPanel', 'PitchedRoof', 'NaturalWindow', 'TimberBeam', 'GablePanel']) {
     assert.match(structures, new RegExp(`function ${helper}|const ${helper}`));
   }
   for (const key of ['home', 'barn', 'storage', 'workshop']) {
     assert.match(structures, new RegExp(`case '${key}'`));
   }
+  assert.match(structures, /getPBRTextureSet/);
+  assert.match(structures, /map=/);
+  assert.match(structures, /normalMap=/);
+  assert.match(structures, /roughnessMap=/);
+  assert.match(structures, /meshPhysicalMaterial/);
   assert.match(structures, /HEX_VISUAL_THEME\.structures\.glass/);
   assert.match(structures, /HEX_VISUAL_THEME\.structures\.metal/);
   assert.doesNotMatch(structures, /coneGeometry/);
