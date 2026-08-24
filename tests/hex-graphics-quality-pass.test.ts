@@ -61,6 +61,25 @@ test('vegetation and water stay quality-aware and batched', async () => {
   assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial/);
 });
 
+test('World water uses bounded two-frequency motion shimmer and quality ripple budgets', async () => {
+  const water = await source('components/hex-world/HexWaterSurface.tsx');
+  assert.match(water, /waterMotionScale/);
+  assert.match(water, /0\.010|0\.01/);
+  assert.match(water, /0\.004/);
+  assert.match(water, /1\.73/);
+  assert.match(water, /materialRef/);
+  assert.match(water, /roughness/);
+  assert.match(water, /opacity/);
+  assert.match(water, /0\.035/);
+  assert.match(water, /0\.025/);
+  assert.match(water, /0\.72/);
+  assert.match(water, /1\.18/);
+  assert.match(water, /profile\.waterDetail === ['"]full['"]/);
+  assert.match(water, /profile\.waterDetail === ['"]reduced['"]/);
+  assert.match(water, /instancedMesh/);
+  assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial|EffectComposer|SSR/);
+});
+
 test('structure models share miniature construction primitives', async () => {
   const structures = await source('components/hex-world/models/HexStructureModels.tsx');
 
