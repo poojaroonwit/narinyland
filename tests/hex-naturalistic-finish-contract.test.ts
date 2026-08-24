@@ -29,19 +29,16 @@ test('visual theme exposes grounded terrain and physically distinct structure to
   }
 });
 
-test('ground cover and ambient vegetation are deterministic natural silhouettes', async () => {
-  const details = await source('components/hex-world/HexTerrainDetails.tsx');
-  const ambient = await source('components/hex-world/HexAmbientDecor.tsx');
-  assert.match(details, /groundCoverPerTile/);
-  assert.match(details, /instancedMesh/);
-  assert.match(details, /blade/i);
-  assert.doesNotMatch(details, /Math\.random/);
-  assert.match(ambient, /treeLeafClusters/);
-  assert.match(ambient, /branch/i);
-  assert.match(ambient, /worldWindScale/);
-  assert.match(ambient, /worldWindSecondaryScale/);
-  assert.doesNotMatch(ambient, /dodecahedronGeometry/);
-  assert.doesNotMatch(ambient, /Math\.random|https?:\/\//);
+test('ground cover and ambient vegetation are deterministic scanned natural silhouettes', async () => {
+  const vegetation = await source('components/hex-world/pbr/HexPBRVegetation.tsx');
+  const scatter = await source('lib/hex-world/pbr/vegetation-scatter.ts');
+  assert.match(vegetation, /useGLTF/);
+  assert.match(vegetation, /instancedMesh/);
+  assert.match(vegetation, /worldWindScale/);
+  assert.match(vegetation, /worldWindSecondaryScale/);
+  assert.match(scatter, /pbrVegetationScale/);
+  assert.match(scatter, /deterministic/i);
+  assert.doesNotMatch(`${vegetation}\n${scatter}`, /Math\.random|https?:\/\//);
 });
 
 test('core homestead structures use authored wall roof foundation window and timber helpers', async () => {
@@ -58,11 +55,15 @@ test('core homestead structures use authored wall roof foundation window and tim
   assert.doesNotMatch(structures, /https?:\/\//);
 });
 
-test('buildable nature no longer depends on geometric tree canopy or hex-shaped garden base', async () => {
+test('buildable nature reuses local scanned assets instead of geometric tree canopy', async () => {
   const nature = await source('components/hex-world/models/HexNatureModels.tsx');
+  assert.match(nature, /useGLTF/);
+  assert.match(nature, /LocalPBRModel/);
   assert.match(nature, /case 'tree'/);
-  assert.match(nature, /branch/i);
+  assert.match(nature, /name="tree"/);
   assert.match(nature, /case 'pond'/);
+  assert.match(nature, /name="rockSet"/);
+  assert.match(nature, /name="fern"/);
   assert.match(nature, /case 'garden_patch'/);
   assert.doesNotMatch(nature, /dodecahedronGeometry/);
   assert.doesNotMatch(nature, /cylinderGeometry args=\{\[0\.82,\s*0\.86,\s*0\.17,\s*6\]\}/);
