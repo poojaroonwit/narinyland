@@ -16,6 +16,22 @@ Keep the existing R3F/Three.js architecture and add a small set of reusable smoo
 
 This is preferred over an engine migration because Narinyland already integrates its 3D world directly with Next.js, React UI, Homestead state, authentication, persistence, and mobile controls. The current shortcomings are primarily motion/render-loop polish rather than missing engine capability.
 
+## Locked v1 tuning
+
+Use frame-rate-independent exponential response with these defaults:
+
+- player acceleration response: `12`
+- player deceleration response: `16`
+- player heading response: `12`
+- avatar movement-amount response: `10`
+- camera target follow response: `8.5`
+- resident position response: `10`
+- resident heading response: `10`
+
+These values are response coefficients used with `1 - exp(-response * deltaSeconds)`, not frame-dependent lerp percentages.
+
+When movement is suspended by an interaction surface, target velocity becomes zero and actual velocity is cleared to zero in the same frame. This intentionally prioritizes interaction correctness over eased deceleration at that boundary.
+
 ## Scope
 
 ### 1. Player locomotion smoothing
@@ -28,13 +44,10 @@ Rules:
 - preserve current maximum movement speed of 1.7 world units/second;
 - accelerate toward requested velocity and decelerate toward zero using frame-rate-independent exponential smoothing;
 - do not persist velocity or player position;
-- when movement is suspended, clear keyboard/touch input and smoothly stop immediately enough that the avatar cannot drift through an interaction surface;
-- reduced-motion mode may use near-immediate transitions.
+- when movement is suspended, clear keyboard/touch input and velocity in the same frame so the avatar cannot drift through an interaction surface;
+- reduced-motion mode may converge immediately.
 
-Target tuning for v1:
-- acceleration response approximately 10–14 Hz equivalent exponential response;
-- deceleration response approximately 14–18 Hz;
-- values must live in a pure helper/profile rather than magic numbers scattered through `HexPlayerController`.
+The response values must come from a pure smoothing profile/helper rather than magic numbers scattered through `HexPlayerController`.
 
 ### 2. Heading and avatar gait smoothing
 
@@ -43,15 +56,16 @@ Continue using the current procedural avatar for v1; do not add external GLB/FBX
 Improve it by:
 - replacing binary `moving` gait amplitude with a normalized `movementAmount` from 0..1;
 - smoothly blending arm/leg stride amplitude and body bob based on movement amount;
+- using response `10` for gait amount convergence;
 - preserving reduced-motion behavior;
-- keeping heading interpolation shortest-path and frame-rate independent;
+- keeping heading interpolation shortest-path and frame-rate independent with response `12`;
 - allowing turning to settle smoothly instead of snapping when input changes direction.
 
 A real `AnimationMixer`/rigged character asset is intentionally deferred to a later Character Animation v2 pass because Narinyland does not yet have an approved production character asset set.
 
 ### 3. Camera follow smoothing
 
-Preserve `OrbitControls` and user orbit/zoom authority. Improve follow behavior by separating desired player-follow target from the camera's actual follow target and using a spring-like exponential response.
+Preserve `OrbitControls` and user orbit/zoom authority. Improve follow behavior by separating desired player-follow target from the camera's actual follow target and using response `8.5` exponential damping.
 
 Rules:
 - no camera snapping during normal movement;
@@ -70,8 +84,8 @@ This remains a damped follow camera, not a physics spring.
 Rules:
 - no persisted NPC positions;
 - no changes to route schedules or interaction identity;
-- position interpolation is frame-rate independent;
-- heading interpolation uses shortest angular path;
+- position convergence uses response `10`;
+- heading convergence uses shortest-angle response `10`;
 - reduced-motion may converge immediately;
 - resident interaction reporting remains based on deterministic world samples, not delayed visual interpolation, so gameplay targeting does not gain latency.
 
@@ -89,16 +103,30 @@ Rules:
 
 ### 6. Adaptive quality
 
-The existing `resolveHexQualityProfile` remains the static upper bound derived from user graphics setting and viewport width. Add a transient runtime performance factor that can only reduce effective render cost below that upper bound when sustained performance is poor, and can recover gradually when performance stabilizes.
+The existing `resolveHexQualityProfile` remains the static upper bound derived from user graphics setting and viewport width. Add a transient runtime performance factor that can only reduce effective render cost below that upper bound when sustained performance is poor, and can recover when performance stabilizes.
 
-Preferred implementation:
-- use Drei `PerformanceMonitor` or an equivalent bounded R3F frame monitor;
-- maintain a transient factor/bucket in `HexWorld3D`;
-- map the effective quality to existing `high`, `medium`, `mobile` profiles rather than inventing dozens of dynamic knobs;
-- never promote above the user's configured/static quality profile;
-- avoid rapid oscillation using hysteresis/debounce;
-- mobile remains capped by the mobile profile;
-- adaptive state is not persisted.
+Use Drei `PerformanceMonitor` and its debounced performance `factor` as the coarse signal. Map it to three runtime buckets:
+
+- `factor >= 0.70` → `full`
+- `0.40 <= factor < 0.70` → `reduced`
+- `factor < 0.40` → `minimal`
+
+Effective-profile mapping:
+
+- static `high` + `full` → `high`
+- static `high` + `reduced` → `medium`
+- static `high` + `minimal` → `mobile`
+- static `medium` + `full` → `medium`
+- static `medium` + `reduced|minimal` → `mobile`
+- static `mobile` → always `mobile`
+
+Rules:
+- `PerformanceMonitor` debounce/hysteresis behavior is used; do not add a second per-frame React quality loop;
+- update React state only when the derived runtime bucket changes;
+- never promote above the static/user quality profile;
+- mobile remains capped by `mobile`;
+- adaptive state is not persisted;
+- no quality transition may modify gameplay state or traversal authority.
 
 For v1, adapting between existing profiles is sufficient. Dynamic per-feature tuning and automatic WebGPU selection are out of scope.
 
@@ -107,15 +135,17 @@ For v1, adapting between existing profiles is sufficient. Dynamic per-feature tu
 Add focused helpers under `lib/hex-world/` so smoothing rules can be tested without React or R3F:
 
 - `smooth-motion.ts`
-  - frame-rate-independent scalar smoothing;
+  - `exponentialAlpha(response, deltaSeconds)`;
+  - finite/clamped scalar smoothing;
   - 2D velocity smoothing;
-  - shortest-angle interpolation helper;
-  - clamp/finite-value guards.
+  - shortest-angle smoothing;
+  - locked v1 response constants/profile.
 
-- extend `quality.ts` or add `adaptive-quality.ts`
-  - map static quality + runtime performance bucket to effective quality;
-  - effective quality can only stay the same or degrade;
-  - deterministic and side-effect free.
+- `adaptive-quality.ts`
+  - runtime bucket type `full | reduced | minimal`;
+  - pure `factor -> bucket` mapping;
+  - pure static-profile + runtime-bucket -> effective-profile mapping;
+  - effective quality can only stay the same or degrade.
 
 Do not place gameplay authority in these helpers.
 
@@ -143,15 +173,15 @@ Do not place gameplay authority in these helpers.
 
 ### `HexWorld3D.tsx`
 
-- host runtime adaptive-quality state;
-- mount the performance monitor;
-- mount scene preloading;
+- host runtime adaptive-quality bucket state;
+- mount `PerformanceMonitor`;
+- mount scene `Preload`;
+- derive effective profile from static profile + runtime bucket;
 - pass effective profile to existing rendering layers.
 
 ### `quality.ts`
 
-- preserve existing profile definitions and static resolution behavior;
-- add or expose safe profile-rank utilities needed by adaptive quality.
+Preserve existing profile definitions and `resolveHexQualityProfile` static behavior. Adaptive mapping belongs in the new pure `adaptive-quality.ts` helper so viewport/user-setting resolution stays independent from runtime frame performance.
 
 ## Data and authority boundaries
 
@@ -175,26 +205,29 @@ Player traversal remains authoritative through `resolveWalkablePlayerPosition`. 
 
 ## Accessibility and reduced motion
 
-Respect the existing reduced-motion preference. Reduced-motion mode must minimize decorative gait/bob and may converge motion/camera interpolation faster while preserving playability and traversal correctness.
+Respect the existing reduced-motion preference. Reduced-motion mode must minimize decorative gait/bob and may converge motion/camera interpolation immediately while preserving playability and traversal correctness.
 
 ## Testing
 
 Add pure tests for:
-- scalar/vector smoothing is frame-rate independent within tolerance;
-- velocity converges without overshoot;
-- deceleration reaches near-zero predictably;
+- `exponentialAlpha` is bounded and frame-rate safe;
+- scalar/vector smoothing converges without overshoot;
+- acceleration and deceleration use the locked responses;
 - shortest-angle interpolation crosses ±π correctly;
 - invalid/non-finite inputs fail safely;
+- factor thresholds map exactly at `0.40` and `0.70`;
 - adaptive quality never exceeds the static quality cap;
-- poor-performance bucket degrades high → medium → mobile;
+- poor performance degrades high → medium/mobile according to the locked table;
 - mobile static cap never promotes.
 
 Add source/integration contracts for:
 - player controller uses smooth-motion helpers while preserving `resolveWalkablePlayerPosition`;
-- avatar accepts normalized `movementAmount`;
+- interaction suspension clears velocity immediately;
+- avatar accepts normalized `movementAmount` rather than only binary movement;
 - living world visual transforms interpolate rather than directly snap;
 - resident interaction reporter remains deterministic/authoritative and separate from visual interpolation;
-- world mounts adaptive performance monitoring and scene preload;
+- world mounts `PerformanceMonitor` and `Preload`;
+- adaptive bucket changes are React-state coarse events, not per-frame state updates;
 - no new persistence/API dependencies appear in smooth-motion/avatar/presence code.
 
 Full verification gate before merge:
