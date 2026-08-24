@@ -26,7 +26,7 @@ test('context action panel exposes Homestead Life v3 animals tiers pets and comp
   assert.doesNotMatch(source, /fixed inset-0.*Homestead Life/s);
 });
 
-test('living HUD presents unresolved homestead events without displacing persistent Music control', async () => {
+test('living HUD presents unresolved homestead events without displacing persistent music control', async () => {
   const source = await readFile(new URL('../components/hex-world/HexLivingHUD.tsx', import.meta.url), 'utf8');
 
   assert.match(source, /HomesteadLifeState/);
@@ -36,6 +36,7 @@ test('living HUD presents unresolved homestead events without displacing persist
   assert.match(source, /type: 'resolve_event'/);
   assert.match(source, /Growing Together|Homestead moment|Family moment/);
   assert.match(source, /MusicButton/);
-  assert.match(source, /🔇 Music/);
-  assert.match(source, /🔊 Music/);
+  assert.match(source, /aria-label=\{musicMuted \? 'Unmute music' : 'Mute music'\}/);
+  assert.match(source, /🔇/);
+  assert.match(source, /🔊/);
 });

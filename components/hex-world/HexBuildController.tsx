@@ -15,13 +15,11 @@ import { HexWorldApiError, hexWorldAPI } from '@/services/hex-world-api';
 import { HexBuildCatalog } from './HexBuildCatalog';
 import { HexBuildingContextToolbar } from './HexBuildingContextToolbar';
 import { HexExpansionController } from './HexExpansionController';
-import { HexLivingActionPanel } from './HexLivingActionPanel';
-import { HexLivingHUD } from './HexLivingHUD';
+import { HexGameplayOverlay } from './HexGameplayOverlay';
 import { HexPlacementBar } from './HexPlacementBar';
 import { HexRemovalConfirm } from './HexRemovalConfirm';
 import { HexUndoToast } from './HexUndoToast';
 import { HexWorld3D } from './HexWorld3D';
-import { HexWorldToolbar } from './HexWorldToolbar';
 import { useGardenMusic } from './useGardenMusic';
 import { useHexKeyboardShortcuts } from './useHexKeyboardShortcuts';
 import { useLivingHomestead } from './useLivingHomestead';
@@ -302,6 +300,17 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
 
   const openBuild = () => { cancelExpansion(); setCatalogOpen(true); setRemoveOpen(false); };
   const openExpand = () => { setCatalogOpen(false); setRemoveOpen(false); setExpansionAnchor(null); setExpansionPinned(false); dispatch({ type: 'start_expansion' }); };
+  const handleFarm = () => {
+    setCatalogOpen(false);
+    setRemoveOpen(false);
+    const garden = snapshot.buildings.find((building) => building.buildingKey === 'garden_patch');
+    if (garden) {
+      dispatch({ type: 'select_existing', buildingId: garden.id });
+      return;
+    }
+    setCatalogOpen(true);
+    showToast('Add a Garden Patch to start farming 🌱');
+  };
   const selectedDefinition = selectedBuilding ? getBuildingDefinition(selectedBuilding.buildingKey) : null;
   const expireUndo = useCallback(() => { setUndo(null); setUndoLabel(''); }, []);
 
@@ -333,10 +342,25 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
         onSelectBuilding={(building: HexBuildingDTO | null) => { if (state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }}
       />
 
-      <HexLivingHUD state={living.state} points={snapshot.points} loading={living.loading} error={living.error} busy={living.busy} musicMuted={musicMuted} onToggleMusic={toggleMusic} onAction={living.act} onRetry={living.retry} />
+      <HexGameplayOverlay
+        snapshot={snapshot}
+        livingState={living.state}
+        livingLoading={living.loading}
+        livingError={living.error}
+        livingBusy={living.busy}
+        musicMuted={musicMuted}
+        onToggleMusic={toggleMusic}
+        onLivingAction={living.act}
+        onLivingRetry={living.retry}
+        selectedBuilding={selectedBuilding}
+        interactive={state.mode === 'idle' && !catalogOpen}
+        onFarm={handleFarm}
+        onBuild={openBuild}
+        onExpand={openExpand}
+        onResetView={() => setResetNonce((value) => value + 1)}
+        onClearSelection={() => dispatch({ type: 'select_existing', buildingId: null })}
+      />
 
-      {state.mode === 'idle' && selectedBuilding && living.state && <HexLivingActionPanel building={selectedBuilding} state={living.state} busy={living.busy} onAction={living.act} />}
-      {state.mode === 'idle' && !selectedBuilding && !catalogOpen && <HexWorldToolbar onBuild={openBuild} onExpand={openExpand} onResetView={() => setResetNonce((value) => value + 1)} />}
       <HexBuildCatalog open={catalogOpen} activeBuildingKey={state.buildingKey} onClose={() => setCatalogOpen(false)} onSelect={(buildingKey: HexBuildingKey) => { dispatch({ type: 'select_building', buildingKey }); setCatalogOpen(false); }} />
       {(state.mode === 'placing' || state.mode === 'moving') && <HexPlacementBar mode={state.mode} busy={busy} valid={!!preview?.result.ok} reason={placementReason} onRotateLeft={() => dispatch({ type: 'rotate_counterclockwise' })} onRotateRight={() => dispatch({ type: 'rotate_clockwise' })} onConfirm={confirmMove} onCancel={() => dispatch({ type: 'cancel' })} />}
       {state.mode === 'idle' && selectedBuilding && selectedDefinition && <HexBuildingContextToolbar removable={selectedDefinition.removable} busy={busy} onMove={() => dispatch({ type: 'start_move', buildingId: selectedBuilding.id, buildingKey: selectedBuilding.buildingKey as HexBuildingKey, rotation: selectedBuilding.rotation })} onRotate={rotateSelected} onRemove={() => setRemoveOpen(true)} onClose={() => dispatch({ type: 'select_existing', buildingId: null })} />}
