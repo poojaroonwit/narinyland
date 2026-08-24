@@ -6,13 +6,14 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), 'utf8');
 }
 
-test('phase 2 keeps the approved smart diorama and world-first builder flow', async () => {
+test('phase 2 keeps the approved smart World camera and world-first builder flow', async () => {
   const world = await source('../components/hex-world/HexWorld3D.tsx');
   const controller = await source('../components/hex-world/HexBuildController.tsx');
   const toolbar = await source('../components/hex-world/HexWorldToolbar.tsx');
   const catalog = await source('../lib/hex-world/building-catalog.ts');
 
   assert.match(world, /HexDioramaCamera/);
+  assert.match(world, /HexNaturalTerrain/);
   assert.match(world, /ExpansionPlacementGhost/);
   assert.match(world, /ExpansionPlacementPlane/);
   assert.match(world, /onSelectExpansionAnchor/);
@@ -67,10 +68,10 @@ test('phase 2 keeps visual-wow rendering bounded and avoids mandatory heavy post
   const quality = await source('../lib/hex-world/quality.ts');
   const particles = await source('../components/hex-world/HexWorldParticles.tsx');
 
-  assert.match(world, /HexIslandUnderside/);
+  assert.match(world, /HexIslandCliffShell/);
   assert.match(world, /HexWorldParticles/);
   assert.match(world, /HexWaterSurface/);
   assert.match(quality, /maxDpr:\s*1\.75/);
   assert.match(particles, /<points\s/);
-  assert.doesNotMatch(`${world}\n${quality}`, /EffectComposer|MeshReflectorMaterial|DepthOfField|Bloom/);
+  assert.doesNotMatch(`${world}\n${quality}`, /HexIslandUnderside|EffectComposer|MeshReflectorMaterial|DepthOfField|Bloom/);
 });
