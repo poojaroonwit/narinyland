@@ -141,7 +141,7 @@ Primary verb: `Pet`
 May offer:
 
 - `Pet` backed by the existing `pet_time` Homestead action
-- `Talk`/ambient acknowledgement copy without gameplay mutation
+- ambient acknowledgement copy without gameplay mutation
 - `Close`
 
 The pet must not exist as an interaction target until a pet has actually been chosen in authoritative Homestead state.
@@ -216,9 +216,9 @@ The target is responsive proximity behavior, not exact physics-grade synchroniza
 
 ### Interaction radius
 
-Resident interactions use the same general Explore interaction distance envelope as building interactions. The implementation should preserve the current 1.7 world-unit building radius unless testing shows a small resident-specific tolerance is required for usability.
+Buildings and residents use one exact shared Explore interaction radius of **1.7 world units**, measured horizontally in X/Z space.
 
-The preferred design is one shared default radius so the prompt feels consistent.
+There is no resident-specific tolerance or override in v1. A candidate outside 1.7 is not interactable.
 
 ### Candidate resolution
 
@@ -363,7 +363,7 @@ Child:
 - `The flowers are different this season!`
 
 Pet:
-- `Mochi trots over and waits for attention.`
+- `Your dog trots over and waits for attention.`
 - `Your cat curls around your feet.`
 
 Names are not introduced unless an authoritative resident/pet name already exists. If no authoritative name exists, use role-based labels such as `Partner`, `Child`, `Cat`, or `Dog`.
@@ -372,9 +372,7 @@ Names are not introduced unless an authoritative resident/pet name already exist
 
 ### Talk
 
-`Talk` itself is presentation-only in v1. It may advance to another deterministic line within the current card only if that behavior stays deterministic and ephemeral; no reward is granted for simply cycling dialogue.
-
-The simplest acceptable v1 is one context line with no dialogue pagination.
+`Talk` is presentation-only in v1 and displays exactly one deterministic context line for the opened interaction. There is no dialogue pagination, line cycling, conversation history, or reward for talking in v1.
 
 ### Family Time
 
@@ -498,7 +496,7 @@ Add tests for:
 - pet omission before pet selection
 - pet kind label/copy behavior
 - nearest building vs resident arbitration
-- exact radius boundary
+- exact 1.7 radius boundary
 - stable id tie-breaking
 - horizontal-only distance
 - open-target stability semantics
@@ -558,11 +556,12 @@ Resident Interactions v1 is complete when:
 2. Child targeting appears only after the existing child unlock.
 3. Pet targeting appears only after an existing cat/dog is chosen.
 4. The nearest physical target wins across building and resident candidates.
-5. Desktop `E` and mobile contextual controls open the correct interaction.
-6. Resident conversation copy is deterministic from existing state and has no AI/network dependency.
-7. Pet interaction invokes existing `pet_time` authority.
-8. Family Time, when offered, invokes existing `family_time` authority.
-9. Movement is suspended while the conversation is open and safely resumes after close.
-10. Building interactions, World mode, build/farm/expand/move, persistence, economy, and backend APIs remain unchanged.
-11. No resident positions or conversation state are persisted.
-12. The exact final PR head passes the complete Hex Homestead CI gate.
+5. All building and resident candidates use the exact shared 1.7 world-unit horizontal interaction radius.
+6. Desktop `E` and mobile contextual controls open the correct interaction.
+7. Resident conversation copy is one deterministic context line from existing state and has no AI/network dependency.
+8. Pet interaction invokes existing `pet_time` authority.
+9. Family Time, when offered, invokes existing `family_time` authority.
+10. Movement is suspended while the conversation is open and safely resumes after close.
+11. Building interactions, World mode, build/farm/expand/move, persistence, economy, and backend APIs remain unchanged.
+12. No resident positions or conversation state are persisted.
+13. The exact final PR head passes the complete Hex Homestead CI gate.
