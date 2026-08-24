@@ -6,7 +6,7 @@ test('hex world switches between diorama and person controller paths', async () 
   const source = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
   assert.match(source, /HexPlayerController/);
   assert.match(source, /viewMode.*world.*person|viewMode.*person/s);
-  assert.match(source, /viewMode === 'person'/);
+  assert.match(source, /viewMode\s*===\s*['"]person['"]/);
   assert.match(source, /<HexDioramaCamera/);
 });
 
