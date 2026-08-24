@@ -25,7 +25,6 @@ import { HexExploreAtmosphere } from './HexExploreAtmosphere';
 import { HexExploreEnvironmentLayer } from './HexExploreEnvironmentLayer';
 import { HexExploreGroundLayer } from './HexExploreGroundLayer';
 import { HexExploreStructureDetails } from './HexExploreStructureDetails';
-import { HexIslandUnderside } from './HexIslandUnderside';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
 import { HexPlayerController } from './HexPlayerController';
@@ -38,6 +37,7 @@ import { HexWaterSurface } from './HexWaterSurface';
 import { HexWorldLighting } from './HexWorldLighting';
 import { HexWorldParticles } from './HexWorldParticles';
 import { HexBuildGridOverlay } from './terrain/HexBuildGridOverlay';
+import { HexIslandCliffShell } from './terrain/HexIslandCliffShell';
 import { HexNaturalTerrain } from './terrain/HexNaturalTerrain';
 import { useReducedHexMotion } from './useReducedHexMotion';
 
@@ -77,7 +77,7 @@ type Props = {
 };
 
 function FloatingFragments() {
-  return <group>{[[-9,-2.4,2,0.7],[9,-3.1,4,0.55],[6,-2.2,-10,0.45],[-6,-3.5,-9,0.5]].map(([x,y,z,scale], index) => <mesh key={index} position={[x,y,z]} rotation={[0.2,index*0.8,0.12]} scale={scale} castShadow raycast={() => {}}><dodecahedronGeometry args={[1,0]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.stone.dark} roughness={1} /></mesh>)}</group>;
+  return <group>{[[-9,-2.4,2,0.7],[9,-3.1,4,0.55],[6,-2.2,-10,0.45],[-6,-3.5,-9,0.5]].map(([x,y,z,scale], index) => <mesh key={index} position={[x,y,z]} rotation={[0.2,index*0.8,0.12]} scale={scale} castShadow raycast={() => {}}><icosahedronGeometry args={[1,0]} /><meshStandardMaterial color={HEX_VISUAL_THEME.terrain.cliffRock ?? HEX_VISUAL_THEME.terrain.stone.dark} roughness={1} /></mesh>)}</group>;
 }
 function AnimatedBuildingPreview({ preview, position, motionProfile }: { preview: HexBuildingPreview; position: { x:number;y:number;z:number }; motionProfile: HexMotionProfile }) {
   const ref=useRef<THREE.Group>(null); const phase=deterministicMotionPhase(`ghost:${preview.buildingKey}:${preview.anchorQ}:${preview.anchorR}`);
@@ -104,7 +104,9 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
     <Canvas shadows="soft" gl={{antialias:true,powerPreference:'high-performance'}} dpr={[1,profile.maxDpr]} camera={{fov:42,near:0.1,far:160}} onPointerMissed={()=>props.onSelectBuilding?.(null)}>
       <PerformanceMonitor onChange={({factor})=>setPerformanceFactor((previous)=>resolveAdaptiveHexQuality(staticProfile,previous).name===resolveAdaptiveHexQuality(staticProfile,factor).name?previous:factor)} />
       <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
-      {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}<HexIslandUnderside tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><FloatingFragments />
+      {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}
+      <HexIslandCliffShell tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+      <FloatingFragments />
       <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} /><HexPlacementEffects event={props.visualEvent??null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
       <HexNaturalTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
       <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} presentation="proxy" hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
