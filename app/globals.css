@@ -112,21 +112,37 @@ body {
 }
 
 /* HexWorld overlay collision contract. */
-.hex-world-shell [data-hex-edit-toolbar] {
+[data-hex-edit-toolbar] {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.hex-world-shell:has([data-hex-hud-panel]) [data-hex-edit-toolbar] {
+body:has([data-hex-hud-panel]) [data-hex-edit-toolbar] {
   opacity: 0;
   pointer-events: none;
   transform: translateX(0.5rem);
 }
 
-.hex-world-shell:has([data-hex-overlay-state="hud"]) [data-hex-undo-toast] {
+body:has([data-hex-overlay-state="hud"]) [data-hex-undo-toast] {
   top: auto;
   left: 50%;
   bottom: calc(10.6rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
+}
+
+body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > aside {
+  max-height: calc(100dvh - 17rem - env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > aside {
+    max-height: calc(100dvh - 12rem);
+  }
+}
+
+@media (max-height: 640px) {
+  [data-hex-hud-panel][data-has-notices="true"] {
+    max-height: 28vh;
+  }
 }
 
 @keyframes holographic-sweep {
