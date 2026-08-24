@@ -4,54 +4,47 @@ import { test } from 'node:test';
 
 const source = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('premium graphics pass keeps bounded naturalistic procedural architecture', async () => {
+test('premium graphics pass keeps bounded PBR naturalistic architecture', async () => {
   const world = await source('components/hex-world/HexWorld3D.tsx');
   const quality = await source('lib/hex-world/quality.ts');
-
-  assert.match(world, /HexNaturalTerrain/);
-  assert.match(world, /HexIslandCliffShell/);
+  assert.match(world, /HexPBRTerrain/);
+  assert.match(world, /HexPBRCliff/);
   assert.match(world, /HexTerrainDetails/);
   assert.match(world, /getHexVisualEnvironment/);
-  assert.doesNotMatch(world, /HexIslandUnderside/);
+  assert.doesNotMatch(world, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain/);
   assert.doesNotMatch(world, /EffectComposer|Bloom|DepthOfField|SSAO|SSR/);
   assert.match(quality, /maxDpr:\s*1\.75/);
   assert.match(quality, /maxDpr:\s*1\.5/);
   assert.match(quality, /maxDpr:\s*1,/);
-  assert.match(quality, /groundCoverPerTile/);
-  assert.match(quality, /treeLeafClusters/);
+  assert.match(quality, /pbrTextureTier/);
+  assert.match(quality, /pbrGroundPropBudget/);
 });
 
 test('visual theme centralizes grounded terrain structure water and atmosphere palettes', async () => {
   const theme = await source('lib/hex-world/visual-theme.ts');
-
-  for (const token of ['terrain', 'structures', 'vegetation', 'water', 'atmosphere', 'pathDirt', 'cliffRock', 'dampBank', 'glass', 'metal']) {
-    assert.match(theme, new RegExp(token));
-  }
+  for (const token of ['terrain', 'structures', 'vegetation', 'water', 'atmosphere', 'pathDirt', 'cliffRock', 'dampBank', 'glass', 'metal']) assert.match(theme, new RegExp(token));
   assert.match(theme, /HexVisualEnvironment/);
   assert.match(theme, /getHexVisualEnvironment/);
 });
 
-test('terrain detail and organic cliff shell remain deterministic and bounded', async () => {
-  const details = await source('components/hex-world/HexTerrainDetails.tsx');
-  const cliff = await source('components/hex-world/terrain/HexIslandCliffShell.tsx');
+test('PBR terrain and organic cliff shell remain deterministic and local', async () => {
+  const terrain = await source('components/hex-world/pbr/HexPBRTerrain.tsx');
+  const cliff = await source('components/hex-world/pbr/HexPBRCliff.tsx');
   const boundary = await source('lib/hex-world/island-boundary.ts');
   const tiles = await source('components/hex-world/HexTileInstances.tsx');
-
-  assert.match(details, /instancedMesh/);
-  assert.match(details, /groundCoverPerTile/);
-  assert.match(details, /seed/);
-  assert.doesNotMatch(details, /Math\.random/);
+  assert.match(terrain, /buildNaturalTerrainMesh/);
+  assert.match(terrain, /normalMap/);
+  assert.match(terrain, /roughnessMap/);
   assert.match(cliff, /buildIslandCliffMesh/);
-  assert.match(cliff, /BufferGeometry/);
+  assert.match(cliff, /normalMap/);
   assert.match(boundary, /lowerTaper/);
-  assert.doesNotMatch(boundary, /Math\.random/);
+  assert.doesNotMatch(`${terrain}\n${cliff}\n${boundary}`, /Math\.random|https?:\/\//);
   assert.match(tiles, /getTerrainPresentation|HEX_VISUAL_THEME/);
 });
 
 test('lighting keeps one shadow owner and atmosphere accepts visual environment only', async () => {
   const lighting = await source('components/hex-world/HexWorldLighting.tsx');
   const sky = await source('components/hex-world/HexSkyAtmosphere.tsx');
-
   assert.equal((lighting.match(/<directionalLight/g) ?? []).length, 1);
   assert.match(lighting, /HexVisualEnvironment/);
   assert.match(sky, /HexVisualEnvironment/);
@@ -84,7 +77,6 @@ test('World lighting interpolates target intensities and colors through Three re
 test('vegetation and water stay quality-aware and batched', async () => {
   const decor = await source('components/hex-world/HexAmbientDecor.tsx');
   const water = await source('components/hex-world/HexWaterSurface.tsx');
-
   assert.match(decor, /SwayInstanceBatch/);
   assert.match(decor, /branches/);
   assert.match(decor, /treeLeafClusters/);
@@ -118,13 +110,8 @@ test('World water uses bounded two-frequency motion shimmer and quality ripple b
 
 test('structure models use authored rural construction helpers', async () => {
   const structures = await source('components/hex-world/models/HexStructureModels.tsx');
-
-  for (const helper of ['StoneFoundation', 'WallPanel', 'PitchedRoof', 'NaturalWindow', 'TimberBeam']) {
-    assert.match(structures, new RegExp(`function ${helper}|const ${helper}`));
-  }
-  for (const key of ['home', 'barn', 'storage', 'workshop']) {
-    assert.match(structures, new RegExp(`case '${key}'`));
-  }
+  for (const helper of ['StoneFoundation', 'WallPanel', 'PitchedRoof', 'NaturalWindow', 'TimberBeam']) assert.match(structures, new RegExp(`function ${helper}|const ${helper}`));
+  for (const key of ['home', 'barn', 'storage', 'workshop']) assert.match(structures, new RegExp(`case '${key}'`));
   assert.doesNotMatch(structures, /coneGeometry/);
   assert.doesNotMatch(structures, /https?:\/\//);
 });
