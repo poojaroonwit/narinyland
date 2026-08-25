@@ -105,11 +105,14 @@ test('sky parallax remains bounded and uses shared motion profile', async () => 
   assert.doesNotMatch(`${sky}\n${lighting}`, /EffectComposer|Bloom|DepthOfField|volumetric/i);
 });
 
-test('water uses deterministic buckets and bounded quality glints', async () => {
-  const water = await source('../components/hex-world/HexWaterSurface.tsx');
+test('water uses deterministic buckets bounded quality glints and physical local normal motion', async () => {
+  const water = await source('../components/hex-world/pbr/HexPBRWater.tsx');
   assert.match(water, /deterministicMotionBucket/);
   assert.match(water, /waterGlintCount/);
-  assert.doesNotMatch(water, /MeshReflectorMaterial|CubeCamera|WebGLCubeRenderTarget/);
+  assert.match(water, /normalTexture\.offset/);
+  assert.match(water, /waterMotionScale/);
+  assert.match(water, /envMapIntensity/);
+  assert.doesNotMatch(water, /MeshReflectorMaterial|CubeCamera|WebGLCubeRenderTarget|SSR/);
 });
 
 test('confirmed expansion uses deterministic stagger and visual-only mist', async () => {
@@ -144,7 +147,7 @@ test('world resolves reduced motion once and children consume the resolved profi
     '../components/hex-world/HexSelectionEffects.tsx',
     '../components/hex-world/pbr/HexPBRVegetation.tsx',
     '../components/hex-world/HexSkyAtmosphere.tsx',
-    '../components/hex-world/HexWaterSurface.tsx',
+    '../components/hex-world/pbr/HexPBRWater.tsx',
     '../components/hex-world/HexBuildings.tsx',
     '../components/hex-world/HexPlacementEffects.tsx',
   ];
