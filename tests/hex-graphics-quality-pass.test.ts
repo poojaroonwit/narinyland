@@ -10,8 +10,10 @@ test('premium graphics pass keeps bounded PBR naturalistic architecture', async 
   assert.match(world, /HexPBRTerrain/);
   assert.match(world, /HexPBRCliff/);
   assert.match(world, /HexPBRVegetation/);
+  assert.match(world, /HexPBREnvironment/);
+  assert.match(world, /HexPBRWater/);
   assert.match(world, /getHexVisualEnvironment/);
-  assert.doesNotMatch(world, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|HexTerrainDetails|HexAmbientDecor/);
+  assert.doesNotMatch(world, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|HexTerrainDetails|HexAmbientDecor|HexWaterSurface/);
   assert.doesNotMatch(world, /EffectComposer|Bloom|DepthOfField|SSAO|SSR/);
   assert.match(quality, /maxDpr:\s*1\.75/);
   assert.match(quality, /maxDpr:\s*1\.5/);
@@ -76,7 +78,7 @@ test('World lighting interpolates target intensities and colors through Three re
 
 test('vegetation and water stay quality-aware and batched', async () => {
   const vegetation = await source('components/hex-world/pbr/HexPBRVegetation.tsx');
-  const water = await source('components/hex-world/HexWaterSurface.tsx');
+  const water = await source('components/hex-world/pbr/HexPBRWater.tsx');
   assert.match(vegetation, /useGLTF/);
   assert.match(vegetation, /instancedMesh/);
   assert.match(vegetation, /buildPBRVegetationScatter/);
@@ -85,12 +87,14 @@ test('vegetation and water stay quality-aware and batched', async () => {
   assert.doesNotMatch(vegetation, /Math\.random|https?:\/\//);
   assert.match(water, /waterDetail/);
   assert.match(water, /waterGlintCount/);
+  assert.match(water, /normalMap/);
+  assert.match(water, /envMapIntensity/);
   assert.match(water, /meshPhysicalMaterial/);
   assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial/);
 });
 
 test('World water uses bounded two-frequency motion shimmer and quality ripple budgets', async () => {
-  const water = await source('components/hex-world/HexWaterSurface.tsx');
+  const water = await source('components/hex-world/pbr/HexPBRWater.tsx');
   assert.match(water, /waterMotionScale/);
   assert.match(water, /0\.010|0\.01/);
   assert.match(water, /0\.004/);
