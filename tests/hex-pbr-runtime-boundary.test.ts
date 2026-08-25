@@ -18,7 +18,6 @@ test('Hex World runtime code never depends on Poly Haven hosts', async () => {
     'components/hex-world/pbr/HexPBRTerrain.tsx',
     'components/hex-world/pbr/HexPBRCliff.tsx',
     'components/hex-world/pbr/HexPBRVegetation.tsx',
-    'components/hex-world/pbr/HexPBRBuildings.tsx',
     'components/hex-world/pbr/HexPBRAssetPreloader.tsx',
     'components/hex-world/HexWaterSurface.tsx',
     'components/hex-world/models/HexNatureModels.tsx',
