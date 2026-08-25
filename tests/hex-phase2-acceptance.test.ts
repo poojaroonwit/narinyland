@@ -63,9 +63,10 @@ test('phase 2 keeps visual-wow rendering bounded and avoids mandatory heavy post
   const quality = await source('../lib/hex-world/quality.ts');
   const particles = await source('../components/hex-world/HexWorldParticles.tsx');
   assert.match(world, /HexPBRCliff/);
+  assert.match(world, /HexPBREnvironment/);
   assert.match(world, /HexWorldParticles/);
-  assert.match(world, /HexWaterSurface/);
+  assert.match(world, /HexPBRWater/);
   assert.match(quality, /maxDpr:\s*1\.75/);
   assert.match(particles, /<points\s/);
-  assert.doesNotMatch(`${world}\n${quality}`, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|EffectComposer|MeshReflectorMaterial|DepthOfField|Bloom/);
+  assert.doesNotMatch(`${world}\n${quality}`, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|HexWaterSurface|EffectComposer|MeshReflectorMaterial|DepthOfField|Bloom|SSR/);
 });
