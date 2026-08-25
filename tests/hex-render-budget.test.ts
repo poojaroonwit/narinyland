@@ -9,10 +9,11 @@ test('world scene uses bounded PBR naturalistic atmosphere without heavy postpro
   assert.match(scene, /HexPBRCliff/);
   assert.match(scene, /HexPBRTerrain/);
   assert.match(scene, /HexPBRVegetation/);
+  assert.match(scene, /HexPBREnvironment/);
   assert.match(scene, /HexWorldParticles/);
-  assert.match(scene, /HexWaterSurface/);
-  assert.doesNotMatch(scene, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|HexAmbientDecor|HexTerrainDetails/);
-  assert.doesNotMatch(scene, /EffectComposer|DepthOfField|Bloom|MeshReflectorMaterial/);
+  assert.match(scene, /HexPBRWater/);
+  assert.doesNotMatch(scene, /HexIslandUnderside|HexIslandCliffShell|HexNaturalTerrain|HexAmbientDecor|HexTerrainDetails|HexWaterSurface/);
+  assert.doesNotMatch(scene, /EffectComposer|DepthOfField|Bloom|MeshReflectorMaterial|SSR/);
 });
 
 test('premium atmosphere components stay visual-only', async () => {
@@ -20,8 +21,9 @@ test('premium atmosphere components stay visual-only', async () => {
     '../components/hex-world/pbr/HexPBRCliff.tsx',
     '../components/hex-world/pbr/HexPBRTerrain.tsx',
     '../components/hex-world/pbr/HexPBRVegetation.tsx',
+    '../components/hex-world/pbr/HexPBREnvironment.tsx',
     '../components/hex-world/HexWorldParticles.tsx',
-    '../components/hex-world/HexWaterSurface.tsx',
+    '../components/hex-world/pbr/HexPBRWater.tsx',
   ];
   for (const path of files) {
     const contents = await source(path).catch(() => '');
