@@ -51,3 +51,8 @@ test('normal World terrain and cliff renderers bind local PBR maps instead of fl
   assert.match(world, /HexPBRCliff/);
   assert.doesNotMatch(world, /<HexNaturalTerrain\b|<HexIslandCliffShell\b/);
 });
+
+test('Explore mode does not cover the PBR land surface with legacy flat turf or path meshes', async () => {
+  const world = await source('components/hex-world/HexWorld3D.tsx');
+  assert.doesNotMatch(world, /HexExploreGroundLayer/);
+});
