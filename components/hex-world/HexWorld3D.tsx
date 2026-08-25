@@ -99,7 +99,14 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   const cameraIntent=props.cameraIntent??({kind:'overview'} as const); const viewMode=props.viewMode??'world'; const residentSamples=props.residentSamples??[];
   const showBuildGrid=!!preview||!!props.validKeys?.size||!!props.invalidKeys?.size||!!props.expansionPlacementPreview;
   return <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-[#edf6e9] to-[#d7ead6]">
-    <Canvas shadows="soft" gl={{antialias:true,powerPreference:'high-performance'}} dpr={[1,profile.maxDpr]} camera={{fov:42,near:0.1,far:160}} onPointerMissed={()=>props.onSelectBuilding?.(null)}>
+    <Canvas
+      shadows="soft"
+      gl={{antialias:true,powerPreference:'high-performance'}}
+      dpr={[1,profile.maxDpr]}
+      camera={{fov:42,near:0.1,far:160}}
+      onCreated={({gl})=>{gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=viewMode==='person'?1.08:1;}}
+      onPointerMissed={()=>props.onSelectBuilding?.(null)}
+    >
       <PerformanceMonitor onChange={({factor})=>setPerformanceFactor((previous)=>resolveAdaptiveHexQuality(staticProfile,previous).name===resolveAdaptiveHexQuality(staticProfile,factor).name?previous:factor)} />
       <HexPBRAssetPreloader profile={profile} />
       <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexPBREnvironment profile={profile} /><HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
@@ -112,7 +119,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       {showBuildGrid&&<HexBuildGridOverlay tiles={snapshot.tiles} validKeys={props.validKeys} invalidKeys={props.invalidKeys} expansionPlacementPreview={props.expansionPlacementPreview} />}
       <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
       <HexPBRWater tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
-      <HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
+      <HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} presentation={viewMode} />
       {viewMode==='person'&&<><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
       <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent??null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building)=>props.onSelectBuilding?.(building)} />
       {props.livingState&&<HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}

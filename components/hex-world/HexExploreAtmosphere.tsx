@@ -8,14 +8,14 @@ function DistantIsland({ position, scale, canopy = false }: { position: [number,
   return (
     <group position={position} scale={scale} raycast={() => {}}>
       <mesh position={[0, -0.8, 0]} rotation={[0.18, 0.28, 0]}>
-        <coneGeometry args={[2.3, 3.4, 7]} />
+        <coneGeometry args={[2.3, 3.4, 9]} />
         <meshStandardMaterial color={HEX_VISUAL_THEME.explore.atmosphere.distantRock} roughness={1} />
       </mesh>
       <mesh position={[0, 0.72, 0]} scale={[1.65, 0.42, 1.42]}>
-        <dodecahedronGeometry args={[1.35, 0]} />
+        <sphereGeometry args={[1.35, 9, 6]} />
         <meshStandardMaterial color={HEX_VISUAL_THEME.explore.atmosphere.distantGrass} roughness={0.96} />
       </mesh>
-      {canopy && <mesh position={[0.4, 1.75, -0.1]} scale={[0.75, 0.85, 0.75]}><dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafDark} roughness={0.96} /></mesh>}
+      {canopy && <mesh position={[0.4, 1.75, -0.1]} scale={[0.75, 0.85, 0.75]}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color={HEX_VISUAL_THEME.vegetation.leafDark} roughness={0.96} /></mesh>}
     </group>
   );
 }
@@ -30,8 +30,8 @@ export function HexExploreAtmosphere({
   const evening = environment.evening > 0.35;
   const rainy = environment.weather === 'rainy';
   const fogColor = evening ? HEX_VISUAL_THEME.explore.atmosphere.fogEvening : rainy ? HEX_VISUAL_THEME.atmosphere.rain : HEX_VISUAL_THEME.explore.atmosphere.fogDay;
-  const fogNear = profile.name === 'mobile' ? 13 : 16;
-  const fogFar = profile.name === 'high' ? 54 : profile.name === 'medium' ? 46 : 38;
+  const fogNear = profile.name === 'mobile' ? 11 : 13;
+  const fogFar = profile.name === 'high' ? 48 : profile.name === 'medium' ? 42 : 34;
 
   return (
     <>
