@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -25,6 +25,16 @@ export function HexPBRCliff({ tiles, seed, profile }: { tiles: HexTileDTO[]; see
     () => configurePBRTextureBundle({ baseColor: rockBase, normal: rockNormal, roughness: rockRoughness }, [2.2, 2.8], maxAnisotropy),
     [maxAnisotropy, rockBase, rockNormal, rockRoughness],
   );
+  useEffect(() => () => {
+    soil.baseColor.dispose();
+    soil.normal.dispose();
+    soil.roughness.dispose();
+  }, [soil]);
+  useEffect(() => () => {
+    rock.baseColor.dispose();
+    rock.normal.dispose();
+    rock.roughness.dispose();
+  }, [rock]);
   const terrain = useMemo(() => buildNaturalTerrainMesh(tiles, seed), [seed, tiles]);
   const shell = useMemo(() => buildIslandCliffMesh(terrain.boundaryEdges, seed), [seed, terrain.boundaryEdges]);
   const geometry = useMemo(() => {
