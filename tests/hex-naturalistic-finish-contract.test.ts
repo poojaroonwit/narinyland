@@ -75,9 +75,11 @@ test('buildable nature reuses local scanned assets instead of geometric tree can
   assert.doesNotMatch(nature, /https?:\/\//);
 });
 
-test('water stays bounded but uses physical non-metallic treatment and natural palette', async () => {
-  const water = await source('components/hex-world/HexWaterSurface.tsx');
+test('water stays bounded but uses physical PBR normal detail and environment response', async () => {
+  const water = await source('components/hex-world/pbr/HexPBRWater.tsx');
   assert.match(water, /meshPhysicalMaterial/);
+  assert.match(water, /normalMap/);
+  assert.match(water, /envMapIntensity/);
   assert.match(water, /ior=\{1\.33\}/);
   assert.match(water, /metalness=\{0\}/);
   assert.match(water, /transmission=/);
@@ -85,7 +87,7 @@ test('water stays bounded but uses physical non-metallic treatment and natural p
   assert.match(water, /HEX_VISUAL_THEME\.water\.shallow/);
   assert.match(water, /waterGlintCount/);
   assert.match(water, /1\.73/);
-  assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial|SSR|EffectComposer/);
+  assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial|SSR|EffectComposer|https?:\/\//);
 });
 
 test('lighting atmosphere and World camera communicate outdoor scale without extra shadow owners', async () => {
