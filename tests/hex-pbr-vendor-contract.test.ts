@@ -24,3 +24,9 @@ test('PBR vendor uses only the resolved manifest and fails on checksum mismatch'
   assert.match(vendor, /rename\(/);
   assert.doesNotMatch(vendor, /api\.polyhaven\.com/);
 });
+
+test('development vendors required PBR assets before Next.js starts', async () => {
+  const packageJson = JSON.parse(await source('package.json')) as { scripts?: Record<string, string> };
+  assert.equal(packageJson.scripts?.predev, 'node scripts/vendor-hex-pbr-assets.mjs');
+  assert.equal(packageJson.scripts?.dev, 'next dev');
+});

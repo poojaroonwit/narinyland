@@ -22,7 +22,6 @@ import { HexCropEnhancements } from './HexCropEnhancements';
 import { HexDioramaCamera } from './HexDioramaCamera';
 import { HexExploreAtmosphere } from './HexExploreAtmosphere';
 import { HexExploreEnvironmentLayer } from './HexExploreEnvironmentLayer';
-import { HexExploreGroundLayer } from './HexExploreGroundLayer';
 import { HexExploreStructureDetails } from './HexExploreStructureDetails';
 import { HexLivingWorldLayer } from './HexLivingWorldLayer';
 import { HexPlacementEffects } from './HexPlacementEffects';
@@ -114,7 +113,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
       <HexPBRWater tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
       <HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} />
-      {viewMode==='person'&&<><HexExploreGroundLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} /><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
+      {viewMode==='person'&&<><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
       <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent??null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building)=>props.onSelectBuilding?.(building)} />
       {props.livingState&&<HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
       {viewMode==='person'&&props.livingState&&props.onResidentSamplesChange&&<HexResidentInteractionReporter state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} reducedMotion={reducedMotion} onResidentSamplesChange={props.onResidentSamplesChange} />}

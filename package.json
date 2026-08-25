@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/vendor-hex-pbr-assets.mjs",
     "dev": "next dev",
     "prebuild": "node scripts/vendor-hex-pbr-assets.mjs",
     "build": "next build",
