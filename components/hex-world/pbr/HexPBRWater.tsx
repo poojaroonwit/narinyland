@@ -1,21 +1,35 @@
 "use client";
 
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import { useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { axialToWorld } from '@/lib/hex-world/hex-grid';
 import { deterministicMotionBucket, type HexMotionProfile } from '@/lib/hex-world/motion';
+import { getPBRTextureSet } from '@/lib/hex-world/pbr/quality-assets';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
 import { HEX_VISUAL_THEME } from '@/lib/hex-world/visual-theme';
 
-function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: HexTileDTO[]; bucketIndex: number; motionProfile: HexMotionProfile; profile: HexQualityProfile }) {
+function WaterBucket({
+  tiles,
+  bucketIndex,
+  motionProfile,
+  profile,
+  normalTexture,
+}: {
+  tiles: HexTileDTO[];
+  bucketIndex: number;
+  motionProfile: HexMotionProfile;
+  profile: HexQualityProfile;
+  normalTexture: THREE.Texture;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const baseOpacity = profile.waterDetail === 'full' ? 0.72 : profile.waterDetail === 'reduced' ? 0.68 : 0.64;
-  const baseRoughness = profile.waterDetail === 'full' ? 0.3 : profile.waterDetail === 'reduced' ? 0.38 : 0.46;
+  const baseRoughness = profile.waterDetail === 'full' ? 0.26 : profile.waterDetail === 'reduced' ? 0.33 : 0.42;
   const surfaceColor = bucketIndex % 2 === 0 ? HEX_VISUAL_THEME.water.surface : HEX_VISUAL_THEME.water.deep;
 
   useLayoutEffect(() => {
@@ -54,8 +68,8 @@ function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: He
     const opacityWave = Math.sin(time * 0.53 + phase * 1.2);
     material.roughness = THREE.MathUtils.clamp(
       baseRoughness + roughnessWave * 0.035 * motionProfile.waterMotionScale,
-      0.18,
-      0.72,
+      0.16,
+      0.68,
     );
     material.opacity = THREE.MathUtils.clamp(
       baseOpacity + opacityWave * 0.025 * motionProfile.waterMotionScale,
@@ -72,15 +86,18 @@ function WaterBucket({ tiles, bucketIndex, motionProfile, profile }: { tiles: He
         <meshPhysicalMaterial
           ref={materialRef}
           color={surfaceColor}
+          normalMap={normalTexture}
+          normalScale={new THREE.Vector2(0.24, 0.24)}
           transparent
           opacity={baseOpacity}
           metalness={0}
           roughness={baseRoughness}
           ior={1.33}
-          transmission={profile.waterDetail === 'full' ? 0.12 : 0.06}
-          thickness={0.24}
-          clearcoat={profile.waterDetail === 'full' ? 0.16 : 0.06}
-          clearcoatRoughness={0.28}
+          transmission={profile.waterDetail === 'full' ? 0.16 : 0.08}
+          thickness={0.28}
+          clearcoat={profile.waterDetail === 'full' ? 0.22 : 0.1}
+          clearcoatRoughness={0.24}
+          envMapIntensity={profile.name === 'high' ? 0.92 : profile.name === 'medium' ? 0.78 : 0.62}
           depthWrite={false}
         />
       </instancedMesh>
@@ -104,8 +121,7 @@ function WaterRipple({ tile, index, motionProfile }: { tile: HexTileDTO; index: 
       return;
     }
     const cycle = (Math.sin(clock.elapsedTime * 0.62 + phase) + 1) * 0.5;
-    const scale = 0.72 + cycle * (1.18 - 0.72);
-    mesh.scale.setScalar(scale);
+    mesh.scale.setScalar(0.72 + cycle * (1.18 - 0.72));
     material.opacity = (0.13 - cycle * (0.13 - 0.03)) * motionProfile.waterMotionScale;
   });
 
@@ -122,12 +138,37 @@ function ShallowWaterVeil({ tile }: { tile: HexTileDTO }) {
   return (
     <mesh position={[world.x, world.y, world.z]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.72, 0.72, 1]} raycast={() => {}}>
       <circleGeometry args={[1, 20]} />
-      <meshBasicMaterial color={HEX_VISUAL_THEME.water.shallow} transparent opacity={0.055} depthWrite={false} />
+      <meshBasicMaterial color={HEX_VISUAL_THEME.water.shallow} transparent opacity={0.05} depthWrite={false} />
     </mesh>
   );
 }
 
-export function HexWaterSurface({ tiles, profile, motionProfile }: { tiles: HexTileDTO[]; profile: HexQualityProfile; motionProfile: HexMotionProfile }) {
+export function HexPBRWater({ tiles, profile, motionProfile }: { tiles: HexTileDTO[]; profile: HexQualityProfile; motionProfile: HexMotionProfile }) {
+  const waterNormalPath = getPBRTextureSet('grass', profile.name).normal;
+  const loadedNormal = useTexture(waterNormalPath);
+  const normalTexture = useMemo(() => {
+    const texture = loadedNormal.clone();
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(profile.name === 'high' ? 3.6 : 2.8, profile.name === 'high' ? 3.6 : 2.8);
+    texture.offset.set(0, 0);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }, [loadedNormal, profile.name]);
+
+  useLayoutEffect(() => () => normalTexture.dispose(), [normalTexture]);
+
+  useFrame(({ clock }) => {
+    if (document.visibilityState === 'hidden') return;
+    if (motionProfile.waterMotionScale <= 0) {
+      normalTexture.offset.set(0, 0);
+      return;
+    }
+    const travel = clock.elapsedTime * 0.012 * motionProfile.waterMotionScale;
+    normalTexture.offset.set(travel % 1, (travel * 0.63) % 1);
+  });
+
   const waterTiles = useMemo(() => tiles.filter((tile) => tile.unlocked && tile.terrainType === 'water'), [tiles]);
   const bucketCount = profile.name === 'high' ? 3 : profile.name === 'medium' ? 2 : 1;
   const buckets = useMemo(() => {
@@ -143,10 +184,12 @@ export function HexWaterSurface({ tiles, profile, motionProfile }: { tiles: HexT
   const glintTiles = waterTiles.slice(0, rippleCount);
   const shallowTiles = profile.waterDetail === 'full' ? waterTiles.slice(0, Math.min(4, waterTiles.length)) : [];
 
-  if (waterTiles.length === 0) return null;
+  if (!waterTiles.length) return null;
   return (
     <group>
-      {buckets.map((bucket, index) => <WaterBucket key={index} tiles={bucket} bucketIndex={index} motionProfile={motionProfile} profile={profile} />)}
+      {buckets.map((bucket, index) => (
+        <WaterBucket key={index} tiles={bucket} bucketIndex={index} motionProfile={motionProfile} profile={profile} normalTexture={normalTexture} />
+      ))}
       {shallowTiles.map((tile) => <ShallowWaterVeil key={`${tile.q}:${tile.r}:shallow`} tile={tile} />)}
       {glintTiles.map((tile, index) => <WaterRipple key={`${tile.q}:${tile.r}:ripple`} tile={tile} index={index} motionProfile={motionProfile} />)}
     </group>

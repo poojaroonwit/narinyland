@@ -21,88 +21,48 @@ export type HexQualityProfile = {
   groundCoverPerTile: 5 | 3 | 1;
   treeLeafClusters: 7 | 5 | 3;
   cliffDetailScale: 1 | 0.7 | 0.4;
+  pbrTextureTier: '2k' | '1k';
+  pbrVegetationScale: 1 | 0.65 | 0.32;
+  pbrCliffPropBudget: 42 | 24 | 10;
+  pbrGroundPropBudget: 180 | 96 | 36;
+  pbrEnvironmentResolution: '2k' | '1k';
 };
 
 const HIGH: HexQualityProfile = {
-  name: 'high',
-  maxDpr: 1.75,
-  shadowMapSize: 2048,
-  contactShadowResolution: 512,
-  cloudLayers: 3,
-  ambientDensity: 1,
-  particleCount: 180,
-  windStrength: 1,
-  waterDetail: 'full',
-  vegetationMotion: 'full',
-  placementParticleCount: 20,
-  waterGlintCount: 3,
-  cloudParallaxScale: 1,
-  materialVariation: 'full',
-  exploreGroundPerTile: 4,
-  exploreDecorPerTile: 3,
-  exploreStructureDetail: 1,
-  groundCoverPerTile: 5,
-  treeLeafClusters: 7,
-  cliffDetailScale: 1,
+  name: 'high', maxDpr: 1.75, shadowMapSize: 2048, contactShadowResolution: 512,
+  cloudLayers: 3, ambientDensity: 1, particleCount: 180, windStrength: 1,
+  waterDetail: 'full', vegetationMotion: 'full', placementParticleCount: 20,
+  waterGlintCount: 3, cloudParallaxScale: 1, materialVariation: 'full',
+  exploreGroundPerTile: 4, exploreDecorPerTile: 3, exploreStructureDetail: 1,
+  groundCoverPerTile: 5, treeLeafClusters: 7, cliffDetailScale: 1,
+  pbrTextureTier: '2k', pbrVegetationScale: 1, pbrCliffPropBudget: 42,
+  pbrGroundPropBudget: 180, pbrEnvironmentResolution: '2k',
 };
 
 const MEDIUM: HexQualityProfile = {
-  name: 'medium',
-  maxDpr: 1.5,
-  shadowMapSize: 1024,
-  contactShadowResolution: 256,
-  cloudLayers: 2,
-  ambientDensity: 0.75,
-  particleCount: 90,
-  windStrength: 0.55,
-  waterDetail: 'reduced',
-  vegetationMotion: 'reduced',
-  placementParticleCount: 10,
-  waterGlintCount: 1,
-  cloudParallaxScale: 0.6,
-  materialVariation: 'reduced',
-  exploreGroundPerTile: 3,
-  exploreDecorPerTile: 2,
-  exploreStructureDetail: 0.75,
-  groundCoverPerTile: 3,
-  treeLeafClusters: 5,
-  cliffDetailScale: 0.7,
+  name: 'medium', maxDpr: 1.5, shadowMapSize: 1024, contactShadowResolution: 256,
+  cloudLayers: 2, ambientDensity: 0.75, particleCount: 90, windStrength: 0.55,
+  waterDetail: 'reduced', vegetationMotion: 'reduced', placementParticleCount: 10,
+  waterGlintCount: 1, cloudParallaxScale: 0.6, materialVariation: 'reduced',
+  exploreGroundPerTile: 3, exploreDecorPerTile: 2, exploreStructureDetail: 0.75,
+  groundCoverPerTile: 3, treeLeafClusters: 5, cliffDetailScale: 0.7,
+  pbrTextureTier: '1k', pbrVegetationScale: 0.65, pbrCliffPropBudget: 24,
+  pbrGroundPropBudget: 96, pbrEnvironmentResolution: '1k',
 };
 
 const MOBILE: HexQualityProfile = {
-  name: 'mobile',
-  maxDpr: 1,
-  shadowMapSize: 512,
-  contactShadowResolution: 128,
-  cloudLayers: 1,
-  ambientDensity: 0.5,
-  particleCount: 36,
-  windStrength: 0.2,
-  waterDetail: 'basic',
-  vegetationMotion: 'minimal',
-  placementParticleCount: 4,
-  waterGlintCount: 0,
-  cloudParallaxScale: 0.25,
-  materialVariation: 'reduced',
-  exploreGroundPerTile: 1,
-  exploreDecorPerTile: 1,
-  exploreStructureDetail: 0.4,
-  groundCoverPerTile: 1,
-  treeLeafClusters: 3,
-  cliffDetailScale: 0.4,
+  name: 'mobile', maxDpr: 1, shadowMapSize: 512, contactShadowResolution: 128,
+  cloudLayers: 1, ambientDensity: 0.5, particleCount: 36, windStrength: 0.2,
+  waterDetail: 'basic', vegetationMotion: 'minimal', placementParticleCount: 4,
+  waterGlintCount: 0, cloudParallaxScale: 0.25, materialVariation: 'reduced',
+  exploreGroundPerTile: 1, exploreDecorPerTile: 1, exploreStructureDetail: 0.4,
+  groundCoverPerTile: 1, treeLeafClusters: 3, cliffDetailScale: 0.4,
+  pbrTextureTier: '1k', pbrVegetationScale: 0.32, pbrCliffPropBudget: 10,
+  pbrGroundPropBudget: 36, pbrEnvironmentResolution: '1k',
 };
 
-const QUALITY_RANK: Record<HexQualityName, number> = {
-  mobile: 0,
-  medium: 1,
-  high: 2,
-};
-
-const QUALITY_PROFILE: Record<HexQualityName, HexQualityProfile> = {
-  high: HIGH,
-  medium: MEDIUM,
-  mobile: MOBILE,
-};
+const QUALITY_RANK: Record<HexQualityName, number> = { mobile: 0, medium: 1, high: 2 };
+const QUALITY_PROFILE: Record<HexQualityName, HexQualityProfile> = { high: HIGH, medium: MEDIUM, mobile: MOBILE };
 
 export function resolveHexQualityProfile(input: {
   graphicsQuality?: string | null;
@@ -119,16 +79,8 @@ export function resolveAdaptiveHexQuality(
   staticProfile: HexQualityProfile,
   performanceFactor: number,
 ): HexQualityProfile {
-  const factor = Number.isFinite(performanceFactor)
-    ? Math.max(0, Math.min(1, performanceFactor))
-    : 1;
-  const requestedName: HexQualityName = factor < 0.4
-    ? 'mobile'
-    : factor < 0.7
-      ? 'medium'
-      : staticProfile.name;
-  const effectiveName = QUALITY_RANK[requestedName] > QUALITY_RANK[staticProfile.name]
-    ? staticProfile.name
-    : requestedName;
+  const factor = Number.isFinite(performanceFactor) ? Math.max(0, Math.min(1, performanceFactor)) : 1;
+  const requestedName: HexQualityName = factor < 0.4 ? 'mobile' : factor < 0.7 ? 'medium' : staticProfile.name;
+  const effectiveName = QUALITY_RANK[requestedName] > QUALITY_RANK[staticProfile.name] ? staticProfile.name : requestedName;
   return QUALITY_PROFILE[effectiveName];
 }

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "provider": "polyhaven",
+  "userAgent": "NarinylandAssetResolver/1.0 (+https://github.com/poojaroonwit/narinyland)",
+  "assets": [
+    {"id":"grass_surface","sourceAssetId":"leafy_grass","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k","2k"]},
+    {"id":"soil_surface","sourceAssetId":"dirt","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
+    {"id":"path_surface","sourceAssetId":"raked_dirt","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
+    {"id":"cliff_surface","sourceAssetId":"rock_face","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k","2k"]},
+    {"id":"wood_surface","sourceAssetId":"weathered_planks","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
+    {"id":"plaster_surface","sourceAssetId":"plastered_wall","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
+    {"id":"roof_surface","sourceAssetId":"roof_tiles","kind":"texture","roles":{"baseColor":["diff","diffuse"],"normal":["nor_gl","normalgl"],"roughness":["rough","roughness"]},"resolutions":["1k"]},
+    {"id":"tree","sourceAssetId":"shrub_02","kind":"model","resolutions":["1k"]},
+    {"id":"shrub","sourceAssetId":"shrub_03","kind":"model","resolutions":["1k"]},
+    {"id":"fern","sourceAssetId":"fern_02","kind":"model","resolutions":["1k"]},
+    {"id":"grass_tuft","sourceAssetId":"grass_medium_01","kind":"model","resolutions":["1k"]},
+    {"id":"rock_set","sourceAssetId":"rock_moss_set_01","kind":"model","resolutions":["1k"]},
+    {"id":"stump","sourceAssetId":"tree_stump_01","kind":"model","resolutions":["1k"]},
+    {"id":"environment","sourceAssetId":"meadow","kind":"hdri","resolutions":["1k","2k"]}
+  ]
+}

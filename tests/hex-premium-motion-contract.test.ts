@@ -65,38 +65,35 @@ test('placement effects stay visual-only and invalid clicks use local pulse feed
   assert.match(controller, /invalidPulseNonce/);
 });
 
-test('ambient vegetation uses fixed quality-aware motion buckets', async () => {
-  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
-  assert.match(ambient, /deterministicMotionBucket/);
-  assert.match(ambient, /vegetationMotion/);
-  assert.match(ambient, /motionProfile/);
-  assert.match(ambient, /rocks/);
-  assert.match(ambient, /paths/);
+test('scanned vegetation stays quality-aware and deterministic', async () => {
+  const vegetation = await source('../components/hex-world/pbr/HexPBRVegetation.tsx');
+  const scatter = await source('../lib/hex-world/pbr/vegetation-scatter.ts');
+  assert.match(vegetation, /buildPBRVegetationScatter/);
+  assert.match(vegetation, /motionProfile/);
+  assert.match(vegetation, /instancedMesh/);
+  assert.match(scatter, /pbrVegetationScale/);
+  assert.doesNotMatch(`${vegetation}\n${scatter}`, /Math\.random/);
 });
 
-test('vegetation sway is applied to instance-local transforms instead of rotating world-space bucket parents', async () => {
-  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
-  assert.match(ambient, /AnimatedInstanceBatch|SwayInstanceBatch/);
-  assert.match(ambient, /mesh\.setMatrixAt/);
-  assert.doesNotMatch(ambient, /ref\.current\.rotation\.[xz]\s*=/);
+test('vegetation sway is applied to instance-local transforms instead of rotating world-space parents', async () => {
+  const vegetation = await source('../components/hex-world/pbr/HexPBRVegetation.tsx');
+  assert.match(vegetation, /PBRInstancedGLTF/);
+  assert.match(vegetation, /mesh\.setMatrixAt/);
+  assert.match(vegetation, /dummy\.rotation\.set/);
+  assert.doesNotMatch(vegetation, /ref\.current\.rotation\.[xz]\s*=/);
 });
 
 test('World vegetation uses layered deterministic wind while remaining instanced', async () => {
-  const ambient = await source('../components/hex-world/HexAmbientDecor.tsx');
-  assert.match(ambient, /worldWindScale/);
-  assert.match(ambient, /worldWindSecondaryScale/);
-  assert.match(ambient, /primary/);
-  assert.match(ambient, /secondary/);
-  assert.match(ambient, /0\.47/);
-  assert.match(ambient, /1\.83/);
-  assert.match(ambient, /secondaryPhaseOffset/);
-  assert.match(ambient, /0\.0025/);
-  assert.match(ambient, /0\.020|0\.02/);
-  assert.match(ambient, /0\.030|0\.03/);
-  assert.match(ambient, /0\.012/);
-  assert.match(ambient, /0\.014/);
-  assert.match(ambient, /instancedMesh/);
-  assert.doesNotMatch(ambient, /Math\.random/);
+  const vegetation = await source('../components/hex-world/pbr/HexPBRVegetation.tsx');
+  assert.match(vegetation, /worldWindScale/);
+  assert.match(vegetation, /worldWindSecondaryScale/);
+  assert.match(vegetation, /primary/);
+  assert.match(vegetation, /secondary/);
+  assert.match(vegetation, /1\.83/);
+  assert.match(vegetation, /0\.35/);
+  assert.match(vegetation, /WIND_AMPLITUDE/);
+  assert.match(vegetation, /instancedMesh/);
+  assert.doesNotMatch(vegetation, /Math\.random/);
 });
 
 test('sky parallax remains bounded and uses shared motion profile', async () => {
@@ -108,11 +105,14 @@ test('sky parallax remains bounded and uses shared motion profile', async () => 
   assert.doesNotMatch(`${sky}\n${lighting}`, /EffectComposer|Bloom|DepthOfField|volumetric/i);
 });
 
-test('water uses deterministic buckets and bounded quality glints', async () => {
-  const water = await source('../components/hex-world/HexWaterSurface.tsx');
+test('water uses deterministic buckets bounded quality glints and physical local normal motion', async () => {
+  const water = await source('../components/hex-world/pbr/HexPBRWater.tsx');
   assert.match(water, /deterministicMotionBucket/);
   assert.match(water, /waterGlintCount/);
-  assert.doesNotMatch(water, /MeshReflectorMaterial|CubeCamera|WebGLCubeRenderTarget/);
+  assert.match(water, /normalTexture\.offset/);
+  assert.match(water, /waterMotionScale/);
+  assert.match(water, /envMapIntensity/);
+  assert.doesNotMatch(water, /MeshReflectorMaterial|CubeCamera|WebGLCubeRenderTarget|SSR/);
 });
 
 test('confirmed expansion uses deterministic stagger and visual-only mist', async () => {
@@ -145,9 +145,9 @@ test('world resolves reduced motion once and children consume the resolved profi
     '../components/hex-world/HexDioramaCamera.tsx',
     '../components/hex-world/HexTileInstances.tsx',
     '../components/hex-world/HexSelectionEffects.tsx',
-    '../components/hex-world/HexAmbientDecor.tsx',
+    '../components/hex-world/pbr/HexPBRVegetation.tsx',
     '../components/hex-world/HexSkyAtmosphere.tsx',
-    '../components/hex-world/HexWaterSurface.tsx',
+    '../components/hex-world/pbr/HexPBRWater.tsx',
     '../components/hex-world/HexBuildings.tsx',
     '../components/hex-world/HexPlacementEffects.tsx',
   ];

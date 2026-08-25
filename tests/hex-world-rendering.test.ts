@@ -22,13 +22,15 @@ test('terrain display variation is deterministic and subtle', () => {
   assert.notEqual(a, c);
 });
 
-test('hex tiles and ambient decor are rendered with instancing and no character controller', async () => {
+test('hex tiles and scanned PBR vegetation are rendered with instancing and no character controller', async () => {
   const tiles = await readFile(new URL('../components/hex-world/HexTileInstances.tsx', import.meta.url), 'utf8');
-  const decor = await readFile(new URL('../components/hex-world/HexAmbientDecor.tsx', import.meta.url), 'utf8');
+  const vegetation = await readFile(new URL('../components/hex-world/pbr/HexPBRVegetation.tsx', import.meta.url), 'utf8');
   const scene = await readFile(new URL('../components/hex-world/HexWorld3D.tsx', import.meta.url), 'utf8');
   assert.match(tiles, /instancedMesh/);
-  assert.match(decor, /instancedMesh/);
-  assert.match(scene, /HexAmbientDecor/);
+  assert.match(vegetation, /instancedMesh/);
+  assert.match(vegetation, /useGLTF/);
+  assert.match(scene, /HexPBRVegetation/);
+  assert.doesNotMatch(scene, /HexAmbientDecor|HexTerrainDetails/);
   assert.doesNotMatch(scene, /GameCameraController|WASD|Character/);
 });
 

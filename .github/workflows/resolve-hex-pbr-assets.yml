@@ -1,0 +1,44 @@
+name: Resolve Hex PBR Assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/hybrid-pbr-floating-island
+    paths:
+      - assets/hex-world/pbr-source-catalog.json
+      - scripts/resolve-hex-pbr-manifest.mjs
+      - .github/workflows/resolve-hex-pbr-assets.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - assets/hex-world/pbr-source-catalog.json
+      - scripts/resolve-hex-pbr-manifest.mjs
+      - .github/workflows/resolve-hex-pbr-assets.yml
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve exact asset URLs and hashes
+        run: |
+          mkdir -p "$RUNNER_TEMP/hex-pbr"
+          HEX_PBR_MANIFEST_OUT="$RUNNER_TEMP/hex-pbr/pbr-manifest.json" node scripts/resolve-hex-pbr-manifest.mjs > "$RUNNER_TEMP/hex-pbr/resolver-output.json"
+      - name: Validate resolved manifest shape
+        run: |
+          node -e "const fs=require('fs'); const p=process.env.RUNNER_TEMP+'/hex-pbr/pbr-manifest.json'; const m=JSON.parse(fs.readFileSync(p,'utf8')); if(!m.resolvedAt||m.assets.length!==14) throw new Error('invalid resolved manifest'); console.log('resolved assets:',m.assets.length)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hex-pbr-resolved-manifest
+          path: ${{ runner.temp }}/hex-pbr/pbr-manifest.json
+          if-no-files-found: error
+          retention-days: 7

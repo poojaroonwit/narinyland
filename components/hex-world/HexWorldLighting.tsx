@@ -29,9 +29,9 @@ export function HexWorldLighting({
   const cloudy = environment?.weather === 'cloudy';
   const evening = environment?.evening ?? 0;
   const explore = viewMode === 'person';
-  const sunIntensity = (rainy ? 1.5 : cloudy ? 1.78 : explore ? 2.24 : 2.08) * (0.7 + daylight * 0.3);
-  const hemisphereIntensity = (rainy ? 0.7 : cloudy ? 0.76 : 0.82) * (explore ? 0.9 : 1);
-  const ambientIntensity = (0.13 + evening * 0.045) * (explore ? 0.84 : 1);
+  const sunIntensity = (rainy ? 1.34 : cloudy ? 1.58 : explore ? 1.98 : 1.84) * (0.7 + daylight * 0.3);
+  const hemisphereIntensity = (rainy ? 0.46 : cloudy ? 0.51 : 0.57) * (explore ? 0.9 : 1);
+  const ambientIntensity = (0.075 + evening * 0.03) * (explore ? 0.84 : 1);
   const sunColorValue = rainy ? '#dce3df' : HEX_VISUAL_THEME.atmosphere.sunDay;
   const hemisphereColorValue = rainy ? '#cbd7d7' : explore ? '#d7e0db' : '#dfe6df';
   const hemisphereGroundValue = explore ? '#4e5c51' : '#59665a';
@@ -81,8 +81,8 @@ export function HexWorldLighting({
 
   return (
     <>
-      <hemisphereLight ref={hemisphereRef} intensity={1} color="#dfe6df" groundColor="#59665a" />
-      <ambientLight ref={ambientRef} intensity={0.13} color="#d8ded9" />
+      <hemisphereLight ref={hemisphereRef} intensity={0.57} color="#dfe6df" groundColor="#59665a" />
+      <ambientLight ref={ambientRef} intensity={0.075} color="#d8ded9" />
       <directionalLight
         ref={directionalRef}
         position={explore ? [9, 16, 6] : [12, 20, 8]}

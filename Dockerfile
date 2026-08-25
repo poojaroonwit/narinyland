@@ -16,6 +16,13 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+
+# Vendor immutable PBR assets before copying the rest of the source so Docker can reuse
+# this layer whenever the pinned manifest does not change.
+COPY assets/hex-world ./assets/hex-world
+COPY scripts/vendor-hex-pbr-assets.mjs ./scripts/vendor-hex-pbr-assets.mjs
+RUN node scripts/vendor-hex-pbr-assets.mjs
+
 COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
