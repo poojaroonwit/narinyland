@@ -11,17 +11,22 @@ export function configurePBRTextureBundle(
   repeat: [number, number],
   anisotropy = 4,
 ): HexPBRTextureBundle {
+  const configured: HexPBRTextureBundle = {
+    baseColor: bundle.baseColor.clone(),
+    normal: bundle.normal.clone(),
+    roughness: bundle.roughness.clone(),
+  };
   const [repeatX, repeatY] = repeat;
-  bundle.baseColor.colorSpace = THREE.SRGBColorSpace;
-  bundle.normal.colorSpace = THREE.NoColorSpace;
-  bundle.roughness.colorSpace = THREE.NoColorSpace;
+  configured.baseColor.colorSpace = THREE.SRGBColorSpace;
+  configured.normal.colorSpace = THREE.NoColorSpace;
+  configured.roughness.colorSpace = THREE.NoColorSpace;
 
-  for (const texture of [bundle.baseColor, bundle.normal, bundle.roughness]) {
+  for (const texture of [configured.baseColor, configured.normal, configured.roughness]) {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(repeatX, repeatY);
     texture.anisotropy = Math.max(1, Math.min(8, anisotropy));
     texture.needsUpdate = true;
   }
-  return bundle;
+  return configured;
 }
