@@ -6,9 +6,15 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { HexMotionProfile } from '@/lib/hex-world/motion';
 import { getPBRModelPathForQuality, type HexPBRModelName } from '@/lib/hex-world/pbr/quality-assets';
-import { buildPBRVegetationScatter, type HexPBRVegetationKind, type HexPBRVegetationPlacement } from '@/lib/hex-world/pbr/vegetation-scatter';
+import {
+  buildExplorePBRVegetationScatter,
+  buildPBRVegetationScatter,
+  type HexPBRVegetationKind,
+  type HexPBRVegetationPlacement,
+} from '@/lib/hex-world/pbr/vegetation-scatter';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexBuildingDTO, HexTileDTO } from '@/lib/hex-world/types';
+import type { HexViewMode } from '@/lib/hex-world/view-mode';
 
 type ModelPart = {
   geometry: THREE.BufferGeometry;
@@ -148,16 +154,20 @@ export function HexPBRVegetation({
   seed,
   profile,
   motionProfile,
+  presentation = 'world',
 }: {
   tiles: HexTileDTO[];
   buildings: HexBuildingDTO[];
   seed: string;
   profile: HexQualityProfile;
   motionProfile: HexMotionProfile;
+  presentation?: HexViewMode;
 }) {
   const scatter = useMemo(
-    () => buildPBRVegetationScatter({ tiles, buildings, seed, profile }),
-    [buildings, profile, seed, tiles],
+    () => presentation === 'person'
+      ? buildExplorePBRVegetationScatter({ tiles, buildings, seed, profile })
+      : buildPBRVegetationScatter({ tiles, buildings, seed, profile }),
+    [buildings, presentation, profile, seed, tiles],
   );
   const buckets = useMemo(() => {
     const result = new Map<HexPBRVegetationKind, HexPBRVegetationPlacement[]>(KINDS.map((kind) => [kind, []]));
@@ -166,7 +176,7 @@ export function HexPBRVegetation({
   }, [scatter]);
 
   return (
-    <group>
+    <group name={`pbr-vegetation-${presentation}`}>
       {KINDS.map((kind) => (
         <PBRInstancedGLTF
           key={kind}
