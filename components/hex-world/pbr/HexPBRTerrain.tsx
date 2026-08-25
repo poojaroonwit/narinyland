@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -16,10 +16,17 @@ function usePBRMaps(material: HexPBRMaterialName, profile: HexQualityProfile, re
   const paths = getPBRTextureSet(material, profile.name);
   const [baseColor, normal, roughness] = useTexture([paths.baseColor, paths.normal, paths.roughness]);
   const maxAnisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy());
-  return useMemo(
-    () => configurePBRTextureBundle({ baseColor, normal, roughness }, repeat, maxAnisotropy),
-    [baseColor, maxAnisotropy, normal, repeat, roughness],
+  const [repeatX, repeatY] = repeat;
+  const bundle = useMemo(
+    () => configurePBRTextureBundle({ baseColor, normal, roughness }, [repeatX, repeatY], maxAnisotropy),
+    [baseColor, maxAnisotropy, normal, repeatX, repeatY, roughness],
   );
+  useEffect(() => () => {
+    bundle.baseColor.dispose();
+    bundle.normal.dispose();
+    bundle.roughness.dispose();
+  }, [bundle]);
+  return bundle;
 }
 
 export function HexPBRTerrain({ tiles, seed, profile }: { tiles: HexTileDTO[]; seed: string; profile: HexQualityProfile }) {
