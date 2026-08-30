@@ -15,7 +15,7 @@ test('overview camera frames unlocked island around its actual bounds', () => {
   const bounds = getUnlockedIslandBounds([tile(-2, 0), tile(3, 1, 0.2)]);
   const pose = getOverviewCameraPose(bounds, 16 / 9);
   assert.ok(bounds.radius > 0);
-  assert.ok(pose.position[1] > 0);
+  assert.ok(pose.position[1] > pose.target[1]);
   assert.ok(pose.distance >= bounds.radius * 1.6);
   assert.equal(shouldReframeForCoords(bounds, [{ q: 3, r: 1 }]), false);
   assert.equal(shouldReframeForCoords(bounds, [{ q: 20, r: 20 }]), true);
@@ -30,17 +30,17 @@ test('overview uses a location-scale outdoor angle without losing portrait frami
   const slope = vertical / lateral;
 
   assert.ok(lateral > vertical, 'landscape overview should feel more lateral than top-down');
-  assert.ok(slope < 0.7, 'World overview should read as a place rather than a tabletop');
+  assert.ok(slope < 0.5, 'World overview should reveal floating-island volume rather than read as a tabletop');
   assert.ok(portrait.distance > landscape.distance, 'portrait framing keeps the existing distance penalty');
 });
 
-test('overview intentionally lifts its target and uses a lower viewing slope to reveal island depth', () => {
+test('overview aims through the island body instead of above the land top', () => {
   const bounds = getUnlockedIslandBounds([tile(-5, 0), tile(5, 0)]);
   const overview = getOverviewCameraPose(bounds, 16 / 9);
   const vertical = overview.position[1] - overview.target[1];
   const lateral = Math.abs(overview.position[0] - overview.target[0]);
-  assert.ok(overview.target[1] > bounds.center[1]);
-  assert.ok(vertical / lateral < 0.62);
+  assert.ok(overview.target[1] < bounds.center[1] - 0.4);
+  assert.ok(vertical / lateral < 0.5);
 });
 
 test('empty world uses a stable overview fallback', () => {

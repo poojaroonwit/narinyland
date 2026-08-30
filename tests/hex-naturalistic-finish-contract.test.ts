@@ -90,7 +90,7 @@ test('water stays bounded but uses physical PBR normal detail and environment re
   assert.doesNotMatch(water, /CubeCamera|Reflector|MeshReflectorMaterial|SSR|EffectComposer|https?:\/\//);
 });
 
-test('lighting atmosphere and World camera communicate outdoor scale without extra shadow owners', async () => {
+test('lighting atmosphere and World camera communicate floating outdoor scale without extra shadow owners', async () => {
   const lighting = await source('components/hex-world/HexWorldLighting.tsx');
   const sky = await source('components/hex-world/HexSkyAtmosphere.tsx');
   const camera = await source('lib/hex-world/camera.ts');
@@ -98,8 +98,8 @@ test('lighting atmosphere and World camera communicate outdoor scale without ext
   assert.match(lighting, /HEX_VISUAL_THEME\.atmosphere\.sunDay/);
   assert.match(sky, /BelowIslandHaze/);
   assert.match(sky, /horizonHaze/);
-  assert.match(camera, /targetLift/);
-  assert.match(camera, /distance \* 0\.38/);
+  assert.match(camera, /bodyTargetDrop/);
+  assert.match(camera, /distance \* 0\.28/);
   assert.match(camera, /distance \* 0\.72/);
   assert.match(camera, /const target = bounds\.center/);
   assert.doesNotMatch(`${lighting}\n${sky}`, /EffectComposer|Bloom|SSAO|SSR|DepthOfField|CubeCamera/);

@@ -103,17 +103,17 @@ export function getUnlockedIslandBounds(tiles: HexTileDTO[]): HexIslandBounds {
 export function getOverviewCameraPose(bounds: HexIslandBounds, aspect: number): HexCameraPose {
   const portraitPenalty = aspect < 1 ? 1.22 : 1;
   const distance = Math.max(12, bounds.radius * 2.15 * portraitPenalty);
-  const targetLift = Math.min(1.05, 0.22 + bounds.radius * 0.035);
+  const bodyTargetDrop = Math.min(2.4, 0.8 + bounds.radius * 0.07);
   const target: [number, number, number] = [
     bounds.center[0],
-    bounds.center[1] + targetLift,
+    bounds.center[1] - bodyTargetDrop,
     bounds.center[2],
   ];
   return {
     target,
     position: [
       target[0] + distance * 0.68,
-      target[1] + distance * 0.38,
+      target[1] + distance * 0.28,
       target[2] + distance * 0.76,
     ],
     distance,
