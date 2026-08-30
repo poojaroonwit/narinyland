@@ -12,7 +12,7 @@ const TERRAIN_PBR_STYLE: Record<HexTerrainPBRSurface, HexTerrainPBRStyle> = {
   grass: {
     repeat: [2.15, 2.15],
     normalScale: 0.52,
-    roughness: 0.84,
+    roughness: 0.85,
     albedoContrast: 1.2,
     albedoSaturation: 1.1,
   },
