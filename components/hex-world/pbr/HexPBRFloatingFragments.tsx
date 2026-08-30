@@ -3,27 +3,17 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { getUnlockedIslandBounds } from '@/lib/hex-world/camera';
+import { buildFloatingIslandFragmentPlacements } from '@/lib/hex-world/floating-island-composition';
 import { getPBRModelPathForQuality } from '@/lib/hex-world/pbr/quality-assets';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
-
-type FragmentPlacement = {
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: number;
-};
+import type { HexTileDTO } from '@/lib/hex-world/types';
 
 type ModelPart = {
   geometry: THREE.BufferGeometry;
   material: THREE.Material | THREE.Material[];
   matrix: THREE.Matrix4;
 };
-
-const FRAGMENTS: readonly FragmentPlacement[] = [
-  { position: [-9, -2.4, 2], rotation: [0.2, 0, 0.12], scale: 0.7 },
-  { position: [9, -3.1, 4], rotation: [0.14, 0.8, -0.08], scale: 0.55 },
-  { position: [6, -2.2, -10], rotation: [-0.12, 1.6, 0.16], scale: 0.45 },
-  { position: [-6, -3.5, -9], rotation: [0.16, 2.4, -0.1], scale: 0.5 },
-] as const;
 
 function cloneRockMaterial(material: THREE.Material): THREE.Material {
   const clone = material.clone();
@@ -34,19 +24,32 @@ function cloneRockMaterial(material: THREE.Material): THREE.Material {
   return clone;
 }
 
-export function HexPBRFloatingFragments({ profile }: { profile: HexQualityProfile }) {
+export function HexPBRFloatingFragments({
+  tiles,
+  seed,
+  profile,
+}: {
+  tiles: HexTileDTO[];
+  seed: string;
+  profile: HexQualityProfile;
+}) {
   const path = getPBRModelPathForQuality('rockSet', profile.name);
   const gltf = useGLTF(path);
   const meshRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const normalizer = useMemo(() => new THREE.Matrix4(), []);
   const finalMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const bounds = useMemo(() => getUnlockedIslandBounds(tiles), [tiles]);
+  const placements = useMemo(
+    () => buildFloatingIslandFragmentPlacements({ bounds, seed, quality: profile.name }),
+    [bounds, profile.name, seed],
+  );
 
   const model = useMemo(() => {
     gltf.scene.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(gltf.scene);
-    const size = bounds.getSize(new THREE.Vector3());
-    const center = bounds.getCenter(new THREE.Vector3());
+    const modelBounds = new THREE.Box3().setFromObject(gltf.scene);
+    const size = modelBounds.getSize(new THREE.Vector3());
+    const center = modelBounds.getCenter(new THREE.Vector3());
     const baseScale = 1 / Math.max(0.001, Math.max(size.x, size.y, size.z));
     normalizer.makeTranslation(-center.x, -center.y, -center.z);
 
@@ -60,8 +63,6 @@ export function HexPBRFloatingFragments({ profile }: { profile: HexQualityProfil
     });
     return { parts, baseScale };
   }, [gltf.scene, normalizer]);
-
-  const placements = profile.name === 'mobile' ? FRAGMENTS.slice(0, 2) : FRAGMENTS;
 
   useLayoutEffect(() => {
     model.parts.forEach((part, partIndex) => {
