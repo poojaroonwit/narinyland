@@ -32,6 +32,7 @@ import { HexSkyAtmosphere } from './HexSkyAtmosphere';
 import { HexTileInstances } from './HexTileInstances';
 import { HexWorldLighting } from './HexWorldLighting';
 import { HexWorldParticles } from './HexWorldParticles';
+import { HexWorldSetDressing } from './HexWorldSetDressing';
 import { HexPBRAssetPreloader } from './pbr/HexPBRAssetPreloader';
 import { HexPBRCliff } from './pbr/HexPBRCliff';
 import { HexPBREnvironment } from './pbr/HexPBREnvironment';
@@ -120,6 +121,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
       <HexPBRWater tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
       <HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} presentation={viewMode} />
+      <HexWorldSetDressing tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} presentation={viewMode} reducedMotion={reducedMotion} />
       {viewMode==='person'&&<><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
       <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent??null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building)=>props.onSelectBuilding?.(building)} />
       {props.livingState&&<HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
