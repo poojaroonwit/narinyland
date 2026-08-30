@@ -72,12 +72,8 @@ export function HexWorldLighting({
     ambient.color.lerp(targetAmbientColor, alpha);
   });
 
-  const contactOpacity = explore
-    ? profile.name === 'mobile' ? 0.18 : rainy ? 0.25 : 0.34
-    : rainy ? 0.19 : 0.22;
-  const contactBlur = explore
-    ? profile.name === 'high' ? 2.4 : 3
-    : profile.name === 'high' ? 3.2 : 3.8;
+  const contactOpacity = profile.name === 'mobile' ? 0.18 : rainy ? 0.25 : 0.34;
+  const contactBlur = profile.name === 'high' ? 2.4 : 3;
 
   return (
     <>
@@ -93,14 +89,16 @@ export function HexWorldLighting({
         shadow-bias={-0.00014}
         shadow-normalBias={0.02}
       />
-      <ContactShadows
-        position={[0, -0.53, 0]}
-        opacity={contactOpacity}
-        scale={42}
-        blur={contactBlur}
-        far={explore ? 10 : 13}
-        resolution={profile.contactShadowResolution}
-      />
+      {explore && (
+        <ContactShadows
+          position={[0, -0.03, 0]}
+          opacity={contactOpacity}
+          scale={42}
+          blur={contactBlur}
+          far={10}
+          resolution={profile.contactShadowResolution}
+        />
+      )}
     </>
   );
 }
