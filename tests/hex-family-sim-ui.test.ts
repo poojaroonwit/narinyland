@@ -20,7 +20,7 @@ test('family panel projects existing Homestead Life state and never invents life
   const panel = await source('components/hex-world/HexFamilyPanel.tsx');
 
   assert.match(panel, /HomesteadLifeState/);
-  assert.match(panel, /state\.familyName/);
+  assert.match(panel, /state\.hearts/);
   assert.match(panel, /state\.family\.stage/);
   assert.match(panel, /state\.family\.milestones\.growingTogether/);
   assert.match(panel, /state\.buildingTiers\.home/);
@@ -29,6 +29,7 @@ test('family panel projects existing Homestead Life state and never invents life
   assert.match(panel, /type: 'family_time'/);
   assert.match(panel, /state\.family\.stage === 'child'/);
   assert.match(panel, /data-hex-family-panel/);
+  assert.doesNotMatch(panel, /familyName/);
   assert.doesNotMatch(panel, /Hunger|Hygiene|Fun meter|Social meter/i);
 });
 
