@@ -22,7 +22,7 @@ test('normal World mounts the complete local Hybrid PBR visual stack and shared 
   assert.doesNotMatch(world, /HexAmbientDecor|HexTerrainDetails|HexWaterSurface|HexNaturalTerrain|HexIslandCliffShell|HexStructureModel/);
 });
 
-test('floating island fragments use local scanned rock assets rather than primitive flat rocks', async () => {
+test('floating island fragments use local scanned rock assets and deterministic island composition', async () => {
   const [world, fragments] = await Promise.all([
     source('components/hex-world/HexWorld3D.tsx'),
     source('components/hex-world/pbr/HexPBRFloatingFragments.tsx'),
@@ -33,6 +33,8 @@ test('floating island fragments use local scanned rock assets rather than primit
   assert.match(fragments, /getPBRModelPathForQuality/);
   assert.match(fragments, /rockSet/);
   assert.match(fragments, /instancedMesh/);
+  assert.match(fragments, /buildFloatingIslandFragmentPlacements/);
+  assert.doesNotMatch(fragments, /const FRAGMENTS/);
   assert.doesNotMatch(fragments, /Math\.random|https?:\/\//);
 });
 
