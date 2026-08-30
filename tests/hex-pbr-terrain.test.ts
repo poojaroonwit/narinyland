@@ -21,11 +21,11 @@ test('natural terrain exposes deterministic UVs and bounded material groups with
   assert.ok(mesh.uvs.every(Number.isFinite));
 });
 
-test('cliff mesh exposes projected UVs and separate soil and rock material groups', () => {
+test('cliff mesh exposes projected UVs and separate soil upper-rock and lower-rock material groups', () => {
   const terrain = buildNaturalTerrainMesh(tiles, 'pbr-test');
   const cliff = buildIslandCliffMesh(terrain.boundaryEdges, 'pbr-test');
   assert.equal(cliff.uvs.length, (cliff.positions.length / 3) * 2);
-  assert.deepEqual(cliff.groups.map((group) => group.material).sort(), ['rock', 'soil']);
+  assert.deepEqual(cliff.groups.map((group) => group.material).sort(), ['lowerRock', 'soil', 'upperRock']);
   assert.equal(cliff.groups.reduce((sum, group) => sum + group.count, 0), cliff.indices.length);
   assert.ok(cliff.uvs.every(Number.isFinite));
 });
