@@ -1,3 +1,5 @@
+import type { HexViewMode } from './view-mode';
+
 export type HexQualityName = 'high' | 'medium' | 'mobile';
 
 export type HexQualityProfile = {
@@ -89,4 +91,12 @@ export function resolveAdaptiveHexQuality(
   const requestedName: HexQualityName = factor < 0.55 ? 'mobile' : factor < 0.82 ? 'medium' : staticProfile.name;
   const effectiveName = QUALITY_RANK[requestedName] > QUALITY_RANK[staticProfile.name] ? staticProfile.name : requestedName;
   return QUALITY_PROFILE[effectiveName];
+}
+
+export function shouldRenderHexDirectionalShadows(profile: HexQualityProfile): boolean {
+  return profile.name !== 'mobile';
+}
+
+export function shouldRenderHexContactShadows(profile: HexQualityProfile, viewMode: HexViewMode): boolean {
+  return profile.name === 'high' && viewMode === 'world';
 }
