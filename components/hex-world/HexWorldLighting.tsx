@@ -5,7 +5,11 @@ import { ContactShadows } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { expSmoothingAlpha, type HexMotionProfile } from '@/lib/hex-world/motion';
-import type { HexQualityProfile } from '@/lib/hex-world/quality';
+import {
+  shouldRenderHexContactShadows,
+  shouldRenderHexDirectionalShadows,
+  type HexQualityProfile,
+} from '@/lib/hex-world/quality';
 import type { HexViewMode } from '@/lib/hex-world/view-mode';
 import { HEX_VISUAL_THEME, type HexVisualEnvironment } from '@/lib/hex-world/visual-theme';
 
@@ -29,6 +33,8 @@ export function HexWorldLighting({
   const cloudy = environment?.weather === 'cloudy';
   const evening = environment?.evening ?? 0;
   const explore = viewMode === 'person';
+  const renderDirectionalShadows = shouldRenderHexDirectionalShadows(profile);
+  const renderContactShadows = shouldRenderHexContactShadows(profile, viewMode);
   const sunIntensity = (rainy ? 1.34 : cloudy ? 1.58 : 1.84) * (explore ? 1.1 : 1) * (0.7 + daylight * 0.3);
   const hemisphereIntensity = (rainy ? 0.46 : cloudy ? 0.51 : 0.57) * (explore ? 0.82 : 1);
   const ambientIntensity = (0.075 + evening * 0.03) * (explore ? 0.7 : 1);
@@ -88,19 +94,22 @@ export function HexWorldLighting({
         position={explore ? [8, 14, 5] : [12, 20, 8]}
         intensity={1}
         color={HEX_VISUAL_THEME.atmosphere.sunDay}
-        castShadow
+        castShadow={renderDirectionalShadows}
         shadow-mapSize={[profile.shadowMapSize, profile.shadowMapSize]}
         shadow-bias={-0.00014}
         shadow-normalBias={0.02}
       />
-      <ContactShadows
-        position={[0, -0.53, 0]}
-        opacity={contactOpacity}
-        scale={42}
-        blur={contactBlur}
-        far={explore ? 10 : 13}
-        resolution={profile.contactShadowResolution}
-      />
+      {renderContactShadows && (
+        <ContactShadows
+          position={[0, -0.53, 0]}
+          opacity={contactOpacity}
+          scale={42}
+          blur={contactBlur}
+          far={13}
+          resolution={profile.contactShadowResolution}
+          frames={1}
+        />
+      )}
     </>
   );
 }
