@@ -113,7 +113,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexPBREnvironment profile={profile} /><HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
       {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}
       <HexPBRCliff tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
-      <HexPBRFloatingFragments profile={profile} />
+      <HexPBRFloatingFragments tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
       <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} /><HexPlacementEffects event={props.visualEvent??null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
       <HexPBRTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
       <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} presentation="proxy" hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />

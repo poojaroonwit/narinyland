@@ -11,8 +11,9 @@ import { getPBRTextureSet } from '@/lib/hex-world/pbr/quality-assets';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
 
-const CLIFF_SOIL_REPEAT = [1.9, 2.6] as const;
-const CLIFF_ROCK_REPEAT = [2.2, 2.8] as const;
+const CLIFF_SOIL_REPEAT = [2.1, 3.0] as const;
+const CLIFF_ROCK_REPEAT = [2.7, 4.2] as const;
+const materialIndex = { soil: 0, upperRock: 1, lowerRock: 2 } as const;
 
 export function HexPBRCliff({ tiles, seed, profile }: { tiles: HexTileDTO[]; seed: string; profile: HexQualityProfile }) {
   const soilPaths = getPBRTextureSet('soil', profile.name);
@@ -38,7 +39,7 @@ export function HexPBRCliff({ tiles, seed, profile }: { tiles: HexTileDTO[]; see
     next.setAttribute('position', new THREE.Float32BufferAttribute(shell.positions, 3));
     next.setAttribute('uv', new THREE.Float32BufferAttribute(shell.uvs, 2));
     next.setIndex(shell.indices);
-    for (const group of shell.groups) next.addGroup(group.start, group.count, group.material === 'soil' ? 0 : 1);
+    for (const group of shell.groups) next.addGroup(group.start, group.count, materialIndex[group.material]);
     next.computeVertexNormals();
     next.computeBoundingBox();
     next.computeBoundingSphere();
@@ -50,8 +51,36 @@ export function HexPBRCliff({ tiles, seed, profile }: { tiles: HexTileDTO[]; see
 
   return (
     <mesh geometry={geometry} castShadow={profile.name !== 'mobile'} receiveShadow raycast={() => {}}>
-      <meshStandardMaterial attach="material-0" map={soil.baseColor} normalMap={soil.normal} roughnessMap={soil.roughness} color="#8a735f" normalScale={new THREE.Vector2(0.48, 0.48)} roughness={0.98} metalness={0} />
-      <meshStandardMaterial attach="material-1" map={rock.baseColor} normalMap={rock.normal} roughnessMap={rock.roughness} color="#8f9089" normalScale={new THREE.Vector2(0.7, 0.7)} roughness={0.96} metalness={0} />
+      <meshStandardMaterial
+        attach="material-0"
+        map={soil.baseColor}
+        normalMap={soil.normal}
+        roughnessMap={soil.roughness}
+        color="#94745d"
+        normalScale={new THREE.Vector2(0.52, 0.52)}
+        roughness={0.98}
+        metalness={0}
+      />
+      <meshStandardMaterial
+        attach="material-1"
+        map={rock.baseColor}
+        normalMap={rock.normal}
+        roughnessMap={rock.roughness}
+        color="#8f918d"
+        normalScale={new THREE.Vector2(0.74, 0.74)}
+        roughness={0.96}
+        metalness={0}
+      />
+      <meshStandardMaterial
+        attach="material-2"
+        map={rock.baseColor}
+        normalMap={rock.normal}
+        roughnessMap={rock.roughness}
+        color="#727b80"
+        normalScale={new THREE.Vector2(0.84, 0.84)}
+        roughness={0.98}
+        metalness={0}
+      />
     </mesh>
   );
 }

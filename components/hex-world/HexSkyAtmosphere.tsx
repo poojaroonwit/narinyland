@@ -7,9 +7,9 @@ import type { HexMotionProfile } from '@/lib/hex-world/motion';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import { HEX_VISUAL_THEME, type HexVisualEnvironment } from '@/lib/hex-world/visual-theme';
 
-const CLOUDS = [
-  [-9, -4.2, -8, 3.4], [-2, -5.1, -11, 4.1], [8, -4.7, -7, 3.6],
-  [11, -5.4, 3, 4.5], [5, -4.4, 11, 3.1], [-6, -5.2, 10, 4.2], [-12, -4.8, 2, 3.7],
+const BELOW_ISLAND_CLOUDS = [
+  [-9, -6.4, -8, 3.4], [-2, -8.1, -11, 4.1], [8, -7.0, -7, 3.6],
+  [11, -9.2, 3, 4.5], [5, -6.8, 11, 3.1], [-6, -8.7, 10, 4.2], [-12, -10.0, 2, 3.7],
 ] as const;
 
 function Cloud({ x, y, z, scale, layer, profile, motionProfile, index, tint }: {
@@ -42,13 +42,13 @@ function BelowIslandHaze({ profile, rainy }: { profile: HexQualityProfile; rainy
   return (
     <group raycast={() => {}}>
       {Array.from({ length: layers }, (_, index) => {
-        const y = -3.4 - index * 2.25;
-        const size = 19 + index * 6;
-        const opacity = (rainy ? 0.11 : 0.075) - index * 0.012;
+        const y = -5.2 - index * 2.35;
+        const size = 21 + index * 7;
+        const opacity = (rainy ? 0.105 : 0.072) - index * 0.011;
         return (
           <mesh key={index} position={[0, y, 0]} rotation={[-Math.PI / 2, 0, index * 0.2]} scale={[1.25, 0.82, 1]}>
             <circleGeometry args={[size, 32]} />
-            <meshBasicMaterial color={HEX_VISUAL_THEME.atmosphere.horizonHaze} transparent opacity={Math.max(0.035, opacity)} depthWrite={false} />
+            <meshBasicMaterial color={HEX_VISUAL_THEME.atmosphere.horizonHaze} transparent opacity={Math.max(0.032, opacity)} depthWrite={false} />
           </mesh>
         );
       })}
@@ -93,7 +93,7 @@ export function HexSkyAtmosphere({
       <fog attach="fog" args={[fog, rainy ? 22 : 27, rainy ? 58 : 64]} />
       <BelowIslandHaze profile={profile} rainy={rainy} />
       <group>
-        {CLOUDS.slice(0, visibleCount).map(([x, y, z, scale], index) => {
+        {BELOW_ISLAND_CLOUDS.slice(0, visibleCount).map(([x, y, z, scale], index) => {
           const layer = index % Math.max(1, profile.cloudLayers);
           return <Cloud key={index} x={x} y={y} z={z} scale={scale} layer={layer} index={index} profile={profile} motionProfile={motionProfile} tint={cloudTint} />;
         })}

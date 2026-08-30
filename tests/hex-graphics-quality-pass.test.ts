@@ -68,10 +68,10 @@ test('World lighting interpolates target intensities and colors through Three re
   assert.match(lighting, /expSmoothingAlpha/);
   assert.doesNotMatch(lighting, /useState/);
   assert.equal((lighting.match(/<directionalLight\b/g) ?? []).length, 1);
-  assert.match(lighting, /0\.22/);
-  assert.match(lighting, /0\.19/);
-  assert.match(lighting, /3\.2/);
-  assert.match(lighting, /3\.8/);
+  assert.match(lighting, /explore\s*&&\s*\(/);
+  assert.match(lighting, /<ContactShadows/);
+  assert.match(lighting, /position=\{\[0,\s*-0\.03,\s*0\]\}/);
+  assert.doesNotMatch(lighting, /position=\{\[0,\s*-0\.53,\s*0\]\}/);
   assert.match(lighting, /atmosphere\.sunDay/);
   assert.match(world, /<HexWorldLighting[^>]*motionProfile=\{motionProfile\}/);
 });

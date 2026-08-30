@@ -98,7 +98,9 @@ test('lighting atmosphere and World camera communicate outdoor scale without ext
   assert.match(lighting, /HEX_VISUAL_THEME\.atmosphere\.sunDay/);
   assert.match(sky, /BelowIslandHaze/);
   assert.match(sky, /horizonHaze/);
-  assert.match(camera, /distance \* 0\.44/);
+  assert.match(camera, /targetLift/);
+  assert.match(camera, /distance \* 0\.38/);
   assert.match(camera, /distance \* 0\.72/);
+  assert.match(camera, /const target = bounds\.center/);
   assert.doesNotMatch(`${lighting}\n${sky}`, /EffectComposer|Bloom|SSAO|SSR|DepthOfField|CubeCamera/);
 });

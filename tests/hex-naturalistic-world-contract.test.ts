@@ -62,8 +62,11 @@ test('floating island side is one boundary-driven PBR geological shell', async (
   assert.match(shell, /normalMap/);
   assert.match(shell, /roughnessMap/);
   assert.doesNotMatch(shell, /dodecahedronGeometry|Math\.random|https?:\/\//);
+  assert.match(boundary, /grassOverhang/);
   assert.match(boundary, /soilLipDepth/);
-  assert.match(boundary, /rockWallDepth/);
+  assert.match(boundary, /midRockDepth/);
+  assert.match(boundary, /spireDepth/);
+  assert.match(boundary, /spireInfluence/);
   assert.match(boundary, /lowerTaper/);
   assert.doesNotMatch(boundary, /Math\.random/);
 });
