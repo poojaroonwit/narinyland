@@ -34,6 +34,15 @@ test('overview uses a location-scale outdoor angle without losing portrait frami
   assert.ok(portrait.distance > landscape.distance, 'portrait framing keeps the existing distance penalty');
 });
 
+test('overview intentionally lifts its target and uses a lower viewing slope to reveal island depth', () => {
+  const bounds = getUnlockedIslandBounds([tile(-5, 0), tile(5, 0)]);
+  const overview = getOverviewCameraPose(bounds, 16 / 9);
+  const vertical = overview.position[1] - overview.target[1];
+  const lateral = Math.abs(overview.position[0] - overview.target[0]);
+  assert.ok(overview.target[1] > bounds.center[1]);
+  assert.ok(vertical / lateral < 0.62);
+});
+
 test('empty world uses a stable overview fallback', () => {
   const bounds = getUnlockedIslandBounds([]);
   assert.deepEqual(bounds.center, [0, 0, 0]);
@@ -53,7 +62,7 @@ test('build framing is derived from island bounds and stays more top-down than o
   const bounds = getUnlockedIslandBounds(motionTiles);
   const overview = getOverviewCameraPose(bounds, 16 / 9);
   const build = getBuildCameraPose(bounds, 16 / 9);
-  assert.deepEqual(build.target, overview.target);
+  assert.deepEqual(build.target, bounds.center);
   const overviewSlope = Math.abs(overview.position[1] - overview.target[1]) / Math.abs(overview.position[0] - overview.target[0]);
   const buildSlope = Math.abs(build.position[1] - build.target[1]) / Math.abs(build.position[0] - build.target[0]);
   assert.ok(buildSlope > overviewSlope);
