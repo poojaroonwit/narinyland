@@ -13,7 +13,7 @@ import type { HomesteadLifeAction, HomesteadLifeState } from '@/lib/homestead-li
 import { getHomesteadEventDefinition } from '@/lib/homestead-events';
 import { getWeatherPresentation } from '@/lib/hex-world/living-homestead';
 
-export type HexHudPanel = 'wallet' | 'goals' | 'journey' | null;
+export type HexHudPanel = 'family' | 'wallet' | 'goals' | 'journey' | null;
 
 export function HexLivingHUD({
   state,
@@ -80,11 +80,13 @@ export function HexLivingHUD({
     ? getHomesteadEventDefinition(currentEvent.key)
     : null;
   const hasNotices = !!(currentEvent && currentEventDefinition) || !!(showSeasonSummary && seasonSummary);
+  const hasChild = state.family.stage === 'child';
+  const petKind = state.animals.pet.kind;
 
   return (
     <>
-      <div className="pointer-events-none fixed inset-x-3 top-3 z-[95] flex items-start justify-between gap-2 md:inset-x-5 md:top-4">
-        <div className="pointer-events-auto flex min-h-[44px] items-center gap-2 rounded-2xl border border-white/70 bg-white/82 px-3 py-2 shadow-lg shadow-emerald-950/[0.06] backdrop-blur-xl">
+      <div className="pointer-events-none fixed inset-x-3 top-3 z-[95] grid grid-cols-[auto_1fr_auto] items-start gap-2 md:inset-x-5 md:top-4">
+        <div className="pointer-events-auto flex min-h-[46px] items-center gap-2 rounded-[1.15rem] border border-white/75 bg-[#fffaf2]/90 px-3 py-2 shadow-lg shadow-emerald-950/[0.05] backdrop-blur-xl">
           <span className="text-lg leading-none">{season.emoji}</span>
           <div className="leading-tight">
             <p className="text-[11px] font-black text-stone-800">Day {state.day} · {season.label}</p>
@@ -92,23 +94,43 @@ export function HexLivingHUD({
           </div>
         </div>
 
-        <div className="pointer-events-auto flex max-w-[68vw] items-center justify-end gap-1.5 overflow-x-auto rounded-2xl border border-white/70 bg-white/82 p-1.5 shadow-lg shadow-emerald-950/[0.06] backdrop-blur-xl md:max-w-none">
+        <div className="pointer-events-auto flex min-w-0 justify-center">
+          <button
+            type="button"
+            data-hex-family-strip
+            onClick={() => togglePanel('family')}
+            aria-label="Open Family"
+            className={`flex min-h-[46px] max-w-full items-center gap-1.5 rounded-[1.35rem] border px-2 py-1.5 shadow-xl backdrop-blur-xl transition active:scale-[0.99] sm:gap-2 sm:px-3 ${activePanel === 'family' ? 'border-rose-300 bg-rose-500 text-white shadow-rose-950/15' : 'border-white/80 bg-[#fff7ef]/94 text-stone-700 shadow-rose-950/[0.07]'}`}
+          >
+            <FamilyFace emoji="🙂" label="You" />
+            <FamilyFace emoji="💞" label="Partner" />
+            {state.family.stage === 'child' && <FamilyFace emoji="🧒" label="Child" />}
+            {petKind && <FamilyFace emoji={petKind === 'cat' ? '🐱' : '🐶'} label={petKind === 'cat' ? 'Cat' : 'Dog'} />}
+            <div className="ml-0.5 hidden min-w-0 text-left sm:block">
+              <p className={`text-[8px] font-black uppercase tracking-[0.16em] ${activePanel === 'family' ? 'text-white/75' : 'text-rose-500'}`}>Family</p>
+              <p className="whitespace-nowrap text-[10px] font-black">💗 {state.hearts.toLocaleString()}</p>
+            </div>
+            <span className="sm:hidden text-[9px] font-black">💗 {state.hearts}</span>
+          </button>
+        </div>
+
+        <div className="pointer-events-auto flex max-w-[46vw] items-center justify-end gap-1 overflow-x-auto rounded-[1.15rem] border border-white/75 bg-[#fffaf2]/90 p-1 shadow-lg shadow-emerald-950/[0.05] backdrop-blur-xl md:max-w-none md:gap-1.5 md:p-1.5">
           <StatusChip copy={`⚡ ${state.energy}/${state.maxEnergy}`} label="Energy" />
           <StatusChip copy={`🪙 ${state.coins}`} label="Coins" />
-          <button type="button" onClick={() => togglePanel('journey')} className="min-h-[40px] shrink-0 rounded-xl bg-sky-50 px-2.5 text-[9px] font-black text-sky-800" aria-label="Open level progress">
+          <button type="button" onClick={() => togglePanel('journey')} className="hidden min-h-[40px] shrink-0 rounded-xl bg-sky-50 px-2.5 text-[9px] font-black text-sky-800 sm:block" aria-label="Open level progress">
             Lv {state.level} · {state.xp}/{nextXp}
           </button>
-          <button type="button" onClick={() => togglePanel('wallet')} className={`min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black ${activePanel === 'wallet' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-800'}`}>
+          <button type="button" onClick={() => togglePanel('wallet')} className={`hidden min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black sm:block ${activePanel === 'wallet' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-800'}`}>
             Wallet
           </button>
-          <button type="button" onClick={() => togglePanel('goals')} className={`min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black ${activePanel === 'goals' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'}`}>
+          <button type="button" onClick={() => togglePanel('goals')} className={`hidden min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black md:block ${activePanel === 'goals' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'}`}>
             Goals {completedGoals}/{goals.length}
           </button>
           <MusicButton musicMuted={musicMuted} onToggle={onToggleMusic} />
         </div>
       </div>
 
-      {activePanel && (
+      {activePanel && activePanel !== 'family' && (
         <div
           data-hex-hud-panel={activePanel}
           data-has-notices={hasNotices ? 'true' : 'false'}
@@ -211,8 +233,17 @@ export function HexLivingHUD({
   );
 }
 
+function FamilyFace({ emoji, label }: { emoji: string; label: string }) {
+  return (
+    <span className="flex shrink-0 flex-col items-center">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-base shadow-sm ring-1 ring-white sm:h-9 sm:w-9">{emoji}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
 function StatusChip({ copy, label }: { copy: string; label: string }) {
-  return <span title={label} className="flex min-h-[40px] shrink-0 items-center rounded-xl bg-white/70 px-2.5 text-[9px] font-black text-stone-700">{copy}</span>;
+  return <span title={label} className="flex min-h-[40px] shrink-0 items-center rounded-xl bg-white/70 px-2 text-[9px] font-black text-stone-700 md:px-2.5">{copy}</span>;
 }
 
 function MetricCard({ emoji, label, value }: { emoji: string; label: string; value: string }) {
