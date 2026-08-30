@@ -5,9 +5,10 @@ import { useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { buildNaturalTerrainMesh, type NaturalTerrainMaterial } from '@/lib/hex-world/natural-terrain';
+import { applyTerrainAlbedoReadability } from '@/lib/hex-world/pbr/terrain-albedo-shader';
 import { createOwnedPBRTextureBundle, disposePBRTextureBundle } from '@/lib/hex-world/pbr/terrain-materials';
 import { getPBRTextureSet, type HexPBRMaterialName } from '@/lib/hex-world/pbr/quality-assets';
-import { getHexTerrainPBRStyle, type HexTerrainPBRSurface } from '@/lib/hex-world/pbr/terrain-surface-style';
+import { getHexTerrainPBRStyle, type HexTerrainPBRStyle, type HexTerrainPBRSurface } from '@/lib/hex-world/pbr/terrain-surface-style';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
 
@@ -16,6 +17,21 @@ const GRASS_STYLE = getHexTerrainPBRStyle('grass');
 const SOIL_STYLE = getHexTerrainPBRStyle('soil');
 const PATH_STYLE = getHexTerrainPBRStyle('path');
 const STONE_STYLE = getHexTerrainPBRStyle('stone');
+
+type TerrainShader = Parameters<THREE.MeshStandardMaterial['onBeforeCompile']>[0];
+
+function compileTerrainAlbedo(style: HexTerrainPBRStyle) {
+  return (shader: TerrainShader) => applyTerrainAlbedoReadability(shader, style);
+}
+
+const GRASS_ALBEDO_SHADER = compileTerrainAlbedo(GRASS_STYLE);
+const SOIL_ALBEDO_SHADER = compileTerrainAlbedo(SOIL_STYLE);
+const PATH_ALBEDO_SHADER = compileTerrainAlbedo(PATH_STYLE);
+const STONE_ALBEDO_SHADER = compileTerrainAlbedo(STONE_STYLE);
+const GRASS_PROGRAM_KEY = () => 'hex-terrain-albedo-grass-v1';
+const SOIL_PROGRAM_KEY = () => 'hex-terrain-albedo-soil-v1';
+const PATH_PROGRAM_KEY = () => 'hex-terrain-albedo-path-v1';
+const STONE_PROGRAM_KEY = () => 'hex-terrain-albedo-stone-v1';
 
 function usePBRMaps(material: HexPBRMaterialName, profile: HexQualityProfile, surface: HexTerrainPBRSurface) {
   const paths = getPBRTextureSet(material, profile.name);
@@ -57,10 +73,10 @@ export function HexPBRTerrain({ tiles, seed, profile }: { tiles: HexTileDTO[]; s
 
   return (
     <mesh geometry={geometry} castShadow={profile.name !== 'mobile'} receiveShadow raycast={() => {}}>
-      <meshStandardMaterial attach="material-0" map={grass.baseColor} normalMap={grass.normal} roughnessMap={grass.roughness} normalScale={normalScale(GRASS_STYLE.normalScale)} roughness={GRASS_STYLE.roughness} metalness={0} />
-      <meshStandardMaterial attach="material-1" map={soil.baseColor} normalMap={soil.normal} roughnessMap={soil.roughness} normalScale={normalScale(SOIL_STYLE.normalScale)} roughness={SOIL_STYLE.roughness} metalness={0} />
-      <meshStandardMaterial attach="material-2" map={path.baseColor} normalMap={path.normal} roughnessMap={path.roughness} normalScale={normalScale(PATH_STYLE.normalScale)} roughness={PATH_STYLE.roughness} metalness={0} />
-      <meshStandardMaterial attach="material-3" map={stone.baseColor} normalMap={stone.normal} roughnessMap={stone.roughness} normalScale={normalScale(STONE_STYLE.normalScale)} roughness={STONE_STYLE.roughness} metalness={0} />
+      <meshStandardMaterial attach="material-0" map={grass.baseColor} normalMap={grass.normal} roughnessMap={grass.roughness} normalScale={normalScale(GRASS_STYLE.normalScale)} roughness={GRASS_STYLE.roughness} metalness={0} onBeforeCompile={GRASS_ALBEDO_SHADER} customProgramCacheKey={GRASS_PROGRAM_KEY} />
+      <meshStandardMaterial attach="material-1" map={soil.baseColor} normalMap={soil.normal} roughnessMap={soil.roughness} normalScale={normalScale(SOIL_STYLE.normalScale)} roughness={SOIL_STYLE.roughness} metalness={0} onBeforeCompile={SOIL_ALBEDO_SHADER} customProgramCacheKey={SOIL_PROGRAM_KEY} />
+      <meshStandardMaterial attach="material-2" map={path.baseColor} normalMap={path.normal} roughnessMap={path.roughness} normalScale={normalScale(PATH_STYLE.normalScale)} roughness={PATH_STYLE.roughness} metalness={0} onBeforeCompile={PATH_ALBEDO_SHADER} customProgramCacheKey={PATH_PROGRAM_KEY} />
+      <meshStandardMaterial attach="material-3" map={stone.baseColor} normalMap={stone.normal} roughnessMap={stone.roughness} normalScale={normalScale(STONE_STYLE.normalScale)} roughness={STONE_STYLE.roughness} metalness={0} onBeforeCompile={STONE_ALBEDO_SHADER} customProgramCacheKey={STONE_PROGRAM_KEY} />
       <meshStandardMaterial attach="material-4" map={soil.baseColor} normalMap={soil.normal} roughnessMap={soil.roughness} color="#75806c" normalScale={normalScale(0.32)} roughness={0.98} metalness={0} />
     </mesh>
   );
