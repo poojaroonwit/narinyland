@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
+import {
+  resolveHexQualityProfile,
+  shouldRenderHexContactShadows,
+  shouldRenderHexDirectionalShadows,
+} from '@/lib/hex-world/quality';
 
 async function loadAdaptiveResolver() {
   const quality = await import('@/lib/hex-world/quality');
@@ -52,6 +56,18 @@ test('quality profiles cap expensive pixel and scene budgets', () => {
   assert.equal(high.pbrGroundPropBudget, 144);
   assert.equal(medium.maxDpr, 1.25);
   assert.equal(medium.pbrGroundPropBudget, 64);
+});
+
+test('duplicate real-time shadow passes are reserved for high quality overview', () => {
+  const high = resolveHexQualityProfile({ graphicsQuality: 'high', viewportWidth: 1920, devicePixelRatio: 1 });
+  const medium = resolveHexQualityProfile({ graphicsQuality: 'medium', viewportWidth: 1200, devicePixelRatio: 1 });
+  const mobile = resolveHexQualityProfile({ graphicsQuality: 'high', viewportWidth: 500, devicePixelRatio: 2 });
+
+  assert.equal(shouldRenderHexContactShadows(high, 'world'), true);
+  assert.equal(shouldRenderHexContactShadows(high, 'person'), false);
+  assert.equal(shouldRenderHexContactShadows(medium, 'world'), false);
+  assert.equal(shouldRenderHexDirectionalShadows(mobile), false);
+  assert.equal(shouldRenderHexDirectionalShadows(medium), true);
 });
 
 test('invalid performance factors resolve safely inside the static cap', async () => {
