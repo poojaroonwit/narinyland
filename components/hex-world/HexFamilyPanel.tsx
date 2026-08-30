@@ -55,7 +55,6 @@ export function HexFamilyPanel({
   const growingTogether = state.family.milestones.growingTogether;
   const homeTier = state.buildingTiers.home;
   const familyTimeDone = state.daily.familyTime;
-  const familyTitle = state.familyName?.trim() || 'Our Family';
 
   return (
     <section
@@ -66,7 +65,7 @@ export function HexFamilyPanel({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-500">Family</p>
-          <h2 className="mt-0.5 text-xl font-black tracking-tight text-stone-900">{familyTitle}</h2>
+          <h2 className="mt-0.5 text-xl font-black tracking-tight text-stone-900">Our Family</h2>
           <p className="mt-1 text-[10px] font-bold text-stone-500">
             {hasChild ? 'Growing a little home together' : 'Two hearts building a home together'}
           </p>
