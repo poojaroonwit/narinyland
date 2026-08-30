@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { resolveHexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexBuildingDTO, HexTileDTO } from '@/lib/hex-world/types';
 import * as setDressing from '@/lib/hex-world/set-dressing';
+
+const source = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const tiles: HexTileDTO[] = [];
 for (let q = -3; q <= 3; q += 1) {
@@ -27,8 +30,6 @@ const buildings: HexBuildingDTO[] = [
     anchorQ: 0,
     anchorR: 0,
     rotation: 0,
-    createdAt: new Date(0).toISOString(),
-    updatedAt: new Date(0).toISOString(),
   },
 ];
 
@@ -78,4 +79,15 @@ test('person presentation is richer than overview while both stay quality bounde
   assert.ok(person.length <= 72);
   assert.ok(world.length <= 40);
   assert.ok(mobilePerson.length <= 24);
+});
+
+test('world mounts batched set dressing and ambient life without adding gameplay authority', async () => {
+  const renderer = await source('components/hex-world/HexWorldSetDressing.tsx');
+  const world = await source('components/hex-world/HexWorld3D.tsx');
+
+  assert.match(renderer, /instancedMesh/, 'repeated dressing must be batched');
+  assert.match(renderer, /<points/, 'ambient life should stay in a single lightweight points batch');
+  assert.doesNotMatch(renderer, /fetch\(|services\/|API\./, 'set dressing must stay presentation-only');
+  assert.match(world, /HexWorldSetDressing/);
+  assert.match(world, /presentation=\{viewMode\}/);
 });
