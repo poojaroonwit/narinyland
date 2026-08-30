@@ -28,7 +28,7 @@ export function HexWorldToolbar({
   onViewModeChange: (mode: HexViewMode) => void;
   activeAction?: HexGameplayAction;
 }) {
-  const primary = 'min-h-[48px] min-w-[58px] rounded-[1rem] px-2 text-[9px] font-black transition active:scale-95 sm:min-w-[72px] sm:px-3 sm:text-[10px]';
+  const primary = 'min-h-[48px] min-w-[56px] rounded-[1rem] px-2 text-[9px] font-black transition active:scale-95 sm:min-w-[72px] sm:px-3 sm:text-[10px]';
   const actionClass = (key: Exclude<HexGameplayAction, null>, active: string) => `${primary} ${activeAction === key ? active : 'bg-white/88 text-stone-700 shadow-sm ring-1 ring-stone-900/[0.035]'}`;
   const modeClass = (mode: HexViewMode) => `min-h-[34px] rounded-full px-3 text-[9px] font-black transition ${viewMode === mode ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-500 hover:bg-white/75'}`;
 
@@ -41,7 +41,7 @@ export function HexWorldToolbar({
 
       {viewMode === 'person' && (
         <div className="hidden rounded-full border border-white/70 bg-stone-900/72 px-3 py-1 text-[10px] font-bold text-white/90 shadow-lg backdrop-blur-md sm:block">
-          WASD / arrows · drag to look
+          WASD / arrows · desktop movement requires a keyboard · drag to look
         </div>
       )}
 
