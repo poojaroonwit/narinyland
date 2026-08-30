@@ -33,6 +33,7 @@ test('cliff mesh exposes projected UVs and separate soil and rock material group
 test('normal World terrain and cliff renderers bind local PBR maps instead of flat vertex colors', async () => {
   const terrain = await source('components/hex-world/pbr/HexPBRTerrain.tsx').catch(() => '');
   const cliff = await source('components/hex-world/pbr/HexPBRCliff.tsx').catch(() => '');
+  const textureHelpers = await source('lib/hex-world/pbr/terrain-materials.ts').catch(() => '');
   const world = await source('components/hex-world/HexWorld3D.tsx');
   const combined = `${terrain}\n${cliff}`;
 
@@ -43,8 +44,10 @@ test('normal World terrain and cliff renderers bind local PBR maps instead of fl
   assert.match(combined, /map=/);
   assert.match(combined, /normalMap=/);
   assert.match(combined, /roughnessMap=/);
-  assert.match(combined, /SRGBColorSpace|configurePBRTextureBundle/);
-  assert.match(combined, /RepeatWrapping|configurePBRTextureBundle/);
+  assert.match(combined, /createOwnedPBRTextureBundle/);
+  assert.match(textureHelpers, /SRGBColorSpace/);
+  assert.match(textureHelpers, /NoColorSpace/);
+  assert.match(textureHelpers, /RepeatWrapping/);
   assert.doesNotMatch(combined, /https?:\/\/|polyhaven/i);
 
   assert.match(world, /HexPBRTerrain/);

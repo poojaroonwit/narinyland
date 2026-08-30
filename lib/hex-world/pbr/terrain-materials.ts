@@ -8,7 +8,7 @@ export type HexPBRTextureBundle = {
 
 export function configurePBRTextureBundle(
   bundle: HexPBRTextureBundle,
-  repeat: [number, number],
+  repeat: readonly [number, number],
   anisotropy = 4,
 ): HexPBRTextureBundle {
   const [repeatX, repeatY] = repeat;
@@ -24,4 +24,22 @@ export function configurePBRTextureBundle(
     texture.needsUpdate = true;
   }
   return bundle;
+}
+
+export function createOwnedPBRTextureBundle(
+  source: HexPBRTextureBundle,
+  repeat: readonly [number, number],
+  anisotropy = 4,
+): HexPBRTextureBundle {
+  return configurePBRTextureBundle({
+    baseColor: source.baseColor.clone(),
+    normal: source.normal.clone(),
+    roughness: source.roughness.clone(),
+  }, repeat, anisotropy);
+}
+
+export function disposePBRTextureBundle(bundle: HexPBRTextureBundle): void {
+  bundle.baseColor.dispose();
+  bundle.normal.dispose();
+  bundle.roughness.dispose();
 }

@@ -1,15 +1,18 @@
 "use client";
 
-import { useLayoutEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { buildIslandCliffMesh } from '@/lib/hex-world/island-boundary';
 import { buildNaturalTerrainMesh } from '@/lib/hex-world/natural-terrain';
-import { configurePBRTextureBundle } from '@/lib/hex-world/pbr/terrain-materials';
+import { createOwnedPBRTextureBundle, disposePBRTextureBundle } from '@/lib/hex-world/pbr/terrain-materials';
 import { getPBRTextureSet } from '@/lib/hex-world/pbr/quality-assets';
 import type { HexQualityProfile } from '@/lib/hex-world/quality';
 import type { HexTileDTO } from '@/lib/hex-world/types';
+
+const CLIFF_SOIL_REPEAT = [1.9, 2.6] as const;
+const CLIFF_ROCK_REPEAT = [2.2, 2.8] as const;
 
 export function HexPBRCliff({ tiles, seed, profile }: { tiles: HexTileDTO[]; seed: string; profile: HexQualityProfile }) {
   const soilPaths = getPBRTextureSet('soil', profile.name);
@@ -18,13 +21,16 @@ export function HexPBRCliff({ tiles, seed, profile }: { tiles: HexTileDTO[]; see
   const [rockBase, rockNormal, rockRoughness] = useTexture([rockPaths.baseColor, rockPaths.normal, rockPaths.roughness]);
   const maxAnisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy());
   const soil = useMemo(
-    () => configurePBRTextureBundle({ baseColor: soilBase, normal: soilNormal, roughness: soilRoughness }, [1.9, 2.6], maxAnisotropy),
+    () => createOwnedPBRTextureBundle({ baseColor: soilBase, normal: soilNormal, roughness: soilRoughness }, CLIFF_SOIL_REPEAT, maxAnisotropy),
     [maxAnisotropy, soilBase, soilNormal, soilRoughness],
   );
   const rock = useMemo(
-    () => configurePBRTextureBundle({ baseColor: rockBase, normal: rockNormal, roughness: rockRoughness }, [2.2, 2.8], maxAnisotropy),
+    () => createOwnedPBRTextureBundle({ baseColor: rockBase, normal: rockNormal, roughness: rockRoughness }, CLIFF_ROCK_REPEAT, maxAnisotropy),
     [maxAnisotropy, rockBase, rockNormal, rockRoughness],
   );
+  useEffect(() => () => disposePBRTextureBundle(soil), [soil]);
+  useEffect(() => () => disposePBRTextureBundle(rock), [rock]);
+
   const terrain = useMemo(() => buildNaturalTerrainMesh(tiles, seed), [seed, tiles]);
   const shell = useMemo(() => buildIslandCliffMesh(terrain.boundaryEdges, seed), [seed, terrain.boundaryEdges]);
   const geometry = useMemo(() => {
