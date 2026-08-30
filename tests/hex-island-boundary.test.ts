@@ -55,15 +55,15 @@ test('cliff underside tapers inward instead of flaring away from the island', ()
   assert.ok(bottom < top, `expected bottom radius ${bottom} to be less than top radius ${top}`);
 });
 
-test('floating island core is substantially deeper than the old slab profile', () => {
+test('floating island core is dramatically deeper than the old slab profile while remaining bounded', () => {
   const terrain = buildNaturalTerrainMesh([
     tile(0, 0, 0.15), tile(1, 0, 0.1), tile(0, 1, 0.05),
     tile(-1, 1, 0.08), tile(-1, 0, 0.02), tile(0, -1, 0.06),
   ], 'deep-island');
   const cliff = buildIslandCliffMesh(terrain.boundaryEdges, 'deep-island');
   const ys = cliff.positions.filter((_, index) => index % 3 === 1);
-  assert.ok(Math.min(...ys) < -4, `expected substantial underside depth, got ${Math.min(...ys)}`);
-  assert.ok(Math.min(...ys) > -7.5, 'island depth must remain bounded');
+  assert.ok(Math.min(...ys) < -8.5, `expected visibly deep underside, got ${Math.min(...ys)}`);
+  assert.ok(Math.min(...ys) > -13.5, 'island depth must remain bounded');
 });
 
 test('lower silhouette has several regional depth influences instead of one equal-depth ring', () => {
