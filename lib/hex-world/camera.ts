@@ -103,12 +103,18 @@ export function getUnlockedIslandBounds(tiles: HexTileDTO[]): HexIslandBounds {
 export function getOverviewCameraPose(bounds: HexIslandBounds, aspect: number): HexCameraPose {
   const portraitPenalty = aspect < 1 ? 1.22 : 1;
   const distance = Math.max(12, bounds.radius * 2.15 * portraitPenalty);
+  const targetLift = Math.min(1.05, 0.22 + bounds.radius * 0.035);
+  const target: [number, number, number] = [
+    bounds.center[0],
+    bounds.center[1] + targetLift,
+    bounds.center[2],
+  ];
   return {
-    target: bounds.center,
+    target,
     position: [
-      bounds.center[0] + distance * 0.68,
-      bounds.center[1] + distance * 0.44,
-      bounds.center[2] + distance * 0.76,
+      target[0] + distance * 0.68,
+      target[1] + distance * 0.38,
+      target[2] + distance * 0.76,
     ],
     distance,
   };
@@ -151,9 +157,10 @@ export function getFocusCameraPose(bounds: HexIslandBounds, focus: HexCoord, asp
 export function getBuildCameraPose(bounds: HexIslandBounds, aspect: number): HexCameraPose {
   const overview = getOverviewCameraPose(bounds, aspect);
   const distance = Math.max(11, overview.distance * 0.9);
+  const target = bounds.center;
   return {
-    target: overview.target,
-    position: [overview.target[0] + distance * 0.52, overview.target[1] + distance * 0.72, overview.target[2] + distance * 0.66],
+    target,
+    position: [target[0] + distance * 0.52, target[1] + distance * 0.72, target[2] + distance * 0.66],
     distance,
   };
 }
