@@ -84,3 +84,33 @@ test('HexWorld loading keeps the real world renderer visible behind product-alig
   assert.match(source, /Loading Land/);
   assert.doesNotMatch(source, /bg-gradient-to-b from-sky-100 via-sky-50 to-emerald-50/);
 });
+
+
+test('cozy landing prioritizes creating a shared world and offers a clear way back', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+  const layout = await readFile(new URL('../app/layout.tsx', import.meta.url), 'utf8');
+
+  for (const copy of ['The coziest adventures are shared', 'Create our world', 'Enter Narinyland', 'Sign in'])
+    assert.ok(source.includes(copy), copy);
+  assert.ok(source.includes('href="/signup"'));
+  assert.ok(source.includes('onClick={enterWorld}'));
+  assert.ok(source.includes('min-h-[42rem]'));
+  assert.ok(source.includes('safe-area-inset-bottom'));
+  assert.ok(source.includes('aria-labelledby="landing-title"'));
+  assert.ok(layout.includes('#f8f2e8'));
+});
+
+test('preview scenes have real navigation and playback controls, not pretend building buttons', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+  const details = source.split('/** Read-only descriptions')[1]?.split('export function LandingWorldExperience')[0] || '';
+
+  assert.doesNotMatch(details, /<button/);
+  assert.ok(source.includes('setIsPlaying((playing) => !playing)'));
+  assert.ok(source.includes('setStageIndex(index)'));
+  assert.ok(source.includes('aria-label={'));
+  assert.ok(source.includes('Show ${stage.label} scene'));
+  assert.ok(source.includes("aria-current={activeStageIndex === index ? 'step' : undefined}"));
+  assert.ok(source.includes('prefersReducedMotion || !isPlaying'));
+  assert.ok(source.includes('A guided preview of the real Narinyland homestead'));
+  assert.doesNotMatch(source, /fetch\(/);
+});
