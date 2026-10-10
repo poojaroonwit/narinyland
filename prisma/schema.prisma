@@ -41,6 +41,7 @@ model AppConfig {
   updatedAt               DateTime             @updatedAt
   showProposal            Boolean              @default(true)
   albums                  Album[]
+  coupleQuestEntries      CoupleQuestEntry[]
   characterProfiles       CharacterProfile[]
   coupons                 Coupon[]
   lands                   Land[]
@@ -168,6 +169,7 @@ model Partner {
   points         Int          @default(0)
   lifetimePoints Int          @default(0)
   sentLetters    LoveLetter[] @relation("SentLetters")
+  coupleQuestEntries CoupleQuestEntry[]
   config         AppConfig    @relation(fields: [configId], references: [id], onDelete: Cascade)
 
   @@unique([configId, partnerId])
@@ -496,4 +498,21 @@ model LoveStats {
   points    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Each answer belongs to one independently authenticated world member.
+/// Answers are revealed to the other member only after both have contributed.
+model CoupleQuestEntry {
+  id        String    @id @default(uuid())
+  configId  String
+  partnerId String
+  dayKey    String
+  questKey  String
+  answer    String    @db.VarChar(240)
+  createdAt DateTime  @default(now())
+  config    AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  partner   Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, dayKey, questKey, partnerId])
+  @@index([configId, dayKey])
 }
