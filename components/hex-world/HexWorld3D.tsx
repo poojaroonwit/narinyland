@@ -42,6 +42,13 @@ import { HexPBRTerrain } from './pbr/HexPBRTerrain';
 import { HexPBRVegetation } from './pbr/HexPBRVegetation';
 import { HexPBRWater } from './pbr/HexPBRWater';
 import { HexBuildGridOverlay } from './terrain/HexBuildGridOverlay';
+import {
+  HexStorybookCliff,
+  HexStorybookFragments,
+  HexStorybookTerrain,
+  HexStorybookVegetation,
+  HexStorybookWater,
+} from './storybook/HexStorybookWorld';
 import { useReducedHexMotion } from './useReducedHexMotion';
 
 export type HexBuildingPreview = { buildingKey: string; anchorQ: number; anchorR: number; rotation: HexRotation; valid: boolean };
@@ -65,6 +72,7 @@ type Props = {
   resetNonce?: number;
   reframeCoords?: HexCoord[];
   graphicsQuality?: string;
+  visualStyle?: 'storybook' | 'natural';
   livingState?: HomesteadLifeState | null;
   storyLanternCount?: number;
   movementInputRef?: React.MutableRefObject<HexExploreMovementInput>;
@@ -80,10 +88,10 @@ type Props = {
   onSelectExpansionAnchor?: (coord: HexCoord) => void;
 };
 
-function AnimatedBuildingPreview({ preview, position, motionProfile }: { preview: HexBuildingPreview; position: { x:number;y:number;z:number }; motionProfile: HexMotionProfile }) {
+function AnimatedBuildingPreview({ preview, position, motionProfile, visualStyle }: { preview: HexBuildingPreview; position: { x:number;y:number;z:number }; motionProfile: HexMotionProfile; visualStyle: 'storybook' | 'natural' }) {
   const ref=useRef<THREE.Group>(null); const phase=deterministicMotionPhase(`ghost:${preview.buildingKey}:${preview.anchorQ}:${preview.anchorR}`);
   useFrame(({clock})=>{ if(!ref.current||document.visibilityState==='hidden')return; ref.current.position.y=position.y+Math.sin(clock.elapsedTime*1.6+phase)*0.02*motionProfile.ghostBobScale; });
-  return <group ref={ref} position={[position.x,position.y,position.z]} rotation={[0,hexRotationToRadians(preview.rotation),0]}><HexBuildingModel buildingKey={preview.buildingKey} ghost /></group>;
+  return <group ref={ref} position={[position.x,position.y,position.z]} rotation={[0,hexRotationToRadians(preview.rotation),0]}><HexBuildingModel buildingKey={preview.buildingKey} ghost visualStyle={visualStyle} /></group>;
 }
 function ExpansionPlacementGhost({ preview }: { preview: HexExpansionPlacementPreview }) { const color=preview.valid?'#e3b24a':'#ef7567'; return <group>{preview.tiles.map((coord)=>{const world=axialToWorld(coord,1,0.12);return <mesh key={`expansion-ghost-${hexKey(coord)}`} position={[world.x,world.y,world.z]}><cylinderGeometry args={[0.93,0.93,0.2,6]} /><meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.85} depthWrite={false} /></mesh>;})}</group>; }
 function ExpansionPlacementPlane({ onHover,onSelect }: { onHover:(coord:HexCoord)=>void;onSelect:(coord:HexCoord)=>void }) { const coordFromPoint=(point:THREE.Vector3)=>worldToAxial(point.x,point.z); return <mesh position={[0,0.38,0]} rotation={[-Math.PI/2,0,0]} onPointerMove={(event)=>{event.stopPropagation();onHover(coordFromPoint(event.point));}} onClick={(event)=>{event.stopPropagation();onSelect(coordFromPoint(event.point));}}><planeGeometry args={[90,90]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>; }
@@ -93,6 +101,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
   const [performanceFactor,setPerformanceFactor]=useState(1);
   const reducedMotion=useReducedHexMotion();
   useEffect(()=>{const update=()=>setDevice({viewportWidth:window.innerWidth,devicePixelRatio:window.devicePixelRatio||1});update();window.addEventListener('resize',update);return()=>window.removeEventListener('resize',update);},[]);
+  const visualStyle=props.visualStyle??'storybook';
   const staticProfile=resolveHexQualityProfile({graphicsQuality:props.graphicsQuality??'medium',viewportWidth:device.viewportWidth,devicePixelRatio:device.devicePixelRatio});
   const profile=resolveAdaptiveHexQuality(staticProfile,performanceFactor);
   const motionProfile=resolveHexMotionProfile({quality:profile,reducedMotion});
@@ -111,26 +120,26 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       onPointerMissed={()=>props.onSelectBuilding?.(null)}
     >
       <PerformanceMonitor onChange={({factor})=>setPerformanceFactor((previous)=>resolveAdaptiveHexQuality(staticProfile,previous).name===resolveAdaptiveHexQuality(staticProfile,factor).name?previous:factor)} />
-      <HexPBRAssetPreloader profile={profile} />
-      <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} /><HexPBREnvironment profile={profile} /><HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
+      {visualStyle==='natural'&&<HexPBRAssetPreloader profile={profile} />}
+      <HexSkyAtmosphere profile={profile} motionProfile={motionProfile} environment={visualEnvironment} storybook={visualStyle==='storybook'} />{visualStyle==='natural'&&<HexPBREnvironment profile={profile} />}<HexWorldLighting profile={profile} motionProfile={motionProfile} environment={visualEnvironment} viewMode={viewMode} />
       {viewMode==='person'&&<HexExploreAtmosphere profile={profile} environment={visualEnvironment} />}
-      <HexPBRCliff tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
-      <HexPBRFloatingFragments tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+      {visualStyle==='storybook'?<HexStorybookCliff tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />:<HexPBRCliff tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />}
+      {visualStyle==='storybook'?<HexStorybookFragments tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />:<HexPBRFloatingFragments tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />}
       <HexWorldParticles seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} /><HexPlacementEffects event={props.visualEvent??null} quality={profile} motionProfile={motionProfile} seed={snapshot.world.seed} />
-      <HexPBRTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />
+      {visualStyle==='storybook'?<HexStorybookTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />:<HexPBRTerrain tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} />}
       <HexTileInstances tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} presentation="proxy" hoveredKey={hoveredKey} selectedKey={selectedKey} validKeys={props.validKeys} invalidKeys={props.invalidKeys} riseKeys={props.newlyAddedKeys} onHover={props.onHoverTile} onSelect={props.onSelectTile} />
       {showBuildGrid&&<HexBuildGridOverlay tiles={snapshot.tiles} validKeys={props.validKeys} invalidKeys={props.invalidKeys} expansionPlacementPreview={props.expansionPlacementPreview} />}
       <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
-      <HexPBRWater tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
+      {visualStyle==='storybook'?<HexStorybookWater tiles={snapshot.tiles} profile={profile} />:<HexPBRWater tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />}
       <HexStoryLanterns count={props.storyLanternCount ?? 0} tiles={snapshot.tiles} buildings={snapshot.buildings} reducedMotion={reducedMotion} />
-      <HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} presentation={viewMode} />
+      {visualStyle==='storybook'?<HexStorybookVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} presentation={viewMode} />:<HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} presentation={viewMode} />}
       <HexWorldSetDressing tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} presentation={viewMode} reducedMotion={reducedMotion} />
       {viewMode==='person'&&<><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
-      <HexBuildings buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent??null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building)=>props.onSelectBuilding?.(building)} />
+      <HexBuildings visualStyle={visualStyle} buildings={snapshot.buildings} tiles={snapshot.tiles} buildingTiers={props.livingState?.buildingTiers} selectedBuildingId={props.selectedBuildingId} visualEvent={props.visualEvent??null} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={(building)=>props.onSelectBuilding?.(building)} />
       {props.livingState&&<HexLivingWorldLayer state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} />}
       {viewMode==='person'&&props.livingState&&props.onResidentSamplesChange&&<HexResidentInteractionReporter state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} reducedMotion={reducedMotion} onResidentSamplesChange={props.onResidentSamplesChange} />}
       {props.livingState&&<HexCropEnhancements state={props.livingState} buildings={snapshot.buildings} tiles={snapshot.tiles} reducedMotion={reducedMotion} />}
-      {preview&&previewPosition&&<AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} />}{props.expansionPlacementPreview&&<ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
+      {preview&&previewPosition&&<AnimatedBuildingPreview preview={preview} position={previewPosition} motionProfile={motionProfile} visualStyle={visualStyle} />}{props.expansionPlacementPreview&&<ExpansionPlacementGhost preview={props.expansionPlacementPreview} />}
       {props.expansionPlacementPreview&&props.onHoverExpansionAnchor&&props.onSelectExpansionAnchor&&<ExpansionPlacementPlane onHover={props.onHoverExpansionAnchor} onSelect={props.onSelectExpansionAnchor} />}
       {viewMode==='person'?<HexPlayerController tiles={snapshot.tiles} buildings={snapshot.buildings} residentSamples={residentSamples} reducedMotion={reducedMotion} resetNonce={props.resetNonce??0} movementInputRef={props.movementInputRef} movementSuspended={props.movementSuspended} onInteractionTargetChange={props.onInteractionTargetChange} />:<HexDioramaCamera tiles={snapshot.tiles} intent={cameraIntent} motionProfile={motionProfile} reducedMotion={reducedMotion} resetNonce={props.resetNonce??0} reframeCoords={props.reframeCoords??[]} />}
       <Preload all />
