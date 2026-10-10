@@ -234,7 +234,6 @@ export const GardenTopControls: React.FC = () => {
                           onClick={async () => {
                             setIsCircleDropdownOpen(false);
                             try {
-                              setConfigLoaded(false);
                               await setActiveCircle(circle.id, circle);
                             } catch (error) {
                               showToast?.(`Could not switch world: ${getErrorMessage(error)}`);
