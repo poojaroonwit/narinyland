@@ -28,6 +28,19 @@ export function HexWorldToolbar({
   onViewModeChange: (mode: HexViewMode) => void;
   activeAction?: HexGameplayAction;
 }) {
+  const [utilitiesOpen, setUtilitiesOpen] = React.useState(false);
+  React.useEffect(() => {
+    setUtilitiesOpen(false);
+  }, [viewMode]);
+  React.useEffect(() => {
+    if (!utilitiesOpen) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setUtilitiesOpen(false);
+    };
+    document.addEventListener('keydown', dismiss);
+    return () => document.removeEventListener('keydown', dismiss);
+  }, [utilitiesOpen]);
+
   const primary = 'min-h-[48px] min-w-[56px] rounded-[0.9rem] px-2 text-[11px] font-semibold transition-colors active:scale-[0.98] sm:min-w-[68px] sm:px-3';
   const actionClass = (key: Exclude<HexGameplayAction, null>, active: string) => `${primary} ${activeAction === key ? active : 'bg-[#f3eddf] text-[#5f5345] hover:bg-[#e4eddd]'}`;
   const modeClass = (mode: HexViewMode) => `min-h-9 rounded-xl px-3 text-[11px] font-semibold transition-colors ${viewMode === mode ? 'bg-[#476b55] text-white' : 'text-[#6f6357] hover:bg-[#e9f0e3]'}`;
@@ -58,11 +71,32 @@ export function HexWorldToolbar({
         <button type="button" onClick={onBag} className={actionClass('bag', 'bg-[#476b55] text-white')}><span className="block text-base leading-none">🎒</span>Bag</button>
         <button type="button" onClick={onGoals} className={actionClass('goals', 'bg-[#476b55] text-white')}><span className="block text-base leading-none">✨</span>Goals</button>
 
-        <div className="ml-0.5 flex flex-col gap-1 border-l border-[#ddcfbc] pl-1 sm:pl-1.5">
-          {viewMode === 'world' && <button type="button" onClick={onExpand} aria-label="Grow land" title="Grow land" className="h-[23px] w-8 rounded-md bg-[#eee4d2] text-xs font-semibold text-[#765c35]">⬡+</button>}
-          <button type="button" onClick={onResetView} aria-label="Reset view" title={viewMode === 'person' ? 'Reset player view' : 'Reset world view'} className="h-[23px] w-8 rounded-md bg-[#eee4d2] text-xs font-semibold text-[#5c5246]">⌂</button>
+        <div className="ml-0.5 border-l border-[#ddcfbc] pl-1 sm:pl-1.5">
+          <button
+            type="button"
+            onClick={() => setUtilitiesOpen((current) => !current)}
+            aria-expanded={utilitiesOpen}
+            aria-controls="hex-world-view-options"
+            aria-label="More world controls"
+            title="More world controls"
+            className="min-h-11 min-w-11 rounded-xl bg-[#eee4d2] text-lg font-semibold text-[#5c5246] hover:bg-[#e4eddd]"
+          >⋯</button>
         </div>
       </div>
+
+      {utilitiesOpen && (
+        <div
+          id="hex-world-view-options"
+          role="group"
+          aria-label="World view options"
+          className="cozy-surface pointer-events-auto absolute bottom-[calc(100%+0.65rem)] right-0 z-10 flex min-w-[11rem] flex-col gap-1 rounded-2xl p-2"
+        >
+          {viewMode === 'world' && (
+            <button type="button" onClick={() => { setUtilitiesOpen(false); onExpand(); }} aria-label="Grow land" className="min-h-11 rounded-xl px-3 text-left text-sm font-semibold text-[#5c5246] hover:bg-[#e9f0e3]">⬡ Grow land</button>
+          )}
+          <button type="button" onClick={() => { setUtilitiesOpen(false); onResetView(); }} aria-label="Reset view" className="min-h-11 rounded-xl px-3 text-left text-sm font-semibold text-[#5c5246] hover:bg-[#e9f0e3]">⌂ Reset view</button>
+        </div>
+      )}
 
       {viewMode === 'person' && (
         <div className="max-w-[calc(100vw-2rem)] cozy-float rounded-full px-3 py-1.5 text-center text-[10px] font-medium sm:hidden">
