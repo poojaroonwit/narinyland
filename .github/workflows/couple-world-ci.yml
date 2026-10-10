@@ -8,6 +8,14 @@ on:
       - 'lib/couple-world/**'
       - 'app/api/couple-world/**'
       - 'components/couple-world/**'
+      - 'components/hex-world/HexExploreHUD.tsx'
+      - 'components/hex-world/HexLivingHUD.tsx'
+      - 'components/hex-world/HexWorldToolbar.tsx'
+      - 'components/landing/LandingWorldExperience.tsx'
+      - 'components/UserDropdown.tsx'
+      - 'app/globals.css'
+      - 'app/garden/_components/**'
+      - 'tests/cozy-world-design.test.ts'
       - 'components/hex-world/HexStoryLanterns.tsx'
       - 'components/hex-world/HexWorld3D.tsx'
       - 'components/hex-world/HexBuildController.tsx'
@@ -37,6 +45,8 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/narinyland
       - name: Test private mutual-reveal rules
         run: node --import tsx --test tests/couple-world-quests.test.ts
+      - name: Test cozy UI interactions and accessibility contracts
+        run: node --import tsx --test tests/cozy-world-design.test.ts
       - name: Check TypeScript
         run: npx tsc --noEmit
       - name: Verify lint
