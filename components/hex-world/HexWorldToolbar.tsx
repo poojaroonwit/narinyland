@@ -28,7 +28,7 @@ export function HexWorldToolbar({
   onViewModeChange: (mode: HexViewMode) => void;
   activeAction?: HexGameplayAction;
 }) {
-  const primary = 'min-h-[48px] min-w-[55px] rounded-[0.9rem] px-2 text-[11px] font-semibold transition-colors active:scale-[0.98] sm:min-w-[68px] sm:px-3';
+  const primary = 'min-h-[48px] min-w-[56px] rounded-[0.9rem] px-2 text-[11px] font-semibold transition-colors active:scale-[0.98] sm:min-w-[68px] sm:px-3';
   const actionClass = (key: Exclude<HexGameplayAction, null>, active: string) => `${primary} ${activeAction === key ? active : 'bg-[#f3eddf] text-[#5f5345] hover:bg-[#e4eddd]'}`;
   const modeClass = (mode: HexViewMode) => `min-h-9 rounded-xl px-3 text-[11px] font-semibold transition-colors ${viewMode === mode ? 'bg-[#476b55] text-white' : 'text-[#6f6357] hover:bg-[#e9f0e3]'}`;
 
