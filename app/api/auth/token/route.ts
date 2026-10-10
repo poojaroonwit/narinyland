@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { rejectCrossOrigin } from '@/lib/security';
 import { debugLog, debugWarn } from '@/lib/logger';
-import { validateAppKitAccessToken } from '@/lib/auth-server';
+import { validateAppKitOAuthAccessToken } from '@/lib/auth-server';
 import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/session-store';
 
 const TOKEN_FETCH_TIMEOUT_MS = 8_000;
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
     // Critical boundary: AppKit itself validates the token and supplies identity.
     // Narinyland never authorizes from decoded-but-unverified JWT claims.
-    const user = await validateAppKitAccessToken(accessToken);
+    const user = await validateAppKitOAuthAccessToken(accessToken);
     if (!user) {
       return NextResponse.json({ error: 'identity_validation_failed' }, { status: 502 });
     }
