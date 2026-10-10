@@ -67,7 +67,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex w-full justify-center px-2 pt-20 sm:px-5 md:pt-24"
+            className="flex w-full justify-center px-2 pt-36 sm:px-5 sm:pt-24"
           >
             <CoupleWorldAdventure key={activeCircleId || 'no-world'} />
           </motion.div>
@@ -77,7 +77,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex w-full justify-center px-3 pt-20 md:pt-24"
+            className="flex w-full justify-center px-3 pt-36 sm:pt-24"
           >
             <Timeline
               interactions={combinedInteractions}
@@ -103,7 +103,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex w-full justify-center pt-12 md:pt-24"
+            className="flex w-full justify-center px-2 pt-36 sm:pt-24"
           >
             <LoveCoupons
               coupons={appConfig.coupons}
@@ -119,7 +119,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex w-full justify-center overflow-y-auto px-4 pt-20 md:pt-24"
+            className="flex w-full justify-center overflow-y-auto px-4 pt-36 sm:pt-24"
           >
             <Shop
               points={loveStats.points}
@@ -151,7 +151,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex h-[calc(100vh-180px)] w-full justify-center px-0 pt-10 md:px-4 md:pt-20"
+            className="flex h-[calc(100dvh-10rem)] w-full justify-center px-0 pt-36 sm:h-[calc(100vh-180px)] sm:px-4 sm:pt-20"
           >
             <LoveLetter
               isOpen
