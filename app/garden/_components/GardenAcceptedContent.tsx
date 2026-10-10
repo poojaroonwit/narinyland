@@ -1,8 +1,10 @@
 "use client";
 
 import React from 'react';
+import { useAuth } from '../../../components/AuthProvider';
 import { motion } from 'framer-motion';
 import Timeline from '../../../components/Timeline';
+import { CoupleWorldAdventure } from '../../../components/couple-world/CoupleWorldAdventure';
 import LoveCoupons from '../../../components/LoveCoupons';
 import LoveLetter from '../../../components/LoveLetter';
 import Shop from '../../../components/Shop';
@@ -10,6 +12,7 @@ import { purchasedItemsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
 
 export const GardenAcceptedContent: React.FC = () => {
+  const { activeCircleId } = useAuth();
   const {
     hasAcceptedProposal,
     activeTab,
@@ -41,6 +44,16 @@ export const GardenAcceptedContent: React.FC = () => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pointer-events-none relative z-10 flex h-full w-full flex-col">
       <div className={`flex-1 overflow-x-hidden overflow-y-auto pb-28 ${activeTab === 'home' ? 'pointer-events-none' : 'pointer-events-auto'}`}>
+        {activeTab === 'quests' && (
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex w-full justify-center pt-12 md:pt-20"
+          >
+            <CoupleWorldAdventure key={activeCircleId || 'no-world'} />
+          </motion.div>
+        )}
+
         {activeTab === 'timeline' && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -144,6 +157,17 @@ export const GardenAcceptedContent: React.FC = () => {
         >
           <i className="fas fa-home text-xl" />
           <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Home</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => switchTab('quests')}
+          className={activeTab === 'quests'
+            ? 'flex min-w-0 scale-110 flex-col items-center gap-1 text-violet-600 transition-all duration-300'
+            : 'flex min-w-0 flex-col items-center gap-1 text-gray-400 transition-all duration-300 hover:text-gray-600'}
+        >
+          <i className="fas fa-map-signs text-xl" />
+          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Adventures</span>
         </button>
 
         <button

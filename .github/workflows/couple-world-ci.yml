@@ -1,0 +1,43 @@
+name: Couple World Quests CI
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'lib/couple-world/**'
+      - 'app/api/couple-world/**'
+      - 'components/couple-world/**'
+      - 'components/hex-world/HexStoryLanterns.tsx'
+      - 'components/hex-world/HexWorld3D.tsx'
+      - 'components/hex-world/HexBuildController.tsx'
+      - 'app/garden/_components/GardenWorldStage.tsx'
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/**'
+      - 'tests/couple-world-quests.test.ts'
+      - '.github/workflows/couple-world-ci.yml'
+
+jobs:
+  couple-world-quests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/narinyland
+      - name: Test private mutual-reveal rules
+        run: node --import tsx --test tests/couple-world-quests.test.ts
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+      - name: Verify lint
+        run: npm run lint

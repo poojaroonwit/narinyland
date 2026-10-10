@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useAuth } from '../../../components/AuthProvider';
 import { AnimatePresence } from 'framer-motion';
 import ProposalScreen from '../../../components/ProposalScreen';
 import { HexBuildController } from '../../../components/hex-world/HexBuildController';
@@ -12,6 +13,7 @@ import type { Land } from '../../../types';
 import { useGardenPageContext } from './context';
 
 export const GardenWorldStage: React.FC = () => {
+  const { activeCircleId } = useAuth();
   const {
     hasAcceptedProposal,
     configLoaded,
@@ -28,6 +30,37 @@ export const GardenWorldStage: React.FC = () => {
   const [snapshot, setSnapshot] = React.useState<HexWorldSnapshot | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const [storyLanternCount, setStoryLanternCount] = React.useState(0);
+
+  React.useEffect(() => {
+    setStoryLanternCount(0);
+    if (!activeCircleId) return;
+    const controller = new AbortController();
+    fetch('/api/couple-world/quests', {
+      cache: 'no-store',
+      headers: { 'X-Circle-Id': activeCircleId },
+      signal: controller.signal,
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { completedMoments?: number } | null) => {
+        if (!controller.signal.aborted && typeof data?.completedMoments === 'number') {
+          setStoryLanternCount(data.completedMoments);
+        }
+      })
+      .catch(() => {}); // Decorative story lanterns never block entry into the world.
+
+    const onStoryUpdated = (event: Event) => {
+      const data = (event as CustomEvent<{ circleId: string; completedMoments: number }>).detail;
+      if (data?.circleId === activeCircleId && Number.isFinite(data.completedMoments)) {
+        setStoryLanternCount(data.completedMoments);
+      }
+    };
+    window.addEventListener('narinyland:couple-stories-updated', onStoryUpdated);
+    return () => {
+      controller.abort();
+      window.removeEventListener('narinyland:couple-stories-updated', onStoryUpdated);
+    };
+  }, [activeCircleId]);
 
   React.useEffect(() => {
     if (!activeLandId) {
@@ -70,9 +103,10 @@ export const GardenWorldStage: React.FC = () => {
             setSnapshot={setSnapshot}
             showToast={showToast}
             graphicsQuality={graphicsQuality}
+            storyLanternCount={storyLanternCount}
           />
         ) : (
-          <HexWorld3D snapshot={snapshot} graphicsQuality={graphicsQuality} />
+          <HexWorld3D snapshot={snapshot} graphicsQuality={graphicsQuality} storyLanternCount={storyLanternCount} />
         )}
       </div>
 
