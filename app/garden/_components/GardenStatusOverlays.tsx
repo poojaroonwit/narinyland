@@ -23,51 +23,51 @@ export const GardenStatusOverlays: React.FC = () => {
   return (
     <>
       {activeTab === 'home' && (
-        <div className="pointer-events-none fixed left-1/2 top-24 z-[60] flex -translate-x-1/2 flex-col items-center md:top-8">
+        <div className="pointer-events-none fixed left-1/2 top-36 z-[60] flex -translate-x-1/2 flex-col items-center md:top-[5.5rem]">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 pb-1.5 md:gap-16 md:pb-2"
+            className="cozy-float flex items-center gap-4 rounded-[1.2rem] px-4 py-2 md:gap-8 md:px-5"
           >
             <div className="flex flex-col items-center">
-              <span className="text-[7px] font-black uppercase tracking-widest text-pink-500 drop-shadow-sm md:text-[10px]">Together</span>
-              <span className="flex items-center gap-1 text-sm font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] md:gap-2 md:text-3xl">
+              <span className="text-[9px] font-semibold tracking-wide text-[#806757] md:text-[10px]">Together</span>
+              <span className="flex items-center gap-1 text-sm font-semibold text-[#4f4438] md:gap-2 md:text-3xl">
                 <i className="fas fa-heart animate-pulse text-[10px] text-red-500 md:text-xl" />
                 {daysTogether}
-                <span className="text-[10px] font-bold opacity-80 md:text-sm">Days</span>
+                <span className="text-[10px] font-medium opacity-80 md:text-sm">Days</span>
               </span>
             </div>
 
-            <div className="hidden h-10 w-px bg-white/20 md:block" />
+            <div className="hidden h-8 w-px bg-[#dfd1bf] md:block" />
 
             <div className="flex flex-col items-center">
-              <span className="text-[7px] font-black uppercase tracking-widest text-pink-500 drop-shadow-sm md:text-[10px]">Garden</span>
+              <span className="text-[9px] font-semibold tracking-wide text-[#806757] md:text-[10px]">Garden</span>
               <div className="flex items-center gap-2 md:gap-8">
                 <div className="flex flex-col items-center">
-                  <span className="flex items-center gap-1 text-xs font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] md:text-2xl"><span>🌸</span>{flowerCount}</span>
-                  <span className="text-[6px] font-black uppercase text-white/60 md:text-[8px]">Flowers</span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-[#4f4438] md:text-2xl"><span>🌸</span>{flowerCount}</span>
+                  <span className="text-[9px] font-medium text-[#897b6b]">Flowers</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className="flex items-center gap-1 text-xs font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] md:text-2xl"><span>🍃</span>{loveStats.leaves?.toLocaleString?.() ?? 0}</span>
-                  <span className="text-[6px] font-black uppercase text-white/60 md:text-[8px]">Leaves</span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-[#4f4438] md:text-2xl"><span>🍃</span>{loveStats.leaves?.toLocaleString?.() ?? 0}</span>
+                  <span className="text-[9px] font-medium text-[#897b6b]">Leaves</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className="flex items-center gap-1 text-xs font-black text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] md:text-2xl"><span>⭐</span>{loveStats.level}</span>
-                  <span className="text-[6px] font-black uppercase text-white/60 md:text-[8px]">Level</span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-[#8b704d] md:text-2xl"><span>⭐</span>{loveStats.level}</span>
+                  <span className="text-[9px] font-medium text-[#897b6b]">Level</span>
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="flex items-center gap-1 text-xs font-bold text-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] md:text-2xl"><span>🪙</span>{loveStats.points?.toLocaleString?.() ?? 0}</span>
-                  <span className="text-[6px] font-black uppercase text-white/60 md:text-[8px]">Points</span>
+                  <span className="text-[9px] font-medium text-[#897b6b]">Points</span>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          <div className="relative isolate mt-0.5 h-0.5 w-24 overflow-hidden rounded-full border border-white/5 bg-white/10 md:mt-1 md:h-1 md:w-96">
+          <div className="relative isolate mt-1 h-1 w-36 overflow-hidden rounded-full bg-[#e0d5c4] md:w-72">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(100, ((loveStats.xp || 0) / Math.max(1, (loveStats.level || 1) * 100)) * 100)}%` }}
-              className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-yellow-400"
+              className="h-full rounded-full bg-[#81a082]"
             />
           </div>
         </div>

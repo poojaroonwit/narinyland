@@ -52,7 +52,7 @@ export function HexLivingHUD({
   if (!state) {
     return (
       <div className="pointer-events-auto fixed left-1/2 top-4 z-[95] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-2">
-        <div className="rounded-full border border-white/70 bg-white/86 px-4 py-2 text-xs font-bold text-stone-600 shadow-xl backdrop-blur-xl">
+        <div className="cozy-float rounded-full px-4 py-2 text-xs font-semibold">
           {loading ? 'Waking the homestead…' : (
             <button type="button" onClick={onRetry} className="min-h-[36px] font-black text-rose-600">
               {error ? 'Life sync unavailable · Retry' : 'Load homestead life'}
@@ -86,7 +86,7 @@ export function HexLivingHUD({
   return (
     <>
       <div className="pointer-events-none fixed inset-x-3 top-3 z-[95] grid grid-cols-[auto_1fr_auto] items-start gap-2 md:inset-x-5 md:top-4">
-        <div className="pointer-events-auto flex min-h-[46px] items-center gap-2 rounded-[1.15rem] border border-white/75 bg-[#fffaf2]/90 px-3 py-2 shadow-lg shadow-emerald-950/[0.05] backdrop-blur-xl">
+        <div className="pointer-events-auto flex min-h-[46px] items-center gap-2 cozy-float rounded-[1.15rem] px-3 py-2">
           <span className="text-lg leading-none">{season.emoji}</span>
           <div className="leading-tight">
             <p className="text-[11px] font-black text-stone-800">Day {state.day} · {season.label}</p>
@@ -100,7 +100,7 @@ export function HexLivingHUD({
             data-hex-family-strip
             onClick={() => togglePanel('family')}
             aria-label="Open Family"
-            className={`flex min-h-[46px] max-w-full items-center gap-1.5 rounded-[1.35rem] border px-2 py-1.5 shadow-xl backdrop-blur-xl transition active:scale-[0.99] sm:gap-2 sm:px-3 ${activePanel === 'family' ? 'border-rose-300 bg-rose-500 text-white shadow-rose-950/15' : 'border-white/80 bg-[#fff7ef]/94 text-stone-700 shadow-rose-950/[0.07]'}`}
+            className={`flex min-h-[46px] max-w-full items-center gap-1.5 rounded-[1.15rem] border px-2 py-1.5 shadow-sm transition-colors active:scale-[0.99] sm:gap-2 sm:px-3 ${activePanel === 'family' ? 'border-[#90a88d] bg-[#476b55] text-white' : 'border-[#e1d5c3] bg-[#fffaf0] text-[#594d41]'}`}
           >
             <FamilyFace emoji="🙂" label="You" />
             <FamilyFace emoji="💞" label="Partner" />
@@ -114,16 +114,16 @@ export function HexLivingHUD({
           </button>
         </div>
 
-        <div className="pointer-events-auto flex max-w-[46vw] items-center justify-end gap-1 overflow-x-auto rounded-[1.15rem] border border-white/75 bg-[#fffaf2]/90 p-1 shadow-lg shadow-emerald-950/[0.05] backdrop-blur-xl md:max-w-none md:gap-1.5 md:p-1.5">
+        <div className="pointer-events-auto flex max-w-[46vw] items-center justify-end gap-1 overflow-x-auto cozy-float rounded-[1.15rem] p-1 md:max-w-none md:gap-1.5 md:p-1.5">
           <StatusChip copy={`⚡ ${state.energy}/${state.maxEnergy}`} label="Energy" />
           <StatusChip copy={`🪙 ${state.coins}`} label="Coins" />
-          <button type="button" onClick={() => togglePanel('journey')} className="hidden min-h-[40px] shrink-0 rounded-xl bg-sky-50 px-2.5 text-[9px] font-black text-sky-800 sm:block" aria-label="Open level progress">
+          <button type="button" onClick={() => togglePanel('journey')} className="hidden min-h-[40px] shrink-0 rounded-xl bg-[#ecf1e5] px-2.5 text-[10px] font-semibold text-[#456950] sm:block" aria-label="Open level progress">
             Lv {state.level} · {state.xp}/{nextXp}
           </button>
-          <button type="button" onClick={() => togglePanel('wallet')} className={`hidden min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black sm:block ${activePanel === 'wallet' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-800'}`}>
+          <button type="button" onClick={() => togglePanel('wallet')} className={`hidden min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black sm:block ${activePanel === 'wallet' ? 'bg-[#476b55] text-white' : 'bg-[#f0eadc] text-[#665747]'}`}>
             Wallet
           </button>
-          <button type="button" onClick={() => togglePanel('goals')} className={`hidden min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black md:block ${activePanel === 'goals' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'}`}>
+          <button type="button" onClick={() => togglePanel('goals')} className={`hidden min-h-[40px] shrink-0 rounded-xl px-2.5 text-[9px] font-black md:block ${activePanel === 'goals' ? 'bg-[#476b55] text-white' : 'bg-[#f0eadc] text-[#665747]'}`}>
             Goals {completedGoals}/{goals.length}
           </button>
           <MusicButton musicMuted={musicMuted} onToggle={onToggleMusic} />
@@ -134,7 +134,7 @@ export function HexLivingHUD({
         <div
           data-hex-hud-panel={activePanel}
           data-has-notices={hasNotices ? 'true' : 'false'}
-          className={`pointer-events-auto fixed right-3 top-[4.75rem] z-[96] w-[min(92vw,390px)] overflow-y-auto rounded-[1.4rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl md:right-5 md:top-[5.25rem] ${hasNotices ? 'max-h-[34vh]' : 'max-h-[52vh]'}`}
+          className={`pointer-events-auto fixed right-3 top-[4.75rem] z-[96] w-[min(92vw,390px)] overflow-y-auto cozy-surface rounded-[1.4rem] p-3.5 md:right-5 md:top-[5.25rem] ${hasNotices ? 'max-h-[34vh]' : 'max-h-[52vh]'}`}
         >
           <div className="mb-2 flex items-start justify-between gap-3">
             <div>
@@ -170,7 +170,7 @@ export function HexLivingHUD({
                   <span className={`text-[10px] font-black ${goal.complete ? 'text-emerald-600' : 'text-stone-300'}`}>{goal.complete ? '✓' : '○'}</span>
                 </div>
               ))}
-              <button type="button" disabled={!rewardReady || busy} onClick={() => void onAction({ type: 'claim_daily_reward' })} className="min-h-[44px] rounded-xl bg-emerald-700 px-3 text-[10px] font-black text-white shadow-md disabled:bg-stone-300">
+              <button type="button" disabled={!rewardReady || busy} onClick={() => void onAction({ type: 'claim_daily_reward' })} className="cozy-button-primary min-h-[44px] rounded-xl px-3 text-[11px] font-semibold">
                 {state.daily.rewardClaimed ? 'Daily reward claimed' : rewardReady ? 'Claim daily family reward' : 'Complete all Goals for reward'}
               </button>
             </div>
@@ -205,14 +205,14 @@ export function HexLivingHUD({
             : 'pointer-events-none fixed left-1/2 top-[9.75rem] z-[94] flex max-h-[38vh] w-[min(90vw,440px)] -translate-x-1/2 flex-col gap-2 overflow-y-auto md:top-[10.25rem]'}
         >
           {currentEvent && currentEventDefinition && (
-            <div className="pointer-events-auto rounded-[1.3rem] border border-white/80 bg-[#fffdf7]/95 p-3 shadow-xl shadow-pink-950/[0.06] backdrop-blur-xl">
+            <div className="pointer-events-auto cozy-surface rounded-[1.3rem] p-3">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-xl">{currentEvent.key === 'growing_together' ? '💗' : currentEvent.kind === 'seasonal' ? season.emoji : '✨'}</span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-black uppercase tracking-[0.16em] text-pink-600">{currentEvent.key === 'growing_together' ? 'Growing Together' : currentEvent.kind === 'seasonal' ? 'Seasonal moment' : 'Homestead moment'}</p>
                   <p className="mt-0.5 text-sm font-black text-stone-800">{currentEventDefinition.title}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {currentEventDefinition.choices.map((choice) => <button key={choice.key} type="button" disabled={busy} onClick={() => void onAction({ type: 'resolve_event', choiceKey: choice.key })} className="min-h-[40px] rounded-xl bg-pink-500 px-3 text-[9px] font-black text-white shadow-sm disabled:bg-stone-300">{choice.label}</button>)}
+                    {currentEventDefinition.choices.map((choice) => <button key={choice.key} type="button" disabled={busy} onClick={() => void onAction({ type: 'resolve_event', choiceKey: choice.key })} className="cozy-button-primary min-h-[40px] rounded-xl px-3 text-[10px] font-semibold">{choice.label}</button>)}
                   </div>
                 </div>
               </div>
@@ -220,10 +220,10 @@ export function HexLivingHUD({
           )}
 
           {showSeasonSummary && seasonSummary && (
-            <div className="pointer-events-auto rounded-[1.3rem] border border-white/80 bg-[#fffdf7]/96 p-3 shadow-xl backdrop-blur-xl">
+            <div className="pointer-events-auto cozy-surface rounded-[1.3rem] p-3">
               <div className="flex items-start justify-between gap-3">
                 <div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Season complete</p><p className="mt-0.5 text-sm font-black text-stone-800">{getSeasonPresentation(seasonSummary.completedSeason!).emoji} {getSeasonPresentation(seasonSummary.completedSeason!).label} together</p><p className="mt-1 text-[9px] font-bold text-stone-500">+{seasonSummary.seasonRewardCoins ?? 0} coins · +{seasonSummary.seasonRewardHearts ?? 0} Hearts</p></div>
-                <button type="button" onClick={() => setDismissedSeasonDay(seasonSummary.completedDay)} className="min-h-[40px] rounded-full bg-stone-100 px-3 text-[9px] font-black text-stone-500">Got it</button>
+                <button type="button" onClick={() => setDismissedSeasonDay(seasonSummary.completedDay)} className="cozy-button-secondary min-h-[40px] rounded-full px-3 text-[11px] font-semibold">Got it</button>
               </div>
             </div>
           )}

@@ -48,7 +48,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex w-full justify-center pt-12 md:pt-20"
+            className="flex w-full justify-center px-2 pt-20 sm:px-5 md:pt-24"
           >
             <CoupleWorldAdventure key={activeCircleId || 'no-world'} />
           </motion.div>
@@ -58,7 +58,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex w-full justify-center pt-12 md:pt-24"
+            className="flex w-full justify-center px-3 pt-20 md:pt-24"
           >
             <Timeline
               interactions={combinedInteractions}
@@ -100,7 +100,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex w-full justify-center overflow-y-auto px-4 pt-12 md:pt-24"
+            className="flex w-full justify-center overflow-y-auto px-4 pt-20 md:pt-24"
           >
             <Shop
               points={loveStats.points}
@@ -147,56 +147,36 @@ export const GardenAcceptedContent: React.FC = () => {
       </div>
 
       <nav
-        className="pointer-events-auto fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-white/50 bg-white/80 px-3 py-3 shadow-2xl backdrop-blur-md sm:gap-6 sm:px-5 md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] md:gap-8 md:px-6"
+        className="cozy-nav pointer-events-auto fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 rounded-[1.35rem] p-1.5 sm:gap-2 sm:p-2 md:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
         aria-label="Garden navigation"
       >
-        <button
-          type="button"
-          onClick={() => switchTab('home')}
-          className={`flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'home' ? 'scale-110 text-pink-500' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <i className="fas fa-home text-xl" />
-          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Home</span>
+        <button type="button" onClick={() => switchTab('home')} data-active={activeTab === 'home'} aria-current={activeTab === 'home' ? 'page' : undefined}
+          className="cozy-nav-item flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
+          <i className="fas fa-house-chimney text-lg" aria-hidden="true" />
+          <span className="text-[10px] font-semibold sm:text-xs">Home</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => switchTab('quests')}
-          className={activeTab === 'quests'
-            ? 'flex min-w-0 scale-110 flex-col items-center gap-1 text-violet-600 transition-all duration-300'
-            : 'flex min-w-0 flex-col items-center gap-1 text-gray-400 transition-all duration-300 hover:text-gray-600'}
-        >
-          <i className="fas fa-map-signs text-xl" />
-          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Adventures</span>
+        <button type="button" onClick={() => switchTab('quests')} data-active={activeTab === 'quests'} aria-current={activeTab === 'quests' ? 'page' : undefined}
+          className="cozy-nav-item flex min-w-[62px] flex-1 flex-col items-center gap-1 px-1.5 py-2 sm:min-w-[84px]">
+          <i className="fas fa-map-signs text-lg" aria-hidden="true" />
+          <span className="text-[10px] font-semibold sm:text-xs">Adventures</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => switchTab('timeline')}
-          className={`flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'timeline' ? 'scale-110 text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <i className="fas fa-calendar-alt text-xl" />
-          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Timeline</span>
+        <button type="button" onClick={() => switchTab('timeline')} data-active={activeTab === 'timeline'} aria-current={activeTab === 'timeline' ? 'page' : undefined}
+          className="cozy-nav-item flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
+          <i className="fas fa-book-open text-lg" aria-hidden="true" />
+          <span className="text-[10px] font-semibold sm:text-xs">Timeline</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => switchTab('coupons')}
-          className={`flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'coupons' ? 'scale-110 text-purple-500' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <i className="fas fa-ticket-alt text-xl" />
-          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Coupons</span>
+        <button type="button" onClick={() => switchTab('coupons')} data-active={activeTab === 'coupons'} aria-current={activeTab === 'coupons' ? 'page' : undefined}
+          className="cozy-nav-item flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
+          <i className="fas fa-gift text-lg" aria-hidden="true" />
+          <span className="text-[10px] font-semibold sm:text-xs">Coupons</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => switchTab('letters')}
-          className={`relative flex min-w-0 flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'letters' ? 'scale-110 text-rose-500' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <i className="fas fa-envelope text-xl" />
-          <span className="text-[9px] font-bold uppercase tracking-wide sm:text-[10px]">Letters</span>
+        <button type="button" onClick={() => switchTab('letters')} data-active={activeTab === 'letters'} aria-current={activeTab === 'letters' ? 'page' : undefined}
+          className="cozy-nav-item relative flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
+          <i className="fas fa-envelope-open-text text-lg" aria-hidden="true" />
+          <span className="text-[10px] font-semibold sm:text-xs">Letters</span>
           {loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm">
+            <span className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#aa6659] px-1 text-[10px] font-semibold text-white"
+              aria-label={loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length + ' unread letters'}>
               {loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length}
             </span>
           )}

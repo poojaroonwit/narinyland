@@ -38,6 +38,7 @@ export const GardenTopControls: React.FC = () => {
     handleSelectLand,
     showToast,
     isMobile,
+    activeTab,
   } = useGardenPageContext();
 
   const activeLand = appConfig.lands?.find((land: { isActive?: boolean }) => land.isActive) ?? appConfig.lands?.[0];
@@ -142,11 +143,11 @@ export const GardenTopControls: React.FC = () => {
 
   return (
     <>
-      <div className="fixed right-4 top-4 z-[70] flex items-center gap-3 md:right-6 md:gap-4">
+      <div className={`fixed right-3 z-[70] flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 sm:gap-2 md:right-5 ${activeTab === 'home' ? 'top-[calc(5.4rem+env(safe-area-inset-top))]' : 'top-[calc(0.9rem+env(safe-area-inset-top))]'}`}>
         <button
           type="button"
           onClick={toggleVolumePanel}
-          className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all hover:scale-110 ${isMusicMuted ? 'border-gray-400/50 bg-gray-500/40 text-white' : 'border-white/50 bg-white/40 text-pink-500'}`}
+          className={`cozy-float flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors hover:bg-[#f2ebdf] ${isMusicMuted ? 'text-[#88796b]' : 'text-[#446e55]'}`}
           aria-label={isMusicMuted ? 'Open sound controls' : 'Open music controls'}
         >
           <i className={`fas ${isMusicMuted ? 'fa-volume-mute' : 'fa-music'} text-xs`} />
@@ -156,11 +157,11 @@ export const GardenTopControls: React.FC = () => {
           <button
             type="button"
             onClick={toggleCircleDropdown}
-            className="flex h-10 items-center gap-2 rounded-full border border-white/50 bg-white/40 px-4 text-gray-700 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:bg-white/60"
+            className="cozy-float flex h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-[#51483d] transition-colors hover:bg-[#f2ebdf] sm:px-4"
             aria-expanded={isCircleDropdownOpen}
           >
-            <i className="fas fa-globe-asia text-xs text-emerald-500" />
-            <span className="max-w-[80px] truncate text-xs font-bold md:max-w-[120px]">
+            <i className="fas fa-globe-asia text-xs text-[#54785c]" />
+            <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">
               {circles.find((circle: { id: string }) => circle.id === activeCircleId)?.name || 'Select World'}
             </span>
             <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isCircleDropdownOpen ? 'rotate-180' : ''}`} />
@@ -174,14 +175,14 @@ export const GardenTopControls: React.FC = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setIsCircleDropdownOpen(false)}
-                  className="fixed inset-0 z-[75] bg-black/40 backdrop-blur-sm md:hidden"
+                  className="fixed inset-0 z-[75] bg-[#322c24]/35 backdrop-blur-sm md:hidden"
                 />
                 <motion.div
                   initial={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
                   animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
                   exit={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                  className="fixed bottom-0 z-[80] w-full overflow-hidden rounded-t-[2.5rem] border-t border-pink-100 bg-white/95 shadow-2xl backdrop-blur-xl md:absolute md:bottom-auto md:right-0 md:top-full md:mt-3 md:w-64 md:rounded-md md:border"
+                  className="cozy-surface fixed bottom-0 z-[80] w-full overflow-hidden rounded-t-[2rem] md:absolute md:bottom-auto md:right-0 md:top-full md:mt-2 md:w-64 md:rounded-2xl"
                 >
                   <div className="flex justify-center pb-2 pt-4 md:hidden"><div className="h-1.5 w-12 rounded-full bg-gray-200" /></div>
                   <div className="p-6 md:p-1.5">
@@ -190,7 +191,7 @@ export const GardenTopControls: React.FC = () => {
                       <span className="text-[9px] font-black uppercase tracking-[0.18em] text-pink-400">Create World</span>
                       <i className="fas fa-circle-plus text-[10px] text-pink-300" />
                     </div>
-                    <form onSubmit={handleCreateWorld} className="mb-3 flex items-center gap-2 rounded-full border border-pink-100 bg-pink-50/80 p-1.5 md:mb-1.5 md:rounded-md">
+                    <form onSubmit={handleCreateWorld} className="mb-3 flex items-center gap-2 rounded-xl border border-[#e1d4c1] bg-[#f9f1e6] p-1.5 md:mb-2">
                       <input
                         value={newWorldName}
                         onChange={(event) => setNewWorldName(event.target.value)}
@@ -203,7 +204,7 @@ export const GardenTopControls: React.FC = () => {
                       <button
                         type="submit"
                         disabled={!newWorldName.trim() || isCreatingWorld}
-                        className="h-9 w-9 shrink-0 rounded-full bg-pink-500 text-white shadow-md transition-all hover:bg-pink-600 disabled:bg-pink-200"
+                        className="cozy-button-primary h-9 w-9 shrink-0 rounded-xl transition-colors"
                         aria-label="Create world"
                       >
                         <i className={`fas ${isCreatingWorld ? 'fa-spinner fa-spin' : 'fa-plus'} text-[11px]`} />
@@ -218,7 +219,7 @@ export const GardenTopControls: React.FC = () => {
                             setIsCircleDropdownOpen(false);
                             await setActiveCircle(circle.id, circle);
                           }}
-                          className={`flex w-full items-center justify-between rounded-full px-6 py-4 text-left text-sm font-bold transition-all md:rounded-md md:px-4 md:py-2.5 md:text-xs ${circle.id === activeCircleId ? 'bg-pink-500 text-white shadow-md' : 'text-gray-600 hover:bg-pink-50 hover:text-pink-600'}`}
+                          className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors md:py-2.5 md:text-xs ${circle.id === activeCircleId ? 'bg-[#54725b] text-white' : 'text-[#665c50] hover:bg-[#eff1e7] hover:text-[#476b55]'}`}
                         >
                           <span className="truncate">{circle.name}</span>
                           {circle.id === activeCircleId && <i className="fas fa-check text-[10px]" />}
@@ -237,11 +238,11 @@ export const GardenTopControls: React.FC = () => {
           <button
             type="button"
             onClick={toggleLandDropdown}
-            className="flex h-10 items-center gap-2 rounded-full border border-white/50 bg-white/40 px-4 text-gray-700 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:bg-white/60"
+            className="cozy-float flex h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-[#51483d] transition-colors hover:bg-[#f2ebdf] sm:px-4"
             aria-expanded={isLandDropdownOpen}
           >
-            <i className="fas fa-map-marked-alt text-xs text-amber-500" />
-            <span className="max-w-[80px] truncate text-xs font-bold md:max-w-[120px]">{activeLand?.name || 'Select Land'}</span>
+            <i className="fas fa-map-marked-alt text-xs text-[#8f7952]" />
+            <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">{activeLand?.name || 'Select Land'}</span>
             <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
@@ -251,13 +252,13 @@ export const GardenTopControls: React.FC = () => {
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="absolute right-0 mt-3 w-56 overflow-hidden rounded-md border border-pink-100 bg-white/90 p-1.5 shadow-2xl backdrop-blur-xl"
+                className="cozy-surface absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl p-2"
               >
                 <div className="mb-2 flex items-center justify-between px-2 pt-1">
                   <span className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-500">Create Land</span>
                   <i className="fas fa-circle-plus text-[10px] text-amber-300" />
                 </div>
-                <form onSubmit={handleCreateLand} className="mb-1.5 flex items-center gap-2 rounded-md border border-amber-100 bg-amber-50/80 p-1.5">
+                <form onSubmit={handleCreateLand} className="mb-2 flex items-center gap-2 rounded-xl border border-[#e1d4c1] bg-[#f9f1e6] p-1.5">
                   <input
                     value={newLandName}
                     onChange={(event) => setNewLandName(event.target.value)}
@@ -270,7 +271,7 @@ export const GardenTopControls: React.FC = () => {
                   <button
                     type="submit"
                     disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
-                    className="h-8 w-8 shrink-0 rounded-full bg-amber-500 text-white shadow-md transition-all hover:bg-amber-600 disabled:bg-amber-200"
+                    className="cozy-button-primary h-9 w-9 shrink-0 rounded-xl transition-colors"
                     aria-label="Create land"
                   >
                     <i className={`fas ${isCreatingLand ? 'fa-spinner fa-spin' : 'fa-plus'} text-[10px]`} />
@@ -282,7 +283,7 @@ export const GardenTopControls: React.FC = () => {
                       type="button"
                       key={land.id}
                       onClick={() => selectLand(land.id)}
-                      className={`flex w-full items-center justify-between rounded-full px-4 py-2.5 text-left text-xs font-bold transition-all ${land.id === activeLand?.id ? 'bg-amber-500 text-white shadow-md' : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'}`}
+                      className={`flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-xs font-semibold transition-colors ${land.id === activeLand?.id ? 'bg-[#54725b] text-white' : 'text-[#665c50] hover:bg-[#eff1e7] hover:text-[#476b55]'}`}
                     >
                       <span className="truncate">{land.name}</span>
                       {land.id === activeLand?.id && <i className="fas fa-check text-[10px]" />}
