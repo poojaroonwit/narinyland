@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { getAppKitDomain } from '@/lib/appkit-server';
-import { validateAppKitAccessToken } from '@/lib/auth-server';
+import { validateAppKitOAuthAccessToken } from '@/lib/auth-server';
 import { getTrustedNarinylandOrigin } from '@/lib/narinyland-public-origin';
 import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/session-store';
 
@@ -112,7 +112,7 @@ export async function GET(req: Request) {
       return response;
     }
 
-    const user = await validateAppKitAccessToken(accessToken);
+    const user = await validateAppKitOAuthAccessToken(accessToken);
     if (!user) {
       const response = loginError(origin, 'appkit_sso_identity_invalid');
       clearFlowCookies(response);

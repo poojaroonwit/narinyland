@@ -32,52 +32,81 @@ function stringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-/**
- * Validate an AppKit bearer token with AppKit itself. Never derive identity from
- * an unsigned JWT payload in Narinyland.
- */
-export async function validateAppKitAccessToken(token: string): Promise<NarinylandSessionUser | null> {
+function verifiedAppKitUser(raw: Record<string, unknown>, requireOAuthSubject: boolean): NarinylandSessionUser | null {
+  const nested = raw.user && typeof raw.user === 'object' && !Array.isArray(raw.user)
+    ? raw.user as Record<string, unknown>
+    : raw;
+  // Never accept a service principal as an interactive application user.
+  if (raw.is_service === true || nested.is_service === true || nested.isActive === false) return null;
+
+  const sub = requireOAuthSubject
+    ? stringValue(nested.sub)
+    : stringValue(nested.id) || stringValue(nested.sub);
+  if (!sub) return null;
+
+  const firstName = stringValue(nested.firstName) || stringValue(nested.given_name);
+  const lastName = stringValue(nested.lastName) || stringValue(nested.family_name);
+  const attributes = nested.attributes && typeof nested.attributes === 'object' && !Array.isArray(nested.attributes)
+    ? nested.attributes as Record<string, unknown>
+    : {};
+
+  return {
+    id: sub,
+    sub,
+    name: stringValue(nested.name) || `${firstName} ${lastName}`.trim(),
+    email: stringValue(nested.email),
+    avatar:
+      stringValue(nested.avatar) ||
+      stringValue(nested.avatarUrl) ||
+      stringValue(nested.picture) ||
+      stringValue(nested.profile_image) ||
+      stringValue(nested.image),
+    attributes,
+    authSource: 'appkit',
+  };
+}
+
+async function verifiedAppKitProfile(
+  token: string,
+  endpoint: '/api/v1/users/me' | '/oauth/userinfo',
+): Promise<NarinylandSessionUser | null> {
   if (!token) return null;
   try {
-    const response = await fetchWithTimeout(`${getAppKitDomain()}/api/v1/users/me`, {
+    const response = await fetchWithTimeout(`${getAppKitDomain()}${endpoint}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
       },
     });
-    if (!response.ok) return null;
-
-    const raw = await response.json().catch(() => ({})) as Record<string, unknown>;
-    const nested = raw.user && typeof raw.user === 'object' && !Array.isArray(raw.user)
-      ? raw.user as Record<string, unknown>
-      : raw;
-    const sub = stringValue(nested.id) || stringValue(nested.sub);
-    if (!sub) return null;
-
-    const firstName = stringValue(nested.firstName) || stringValue(nested.given_name);
-    const lastName = stringValue(nested.lastName) || stringValue(nested.family_name);
-    const attributes = nested.attributes && typeof nested.attributes === 'object' && !Array.isArray(nested.attributes)
-      ? nested.attributes as Record<string, unknown>
-      : {};
-
-    return {
-      id: sub,
-      sub,
-      name: stringValue(nested.name) || `${firstName} ${lastName}`.trim(),
-      email: stringValue(nested.email),
-      avatar:
-        stringValue(nested.avatar) ||
-        stringValue(nested.avatarUrl) ||
-        stringValue(nested.picture) ||
-        stringValue(nested.profile_image) ||
-        stringValue(nested.image),
-      attributes,
-      authSource: 'appkit',
-    };
+    if (!response.ok) {
+      debugWarn('BFF: AppKit rejected identity verification.', { endpoint, status: response.status });
+      return null;
+    }
+    const payload = await response.json().catch(() => null) as unknown;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+    return verifiedAppKitUser(payload as Record<string, unknown>, endpoint === '/oauth/userinfo');
   } catch (error) {
     debugWarn('BFF: AppKit token validation failed.', error instanceof Error ? error.message : 'unknown error');
     return null;
   }
+}
+
+/**
+ * Headless AppKit user-session tokens are authenticated by /api/v1/users/me.
+ * The endpoint validates the AppKit user-session signature and account.
+ */
+export async function validateAppKitAccessToken(token: string): Promise<NarinylandSessionUser | null> {
+  return verifiedAppKitProfile(token, '/api/v1/users/me');
+}
+
+/**
+ * OAuth authorization-code access tokens use the AppKit OAuth signing keys.
+ * The OAuth UserInfo endpoint verifies those tokens (including revocation),
+ * while /api/v1/users/me only accepts AppKit headless user-session tokens.
+ * Never use an unverified JWT payload as the identity.
+ */
+export async function validateAppKitOAuthAccessToken(token: string): Promise<NarinylandSessionUser | null> {
+  return verifiedAppKitProfile(token, '/oauth/userinfo');
 }
 
 async function persistOpaqueSession(user: NarinylandSessionUser): Promise<string> {
