@@ -19,173 +19,99 @@ const GAMEPLAY_STAGES = [
   {
     label: 'Arrive',
     icon: 'fa-house-chimney',
-    eyebrow: 'Land ready',
-    copy: 'Your floating home settles into view and the shared world is ready to shape.',
+    eyebrow: 'A place to come home to',
+    copy: 'Step onto your own little floating island. There is always room for another memory.',
   },
   {
     label: 'Build',
     icon: 'fa-hammer',
-    eyebrow: 'Build · Utility',
-    copy: 'Pick a building, preview its footprint, rotate it, and place it directly on the island.',
+    eyebrow: 'Make it yours',
+    copy: 'Put down a workshop, a bench, or a cozy corner. Shape your home, one small piece at a time.',
   },
   {
     label: 'Grow',
     icon: 'fa-seedling',
-    eyebrow: 'Build · Nature',
-    copy: 'Add a Garden Patch, flowers, trees, and cozy details that make the homestead feel alive.',
+    eyebrow: 'Let things bloom',
+    copy: 'Plant a garden, watch your home soften with greenery, and make space for quiet afternoons.',
   },
   {
     label: 'Edit',
     icon: 'fa-pen-ruler',
-    eyebrow: 'Shape what you placed',
-    copy: 'Select an existing object and use the same Move, Rotate, and Remove actions as the real builder.',
+    eyebrow: 'Change with the seasons',
+    copy: 'Move things around whenever you like. A shared home is always a work in progress.',
   },
   {
     label: 'Expand',
     icon: 'fa-up-right-and-down-left-from-center',
-    eyebrow: 'Expand Land',
-    copy: 'Choose an amber edge cluster, spend shared Points, and unlock more room for the homestead.',
+    eyebrow: 'A little more room',
+    copy: 'As you play together, new pieces of the island become part of your story.',
   },
   {
     label: 'Together',
     icon: 'fa-heart',
-    eyebrow: 'Your world grew',
-    copy: 'The new land settles in and the completed homestead becomes one shared place to keep growing.',
+    eyebrow: 'Better, together',
+    copy: 'The island grows into a place for two: a home for everyday adventures and little surprises.',
   },
 ] as const;
 
 const CINEMATIC_MOTES = [
-  { left: '7%', top: '19%', size: 5, delay: 0.2, duration: 8, drift: 11 },
-  { left: '18%', top: '67%', size: 3, delay: 1.2, duration: 10, drift: -9 },
-  { left: '33%', top: '24%', size: 4, delay: 2.0, duration: 9, drift: 7 },
-  { left: '49%', top: '74%', size: 5, delay: 0.8, duration: 11, drift: -11 },
-  { left: '62%', top: '18%', size: 3, delay: 2.8, duration: 8, drift: 9 },
-  { left: '73%', top: '58%', size: 4, delay: 1.6, duration: 12, drift: -7 },
-  { left: '84%', top: '28%', size: 5, delay: 2.5, duration: 10, drift: 12 },
-  { left: '93%', top: '70%', size: 3, delay: 0.4, duration: 9, drift: -10 },
+  { left: '8%', top: '22%', size: 3, delay: 0.2, duration: 10, drift: 7 },
+  { left: '23%', top: '58%', size: 4, delay: 1.2, duration: 12, drift: -7 },
+  { left: '45%', top: '18%', size: 3, delay: 2.0, duration: 9, drift: 6 },
+  { left: '67%', top: '65%', size: 4, delay: 0.8, duration: 13, drift: -8 },
+  { left: '84%', top: '25%', size: 3, delay: 2.8, duration: 10, drift: 7 },
 ] as const;
 
+/** Read-only descriptions of the *real* 3D demo states, not fake game controls. */
 function GameplayDetailPanel({ stage, points }: { stage: (typeof GAMEPLAY_STAGES)[number]; points: number }) {
+  const chip = 'rounded-lg border border-[#e8ddca] bg-[#fffdf7]/90 px-2.5 py-1.5 text-[11px] font-medium text-[#6c6151]';
   return (
-    <div className="mt-3 border-t border-stone-900/[0.06] pt-3">
+    <div className="mt-4 border-t border-[#e8ddca] pt-3">
       {stage.label === 'Arrive' && (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl bg-white/56 p-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-emerald-700">Land ready</p>
-            <p className="mt-1 text-sm font-black text-stone-900">Home</p>
-            <p className="text-[10px] font-semibold text-stone-500">Overview camera</p>
-          </div>
-          <div className="rounded-2xl bg-white/56 p-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-amber-600">Shared balance</p>
-            <p className="mt-1 text-sm font-black text-stone-900">{points} Points</p>
-            <p className="text-[10px] font-semibold text-stone-500">Ready to build</p>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <span className={chip}>🏡 Land ready</span>
+          <span className={chip}>✧ {points} shared Points</span>
         </div>
       )}
-
       {stage.label === 'Build' && (
-        <div>
-          <div className="flex gap-1.5">
-            {BUILDER_CATEGORIES.map((category) => (
-              <span key={category} className={`rounded-full px-2.5 py-1 text-[9px] font-black ${category === 'Utility' ? 'bg-emerald-700 text-white' : 'bg-white/55 text-stone-500'}`}>
-                {category}
-              </span>
-            ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {BUILDER_CATEGORIES.map((category) => <span key={category} className={chip}>{category}</span>)}
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl border border-emerald-400/70 bg-emerald-50/80 p-2.5 shadow-sm">
-              <div className="flex items-center justify-between"><span className="text-lg">🛠️</span><span className="text-[9px] font-black text-emerald-700">2⬡</span></div>
-              <p className="mt-1 text-xs font-black text-stone-800">Workshop</p>
-            </div>
-            <div className="rounded-2xl bg-white/55 p-2.5">
-              <div className="flex items-center justify-between"><span className="text-lg">📦</span><span className="text-[9px] font-black text-stone-400">1⬡</span></div>
-              <p className="mt-1 text-xs font-black text-stone-700">Storage</p>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-2xl bg-emerald-950/[0.06] p-2.5">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Ghost preview</p>
-              <p className="text-[10px] font-bold text-stone-500">Valid placement · grass</p>
-            </div>
-            <div className="flex gap-1.5">
-              <button type="button" className="rounded-full bg-white/75 px-2.5 py-1.5 text-[9px] font-black text-stone-600">Rotate 60°</button>
-              <button type="button" className="rounded-full bg-emerald-700 px-3 py-1.5 text-[9px] font-black text-white">Place</button>
-            </div>
+          <div className="flex flex-wrap gap-1.5">
+            <span className={chip}>🛠️ Workshop</span>
+            <span className={chip}>Ghost preview</span>
+            <span className={chip}>Rotate 60°</span>
+            <span className={chip}>Place</span>
           </div>
         </div>
       )}
-
       {stage.label === 'Grow' && (
-        <div>
-          <div className="flex gap-1.5">
-            {BUILDER_CATEGORIES.map((category) => (
-              <span key={category} className={`rounded-full px-2.5 py-1 text-[9px] font-black ${category === 'Nature' ? 'bg-emerald-700 text-white' : 'bg-white/55 text-stone-500'}`}>
-                {category}
-              </span>
-            ))}
-          </div>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            {[
-              ['🌱', 'Garden Patch'],
-              ['🌸', 'Flower Patch'],
-              ['🌳', 'Tree'],
-            ].map(([icon, label]) => (
-              <div key={label} className="rounded-2xl bg-white/58 p-2 text-center shadow-sm">
-                <div className="text-lg">{icon}</div>
-                <p className="mt-1 truncate text-[9px] font-black text-stone-700">{label}</p>
-              </div>
-            ))}
-          </div>
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-2 flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2 shadow-sm"
-          >
-            <span className="text-[10px] font-black text-stone-700">Bench placed · Undo</span>
-            <span className="text-[9px] font-black text-emerald-700">+45 Points</span>
-          </motion.div>
+        <div className="flex flex-wrap gap-1.5">
+          <span className={chip}>🌱 Garden Patch</span>
+          <span className={chip}>🌸 Flowers</span>
+          <span className={chip}>🪑 Bench placed · Undo</span>
         </div>
       )}
-
       {stage.label === 'Edit' && (
-        <div className="rounded-2xl bg-white/60 p-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Bench selected</p>
-              <p className="mt-0.5 text-[10px] font-semibold text-stone-500">Context actions stay close to the world</p>
-            </div>
-            <span className="text-lg">🪑</span>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <button type="button" className="rounded-xl bg-stone-100 px-2 py-2 text-[10px] font-black text-stone-700">Move</button>
-            <button type="button" className="rounded-xl bg-stone-100 px-2 py-2 text-[10px] font-black text-stone-700">Rotate</button>
-            <button type="button" className="rounded-xl bg-rose-50 px-2 py-2 text-[10px] font-black text-rose-600">Remove</button>
-          </div>
+        <div className="flex flex-wrap gap-1.5">
+          <span className={chip}>🪑 Bench</span>
+          <span className={chip}>Move</span>
+          <span className={chip}>Rotate</span>
+          <span className={chip}>Remove</span>
         </div>
       )}
-
       {stage.label === 'Expand' && (
-        <div className="rounded-2xl bg-amber-50/75 p-3 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.15em] text-amber-600">Expand Land</p>
-              <p className="mt-1 text-sm font-black text-stone-900">+7 hexes · 100 Points</p>
-              <p className="mt-0.5 text-[9px] font-bold text-stone-500">{points} shared Points · amber edge selected</p>
-            </div>
-            <button type="button" className="rounded-full bg-amber-500 px-3 py-2 text-[9px] font-black text-white shadow-md">Confirm</button>
-          </div>
+        <div className="flex flex-wrap gap-1.5">
+          <span className={chip}>✧ +7 hexes</span>
+          <span className={chip}>100 Points</span>
+          <span className={chip}>{points} shared Points</span>
         </div>
       )}
-
       {stage.label === 'Together' && (
-        <div className="rounded-2xl bg-white/64 p-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 text-pink-500">♥</span>
-            <div className="min-w-0">
-              <p className="text-sm font-black text-stone-900">Your world grew</p>
-              <p className="text-[10px] font-semibold text-stone-500">+7 hexes unlocked · {points} Points remaining</p>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-1.5">
+          <span className={chip}>♥ Your world grew</span>
+          <span className={chip}>✧ {points} Points</span>
         </div>
       )}
     </div>
@@ -196,20 +122,20 @@ export function LandingWorldExperience() {
   const snapshots = React.useMemo(() => createLandingGameplaySnapshots(), []);
   const prefersReducedMotion = useReducedMotion();
   const [stageIndex, setStageIndex] = React.useState(0);
+  const [isPlaying, setIsPlaying] = React.useState(true);
   const [entering, setEntering] = React.useState(false);
   const activeStageIndex = prefersReducedMotion ? GAMEPLAY_STAGES.length - 1 : stageIndex;
   const activeStage = GAMEPLAY_STAGES[activeStageIndex];
   const activeSnapshot = snapshots[activeStageIndex];
 
   React.useEffect(() => {
-    if (prefersReducedMotion) return;
-
-    const interval = window.setInterval(() => {
-      setStageIndex((current) => (current + 1) % GAMEPLAY_STAGES.length);
-    }, GAMEPLAY_LOOP_MS / GAMEPLAY_STAGES.length);
-
+    if (prefersReducedMotion || !isPlaying) return;
+    const interval = window.setInterval(
+      () => setStageIndex((current) => (current + 1) % GAMEPLAY_STAGES.length),
+      GAMEPLAY_LOOP_MS / GAMEPLAY_STAGES.length,
+    );
     return () => window.clearInterval(interval);
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, isPlaying]);
 
   const buildingPreview = activeStage.label === 'Build'
     ? { buildingKey: 'workshop', anchorQ: BUILD_ANCHOR.q, anchorR: BUILD_ANCHOR.r, rotation: 1 as const, valid: true }
@@ -243,205 +169,184 @@ export function LandingWorldExperience() {
   };
 
   return (
-    <main className="relative h-[100svh] min-h-[42rem] overflow-hidden bg-[#f4efe4] text-stone-800">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#f4efe4]">
-        <motion.div
-          className="absolute -right-[13vw] -top-[15vh] h-[58vw] min-h-[32rem] w-[58vw] min-w-[32rem] rounded-full bg-white/60 blur-3xl"
-          animate={prefersReducedMotion ? { x: 0, y: 0 } : { x: [0, 18, -8, 0], y: [0, 10, -5, 0] }}
-          transition={prefersReducedMotion ? { duration: 0 } : { duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_12%,rgba(255,255,255,0.92),transparent_29%),radial-gradient(circle_at_10%_50%,rgba(216,241,211,0.78),transparent_32%),radial-gradient(circle_at_76%_78%,rgba(199,233,208,0.72),transparent_37%)]" />
-        <motion.div
-          className="absolute -left-[14vw] bottom-[-30vh] h-[62vw] min-h-[34rem] w-[62vw] min-w-[34rem] rounded-full bg-white/28 blur-3xl"
-          animate={prefersReducedMotion ? { scale: 1 } : { scale: [1, 1.08, 1], opacity: [0.25, 0.42, 0.25] }}
-          transition={prefersReducedMotion ? { duration: 0 } : { duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-        />
+    <main className="relative isolate h-[100svh] min-h-[42rem] overflow-hidden bg-[#f8f2e8] text-[#443b32]">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[radial-gradient(ellipse_at_70%_33%,#f4f8e9_0%,#f5efe2_49%,#f8f2e8_100%)]">
+        <div className="absolute -right-[15%] -top-[25%] h-[60vw] min-h-[34rem] w-[60vw] min-w-[34rem] rounded-full bg-[#fffaf0]/75 blur-3xl" />
+        <div className="absolute -left-[25%] bottom-[-48%] h-[60vw] min-h-[30rem] w-[60vw] min-w-[30rem] rounded-full bg-[#e8e4d2]/65 blur-3xl" />
       </div>
 
-      <section className="relative z-10 h-full w-full">
+      <section aria-label="Preview of your floating world" className="absolute inset-0 z-10">
         <motion.div
-          className="absolute -inset-3"
-          initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 1.025 }}
+          className="absolute -inset-2"
+          initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 1.02 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: prefersReducedMotion ? 0.2 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: prefersReducedMotion ? 0.2 : 0.9 }}
         >
-          <motion.div
-            className="h-full w-full"
-            animate={prefersReducedMotion ? { x: 0, y: 0, scale: 1 } : { x: [0, 4, -3, 0], y: [0, -3, 2, 0], scale: [1, 1.004, 1.002, 1] }}
-            transition={prefersReducedMotion ? { duration: 0 } : { duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <HexWorld3D
-              snapshot={activeSnapshot}
-              graphicsQuality="medium"
-              buildingPreview={buildingPreview}
-              selectedCoord={selectedCoord}
-              selectedBuildingId={selectedBuildingId}
-              validKeys={validKeys}
-              expansionOptions={expansionOptions}
-              selectedExpansionKey={selectedExpansionKey}
-              newlyAddedKeys={newlyAddedKeys}
-              reframeCoords={newlyAddedCoords}
-              cameraIntent={cameraIntent}
-            />
-          </motion.div>
-        </motion.div>
-
-        <AnimatePresence initial={false}>
-          <motion.div
-            key={`stage-wash-${activeStageIndex}`}
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[15] bg-[#f4efe4]"
-            initial={{ opacity: prefersReducedMotion ? 0 : 0.17 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.38 }}
+          <HexWorld3D
+            snapshot={activeSnapshot}
+            graphicsQuality="medium"
+            buildingPreview={buildingPreview}
+            selectedCoord={selectedCoord}
+            selectedBuildingId={selectedBuildingId}
+            validKeys={validKeys}
+            expansionOptions={expansionOptions}
+            selectedExpansionKey={selectedExpansionKey}
+            newlyAddedKeys={newlyAddedKeys}
+            reframeCoords={newlyAddedCoords}
+            cameraIntent={cameraIntent}
           />
-        </AnimatePresence>
+        </motion.div>
+      </section>
 
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-          {CINEMATIC_MOTES.map((mote, index) => (
-            <motion.span
-              key={`${mote.left}-${mote.top}`}
-              className={`absolute rounded-full ${index % 3 === 0 ? 'bg-white/75' : index % 3 === 1 ? 'bg-emerald-100/80' : 'bg-amber-100/75'}`}
-              style={{ left: mote.left, top: mote.top, width: mote.size, height: mote.size }}
-              animate={prefersReducedMotion
-                ? { opacity: 0.28 }
-                : { x: [0, mote.drift, 0], y: [0, -12 - (index % 3) * 4, 0], opacity: [0.16, 0.66, 0.16] }}
-              transition={prefersReducedMotion
-                ? { duration: 0 }
-                : { duration: mote.duration, delay: mote.delay, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          ))}
-        </div>
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={activeStage.label}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[15] bg-[#f8f2e8]"
+          initial={{ opacity: prefersReducedMotion ? 0 : 0.13 }}
+          animate={{ opacity: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.6 }}
+        />
+      </AnimatePresence>
 
-        <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-[#f4efe4]/48 via-transparent to-white/[0.08]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-[38svh] bg-gradient-to-b from-transparent via-[#f4efe4]/46 to-[#f4efe4]/94" />
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-30 w-[58vw] bg-gradient-to-r from-[#f4efe4]/54 via-[#f4efe4]/10 to-transparent md:w-[46vw]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+        {CINEMATIC_MOTES.map((mote) => (
+          <motion.span
+            key={mote.left}
+            className="absolute rounded-full bg-[#fff9e7]/80 shadow-[0_0_10px_rgba(255,249,231,0.6)]"
+            style={{ left: mote.left, top: mote.top, width: mote.size, height: mote.size }}
+            animate={prefersReducedMotion
+              ? { opacity: 0.28 }
+              : { x: [0, mote.drift, 0], y: [0, -12, 0], opacity: [0.1, 0.58, 0.1] }}
+            transition={prefersReducedMotion
+              ? { duration: 0 }
+              : { duration: mote.duration, delay: mote.delay, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </div>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[53svh] bg-gradient-to-b from-transparent via-[#f8f2e8]/60 to-[#f8f2e8]/95 lg:h-[50svh]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-20 w-[90vw] bg-gradient-to-r from-[#f8f2e8]/85 via-[#f8f2e8]/15 to-transparent sm:w-[68vw] lg:w-[54vw]" />
 
-        <div className="pointer-events-none absolute inset-0 z-[60]">
-          <motion.div
-            className="pointer-events-auto absolute left-4 top-4 md:left-6 md:top-6"
-            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0.2 : 0.45 }}
-          >
-            <div className="cozy-float flex h-10 items-center gap-2 rounded-2xl px-3.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#d2a08e] text-[11px] text-white">♥</span>
-              <span className="text-xs font-semibold tracking-tight text-[#473f36] md:text-sm">Narinyland</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2 md:right-6 md:top-6"
-            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0.2 : 0.45, delay: prefersReducedMotion ? 0 : 0.1 }}
-          >
-            <motion.button
-              type="button"
-              onClick={enterWorld}
-              disabled={entering}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="cozy-float flex h-10 items-center gap-2 rounded-2xl px-4 text-xs font-semibold disabled:cursor-wait disabled:opacity-70"
-            >
-              <i className={`fas ${entering ? 'fa-spinner fa-spin' : 'fa-arrow-right-to-bracket'} text-[11px] text-[#476b55]`} />
-              <span>{entering ? 'Entering…' : 'Enter World'}</span>
-            </motion.button>
-          </motion.div>
-
-          <div className="absolute left-4 right-4 top-[5.1rem] hidden justify-end sm:flex md:right-6 md:top-[5.4rem]">
-            <div className="cozy-surface pointer-events-auto w-full max-w-[20rem] rounded-[1.5rem] p-3.5 md:p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-800">A peek inside</span>
-                  
-                </div>
-                <span className="rounded-full bg-white/55 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-stone-500">{activeStageIndex + 1}/6</span>
-              </div>
-
-              <div className="mt-2.5 flex gap-1" aria-label={`Gameplay stage: ${activeStage.label}`}>
-                {GAMEPLAY_STAGES.map((stage, index) => (
-                  <div key={stage.label} className="h-1 flex-1 overflow-hidden rounded-full bg-stone-900/10">
-                    <motion.div
-                      className="h-full rounded-full bg-emerald-600"
-                      animate={{ width: index < activeStageIndex ? '100%' : index === activeStageIndex ? '100%' : '0%' }}
-                      transition={index === activeStageIndex && !prefersReducedMotion
-                        ? { duration: GAMEPLAY_LOOP_MS / GAMEPLAY_STAGES.length / 1000, ease: 'linear' }
-                        : { duration: 0.2 }}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={activeStage.label}
-                  initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
-                  transition={{ duration: prefersReducedMotion ? 0 : 0.22 }}
-                  className="mt-2.5"
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e4edde] text-[#456b50]">
-                      <i className={`fas ${activeStage.icon} text-xs`} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-black text-stone-950">{activeStage.label}</span>
-                        <span className="hidden text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 sm:inline">{activeStage.eyebrow}</span>
-                      </div>
-                      <p className="mt-0.5 text-[10px] font-semibold leading-relaxed text-stone-600">{activeStage.copy}</p>
-                    </div>
-                  </div>
-                  <GameplayDetailPanel stage={activeStage} points={activeSnapshot.points} />
-                </motion.div>
-              </AnimatePresence>
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-40 px-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8 sm:pt-[calc(1.5rem+env(safe-area-inset-top))]">
+        <div className="mx-auto flex w-full max-w-[88rem] items-center justify-between gap-4">
+          <div className="pointer-events-auto flex items-center gap-2.5" aria-label="Narinyland">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl border border-[#ead9ca] bg-[#fff9ef]/95 text-lg text-[#a36e61] shadow-[0_3px_12px_rgba(82,65,44,0.08)]" aria-hidden="true">♥</span>
+            <div>
+              <span className="block text-[15px] font-semibold tracking-[-0.02em] text-[#443b33]">Narinyland</span>
+              <span className="hidden text-[11px] font-medium text-[#817365] sm:block">A little place for two</span>
             </div>
           </div>
-
-          <motion.div
-            className="absolute bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-4 w-[min(39rem,calc(100vw-2rem))] md:bottom-7 md:left-7"
-            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0.2 : 0.62, delay: prefersReducedMotion ? 0 : 0.25, ease: [0.22, 1, 0.36, 1] }}
+          <button
+            type="button"
+            onClick={enterWorld}
+            disabled={entering}
+            className="cozy-float pointer-events-auto min-h-11 rounded-2xl px-4 text-sm font-semibold transition-colors hover:bg-[#f3ebdf] disabled:cursor-wait disabled:opacity-70"
           >
-            <div className="max-w-[36rem]">
-              <div className="cozy-float mb-2.5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-semibold tracking-wide text-[#456b50]">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Play a world together
-              </div>
-              <h1 className="max-w-[35rem] text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[#40382e] drop-shadow-[0_1px_18px_rgba(255,255,255,0.96)] sm:text-4xl md:text-6xl">
-                A little world that belongs to both of you.
-              </h1>
-              <p className="mt-3 max-w-lg text-sm font-medium leading-relaxed text-[#66594b] drop-shadow-[0_1px_10px_rgba(255,255,255,0.95)] sm:text-sm md:text-base">
-                A home to grow, tiny adventures to share, and new memories to bring back together.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <motion.button
-                  type="button"
-                  onClick={enterWorld}
-                  disabled={entering}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="cozy-button-primary pointer-events-auto flex min-h-[46px] items-center gap-3 rounded-2xl px-5 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
-                >
-                  <span>{entering ? 'Opening your world…' : 'Enter Narinyland'}</span>
-                  <i className={`fas ${entering ? 'fa-spinner fa-spin' : 'fa-arrow-right'} text-[11px]`} />
-                </motion.button>
-                <Link
-                  href="/signup"
-                  className="cozy-button-secondary pointer-events-auto flex min-h-[46px] items-center gap-2 rounded-2xl px-4 text-xs font-semibold transition-colors"
-                >
-                  <span>Create your world</span>
-                  <i className="fas fa-seedling text-[10px] text-emerald-700" />
-                </Link>
-              </div>
+            {entering ? 'Opening…' : 'Sign in'} <span aria-hidden="true" className="ml-1">↗</span>
+          </button>
+        </div>
+      </header>
+
+      <section aria-labelledby="landing-title" className="pointer-events-none absolute inset-x-0 bottom-[calc(2.25rem+env(safe-area-inset-bottom))] z-30 px-5 sm:bottom-[calc(3rem+env(safe-area-inset-bottom))] sm:px-8 lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-[88rem]">
+          <motion.div
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.2 : 0.7 }}
+            className="max-w-[38rem]"
+          >
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#e6d8c4] bg-[#fff9ef]/90 px-3 py-1.5 text-[11px] font-medium tracking-wide text-[#5a755b] shadow-sm backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#8ca98a]" aria-hidden="true" />
+              The coziest adventures are shared
+            </p>
+            <h1 id="landing-title" className="max-w-[36rem] text-[clamp(2.2rem,5vw,4.75rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-[#3d392e] [text-wrap:balance]">
+              A little world that belongs to both of you.
+            </h1>
+            <p className="mt-4 max-w-[33rem] text-sm font-medium leading-7 text-[#675c4d] sm:text-base sm:leading-8">
+              Build a tiny home, wander through your own island, and turn everyday moments into a story you grow together.
+            </p>
+            <div className="pointer-events-auto mt-6 flex flex-wrap gap-2.5">
+              <Link
+                href="/signup"
+                className="cozy-button-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-2xl px-5 text-sm font-semibold transition-colors"
+              >
+                Create our world <i className="fas fa-arrow-right text-xs" aria-hidden="true" />
+              </Link>
+              <motion.button
+                type="button"
+                onClick={enterWorld}
+                disabled={entering}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="cozy-button-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {entering ? 'Opening your world…' : 'Enter Narinyland'}
+              </motion.button>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-[11px] font-medium text-[#7a715f] sm:text-xs">
+              <span>🌿 A home to grow</span>
+              <span>🏮 Little daily adventures</span>
+              <span>💌 Memories to keep</span>
             </div>
           </motion.div>
         </div>
       </section>
+
+      <aside aria-label="Scenes from your little world" className="cozy-surface pointer-events-auto absolute right-6 top-[calc(6.5rem+env(safe-area-inset-top))] z-30 hidden w-[min(21rem,29vw)] rounded-[1.6rem] p-4 lg:block xl:right-10 xl:top-[calc(8rem+env(safe-area-inset-top))] xl:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#7f8e70]">A peek inside</p>
+            <h2 className="mt-1 text-base font-semibold text-[#4a4137]">A day in your world</h2>
+          </div>
+          {!prefersReducedMotion && (
+            <button
+              type="button"
+              onClick={() => setIsPlaying((playing) => !playing)}
+              className="cozy-button-secondary min-h-9 rounded-xl px-2.5 text-[11px] font-medium"
+              aria-label={isPlaying ? 'Pause world preview' : 'Play world preview'}
+            >
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+          )}
+        </div>
+        <div role="group" aria-label="Choose a scene from the game" className="mt-4 flex gap-1.5">
+          {GAMEPLAY_STAGES.map((stage, index) => (
+            <button
+              type="button"
+              key={stage.label}
+              onClick={() => { setStageIndex(index); setIsPlaying(false); }}
+              disabled={!!prefersReducedMotion}
+              aria-label={`Show ${stage.label} scene`}
+              aria-current={activeStageIndex === index ? 'step' : undefined}
+              className={`h-2 min-w-0 flex-1 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#476b55] ${activeStageIndex === index ? 'bg-[#597c5b]' : 'bg-[#dcd4c4] hover:bg-[#9eb29a]'}`}
+            />
+          ))}
+        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeStage.label}
+            initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -5 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.22 }}
+            className="mt-5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#e7eddf] text-[#52765b]" aria-hidden="true">
+                <i className={`fas ${activeStage.icon} text-base`} />
+              </span>
+              <div>
+                <p className="text-[11px] font-medium text-[#8a7764]">{activeStage.eyebrow}</p>
+                <h3 className="mt-0.5 text-lg font-semibold text-[#453b31]">{activeStage.label}</h3>
+              </div>
+            </div>
+            <p className="mt-3 text-[13px] leading-6 text-[#706456]">{activeStage.copy}</p>
+            <GameplayDetailPanel stage={activeStage} points={activeSnapshot.points} />
+          </motion.div>
+        </AnimatePresence>
+        <p className="mt-3 text-[10px] leading-5 text-[#968775]">A guided preview of the real Narinyland homestead.</p>
+      </aside>
     </main>
   );
 }
