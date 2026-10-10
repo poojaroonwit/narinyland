@@ -20,3 +20,7 @@ ALTER TABLE "CoupleQuestEntry" ADD CONSTRAINT "CoupleQuestEntry_configId_fkey"
     FOREIGN KEY ("configId") REFERENCES "AppConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "CoupleQuestEntry" ADD CONSTRAINT "CoupleQuestEntry_partnerId_fkey"
     FOREIGN KEY ("partnerId") REFERENCES "Partner"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- The proposal is now an optional ceremony, not an obstacle to entering the game.
+-- Existing worlds retain their current setting.
+ALTER TABLE "AppConfig" ALTER COLUMN "showProposal" SET DEFAULT false;
