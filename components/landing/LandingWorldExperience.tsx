@@ -169,7 +169,7 @@ export function LandingWorldExperience() {
   };
 
   return (
-    <main className="relative isolate h-[100svh] min-h-[42rem] overflow-hidden bg-[#f8f2e8] text-[#443b32]">
+    <main className="relative isolate min-h-[100svh] overflow-x-hidden bg-[#f8f2e8] text-[#443b32] sm:h-[100svh] sm:min-h-[42rem] sm:overflow-hidden">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[radial-gradient(ellipse_at_70%_33%,#f4f8e9_0%,#f5efe2_49%,#f8f2e8_100%)]">
         <div className="absolute -right-[15%] -top-[25%] h-[60vw] min-h-[34rem] w-[60vw] min-w-[34rem] rounded-full bg-[#fffaf0]/75 blur-3xl" />
         <div className="absolute -left-[25%] bottom-[-48%] h-[60vw] min-h-[30rem] w-[60vw] min-w-[30rem] rounded-full bg-[#e8e4d2]/65 blur-3xl" />
@@ -226,7 +226,7 @@ export function LandingWorldExperience() {
           />
         ))}
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[53svh] bg-gradient-to-b from-transparent via-[#f8f2e8]/60 to-[#f8f2e8]/95 lg:h-[50svh]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[min(80%,35rem)] bg-gradient-to-b from-transparent via-[#f8f2e8]/60 to-[#f8f2e8]/95 sm:h-[53svh] lg:h-[50svh]" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-20 w-[90vw] bg-gradient-to-r from-[#f8f2e8]/85 via-[#f8f2e8]/15 to-transparent sm:w-[68vw] lg:w-[54vw]" />
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-40 px-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8 sm:pt-[calc(1.5rem+env(safe-area-inset-top))]">
@@ -249,7 +249,7 @@ export function LandingWorldExperience() {
         </div>
       </header>
 
-      <section aria-labelledby="landing-title" className="pointer-events-none absolute inset-x-0 bottom-[calc(2.25rem+env(safe-area-inset-bottom))] z-30 px-5 sm:bottom-[calc(3rem+env(safe-area-inset-bottom))] sm:px-8 lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))]">
+      <section aria-labelledby="landing-title" className="pointer-events-none relative z-30 px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[clamp(11rem,48svh,25rem)] sm:absolute sm:inset-x-0 sm:bottom-[calc(3rem+env(safe-area-inset-bottom))] sm:px-8 sm:pb-0 sm:pt-0 lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-[88rem]">
           <motion.div
             initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 16 }}
