@@ -100,7 +100,7 @@ select {
 }
 
 body {
-  background-color: #fdf2f8; /* pink-50 */
+  background-color: #f8f2e7; /* warm, quiet parchment */
   overflow-x: hidden;
 }
 
@@ -191,4 +191,108 @@ body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] 
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Narinyland's shared cozy surface system. Scope to game controls and
+   couple pages rather than overriding unrelated editors or 3D materials. */
+:root {
+  --cozy-paper: #fffaf0;
+  --cozy-linen: #f5ecdd;
+  --cozy-ink: #463d35;
+  --cozy-muted: #766b5e;
+  --cozy-border: #e7dac7;
+  --cozy-sage: #476b55;
+  --cozy-sage-soft: #e8f0e3;
+  --cozy-blush: #f5e3dc;
+  --cozy-shadow: 0 16px 44px rgba(71, 59, 41, 0.12), 0 2px 8px rgba(71, 59, 41, 0.05);
+}
+
+@layer components {
+  .cozy-surface {
+    background: rgba(255, 250, 240, 0.96);
+    border: 1px solid var(--cozy-border);
+    box-shadow: var(--cozy-shadow);
+    color: var(--cozy-ink);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .cozy-float {
+    background: rgba(255, 250, 240, 0.92);
+    border: 1px solid rgba(231, 218, 199, 0.94);
+    box-shadow: 0 7px 26px rgba(71, 59, 41, 0.11);
+    color: var(--cozy-ink);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .cozy-nav {
+    background: rgba(255, 251, 244, 0.97);
+    border: 1px solid #e5d6c2;
+    box-shadow: 0 12px 32px rgba(58, 49, 35, 0.14);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .cozy-nav-item {
+    color: #766c60;
+    border-radius: 1rem;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .cozy-nav-item:hover { background: #f3eee4; color: #3e5749; }
+  .cozy-nav-item[data-active="true"] { background: #e4eddd; color: #355640; }
+
+  .cozy-button-primary {
+    color: #fffdf7;
+    background: #426850;
+    border: 1px solid #426850;
+    box-shadow: 0 3px 0 rgba(38, 76, 49, 0.16);
+  }
+  .cozy-button-primary:hover:not(:disabled) { background: #33563e; }
+  .cozy-button-primary:disabled { cursor: not-allowed; opacity: 0.54; }
+
+  .cozy-button-secondary {
+    color: var(--cozy-ink);
+    background: #fffcf5;
+    border: 1px solid #e5d7c4;
+  }
+  .cozy-button-secondary:hover:not(:disabled) { background: #f1e9da; }
+  .cozy-button-secondary:disabled { cursor: not-allowed; opacity: 0.55; }
+
+  .cozy-field {
+    color: var(--cozy-ink);
+    background: #fffdf8;
+    border: 1px solid #d7cbb9;
+  }
+  .cozy-field::placeholder { color: #928777; }
+  .cozy-field:focus { outline: 2px solid #86a78b; outline-offset: 1px; }
+
+  .cozy-journal {
+    background: #fffaf0;
+    border: 1px solid #e4d6c2;
+    box-shadow: var(--cozy-shadow);
+    color: var(--cozy-ink);
+  }
+  .cozy-journal-hero {
+    background: radial-gradient(ellipse at 100% 0, rgba(244, 202, 165, 0.35), transparent 45%),
+      radial-gradient(ellipse at 0 100%, rgba(196, 217, 180, 0.4), transparent 55%), #f9f1e3;
+  }
+  .cozy-quest {
+    background: #fffdf8;
+    border: 1px solid #e8dbc9;
+    box-shadow: 0 5px 16px rgba(71, 59, 41, 0.06);
+  }
+  .cozy-quest[data-mood="discover"] { border-top: 4px solid #9ab4ad; }
+  .cozy-quest[data-mood="dream"] { border-top: 4px solid #d7b6a0; }
+  .cozy-quest[data-mood="care"] { border-top: 4px solid #abc49b; }
+
+  :where(.cozy-nav-item, .cozy-button-primary, .cozy-button-secondary, .cozy-float):focus-visible {
+    outline: 3px solid #4c7758;
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .cozy-float, .cozy-nav, .cozy-surface { backdrop-filter: none; -webkit-backdrop-filter: none; background: #fffaf0; }
 }
