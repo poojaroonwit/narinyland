@@ -47,6 +47,15 @@ export const GardenTopControls: React.FC = () => {
   const [isCreatingWorld, setIsCreatingWorld] = React.useState(false);
   const [isCreatingLand, setIsCreatingLand] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!isCircleDropdownOpen && !isLandDropdownOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeFloatingPanels();
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [isCircleDropdownOpen, isLandDropdownOpen, closeFloatingPanels]);
+
   const handleCreateWorld = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = newWorldName.trim();
@@ -143,7 +152,7 @@ export const GardenTopControls: React.FC = () => {
 
   return (
     <>
-      <div className={`fixed right-3 z-[70] flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 sm:gap-2 md:right-5 ${activeTab === 'home' ? 'top-[calc(5.4rem+env(safe-area-inset-top))]' : 'top-[calc(0.9rem+env(safe-area-inset-top))]'}`}>
+      <div className={`fixed right-3 z-[70] flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 sm:gap-2 md:right-5 ${activeTab === 'home' ? 'top-[calc(5.4rem+env(safe-area-inset-top))]' : 'top-[calc(5.4rem+env(safe-area-inset-top))] md:top-[calc(0.9rem+env(safe-area-inset-top))]'}`}>
         <button
           type="button"
           onClick={toggleVolumePanel}
@@ -159,6 +168,8 @@ export const GardenTopControls: React.FC = () => {
             onClick={toggleCircleDropdown}
             className="cozy-float flex h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-[#51483d] transition-colors hover:bg-[#f2ebdf] sm:px-4"
             aria-expanded={isCircleDropdownOpen}
+            aria-haspopup="dialog"
+            aria-label="Choose a world"
           >
             <i className="fas fa-globe-asia text-xs text-[#54785c]" />
             <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">
@@ -170,19 +181,23 @@ export const GardenTopControls: React.FC = () => {
           <AnimatePresence>
             {isCircleDropdownOpen && (
               <>
-                <motion.div
+                <motion.button
+                  type="button"
+                  aria-label="Close world selector"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setIsCircleDropdownOpen(false)}
-                  className="fixed inset-0 z-[75] bg-[#322c24]/35 backdrop-blur-sm md:hidden"
+                  className="fixed inset-0 z-[75] bg-[#322c24]/35 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none"
                 />
                 <motion.div
                   initial={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
                   animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
                   exit={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                  className="cozy-surface fixed bottom-0 z-[80] w-full overflow-hidden rounded-t-[2rem] md:absolute md:bottom-auto md:right-0 md:top-full md:mt-2 md:w-64 md:rounded-2xl"
+                  role="dialog"
+                  aria-label="Switch or create world"
+                  className="cozy-surface fixed bottom-0 left-0 z-[80] max-h-[85dvh] w-full overflow-y-auto rounded-t-[2rem] pb-[env(safe-area-inset-bottom)] md:absolute md:bottom-auto md:left-auto md:right-0 md:top-full md:mt-2 md:max-h-[70dvh] md:w-64 md:rounded-2xl md:pb-0"
                 >
                   <div className="flex justify-center pb-2 pt-4 md:hidden"><div className="h-1.5 w-12 rounded-full bg-gray-200" /></div>
                   <div className="p-6 md:p-1.5">
@@ -217,7 +232,12 @@ export const GardenTopControls: React.FC = () => {
                           key={circle.id}
                           onClick={async () => {
                             setIsCircleDropdownOpen(false);
-                            await setActiveCircle(circle.id, circle);
+                            try {
+                              setConfigLoaded(false);
+                              await setActiveCircle(circle.id, circle);
+                            } catch (error) {
+                              showToast?.(`Could not switch world: ${getErrorMessage(error)}`);
+                            }
                           }}
                           className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors md:py-2.5 md:text-xs ${circle.id === activeCircleId ? 'bg-[#54725b] text-white' : 'text-[#665c50] hover:bg-[#eff1e7] hover:text-[#476b55]'}`}
                         >
@@ -240,6 +260,8 @@ export const GardenTopControls: React.FC = () => {
             onClick={toggleLandDropdown}
             className="cozy-float flex h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-[#51483d] transition-colors hover:bg-[#f2ebdf] sm:px-4"
             aria-expanded={isLandDropdownOpen}
+            aria-haspopup="dialog"
+            aria-label="Choose a land"
           >
             <i className="fas fa-map-marked-alt text-xs text-[#8f7952]" />
             <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">{activeLand?.name || 'Select Land'}</span>
@@ -248,11 +270,23 @@ export const GardenTopControls: React.FC = () => {
 
           <AnimatePresence>
             {isLandDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="cozy-surface absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl p-2"
+              <>
+                <motion.button
+                  type="button"
+                  aria-label="Close land selector"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsLandDropdownOpen(false)}
+                  className="fixed inset-0 z-[75] bg-[#322c24]/35 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none"
+                />
+                <motion.div
+                initial={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+                exit={isMobile ? { y: '100%' } : { opacity: 0, y: -10, scale: 0.95 }}
+                role="dialog"
+                aria-label="Switch or create land"
+                className="cozy-surface fixed bottom-0 left-0 z-[80] max-h-[85dvh] w-full overflow-y-auto rounded-t-[2rem] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:absolute md:bottom-auto md:left-auto md:right-0 md:mt-2 md:max-h-[70dvh] md:w-60 md:rounded-2xl md:p-2"
               >
                 <div className="mb-2 flex items-center justify-between px-2 pt-1">
                   <span className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-500">Create Land</span>
@@ -291,6 +325,7 @@ export const GardenTopControls: React.FC = () => {
                   ))}
                 </div>
               </motion.div>
+              </>
             )}
           </AnimatePresence>
         </div>
@@ -312,6 +347,7 @@ export const GardenTopControls: React.FC = () => {
             setIsEditDrawerOpen(true);
           }}
           loading={authLoading}
+          isMobile={isMobile}
         />
       </div>
 
