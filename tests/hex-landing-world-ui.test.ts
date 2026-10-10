@@ -90,16 +90,14 @@ test('cozy landing prioritizes creating a shared world and offers a clear way ba
   const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
   const layout = await readFile(new URL('../app/layout.tsx', import.meta.url), 'utf8');
 
-  assert.match(source, /The coziest adventures are shared/);
-  assert.match(source, /Create our world/);
-  assert.match(source, /Enter Narinyland/);
-  assert.match(source, /Sign in/);
-  assert.match(source, /href="\\/signup"/);
-  assert.match(source, /onClick=\\{enterWorld\\}/);
-  assert.match(source, /min-h-\\[42rem\\]/);
-  assert.match(source, /safe-area-inset-bottom/);
-  assert.match(source, /aria-labelledby="landing-title"/);
-  assert.match(layout, /#f8f2e8/);
+  for (const copy of ['The coziest adventures are shared', 'Create our world', 'Enter Narinyland', 'Sign in'])
+    assert.ok(source.includes(copy), copy);
+  assert.ok(source.includes('href="/signup"'));
+  assert.ok(source.includes('onClick={enterWorld}'));
+  assert.ok(source.includes('min-h-[42rem]'));
+  assert.ok(source.includes('safe-area-inset-bottom'));
+  assert.ok(source.includes('aria-labelledby="landing-title"'));
+  assert.ok(layout.includes('#f8f2e8'));
 });
 
 test('preview scenes have real navigation and playback controls, not pretend building buttons', async () => {
@@ -107,11 +105,12 @@ test('preview scenes have real navigation and playback controls, not pretend bui
   const details = source.split('/** Read-only descriptions')[1]?.split('export function LandingWorldExperience')[0] || '';
 
   assert.doesNotMatch(details, /<button/);
-  assert.match(source, /setIsPlaying\\(\\(playing\\) => !playing\\)/);
-  assert.match(source, /setStageIndex\\(index\\)/);
-  assert.match(source, /aria-label=\\{`Show \\$/);
-  assert.match(source, /aria-current=\\{activeStageIndex === index/);
-  assert.match(source, /prefersReducedMotion \\|\\| !isPlaying/);
-  assert.match(source, /A guided preview of the real Narinyland homestead/);
-  assert.doesNotMatch(source, /fetch\\(/);
+  assert.ok(source.includes('setIsPlaying((playing) => !playing)'));
+  assert.ok(source.includes('setStageIndex(index)'));
+  assert.ok(source.includes('aria-label={'));
+  assert.ok(source.includes('Show ${stage.label} scene'));
+  assert.ok(source.includes("aria-current={activeStageIndex === index ? 'step' : undefined}"));
+  assert.ok(source.includes('prefersReducedMotion || !isPlaying'));
+  assert.ok(source.includes('A guided preview of the real Narinyland homestead'));
+  assert.doesNotMatch(source, /fetch\(/);
 });
