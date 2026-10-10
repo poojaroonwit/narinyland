@@ -39,6 +39,24 @@ export const GardenAcceptedContent: React.FC = () => {
   } = useGardenPageContext();
 
   const activeLand = appConfig.lands?.find((land: { isActive?: boolean }) => land.isActive) ?? appConfig.lands?.[0];
+  const [moreOpen, setMoreOpen] = React.useState(false);
+  const unreadLetters = loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length;
+  const moreIsActive = ['timeline', 'coupons', 'letters', 'shop'].includes(activeTab);
+
+  React.useEffect(() => { setMoreOpen(false); }, [activeTab]);
+  React.useEffect(() => {
+    if (!moreOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [moreOpen]);
+
+  const navigate = (tab: 'home' | 'quests' | 'timeline' | 'coupons' | 'letters' | 'shop') => {
+    setMoreOpen(false);
+    switchTab(tab);
+  };
 
   if (!hasAcceptedProposal) return null;
 
@@ -147,44 +165,73 @@ export const GardenAcceptedContent: React.FC = () => {
         )}
       </div>
 
+      {/* Mobile navigation stays visible without horizontal scrolling. */}
+      <div className="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] sm:hidden">
+        {moreOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close more destinations"
+              onClick={() => setMoreOpen(false)}
+              className="fixed inset-0 z-0 bg-[#30291f]/30 backdrop-blur-[2px]"
+            />
+            <div
+              id="garden-more-destinations"
+              role="dialog"
+              aria-label="More destinations"
+              className="cozy-surface absolute bottom-[calc(100%+0.65rem)] left-1/2 z-10 grid w-[min(94vw,26rem)] -translate-x-1/2 grid-cols-2 gap-2 rounded-[1.4rem] p-3 shadow-xl"
+            >
+              <button type="button" onClick={() => navigate('timeline')} aria-current={activeTab === 'timeline' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'timeline'}>📖 Timeline</button>
+              <button type="button" onClick={() => navigate('coupons')} aria-current={activeTab === 'coupons' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'coupons'}>🎁 Coupons</button>
+              <button type="button" onClick={() => navigate('letters')} aria-current={activeTab === 'letters' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'letters'}>
+                💌 Letters {unreadLetters > 0 && <span className="ml-1 rounded-full bg-[#aa6659] px-1.5 py-0.5 text-xs text-white">{unreadLetters}</span>}
+              </button>
+              <button type="button" onClick={() => navigate('shop')} aria-current={activeTab === 'shop' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'shop'}>🛍️ Shop</button>
+            </div>
+          </>
+        )}
+        <nav className="cozy-nav relative z-20 mx-auto grid w-[min(94vw,26rem)] grid-cols-4 gap-1 rounded-[1.4rem] p-1.5" aria-label="Garden navigation">
+          <button type="button" onClick={() => navigate('home')} data-active={activeTab === 'home'} aria-current={activeTab === 'home' ? 'page' : undefined} className="cozy-nav-item flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
+            <i className="fas fa-house-chimney text-lg" aria-hidden="true" />Home
+          </button>
+          <Link href="/world" aria-label="Explore Narinyland Commons" className="cozy-nav-item flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
+            <i className="fas fa-tree text-lg" aria-hidden="true" />Explore
+          </Link>
+          <button type="button" onClick={() => navigate('quests')} data-active={activeTab === 'quests'} aria-current={activeTab === 'quests' ? 'page' : undefined} className="cozy-nav-item flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
+            <i className="fas fa-map-signs text-lg" aria-hidden="true" />Adventure
+          </button>
+          <button type="button" onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-controls="garden-more-destinations" data-active={moreIsActive || moreOpen} className="cozy-nav-item relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
+            <i className="fas fa-ellipsis text-lg" aria-hidden="true" />More
+            {unreadLetters > 0 && <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-[#aa6659]" aria-label={unreadLetters + ' unread letters'} />}
+          </button>
+        </nav>
+      </div>
+
       <nav
-        className="cozy-nav pointer-events-auto fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-[1.35rem] p-1.5 sm:gap-2 sm:p-2 md:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
+        className="cozy-nav pointer-events-auto fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-[70] hidden max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-[1.35rem] p-2 sm:flex"
         aria-label="Garden navigation"
       >
-        <button type="button" onClick={() => switchTab('home')} data-active={activeTab === 'home'} aria-current={activeTab === 'home' ? 'page' : undefined}
-          className="cozy-nav-item flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
-          <i className="fas fa-house-chimney text-lg" aria-hidden="true" />
-          <span className="text-[10px] font-semibold sm:text-xs">Home</span>
+        <button type="button" onClick={() => navigate('home')} data-active={activeTab === 'home'} aria-current={activeTab === 'home' ? 'page' : undefined} className="cozy-nav-item flex min-w-[68px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-house-chimney text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Home</span>
         </button>
-        <Link href="/world" aria-label="Explore Narinyland Commons" className="cozy-nav-item flex min-w-[48px] flex-1 flex-col items-center gap-1 px-1 py-2 sm:min-w-[76px]">
-          <i className="fas fa-tree text-lg" aria-hidden="true" />
-          <span className="text-[10px] font-semibold sm:text-xs">Explore</span>
+        <Link href="/world" aria-label="Explore Narinyland Commons" className="cozy-nav-item flex min-w-[68px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-tree text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Explore</span>
         </Link>
-        <button type="button" onClick={() => switchTab('quests')} data-active={activeTab === 'quests'} aria-current={activeTab === 'quests' ? 'page' : undefined}
-          className="cozy-nav-item flex min-w-[62px] flex-1 flex-col items-center gap-1 px-1.5 py-2 sm:min-w-[84px]">
-          <i className="fas fa-map-signs text-lg" aria-hidden="true" />
-          <span className="text-[10px] font-semibold sm:text-xs">Adventures</span>
+        <button type="button" onClick={() => navigate('quests')} data-active={activeTab === 'quests'} aria-current={activeTab === 'quests' ? 'page' : undefined} className="cozy-nav-item flex min-w-[80px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-map-signs text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Adventures</span>
         </button>
-        <button type="button" onClick={() => switchTab('timeline')} data-active={activeTab === 'timeline'} aria-current={activeTab === 'timeline' ? 'page' : undefined}
-          className="cozy-nav-item flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
-          <i className="fas fa-book-open text-lg" aria-hidden="true" />
-          <span className="text-[10px] font-semibold sm:text-xs">Timeline</span>
+        <button type="button" onClick={() => navigate('timeline')} data-active={activeTab === 'timeline'} aria-current={activeTab === 'timeline' ? 'page' : undefined} className="cozy-nav-item flex min-w-[68px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-book-open text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Timeline</span>
         </button>
-        <button type="button" onClick={() => switchTab('coupons')} data-active={activeTab === 'coupons'} aria-current={activeTab === 'coupons' ? 'page' : undefined}
-          className="cozy-nav-item flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
-          <i className="fas fa-gift text-lg" aria-hidden="true" />
-          <span className="text-[10px] font-semibold sm:text-xs">Coupons</span>
+        <button type="button" onClick={() => navigate('coupons')} data-active={activeTab === 'coupons'} aria-current={activeTab === 'coupons' ? 'page' : undefined} className="cozy-nav-item flex min-w-[68px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-gift text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Coupons</span>
         </button>
-        <button type="button" onClick={() => switchTab('letters')} data-active={activeTab === 'letters'} aria-current={activeTab === 'letters' ? 'page' : undefined}
-          className="cozy-nav-item relative flex min-w-[56px] flex-1 flex-col items-center gap-1 px-2 py-2 sm:min-w-[76px]">
-          <i className="fas fa-envelope-open-text text-lg" aria-hidden="true" />
-          <span className="text-[10px] font-semibold sm:text-xs">Letters</span>
-          {loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length > 0 && (
-            <span className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#aa6659] px-1 text-[10px] font-semibold text-white"
-              aria-label={loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length + ' unread letters'}>
-              {loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length}
-            </span>
-          )}
+        <button type="button" onClick={() => navigate('letters')} data-active={activeTab === 'letters'} aria-current={activeTab === 'letters' ? 'page' : undefined} className="cozy-nav-item relative flex min-w-[68px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-envelope-open-text text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Letters</span>
+          {unreadLetters > 0 && <span className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#aa6659] px-1 text-[10px] font-semibold text-white" aria-label={unreadLetters + ' unread letters'}>{unreadLetters}</span>}
+        </button>
+        <button type="button" onClick={() => navigate('shop')} data-active={activeTab === 'shop'} aria-current={activeTab === 'shop' ? 'page' : undefined} className="cozy-nav-item flex min-w-[68px] flex-col items-center gap-1 px-2 py-2">
+          <i className="fas fa-bag-shopping text-lg" aria-hidden="true" /><span className="text-xs font-semibold">Shop</span>
         </button>
       </nav>
     </motion.div>
