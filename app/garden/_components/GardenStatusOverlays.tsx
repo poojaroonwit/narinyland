@@ -15,6 +15,7 @@ export const GardenStatusOverlays: React.FC = () => {
     flowerCount,
     loveStats,
     showInstallPrompt,
+    setShowInstallPrompt,
     handleInstallApp,
   } = useGardenPageContext();
 
@@ -79,22 +80,24 @@ export const GardenStatusOverlays: React.FC = () => {
 
       <AnimatePresence>
         {showInstallPrompt && (
-          <motion.button
-            type="button"
-            initial={{ x: 50, opacity: 0 }}
+          <motion.div
+            initial={{ x: 30, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 50, opacity: 0 }}
-            onClick={handleInstallApp}
-            className="fixed right-6 top-1/2 z-[65] flex -translate-y-1/2 items-center gap-3 rounded-md border-2 border-pink-100 bg-white/90 px-5 py-3 shadow-2xl backdrop-blur-md transition-all hover:border-pink-300"
+            exit={{ x: 30, opacity: 0 }}
+            role="region"
+            aria-label="Install Narinyland"
+            className="cozy-surface fixed right-3 top-[calc(9.8rem+env(safe-area-inset-top))] z-[65] flex max-w-[min(17rem,calc(100vw-1.5rem))] items-center gap-2 rounded-2xl p-2 shadow-lg md:right-5 md:top-[calc(5.5rem+env(safe-area-inset-top))]"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-pink-500 text-xl text-white shadow-lg">
-              <i className="fas fa-mobile-alt" />
-            </div>
-            <div className="text-left">
-              <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-pink-500">Install App</p>
-              <p className="text-sm font-bold text-gray-700">Add to Home</p>
-            </div>
-          </motion.button>
+            <button type="button" onClick={handleInstallApp} className="flex min-h-11 flex-1 items-center gap-2 rounded-xl px-2 text-left text-xs font-semibold text-[#4a5945] hover:bg-[#e7f0e3]">
+              <span aria-hidden="true">📱</span> Add Narinyland to Home
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowInstallPrompt(false)}
+              aria-label="Dismiss install suggestion"
+              className="min-h-11 min-w-11 rounded-xl text-sm text-[#766b5e] hover:bg-[#f1e9da]"
+            >✕</button>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
