@@ -65,6 +65,10 @@ export function getOpenWorldBiome(x: number, z: number): OpenWorldBiome {
 export function isOpenWorldWalkable(x: number, z: number, fromX: number, fromZ: number): boolean {
   // Water is a visual landmark for this first slice, not a swimmable volume.
   if (Math.hypot(x + 48, z + 32) < 12.5) return false;
+  // Keep the miniature village cottages solid rather than walking through them.
+  // This uses the same placements as <Village /> without touching private Land data.
+  const villageHouses = [{ x: -7, z: 2, radius: 1.75 }, { x: 7, z: 3, radius: 1.7 }, { x: 0, z: -8, radius: 1.75 }];
+  if (villageHouses.some((house) => Math.hypot(x - house.x, z - house.z) < house.radius)) return false;
   return Math.abs(sampleOpenWorldHeight(x, z) - sampleOpenWorldHeight(fromX, fromZ)) <= 0.4;
 }
 
