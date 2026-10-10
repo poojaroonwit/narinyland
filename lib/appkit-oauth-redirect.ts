@@ -93,3 +93,41 @@ export async function ensureOAuthRedirectUriConfigured(redirectUri: string): Pro
     return false;
   }
 }
+
+/**
+ * Retrieve the application's interactive authorization-code client rather
+ * than reusing its client_credentials service identity for browser SSO.
+ */
+export async function getAppKitInteractiveOAuthClientId(redirectUri: string): Promise<string | null> {
+  const token = await getServiceToken();
+  const applicationId = getAppKitApplicationId();
+  if (!token || !applicationId) return null;
+
+  try {
+    const response = await appKitAdminFetch(
+      '/api/v1/admin/applications/' + encodeURIComponent(applicationId),
+      token,
+    );
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => ({})) as JsonMap;
+    const application = payload.application && typeof payload.application === 'object'
+      ? payload.application as JsonMap
+      : {};
+    const clientId = typeof application.oauthClientId === 'string'
+      ? application.oauthClientId.trim()
+      : '';
+    const allowedRedirects = Array.isArray(application.oauthRedirectUris)
+      ? application.oauthRedirectUris
+      : [];
+    if (!clientId || !allowedRedirects.some(value => typeof value === 'string' && value.trim() === redirectUri)) {
+      return null;
+    }
+    return clientId;
+  } catch (error) {
+    console.warn(
+      'AppKit interactive OAuth client lookup failed:',
+      error instanceof Error ? error.message : 'unknown error',
+    );
+    return null;
+  }
+}
