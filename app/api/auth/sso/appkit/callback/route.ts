@@ -8,6 +8,8 @@ import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@/lib/s
 
 const STATE_COOKIE = 'narinyland_oidc_state';
 const VERIFIER_COOKIE = 'narinyland_oidc_verifier';
+const CLIENT_COOKIE = 'narinyland_oidc_client';
+const FLOW_COOKIE_PATH = '/api/auth/sso/appkit';
 const EXCHANGE_TIMEOUT_MS = 8_000;
 
 type TokenPayload = {
@@ -16,10 +18,6 @@ type TokenPayload = {
   error?: unknown;
   error_description?: unknown;
 };
-
-function clientId() {
-  return (process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID || process.env.APPKIT_CLIENT_ID || '').trim();
-}
 
 function safeEqual(left: string, right: string) {
   const a = Buffer.from(left);
@@ -34,8 +32,15 @@ function loginError(origin: string, code: string) {
 }
 
 function clearFlowCookies(response: NextResponse) {
-  response.cookies.delete(STATE_COOKIE);
-  response.cookies.delete(VERIFIER_COOKIE);
+  for (const name of [STATE_COOKIE, VERIFIER_COOKIE, CLIENT_COOKIE]) {
+    response.cookies.set(name, '', {
+      path: FLOW_COOKIE_PATH,
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+  }
 }
 
 export async function GET(req: Request) {
@@ -44,12 +49,24 @@ export async function GET(req: Request) {
   const cookieStore = await cookies();
   const expectedState = cookieStore.get(STATE_COOKIE)?.value || '';
   const verifier = cookieStore.get(VERIFIER_COOKIE)?.value || '';
+  const storedClientId = cookieStore.get(CLIENT_COOKIE)?.value || '';
   const state = url.searchParams.get('state') || '';
   const code = url.searchParams.get('code') || '';
   const oauthError = url.searchParams.get('error') || '';
 
   if (oauthError) {
-    const response = loginError(origin, 'appkit_sso_denied');
+    // Not every OAuth provider error means the person cancelled sign-in.
+    const errorCode = oauthError === 'access_denied'
+      ? 'appkit_sso_denied'
+      : oauthError === 'invalid_scope'
+        ? 'appkit_sso_invalid_scope'
+        : oauthError === 'login_required'
+          ? 'appkit_sso_login_required'
+          : oauthError === 'consent_required'
+            ? 'appkit_sso_consent_required'
+            : 'appkit_sso_authorization_failed';
+    console.warn('AppKit OIDC authorization rejected', { oauthError: oauthError.slice(0, 64) });
+    const response = loginError(origin, errorCode);
     clearFlowCookies(response);
     return response;
   }
@@ -60,7 +77,7 @@ export async function GET(req: Request) {
     return response;
   }
 
-  const oauthClientId = clientId();
+  const oauthClientId = storedClientId;
   if (!oauthClientId) {
     const response = loginError(origin, 'appkit_sso_not_configured');
     clearFlowCookies(response);
@@ -75,9 +92,6 @@ export async function GET(req: Request) {
     client_id: oauthClientId,
     code_verifier: verifier,
   });
-  const clientSecret = (process.env.APPKIT_CLIENT_SECRET || '').trim();
-  if (clientSecret) form.set('client_secret', clientSecret);
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), EXCHANGE_TIMEOUT_MS);
   try {
