@@ -268,8 +268,13 @@ const Home: React.FC = () => {
     let current = true;
     // Never show the previous couple's content while a different world loads.
     setConfigLoaded(false);
+    setHasAcceptedProposal(false);
     setCircleMembers([]);
     setLoveLetters([]);
+    setLoveStats({
+      xp: 0, level: 1, leaves: 0, points: 0,
+      partnerPoints: { partner1: 0, partner2: 0 },
+    });
     setAppConfig((previous) => ({
       ...previous,
       gallery: [],
@@ -277,6 +282,7 @@ const Home: React.FC = () => {
       coupons: [],
       albums: [],
       lands: [],
+      proposal: { ...previous.proposal, isAccepted: false, progress: 0 },
     }));
 
     const fetchData = async () => {
