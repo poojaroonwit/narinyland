@@ -3,7 +3,11 @@
 import React from 'react';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  appkit_sso_denied: 'AppKit sign-in was cancelled.',
+  appkit_sso_denied: 'AppKit sign-in was declined or cancelled.',
+  appkit_sso_invalid_scope: 'AppKit rejected the OAuth scopes for this application. Contact the administrator.',
+  appkit_sso_login_required: 'Sign in with AppKit to continue.',
+  appkit_sso_consent_required: 'AppKit requires your permission to continue.',
+  appkit_sso_authorization_failed: 'AppKit authorization failed. Please try again or contact the administrator.',
   appkit_sso_invalid_state: 'That AppKit sign-in session expired. Please try again.',
   appkit_sso_not_configured: 'AppKit SSO is not configured for this application.',
   appkit_sso_exchange_failed: 'AppKit could not complete sign-in. Please try again.',
