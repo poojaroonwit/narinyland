@@ -23,7 +23,7 @@ function tierForBuilding(buildingKey: string, buildingTiers?: BuildingProgressio
   return isProgressionBuildingKey(buildingKey) ? (buildingTiers?.[buildingKey] ?? 1) : 1;
 }
 
-function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, motionProfile, reducedMotion, onSelect }: {
+function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, motionProfile, reducedMotion, visualStyle, onSelect }: {
   building: HexBuildingDTO;
   height: number;
   tier: BuildingTier;
@@ -31,6 +31,7 @@ function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, mo
   visualEvent: HexConfirmedVisualEvent;
   motionProfile: HexMotionProfile;
   reducedMotion: boolean;
+  visualStyle: 'storybook' | 'natural';
   onSelect?: (building: HexBuildingDTO) => void;
 }) {
   const ref = useRef<THREE.Group>(null);
@@ -84,10 +85,10 @@ function AnimatedHexBuilding({ building, height, tier, selected, visualEvent, mo
     group.rotation.y += angleDelta(group.rotation.y, targetYaw) * rotateAlpha;
   });
 
-  return <group ref={ref} onClick={(event) => { event.stopPropagation(); onSelect?.(building); }}><HexBuildingModel buildingKey={building.buildingKey} selected={selected} tier={tier} /></group>;
+  return <group ref={ref} onClick={(event) => { event.stopPropagation(); onSelect?.(building); }}><HexBuildingModel buildingKey={building.buildingKey} selected={selected} tier={tier} visualStyle={visualStyle} /></group>;
 }
 
-export function HexBuildings({ buildings, tiles, buildingTiers, selectedBuildingId, visualEvent = null, motionProfile, reducedMotion, onSelect }: {
+export function HexBuildings({ buildings, tiles, buildingTiers, selectedBuildingId, visualEvent = null, motionProfile, reducedMotion, visualStyle = 'storybook', onSelect }: {
   buildings: HexBuildingDTO[];
   tiles: HexTileDTO[];
   buildingTiers?: BuildingProgressionState;
@@ -95,11 +96,12 @@ export function HexBuildings({ buildings, tiles, buildingTiers, selectedBuilding
   visualEvent?: HexConfirmedVisualEvent;
   motionProfile: HexMotionProfile;
   reducedMotion: boolean;
+  visualStyle?: 'storybook' | 'natural';
   onSelect?: (building: HexBuildingDTO) => void;
 }) {
   const tileHeight = new Map(tiles.map((tile) => [`${tile.q}:${tile.r}`, tile.height]));
   return <>{buildings.map((building) => {
     const tier = tierForBuilding(building.buildingKey, buildingTiers);
-    return <AnimatedHexBuilding key={building.id} building={building} height={tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0} tier={tier} selected={selectedBuildingId === building.id} visualEvent={visualEvent} motionProfile={motionProfile} reducedMotion={reducedMotion} onSelect={onSelect} />;
+    return <AnimatedHexBuilding key={building.id} building={building} height={tileHeight.get(`${building.anchorQ}:${building.anchorR}`) ?? 0} tier={tier} selected={selectedBuildingId === building.id} visualEvent={visualEvent} motionProfile={motionProfile} reducedMotion={reducedMotion} visualStyle={visualStyle} onSelect={onSelect} />;
   })}</>;
 }

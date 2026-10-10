@@ -183,6 +183,7 @@ export function LandingWorldExperience() {
           transition={{ duration: prefersReducedMotion ? 0.2 : 0.9 }}
         >
           <HexWorld3D
+            visualStyle="storybook"
             snapshot={activeSnapshot}
             graphicsQuality="medium"
             buildingPreview={buildingPreview}
