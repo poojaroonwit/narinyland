@@ -44,6 +44,8 @@ test('terrain height is finite, seamless at boundaries, and walkable near spawn'
   }
   assert.equal(isOpenWorldWalkable(0.1, 0.1, 0, 0), true);
   assert.equal(isOpenWorldWalkable(-48, -32, -47.99, -32), false);
+  assert.equal(isOpenWorldWalkable(-7, 2, -7.1, 2), false);
+  assert.equal(isOpenWorldWalkable(7, 3, 7.1, 3), false);
 });
 
 test('the village, forest, lakeshore and highlands have identifiable destinations', () => {
