@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useAuth } from '../../../components/AuthProvider';
 import { motion } from 'framer-motion';
 import Timeline from '../../../components/Timeline';
 import { CoupleWorldAdventure } from '../../../components/couple-world/CoupleWorldAdventure';
@@ -11,6 +12,7 @@ import { purchasedItemsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
 
 export const GardenAcceptedContent: React.FC = () => {
+  const { activeCircleId } = useAuth();
   const {
     hasAcceptedProposal,
     activeTab,
@@ -48,7 +50,7 @@ export const GardenAcceptedContent: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="flex w-full justify-center pt-12 md:pt-20"
           >
-            <CoupleWorldAdventure />
+            <CoupleWorldAdventure key={activeCircleId || 'no-world'} />
           </motion.div>
         )}
 
