@@ -115,7 +115,7 @@ export default function OnboardingPage() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 via-rose-50 to-emerald-50 px-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#f8f2e8] px-4 py-[calc(2rem+env(safe-area-inset-bottom))] text-[#463d35]">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -123,10 +123,10 @@ export default function OnboardingPage() {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="mb-8 flex flex-col items-center">
           <Logo size={80} title="Narinyland" />
-          <h1 className="mt-4 text-2xl font-bold text-pink-700 font-outfit">Welcome to Narinyland</h1>
-          <p className="text-pink-500 text-sm mt-1 text-center">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#463d35]">Welcome to Narinyland</h1>
+          <p className="mt-2 max-w-xs text-center text-sm leading-6 text-[#766b5e]">
             Create a new world or join an existing one to get started.
           </p>
         </div>
@@ -138,28 +138,30 @@ export default function OnboardingPage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-2 gap-3"
             >
               {/* Create World */}
               <button
                 onClick={() => setMode('create')}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-md shadow-md border-2 border-transparent hover:border-pink-300 transition-all duration-200"
+                type="button"
+                className="cozy-surface group flex min-h-[11rem] flex-col items-center justify-center gap-3 rounded-[1.4rem] p-4 text-center transition-transform hover:-translate-y-0.5 hover:border-[#86a78b]"
               >
-                <div className="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f5e3dc] text-2xl">
                   🌸
                 </div>
                 <div className="text-center">
                   <p className="font-semibold text-gray-800 text-sm">Create World</p>
-                  <p className="text-gray-400 text-xs mt-1">Start a new story</p>
+                  <p className="mt-1 text-xs text-[#766b5e]">Start a new story</p>
                 </div>
               </button>
 
               {/* Join World */}
               <button
                 onClick={() => setMode('join')}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-md shadow-md border-2 border-transparent hover:border-emerald-300 transition-all duration-200"
+                type="button"
+                className="cozy-surface group flex min-h-[11rem] flex-col items-center justify-center gap-3 rounded-[1.4rem] p-4 text-center transition-transform hover:-translate-y-0.5 hover:border-[#86a78b]"
               >
-                <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e8f0e3] text-2xl">
                   🔑
                 </div>
                 <div className="text-center">
@@ -176,38 +178,41 @@ export default function OnboardingPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-md shadow-md p-6 flex flex-col gap-4"
+              className="cozy-surface flex flex-col gap-4 rounded-[1.6rem] p-5 sm:p-6"
             >
               <div className="flex items-center gap-3">
                 <button
+                  type="button"
+                  aria-label="Back to world options"
                   onClick={() => { setMode('select'); setError(''); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[#766b5e] transition-colors hover:bg-[#eee6d9]"
                 >
                   ←
                 </button>
-                <h2 className="font-bold text-gray-800">Create Your World</h2>
+                <h2 className="text-lg font-semibold text-[#463d35]">Create Your World</h2>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">World Name</label>
+                <label htmlFor="new-world-name" className="mb-1 block text-sm font-medium text-[#5f5345]">World name</label>
                 <input
+                  id="new-world-name"
                   type="text"
                   value={worldName}
                   onChange={(e) => setWorldName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                  onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void handleCreate(); } }}
                   placeholder="e.g. Our Love Story"
                   maxLength={50}
-                  className="w-full px-4 py-3 rounded-md border border-gray-200 focus:outline-none focus:border-pink-400 text-gray-800 text-sm"
+                  className="cozy-field min-h-12 w-full rounded-xl px-4 py-3 text-sm"
                   autoFocus
                 />
               </div>
 
-              {error && <p className="text-red-500 text-xs">{error}</p>}
+              {error && <p role="alert" className="text-xs font-medium text-[#9b4e44]">{error}</p>}
 
               <button
                 onClick={handleCreate}
                 disabled={loading || !worldName.trim()}
-                className="w-full py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-md font-semibold text-sm transition-colors"
+                className="cozy-button-primary min-h-12 w-full rounded-xl px-4 py-3 text-sm font-semibold transition-colors"
               >
                 {loading ? 'Creating…' : 'Create World 🌸'}
               </button>
@@ -220,38 +225,44 @@ export default function OnboardingPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-md shadow-md p-6 flex flex-col gap-4"
+              className="cozy-surface flex flex-col gap-4 rounded-[1.6rem] p-5 sm:p-6"
             >
               <div className="flex items-center gap-3">
                 <button
+                  type="button"
+                  aria-label="Back to world options"
                   onClick={() => { setMode('select'); setError(''); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[#766b5e] transition-colors hover:bg-[#eee6d9]"
                 >
                   ←
                 </button>
-                <h2 className="font-bold text-gray-800">Join a World</h2>
+                <h2 className="text-lg font-semibold text-[#463d35]">Join a World</h2>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">World Code</label>
+                <label htmlFor="join-world-code" className="mb-1 block text-sm font-medium text-[#5f5345]">World code</label>
                 <input
+                  id="join-world-code"
                   type="text"
                   value={worldCode}
                   onChange={(e) => setWorldCode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                  onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void handleJoin(); } }}
                   placeholder="Paste the world code here"
-                  className="w-full px-4 py-3 rounded-md border border-gray-200 focus:outline-none focus:border-emerald-400 text-gray-800 text-sm font-mono"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="cozy-field min-h-12 w-full rounded-xl px-4 py-3 font-mono text-sm"
                   autoFocus
                 />
-                <p className="text-xs text-gray-400 mt-1">Ask your partner for their world code</p>
+                <p className="mt-2 text-xs text-[#766b5e]">Ask your partner for their world code</p>
               </div>
 
-              {error && <p className="text-red-500 text-xs">{error}</p>}
+              {error && <p role="alert" className="text-xs font-medium text-[#9b4e44]">{error}</p>}
 
               <button
                 onClick={handleJoin}
                 disabled={loading || !worldCode.trim()}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-md font-semibold text-sm transition-colors"
+                className="cozy-button-primary min-h-12 w-full rounded-xl px-4 py-3 text-sm font-semibold transition-colors"
               >
                 {loading ? 'Joining…' : 'Join World 🔑'}
               </button>
