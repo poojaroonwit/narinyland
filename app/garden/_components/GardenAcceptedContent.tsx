@@ -166,7 +166,7 @@ export const GardenAcceptedContent: React.FC = () => {
       </div>
 
       {/* Mobile navigation stays visible without horizontal scrolling. */}
-      <div className="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] sm:hidden">
+      <div className="pointer-events-auto fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] sm:hidden">
         {moreOpen && (
           <>
             <button
