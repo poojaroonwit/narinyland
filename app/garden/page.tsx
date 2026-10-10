@@ -210,15 +210,17 @@ const Home: React.FC = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
-    window.addEventListener('appinstalled', () => {
+    const handleAppInstalled = () => {
       setDeferredPrompt(null);
       setShowInstallPrompt(false);
       showToast("App installed successfully! 🎉");
-    });
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -263,6 +265,20 @@ const Home: React.FC = () => {
 
   
   useEffect(() => {
+    let current = true;
+    // Never show the previous couple's content while a different world loads.
+    setConfigLoaded(false);
+    setCircleMembers([]);
+    setLoveLetters([]);
+    setAppConfig((previous) => ({
+      ...previous,
+      gallery: [],
+      timeline: [],
+      coupons: [],
+      albums: [],
+      lands: [],
+    }));
+
     const fetchData = async () => {
       try {
         const [
@@ -280,6 +296,7 @@ const Home: React.FC = () => {
           statsAPI.get().catch(() => ({ xp: 0, level: 1, leaves: 0, points: 0 })),
           activeCircleId ? circlesAPI.listMembers(activeCircleId).catch(() => ({ members: [] })) : Promise.resolve({ members: [] })
         ]);
+        if (!current) return;
 
         if (membersData?.members) {
           setCircleMembers(membersData.members);
@@ -350,12 +367,14 @@ const Home: React.FC = () => {
         
         setConfigLoaded(true);
       } catch (err: unknown) {
+        if (!current) return;
         console.warn('⚠️ Could not load data from API, using defaults:', getErrorMessage(err));
         setConfigLoaded(true);
       }
     };
 
-    fetchData();
+    void fetchData();
+    return () => { current = false; };
   }, [activeCircleId]);
 
   // ─── Save config to database when setAppConfig is called ────────────
@@ -411,12 +430,18 @@ const Home: React.FC = () => {
   }, [hasAcceptedProposal]);
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousOverflowX = document.body.style.overflowX;
     if (!hasAcceptedProposal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
       document.body.style.overflowX = 'hidden';
     }
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overflowX = previousOverflowX;
+    };
   }, [hasAcceptedProposal]);
 
   const actionContext = { appConfig, setAppConfig, handleSetAppConfig, loveStats, setLoveStats, activePartners, setPetEmotion, setPetMessage, setLoveLetters, showToast, setHasAcceptedProposal, requestConfirm };
