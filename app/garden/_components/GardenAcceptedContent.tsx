@@ -40,14 +40,20 @@ export const GardenAcceptedContent: React.FC = () => {
 
   const activeLand = appConfig.lands?.find((land: { isActive?: boolean }) => land.isActive) ?? appConfig.lands?.[0];
   const [moreOpen, setMoreOpen] = React.useState(false);
+  const moreTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const firstMoreOptionRef = React.useRef<HTMLButtonElement>(null);
   const unreadLetters = loveLetters.filter((letter: { isRead?: boolean }) => !letter.isRead).length;
   const moreIsActive = ['timeline', 'coupons', 'letters', 'shop'].includes(activeTab);
 
   React.useEffect(() => { setMoreOpen(false); }, [activeTab]);
   React.useEffect(() => {
     if (!moreOpen) return;
+    firstMoreOptionRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMoreOpen(false);
+      if (event.key === 'Escape') {
+        setMoreOpen(false);
+        moreTriggerRef.current?.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -178,10 +184,11 @@ export const GardenAcceptedContent: React.FC = () => {
             <div
               id="garden-more-destinations"
               role="dialog"
+              aria-modal="true"
               aria-label="More destinations"
               className="cozy-surface absolute bottom-[calc(100%+0.65rem)] left-1/2 z-10 grid w-[min(94vw,26rem)] -translate-x-1/2 grid-cols-2 gap-2 rounded-[1.4rem] p-3 shadow-xl"
             >
-              <button type="button" onClick={() => navigate('timeline')} aria-current={activeTab === 'timeline' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'timeline'}>📖 Timeline</button>
+              <button ref={firstMoreOptionRef} type="button" onClick={() => navigate('timeline')} aria-current={activeTab === 'timeline' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'timeline'}>📖 Timeline</button>
               <button type="button" onClick={() => navigate('coupons')} aria-current={activeTab === 'coupons' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'coupons'}>🎁 Coupons</button>
               <button type="button" onClick={() => navigate('letters')} aria-current={activeTab === 'letters' ? 'page' : undefined} className="cozy-nav-item min-h-14 rounded-xl bg-[#f7f0e5] p-3 text-left text-sm font-semibold" data-active={activeTab === 'letters'}>
                 💌 Letters {unreadLetters > 0 && <span className="ml-1 rounded-full bg-[#aa6659] px-1.5 py-0.5 text-xs text-white">{unreadLetters}</span>}
@@ -200,7 +207,7 @@ export const GardenAcceptedContent: React.FC = () => {
           <button type="button" onClick={() => navigate('quests')} data-active={activeTab === 'quests'} aria-current={activeTab === 'quests' ? 'page' : undefined} className="cozy-nav-item flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
             <i className="fas fa-map-signs text-lg" aria-hidden="true" />Adventure
           </button>
-          <button type="button" onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-controls="garden-more-destinations" data-active={moreIsActive || moreOpen} className="cozy-nav-item relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
+          <button ref={moreTriggerRef} type="button" onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-controls="garden-more-destinations" data-active={moreIsActive || moreOpen} className="cozy-nav-item relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold">
             <i className="fas fa-ellipsis text-lg" aria-hidden="true" />More
             {unreadLetters > 0 && <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-[#aa6659]" aria-label={unreadLetters + ' unread letters'} />}
           </button>
