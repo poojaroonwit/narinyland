@@ -82,6 +82,9 @@ export function CoupleWorldAdventure() {
       const next = await requestWorld(activeCircleId, { questKey: key, answer: answer.trim() });
       if (currentWorldRef.current !== activeCircleId) return;
       setState(next);
+      window.dispatchEvent(new CustomEvent('narinyland:couple-stories-updated', {
+        detail: { circleId: activeCircleId, completedMoments: next.completedMoments },
+      }));
       setEditing(null);
       setAnswer('');
     } catch (cause) {
