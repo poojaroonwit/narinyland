@@ -46,6 +46,8 @@ async function requestWorld(circleId: string, data?: { questKey: string; answer:
 /** A low-pressure private place for the two people who share this world. */
 export function CoupleWorldAdventure() {
   const { activeCircleId } = useAuth();
+  const currentWorldRef = React.useRef(activeCircleId);
+  currentWorldRef.current = activeCircleId;
   const [state, setState] = React.useState<WorldState | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
@@ -56,7 +58,7 @@ export function CoupleWorldAdventure() {
   const refresh = React.useCallback(async (signal?: AbortSignal) => {
     if (!activeCircleId) return;
     const next = await requestWorld(activeCircleId, undefined, signal);
-    if (!signal?.aborted) setState(next);
+    if (!signal?.aborted && currentWorldRef.current === activeCircleId) setState(next);
   }, [activeCircleId]);
 
   React.useEffect(() => {
@@ -78,10 +80,12 @@ export function CoupleWorldAdventure() {
     setError('');
     try {
       const next = await requestWorld(activeCircleId, { questKey: key, answer: answer.trim() });
+      if (currentWorldRef.current !== activeCircleId) return;
       setState(next);
       setEditing(null);
       setAnswer('');
     } catch (cause) {
+      if (currentWorldRef.current !== activeCircleId) return;
       setError(cause instanceof Error ? cause.message : 'Could not save your answer.');
       // Refresh on conflict because the other partner may just have answered.
       await refresh().catch(() => {});
