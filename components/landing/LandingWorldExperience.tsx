@@ -243,8 +243,8 @@ export function LandingWorldExperience() {
   };
 
   return (
-    <main className="relative h-[100svh] min-h-[42rem] overflow-hidden bg-[#edf6e9] text-stone-800">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#edf6e9]">
+    <main className="relative h-[100svh] min-h-[42rem] overflow-hidden bg-[#f4efe4] text-stone-800">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#f4efe4]">
         <motion.div
           className="absolute -right-[13vw] -top-[15vh] h-[58vw] min-h-[32rem] w-[58vw] min-w-[32rem] rounded-full bg-white/60 blur-3xl"
           animate={prefersReducedMotion ? { x: 0, y: 0 } : { x: [0, 18, -8, 0], y: [0, 10, -5, 0] }}
@@ -290,7 +290,7 @@ export function LandingWorldExperience() {
           <motion.div
             key={`stage-wash-${activeStageIndex}`}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[15] bg-[#edf6e9]"
+            className="pointer-events-none absolute inset-0 z-[15] bg-[#f4efe4]"
             initial={{ opacity: prefersReducedMotion ? 0 : 0.17 }}
             animate={{ opacity: 0 }}
             exit={{ opacity: 0 }}
@@ -314,9 +314,9 @@ export function LandingWorldExperience() {
           ))}
         </div>
 
-        <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-[#edf6e9]/48 via-transparent to-white/[0.08]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-[38svh] bg-gradient-to-b from-transparent via-[#edf6e9]/46 to-[#edf6e9]/94" />
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-30 w-[58vw] bg-gradient-to-r from-[#edf6e9]/54 via-[#edf6e9]/10 to-transparent md:w-[46vw]" />
+        <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-[#f4efe4]/48 via-transparent to-white/[0.08]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-[38svh] bg-gradient-to-b from-transparent via-[#f4efe4]/46 to-[#f4efe4]/94" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-30 w-[58vw] bg-gradient-to-r from-[#f4efe4]/54 via-[#f4efe4]/10 to-transparent md:w-[46vw]" />
 
         <div className="pointer-events-none absolute inset-0 z-[60]">
           <motion.div
@@ -325,17 +325,11 @@ export function LandingWorldExperience() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: prefersReducedMotion ? 0.2 : 0.45 }}
           >
-            <div className="flex h-10 items-center gap-2 rounded-full bg-white/42 px-3.5 shadow-md backdrop-blur-xl">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-500 text-[11px] text-white shadow-sm">♥</span>
-              <span className="text-xs font-black tracking-tight text-stone-800 md:text-sm">Narinyland</span>
+            <div className="cozy-float flex h-10 items-center gap-2 rounded-2xl px-3.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#d2a08e] text-[11px] text-white">♥</span>
+              <span className="text-xs font-semibold tracking-tight text-[#473f36] md:text-sm">Narinyland</span>
             </div>
           </motion.div>
-
-          <div className="absolute left-1/2 top-4 hidden -translate-x-1/2 items-center gap-2 rounded-full bg-white/42 px-3.5 py-2 shadow-md backdrop-blur-xl sm:flex">
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
-            <span className="text-[10px] font-black text-stone-700">{activeSnapshot.points.toLocaleString()} Points</span>
-            <span className="text-[9px] font-bold text-stone-400">shared</span>
-          </div>
 
           <motion.div
             className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2 md:right-6 md:top-6"
@@ -343,33 +337,25 @@ export function LandingWorldExperience() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: prefersReducedMotion ? 0.2 : 0.45, delay: prefersReducedMotion ? 0 : 0.1 }}
           >
-            <div className="hidden h-9 items-center gap-2 rounded-full bg-white/28 px-3.5 text-stone-700 shadow-sm backdrop-blur-xl md:flex">
-              <motion.span
-                className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-                animate={prefersReducedMotion ? { scale: 1 } : { scale: [1, 1.7, 1], opacity: [0.8, 0.35, 0.8] }}
-                transition={prefersReducedMotion ? { duration: 0 } : { duration: 1.8, repeat: Infinity }}
-              />
-              <span className="text-[10px] font-black uppercase tracking-[0.14em]">Live gameplay</span>
-            </div>
             <motion.button
               type="button"
               onClick={enterWorld}
               disabled={entering}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="flex h-10 items-center gap-2 rounded-full bg-white/[0.8] px-4 text-xs font-black text-stone-800 shadow-lg backdrop-blur-xl disabled:cursor-wait disabled:opacity-70"
+              className="cozy-float flex h-10 items-center gap-2 rounded-2xl px-4 text-xs font-semibold disabled:cursor-wait disabled:opacity-70"
             >
-              <i className={`fas ${entering ? 'fa-spinner fa-spin' : 'fa-arrow-right-to-bracket'} text-[11px] text-pink-500`} />
+              <i className={`fas ${entering ? 'fa-spinner fa-spin' : 'fa-arrow-right-to-bracket'} text-[11px] text-[#476b55]`} />
               <span>{entering ? 'Entering…' : 'Enter World'}</span>
             </motion.button>
           </motion.div>
 
-          <div className="absolute left-4 right-4 top-[5.1rem] flex justify-end md:right-6 md:top-[5.4rem]">
-            <div className="pointer-events-auto w-full max-w-[22rem] rounded-[1.6rem] bg-white/[0.42] p-3.5 shadow-xl shadow-emerald-950/[0.06] backdrop-blur-xl md:p-4">
+          <div className="absolute left-4 right-4 top-[5.1rem] hidden justify-end sm:flex md:right-6 md:top-[5.4rem]">
+            <div className="cozy-surface pointer-events-auto w-full max-w-[20rem] rounded-[1.5rem] p-3.5 md:p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-800">Gameplay</span>
-                  <span className="ml-2 text-[9px] font-bold text-stone-400">12 sec loop</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-800">A peek inside</span>
+                  
                 </div>
                 <span className="rounded-full bg-white/55 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-stone-500">{activeStageIndex + 1}/6</span>
               </div>
@@ -398,7 +384,7 @@ export function LandingWorldExperience() {
                   className="mt-2.5"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100/85 text-emerald-700 shadow-sm">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e4edde] text-[#456b50]">
                       <i className={`fas ${activeStage.icon} text-xs`} />
                     </span>
                     <div className="min-w-0">
@@ -422,15 +408,15 @@ export function LandingWorldExperience() {
             transition={{ duration: prefersReducedMotion ? 0.2 : 0.62, delay: prefersReducedMotion ? 0 : 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="max-w-[36rem]">
-              <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/[0.4] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] text-emerald-800 shadow-sm backdrop-blur-xl">
+              <div className="cozy-float mb-2.5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-semibold tracking-wide text-[#456b50]">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Play a world together
               </div>
-              <h1 className="max-w-[35rem] text-3xl font-black leading-[1.01] tracking-[-0.05em] text-stone-950 drop-shadow-[0_1px_18px_rgba(255,255,255,0.95)] sm:text-4xl md:text-6xl">
+              <h1 className="max-w-[35rem] text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[#40382e] drop-shadow-[0_1px_18px_rgba(255,255,255,0.96)] sm:text-4xl md:text-6xl">
                 A little world that belongs to both of you.
               </h1>
-              <p className="mt-2.5 max-w-lg text-xs font-semibold leading-relaxed text-stone-700 drop-shadow-[0_1px_10px_rgba(255,255,255,0.95)] sm:text-sm md:text-base">
-                Build, place, grow, edit, expand, and come home to the same living homestead—together.
+              <p className="mt-3 max-w-lg text-sm font-medium leading-relaxed text-[#66594b] drop-shadow-[0_1px_10px_rgba(255,255,255,0.95)] sm:text-sm md:text-base">
+                A home to grow, tiny adventures to share, and new memories to bring back together.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2.5">
                 <motion.button
@@ -439,14 +425,14 @@ export function LandingWorldExperience() {
                   disabled={entering}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className="pointer-events-auto flex min-h-[46px] items-center gap-3 rounded-full bg-emerald-700 px-5 text-sm font-black text-white shadow-xl shadow-emerald-950/15 disabled:cursor-wait disabled:opacity-70"
+                  className="cozy-button-primary pointer-events-auto flex min-h-[46px] items-center gap-3 rounded-2xl px-5 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
                 >
                   <span>{entering ? 'Opening your world…' : 'Enter Narinyland'}</span>
                   <i className={`fas ${entering ? 'fa-spinner fa-spin' : 'fa-arrow-right'} text-[11px]`} />
                 </motion.button>
                 <Link
                   href="/signup"
-                  className="pointer-events-auto flex min-h-[46px] items-center gap-2 rounded-full bg-white/50 px-4 text-xs font-black text-stone-700 shadow-md backdrop-blur-xl transition hover:bg-white/70"
+                  className="cozy-button-secondary pointer-events-auto flex min-h-[46px] items-center gap-2 rounded-2xl px-4 text-xs font-semibold transition-colors"
                 >
                   <span>Create your world</span>
                   <i className="fas fa-seedling text-[10px] text-emerald-700" />
