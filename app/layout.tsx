@@ -19,7 +19,7 @@ export function generateMetadata(): Metadata {
 
   return {
     title: appName,
-    description: ENV_APP_DESC || 'Experience Narinyland, an interactive virtual pet and love garden. Track your relationship growth, collect memories, and nurture your digital bond.',
+    description: ENV_APP_DESC || 'Create a cozy private world for two. Build your floating homestead, share little adventures, and keep memories together in Narinyland.',
     applicationName: shortName,
     appleWebApp: {
       capable: true,
@@ -35,7 +35,7 @@ export function generateMetadata(): Metadata {
 
 export function generateViewport(): Viewport {
   return {
-    themeColor: ENV_THEME_COLOR || '#ec4899',
+    themeColor: ENV_THEME_COLOR || '#f8f2e8',
     width: 'device-width',
     initialScale: 1,
   };
