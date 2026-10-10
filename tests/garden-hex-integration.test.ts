@@ -23,7 +23,9 @@ test('Home tab leaves the HexWorld pointer-interactive while other app panels ca
   const source = await readFile(new URL('../app/garden/_components/GardenAcceptedContent.tsx', import.meta.url), 'utf8');
   assert.match(source, /pointer-events-none relative z-10/);
   assert.match(source, /activeTab === 'home' \? 'pointer-events-none' : 'pointer-events-auto'/);
-  assert.match(source, /cozy-nav pointer-events-auto fixed bottom-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(source, /pointer-events-auto fixed inset-x-0 bottom-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(source, /cozy-nav relative z-20/);
+  assert.match(source, /cozy-nav pointer-events-auto fixed bottom-\[calc\(1\.25rem\+env\(safe-area-inset-bottom\)\)\]/);
   assert.match(source, /max-w-\[calc\(100vw-1rem\)\]/);
   assert.doesNotMatch(source, /MemoryFrame/);
 });
