@@ -21,7 +21,9 @@ const globalForRedis = globalThis as unknown as {
   redisWarned: boolean | undefined;
 };
 
-const redisUrl = process.env.REDIS_PUBLIC_URL || process.env.REDIS_URL;
+// Prefer Railway's private network so cache traffic does not traverse the public TCP proxy.
+const redisUrl = process.env.REDIS_URL || process.env.REDIS_PUBLIC_URL;
+const REDIS_IDLE_DISCONNECT_MS = 60_000;
 const shouldCreateClient = Boolean(redisUrl) || process.env.NODE_ENV !== 'production';
 
 function warnRedisFailure(operation: string, error: unknown) {
@@ -37,11 +39,13 @@ function createRedisClient(): RedisClient | null {
   const redisClient =
     globalForRedis.redisClient ??
     new Redis(redisUrl || 'redis://localhost:6379', {
+      // An imported module should not open a Redis socket before its first command.
+      lazyConnect: true,
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
-      retryStrategy(times) {
-        return Math.min(times * 100, 1000);
-      },
+      // Never retry on a background loop after a transient outage; the next
+      // request explicitly reconnects and can wake a sleeping Redis instance.
+      retryStrategy: () => null,
     });
 
   redisClient.on('error', (error) => warnRedisFailure('connection', error));
@@ -51,10 +55,57 @@ function createRedisClient(): RedisClient | null {
 }
 
 const client = createRedisClient();
+let activeCommands = 0;
+let connectPromise: Promise<void> | null = null;
+let idleDisconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function cancelIdleDisconnect() {
+  if (!idleDisconnectTimer) return;
+  clearTimeout(idleDisconnectTimer);
+  idleDisconnectTimer = null;
+}
+
+function scheduleIdleDisconnect() {
+  if (!client || activeCommands > 0) return;
+  cancelIdleDisconnect();
+  idleDisconnectTimer = setTimeout(() => {
+    idleDisconnectTimer = null;
+    if (activeCommands === 0 && client.status !== 'end') client.disconnect();
+  }, REDIS_IDLE_DISCONNECT_MS);
+  idleDisconnectTimer.unref?.();
+}
+
+/**
+ * Use the shared client only while it serves a command. A permanently open
+ * Redis socket emits network traffic even when the game has no visitors,
+ * preventing Railway Serverless from sleeping.
+ */
+async function executeRedisCommand<T>(command: (redisClient: RedisClient) => Promise<T>): Promise<T> {
+  if (!client) throw new Error('Redis is not configured');
+  cancelIdleDisconnect();
+  activeCommands += 1;
+  try {
+    if (client.status !== 'ready') {
+      if (!connectPromise) {
+        connectPromise = client.connect().finally(() => {
+          connectPromise = null;
+        });
+      }
+      await connectPromise;
+    }
+    return await command(client);
+  } finally {
+    activeCommands -= 1;
+    scheduleIdleDisconnect();
+  }
+}
 
 export function createRedisSubscriber(): RedisClient | null {
   if (!shouldCreateClient) return null;
 
+  // Subscriptions belong to a live SSE request and are closed by its abort/
+  // cancel handler. Unlike the command client they must stay connected while
+  // a real user is listening for world updates.
   const subscriber = new Redis(redisUrl || 'redis://localhost:6379', {
     enableOfflineQueue: false,
     maxRetriesPerRequest: 1,
@@ -75,7 +126,7 @@ async function safeRedisCommand<T>(
   if (!client) return fallback;
 
   try {
-    return await command(client);
+    return await executeRedisCommand(command);
   } catch (error) {
     warnRedisFailure(operation, error);
     return fallback;
@@ -103,15 +154,12 @@ export async function redisEval<T>(
 }
 
 export async function closeRedisConnection(): Promise<void> {
+  cancelIdleDisconnect();
   if (!client) return;
-  try {
-    if (client.status !== 'end') await client.quit();
-  } catch (error) {
-    warnRedisFailure('close', error);
-    client.disconnect();
-  } finally {
-    if (globalForRedis.redisClient === client) globalForRedis.redisClient = null;
-  }
+  // Disconnect locally instead of sending an unnecessary QUIT packet as the
+  // server exits. The next command can reconnect through executeRedisCommand.
+  client.disconnect();
+  if (globalForRedis.redisClient === client) globalForRedis.redisClient = null;
 }
 
 export const redis: SafeRedis = {
@@ -146,8 +194,7 @@ export const redis: SafeRedis = {
     return safeRedisCommand('publish', 0, (redisClient) => redisClient.publish(channel, message));
   },
   async ping() {
-    if (!client) throw new Error('Redis is not configured');
-    return client.ping();
+    return executeRedisCommand((redisClient) => redisClient.ping());
   },
 };
 
