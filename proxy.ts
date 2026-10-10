@@ -9,7 +9,7 @@ const UNDESIRABLE_BOTS = [
 
 const PUBLIC_API_PREFIXES = ['/api/auth', '/api/config/appkit', '/api/health'];
 const LOCAL_AUTH_PATHS = ['/login', '/signup'];
-const PROTECTED_PAGE_PREFIXES = ['/garden', '/onboarding', '/board'];
+const PROTECTED_PAGE_PREFIXES = ['/garden', '/world', '/onboarding', '/board'];
 
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
@@ -94,6 +94,7 @@ export const config = {
   matcher: [
     '/api/:path*',
     '/garden/:path*',
+    '/world/:path*',
     '/onboarding/:path*',
     '/board/:path*',
     '/login',

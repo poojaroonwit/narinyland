@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../../components/AuthProvider';
 import { motion } from 'framer-motion';
 import Timeline from '../../../components/Timeline';
@@ -147,7 +148,7 @@ export const GardenAcceptedContent: React.FC = () => {
       </div>
 
       <nav
-        className="cozy-nav pointer-events-auto fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 rounded-[1.35rem] p-1.5 sm:gap-2 sm:p-2 md:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
+        className="cozy-nav pointer-events-auto fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-[1.35rem] p-1.5 sm:gap-2 sm:p-2 md:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
         aria-label="Garden navigation"
       >
         <button type="button" onClick={() => switchTab('home')} data-active={activeTab === 'home'} aria-current={activeTab === 'home' ? 'page' : undefined}
@@ -155,6 +156,10 @@ export const GardenAcceptedContent: React.FC = () => {
           <i className="fas fa-house-chimney text-lg" aria-hidden="true" />
           <span className="text-[10px] font-semibold sm:text-xs">Home</span>
         </button>
+        <Link href="/world" aria-label="Explore Narinyland Commons" className="cozy-nav-item flex min-w-[48px] flex-1 flex-col items-center gap-1 px-1 py-2 sm:min-w-[76px]">
+          <i className="fas fa-tree text-lg" aria-hidden="true" />
+          <span className="text-[10px] font-semibold sm:text-xs">Explore</span>
+        </Link>
         <button type="button" onClick={() => switchTab('quests')} data-active={activeTab === 'quests'} aria-current={activeTab === 'quests' ? 'page' : undefined}
           className="cozy-nav-item flex min-w-[62px] flex-1 flex-col items-center gap-1 px-1.5 py-2 sm:min-w-[84px]">
           <i className="fas fa-map-signs text-lg" aria-hidden="true" />
