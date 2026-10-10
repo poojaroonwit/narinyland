@@ -39,12 +39,13 @@ function centerOf(coords: HexCoord[]): HexCoord | null {
   };
 }
 
-export function HexBuildController({ landId, snapshot, setSnapshot, showToast, graphicsQuality = 'medium' }: {
+export function HexBuildController({ landId, snapshot, setSnapshot, showToast, graphicsQuality = 'medium', storyLanternCount = 0 }: {
   landId: string;
   snapshot: HexWorldSnapshot;
   setSnapshot: (snapshot: HexWorldSnapshot) => void;
   showToast: (message: string) => void;
   graphicsQuality?: string;
+  storyLanternCount?: number;
 }) {
   const [state, dispatch] = useReducer(hexBuildReducer, undefined, createInitialHexBuildState);
   const [viewMode, setViewMode] = useState<HexViewMode>('world');
@@ -240,7 +241,7 @@ export function HexBuildController({ landId, snapshot, setSnapshot, showToast, g
   const expireUndo = useCallback(() => { setUndo(null); setUndoLabel(''); }, []);
 
   return <div className="absolute inset-0">
-    <HexWorld3D snapshot={snapshot} cameraIntent={cameraIntent} viewMode={viewMode} movementInputRef={exploreMovementInputRef} movementSuspended={exploreInteractionBuildingId !== null || residentConversation !== null} residentSamples={residentSamples} onResidentSamplesChange={viewMode === 'person' ? setResidentSamples : undefined} onInteractionTargetChange={viewMode === 'person' ? setExploreInteractionTarget : undefined} resetNonce={resetNonce} reframeCoords={reframeCoords} graphicsQuality={graphicsQuality} livingState={living.state} selectedCoord={state.anchor} selectedBuildingId={state.selectedBuildingId} validKeys={validKeys} invalidKeys={invalidKeys} invalidPulseNonce={invalidPulseNonce} visualEvent={visualEvent} expansionOptions={state.mode === 'expanding' && !state.expansionKey ? snapshot.expansions : undefined} selectedExpansionKey={state.expansionKey} expansionPlacementPreview={expansionPlacementPreview} newlyAddedKeys={newlyAddedKeys} buildingPreview={scenePreview} onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }} onSelectTile={handleTileSelect} onSelectExpansion={chooseExpansion} onHoverExpansionAnchor={handleExpansionHover} onSelectExpansionAnchor={handleExpansionSelect} onSelectBuilding={(building: HexBuildingDTO | null) => { if (viewMode === 'world' && state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }} />
+    <HexWorld3D snapshot={snapshot} storyLanternCount={storyLanternCount} cameraIntent={cameraIntent} viewMode={viewMode} movementInputRef={exploreMovementInputRef} movementSuspended={exploreInteractionBuildingId !== null || residentConversation !== null} residentSamples={residentSamples} onResidentSamplesChange={viewMode === 'person' ? setResidentSamples : undefined} onInteractionTargetChange={viewMode === 'person' ? setExploreInteractionTarget : undefined} resetNonce={resetNonce} reframeCoords={reframeCoords} graphicsQuality={graphicsQuality} livingState={living.state} selectedCoord={state.anchor} selectedBuildingId={state.selectedBuildingId} validKeys={validKeys} invalidKeys={invalidKeys} invalidPulseNonce={invalidPulseNonce} visualEvent={visualEvent} expansionOptions={state.mode === 'expanding' && !state.expansionKey ? snapshot.expansions : undefined} selectedExpansionKey={state.expansionKey} expansionPlacementPreview={expansionPlacementPreview} newlyAddedKeys={newlyAddedKeys} buildingPreview={scenePreview} onHoverTile={(coord) => { if (state.mode === 'placing' || state.mode === 'moving') setAnchor(coord); }} onSelectTile={handleTileSelect} onSelectExpansion={chooseExpansion} onHoverExpansionAnchor={handleExpansionHover} onSelectExpansionAnchor={handleExpansionSelect} onSelectBuilding={(building: HexBuildingDTO | null) => { if (viewMode === 'world' && state.mode === 'idle') dispatch({ type: 'select_existing', buildingId: building?.id ?? null }); }} />
 
     <HexGameplayOverlay snapshot={snapshot} livingState={living.state} livingLoading={living.loading} livingError={living.error} livingBusy={living.busy} musicMuted={musicMuted} onToggleMusic={toggleMusic} onLivingAction={living.act} onLivingRetry={living.retry} selectedBuilding={selectedBuilding} interactive={state.mode === 'idle' && !catalogOpen} viewMode={viewMode} movementInputRef={exploreMovementInputRef} exploreInteractionTarget={exploreInteractionTarget} exploreInteractionBuildingId={exploreInteractionBuildingId} residentConversation={residentConversation} onExploreInteract={openExploreInteraction} onCloseExploreInteraction={closeExploreInteraction} onViewModeChange={changeViewMode} onFarm={handleFarm} onBuild={openBuild} onExpand={openExpand} onResetView={handleResetView} onClearSelection={() => dispatch({ type: 'select_existing', buildingId: null })} />
 
