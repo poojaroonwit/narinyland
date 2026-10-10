@@ -29,6 +29,7 @@ import { HexPlayerController } from './HexPlayerController';
 import { HexResidentInteractionReporter } from './HexResidentInteractionReporter';
 import { HexSelectionEffects } from './HexSelectionEffects';
 import { HexSkyAtmosphere } from './HexSkyAtmosphere';
+import { HexStoryLanterns } from './HexStoryLanterns';
 import { HexTileInstances } from './HexTileInstances';
 import { HexWorldLighting } from './HexWorldLighting';
 import { HexWorldParticles } from './HexWorldParticles';
@@ -65,6 +66,7 @@ type Props = {
   reframeCoords?: HexCoord[];
   graphicsQuality?: string;
   livingState?: HomesteadLifeState | null;
+  storyLanternCount?: number;
   movementInputRef?: React.MutableRefObject<HexExploreMovementInput>;
   movementSuspended?: boolean;
   residentSamples?: HexResidentInteractionSample[];
@@ -120,6 +122,7 @@ export function HexWorld3D({ snapshot, ...props }: Props) {
       {showBuildGrid&&<HexBuildGridOverlay tiles={snapshot.tiles} validKeys={props.validKeys} invalidKeys={props.invalidKeys} expansionPlacementPreview={props.expansionPlacementPreview} />}
       <HexSelectionEffects tiles={snapshot.tiles} selectedCoord={props.selectedCoord} validKeys={props.validKeys} invalidKeys={props.invalidKeys} motionProfile={motionProfile} invalidPulseNonce={props.invalidPulseNonce} />
       <HexPBRWater tiles={snapshot.tiles} profile={profile} motionProfile={motionProfile} />
+      <HexStoryLanterns count={props.storyLanternCount ?? 0} tiles={snapshot.tiles} buildings={snapshot.buildings} reducedMotion={reducedMotion} />
       <HexPBRVegetation tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} motionProfile={motionProfile} presentation={viewMode} />
       <HexWorldSetDressing tiles={snapshot.tiles} buildings={snapshot.buildings} seed={snapshot.world.seed} profile={profile} presentation={viewMode} reducedMotion={reducedMotion} />
       {viewMode==='person'&&<><HexExploreEnvironmentLayer tiles={snapshot.tiles} seed={snapshot.world.seed} profile={profile} reducedMotion={reducedMotion} /><HexExploreStructureDetails buildings={snapshot.buildings} tiles={snapshot.tiles} profile={profile} /></>}
