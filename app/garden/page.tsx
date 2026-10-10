@@ -129,7 +129,7 @@ const Home: React.FC = () => {
   }, [circleMembers, user]);
 
   const [galleryViewMode, setGalleryViewMode] = useState<'all' | 'public' | 'private'>('all');
-  const [activeTab, setActiveTab] = useState<'home' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
+  const [activeTab, setActiveTab] = useState<'home' | 'quests' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('globe');
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
@@ -190,7 +190,7 @@ const Home: React.FC = () => {
     });
   };
 
-  const switchTab = (tab: 'home' | 'timeline' | 'coupons' | 'letters' | 'shop') => {
+  const switchTab = (tab: 'home' | 'quests' | 'timeline' | 'coupons' | 'letters' | 'shop') => {
     closeFloatingPanels();
     setActiveTab(tab);
   };
