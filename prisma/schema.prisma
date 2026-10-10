@@ -39,7 +39,7 @@ model AppConfig {
   gallery                 Json                 @default("[]")
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
-  showProposal            Boolean              @default(true)
+  showProposal            Boolean              @default(false)
   albums                  Album[]
   coupleQuestEntries      CoupleQuestEntry[]
   characterProfiles       CharacterProfile[]
