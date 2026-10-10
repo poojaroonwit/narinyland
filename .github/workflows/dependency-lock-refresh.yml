@@ -33,3 +33,5 @@ jobs:
           git add package-lock.json
           git commit -m "chore: refresh dependency lock"
           git push
+
+# rerun after brace-expansion override
