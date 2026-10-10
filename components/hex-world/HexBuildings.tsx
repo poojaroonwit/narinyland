@@ -96,6 +96,7 @@ export function HexBuildings({ buildings, tiles, buildingTiers, selectedBuilding
   visualEvent?: HexConfirmedVisualEvent;
   motionProfile: HexMotionProfile;
   reducedMotion: boolean;
+  visualStyle?: 'storybook' | 'natural';
   onSelect?: (building: HexBuildingDTO) => void;
 }) {
   const tileHeight = new Map(tiles.map((tile) => [`${tile.q}:${tile.r}`, tile.height]));
