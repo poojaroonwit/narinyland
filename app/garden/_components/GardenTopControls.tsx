@@ -172,7 +172,8 @@ export const GardenTopControls: React.FC = () => {
             aria-label="Choose a world"
           >
             <i className="fas fa-globe-asia text-xs text-[#54785c]" />
-            <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">
+            <span className="text-[11px] font-semibold sm:hidden">World</span>
+            <span className="hidden max-w-[100px] truncate text-xs font-semibold sm:inline md:max-w-[140px]">
               {circles.find((circle: { id: string }) => circle.id === activeCircleId)?.name || 'Select World'}
             </span>
             <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isCircleDropdownOpen ? 'rotate-180' : ''}`} />
@@ -264,7 +265,8 @@ export const GardenTopControls: React.FC = () => {
             aria-label="Choose a land"
           >
             <i className="fas fa-map-marked-alt text-xs text-[#8f7952]" />
-            <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">{activeLand?.name || 'Select Land'}</span>
+            <span className="text-[11px] font-semibold sm:hidden">Land</span>
+            <span className="hidden max-w-[100px] truncate text-xs font-semibold sm:inline md:max-w-[140px]">{activeLand?.name || 'Select Land'}</span>
             <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
