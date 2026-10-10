@@ -7,6 +7,7 @@ test('owned PBR texture configuration isolates shared loader cache entries', () 
   const baseColor = new THREE.Texture();
   const normal = new THREE.Texture();
   const roughness = new THREE.Texture();
+  const cached = [baseColor, normal, roughness];
 
   const configured = createOwnedPBRTextureBundle({ baseColor, normal, roughness }, [3, 4], 16);
 
@@ -14,11 +15,14 @@ test('owned PBR texture configuration isolates shared loader cache entries', () 
   assert.notEqual(configured.normal, normal, 'normal map must not mutate the cached useTexture instance');
   assert.notEqual(configured.roughness, roughness, 'roughness map must not mutate the cached useTexture instance');
 
-  assert.equal(baseColor.wrapS, THREE.ClampToEdgeWrapping);
-  assert.equal(baseColor.wrapT, THREE.ClampToEdgeWrapping);
-  assert.equal(baseColor.repeat.x, 1);
-  assert.equal(baseColor.repeat.y, 1);
-  assert.equal(baseColor.colorSpace, THREE.NoColorSpace);
+  for (const texture of cached) {
+    assert.equal(texture.wrapS, THREE.ClampToEdgeWrapping);
+    assert.equal(texture.wrapT, THREE.ClampToEdgeWrapping);
+    assert.equal(texture.repeat.x, 1);
+    assert.equal(texture.repeat.y, 1);
+    assert.equal(texture.anisotropy, 1);
+    assert.equal(texture.colorSpace, THREE.NoColorSpace);
+  }
 
   assert.equal(configured.baseColor.wrapS, THREE.RepeatWrapping);
   assert.equal(configured.baseColor.wrapT, THREE.RepeatWrapping);
