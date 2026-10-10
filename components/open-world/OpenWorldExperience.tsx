@@ -26,6 +26,16 @@ export function OpenWorldExperience() {
   const [mapOpen, setMapOpen] = React.useState(false);
   const movementInputRef = React.useRef<HexExploreMovementInput>({ ...ZERO_HEX_EXPLORE_MOVEMENT });
 
+  React.useEffect(() => {
+    if (!mapOpen) return;
+    movementInputRef.current = ZERO_HEX_EXPLORE_MOVEMENT;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMapOpen(false);
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [mapOpen]);
+
   const onPlayerMove = React.useCallback((next: { x: number; z: number }) => {
     setPosition((previous) =>
       Math.abs(next.x - previous.x) > 0.1 || Math.abs(next.z - previous.z) > 0.1 ? next : previous);
@@ -58,7 +68,7 @@ export function OpenWorldExperience() {
         </Link>
       </header>
 
-      <HexExploreTouchControls movementInputRef={movementInputRef} enabled />
+      <HexExploreTouchControls movementInputRef={movementInputRef} enabled={!mapOpen} />
 
       <div className="pointer-events-none absolute inset-x-3 bottom-[calc(6.3rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-end gap-3 sm:inset-x-5 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="pointer-events-auto flex flex-col items-end gap-2">
@@ -71,6 +81,7 @@ export function OpenWorldExperience() {
               onClick={() => setMapOpen((current) => !current)}
               aria-expanded={mapOpen}
               aria-controls="open-world-map"
+              aria-label={mapOpen ? "Close places list" : "Open places list"}
               className="min-h-11 rounded-xl bg-[#edf1e4] px-3 text-xs font-semibold text-[#426850] hover:bg-[#dfe9d8]"
             >
               🧭 Places
@@ -92,7 +103,8 @@ export function OpenWorldExperience() {
       {mapOpen && (
         <aside
           id="open-world-map"
-          className="cozy-surface pointer-events-auto absolute bottom-[calc(10.3rem+env(safe-area-inset-bottom))] right-3 z-40 w-[min(21rem,calc(100vw-1.5rem))] rounded-[1.4rem] p-4 sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:right-5"
+          className="cozy-surface pointer-events-auto absolute bottom-[calc(10.3rem+env(safe-area-inset-bottom))] right-3 z-40 max-h-[min(60dvh,28rem)] w-[min(21rem,calc(100vw-1.5rem))] overflow-y-auto rounded-[1.4rem] p-4 sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:right-5"
+          role="dialog"
           aria-label="Open-world places"
         >
           <div className="flex items-center justify-between gap-3">
