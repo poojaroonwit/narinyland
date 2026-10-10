@@ -72,25 +72,27 @@ export function HexSkyAtmosphere({
   profile,
   motionProfile,
   environment,
+  storybook = false,
 }: {
   profile: HexQualityProfile;
   motionProfile: HexMotionProfile;
   environment?: HexVisualEnvironment;
+  storybook?: boolean;
 }) {
   const visibleCount = profile.cloudLayers === 3 ? 7 : profile.cloudLayers === 2 ? 5 : 3;
-  const background = React.useMemo(() => moodColor(environment), [environment]);
+  const background = React.useMemo(() => storybook ? '#f1eadb' : moodColor(environment), [environment, storybook]);
   const fog = React.useMemo(() => {
     const color = new THREE.Color(background);
     color.lerp(new THREE.Color(HEX_VISUAL_THEME.atmosphere.horizonHaze), 0.26);
     return `#${color.getHexString()}`;
   }, [background]);
-  const cloudTint = environment?.weather === 'rainy' ? '#dfe5e2' : environment?.evening ? '#e9e1d7' : '#edf0ea';
+  const cloudTint = storybook ? '#fff8ec' : environment?.weather === 'rainy' ? '#dfe5e2' : environment?.evening ? '#e9e1d7' : '#edf0ea';
   const rainy = environment?.weather === 'rainy';
 
   return (
     <>
       <color attach="background" args={[background]} />
-      <fog attach="fog" args={[fog, rainy ? 22 : 27, rainy ? 58 : 64]} />
+      <fog attach="fog" args={[storybook ? "#e8e8d7" : fog, rainy ? 22 : 27, rainy ? 58 : 64]} />
       <BelowIslandHaze profile={profile} rainy={rainy} />
       <group>
         {BELOW_ISLAND_CLOUDS.slice(0, visibleCount).map(([x, y, z, scale], index) => {
