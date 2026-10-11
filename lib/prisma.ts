@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { isRetryablePrismaReadOperation, retryDatabaseRead } from './database-read-retry';
+import { createIdleDisconnectGuard } from './database-idle';
 
 function buildDatabaseUrl(): string | undefined {
   let url = process.env.DATABASE_URL;
@@ -30,17 +31,21 @@ function createPrismaClient(): PrismaClient {
     },
   });
 
+  // Prisma pools are lazy to connect but otherwise stay open indefinitely.
+  // Idle sockets can prevent Railway Serverless from sleeping even without visitors.
+  const idleGuard = process.env.NODE_ENV === 'production'
+    ? createIdleDisconnectGuard(() => client.$disconnect())
+    : null;
+
   const extended = client.$extends({
     name: 'railway-read-recovery',
     query: {
-      $allModels: {
-        async $allOperations({ operation, args, query }) {
-          if (!isRetryablePrismaReadOperation(operation)) {
-            return query(args);
-          }
-
-          return retryDatabaseRead(() => query(args));
-        },
+      // Covers model operations and raw queries (including /api/health).
+      async $allOperations({ operation, args, query }) {
+        const performQuery = () => isRetryablePrismaReadOperation(operation)
+          ? retryDatabaseRead(() => query(args))
+          : query(args);
+        return idleGuard ? idleGuard.run(performQuery) : performQuery();
       },
     },
   });
