@@ -67,7 +67,10 @@ test('Prisma client applies retry only through the read-operation gate', async (
   const source = await readFile(new URL('../lib/prisma.ts', import.meta.url), 'utf8');
 
   assert.match(source, /\$extends/);
-  assert.match(source, /\$allModels/);
+  // Cover every Prisma operation, including raw health-check queries, to
+  // release idle connection pools without weakening read-only retry behavior.
+  assert.match(source, /createIdleDisconnectGuard/);
+  assert.match(source, /idleGuard\.run\(performQuery\)/);
   assert.match(source, /\$allOperations/);
   assert.match(source, /isRetryablePrismaReadOperation\(operation\)/);
   assert.match(source, /retryDatabaseRead\(\(\) => query\(args\)\)/);
