@@ -75,5 +75,5 @@ test('small-screen gameplay overlays share a reserved region and do not cover co
   assert.match(explore, /sm:hidden/);
   assert.match(toolbar, /data-hex-world-toolbar/);
   assert.match(hud, /data-hex-top-hud/);
-  assert.match(hud, /sm:grid-cols-/);
+  assert.match(hud, /lg:grid-cols-/);
 });
