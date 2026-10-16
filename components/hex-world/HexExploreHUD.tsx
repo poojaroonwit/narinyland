@@ -30,6 +30,9 @@ export function HexExploreHUD({
   onResetView: () => void;
 }) {
   const [mobileMoreOpen, setMobileMoreOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!touchControlsEnabled) setMobileMoreOpen(false);
+  }, [touchControlsEnabled]);
 
   if (!state) {
     return (
@@ -48,7 +51,7 @@ export function HexExploreHUD({
       <HexExploreTouchControls movementInputRef={movementInputRef} enabled={touchControlsEnabled} />
 
       <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.7rem+env(safe-area-inset-bottom))] z-[92] flex items-end justify-between gap-2 md:inset-x-5">
-        <div data-hex-explore-status className="pointer-events-auto min-w-0 max-w-[46vw] cozy-surface rounded-[1.15rem] p-3 max-sm:fixed max-sm:bottom-[calc(12.45rem+env(safe-area-inset-bottom))] max-sm:left-[calc(0.85rem+env(safe-area-inset-left))] max-sm:max-w-[48vw] sm:w-[260px] sm:max-w-none">
+        <div data-hex-explore-status="true" className="pointer-events-auto min-w-0 max-w-[46vw] cozy-surface rounded-[1.15rem] p-3 max-sm:fixed max-sm:bottom-[calc(12.45rem+env(safe-area-inset-bottom))] max-sm:left-[calc(0.85rem+env(safe-area-inset-left))] max-sm:max-w-[48vw] sm:w-[260px] sm:max-w-none">
           <div className="flex items-center gap-2.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#d4ddc8] bg-[#e8f0e3] text-sm font-semibold text-[#496750]">{state.level}</div>
             <div className="min-w-0 flex-1">
@@ -69,7 +72,7 @@ export function HexExploreHUD({
           </div>
         </div>
 
-        <div data-hex-explore-actions className="pointer-events-auto flex shrink-0 items-center gap-1 cozy-float rounded-2xl p-1.5">
+        <div data-hex-explore-actions="true" className="pointer-events-auto flex shrink-0 items-center gap-1 cozy-float rounded-2xl p-1.5">
           <button type="button" onClick={onBag} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd] sm:hidden" aria-label="Bag">🎒</button>
           <div className="relative sm:hidden">
             <button type="button" onClick={() => setMobileMoreOpen((open) => !open)} aria-label="More explore actions" aria-expanded={mobileMoreOpen} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d]">⋯</button>
