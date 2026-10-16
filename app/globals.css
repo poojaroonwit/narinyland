@@ -145,6 +145,88 @@ body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] 
   }
 }
 
+
+/* Shared safe-area layout for HexWorld floating controls and gameplay sheets. */
+:root {
+  --hex-sheet-bottom: calc(12.75rem + env(safe-area-inset-bottom));
+  --hex-layer-navigation: 90;
+  --hex-layer-sheet: 97;
+}
+
+[data-hex-gameplay-sheet] {
+  bottom: var(--hex-sheet-bottom);
+  z-index: var(--hex-layer-sheet);
+  max-height: min(54dvh, calc(100dvh - var(--hex-sheet-bottom) - 5.75rem - env(safe-area-inset-top)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > [data-hex-gameplay-sheet] {
+  max-height: min(54dvh, calc(100dvh - var(--hex-sheet-bottom) - 5.75rem - env(safe-area-inset-top)));
+}
+
+[data-hex-world-toolbar] {
+  z-index: var(--hex-layer-navigation);
+}
+
+/* Blocking surfaces own the controls; keep the world visible without ghost buttons. */
+body:has([data-hex-family-panel]) [data-hex-world-toolbar],
+body:has([data-hex-family-panel]) [data-hex-explore-actions],
+body:has([data-hex-overlay-state="inventory"]) [data-hex-world-toolbar],
+body:has([data-hex-overlay-state="inventory"]) [data-hex-explore-actions],
+body:has([data-hex-overlay-state="hud"]) [data-hex-world-toolbar],
+body:has([data-hex-overlay-state="hud"]) [data-hex-explore-actions],
+body:has([data-hex-overlay-state="resident-conversation"]) [data-hex-explore-actions],
+body:has([data-hex-overlay-state="interaction"]) [data-hex-explore-actions],
+body:has([data-hex-overlay-state="interaction-details"]) [data-hex-explore-actions] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Never place interactive notices over a sheet or family conversation. */
+body:has([data-hex-gameplay-sheet]) [data-hex-hud-notice-stack],
+body:has([data-hex-family-panel]) [data-hex-hud-notice-stack] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body:has([data-hex-overlay-state="inventory"]) [data-hex-explore-status],
+body:has([data-hex-overlay-state="hud"]) [data-hex-explore-status],
+body:has([data-hex-overlay-state="interaction"]) [data-hex-explore-status],
+body:has([data-hex-overlay-state="interaction-details"]) [data-hex-explore-status],
+body:has([data-hex-overlay-state="resident-conversation"]) [data-hex-explore-status] {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  [data-hex-gameplay-sheet] {
+    left: calc(0.5rem + env(safe-area-inset-left));
+    right: calc(0.5rem + env(safe-area-inset-right));
+    width: auto;
+    transform: none;
+    border-radius: 1.5rem 1.5rem 1.15rem 1.15rem;
+  }
+
+  [data-hex-top-hud] {
+    top: calc(0.65rem + env(safe-area-inset-top));
+  }
+
+  [data-hex-hud-panel] {
+    top: calc(4.5rem + env(safe-area-inset-top));
+    max-height: min(45dvh, calc(100dvh - 13.5rem - env(safe-area-inset-bottom)));
+  }
+}
+
+@media (max-width: 639px) and (max-height: 520px) {
+  [data-hex-explore-status] {
+    top: calc(4rem + env(safe-area-inset-top));
+    bottom: auto;
+  }
+  [data-hex-hud-notice-stack] {
+    max-height: 22dvh;
+  }
+}
+
 @keyframes holographic-sweep {
   0% { transform: translateX(-100%) skewX(-15deg); }
   100% { transform: translateX(200%) skewX(-15deg); }
