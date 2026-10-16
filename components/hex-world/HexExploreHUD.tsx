@@ -29,6 +29,8 @@ export function HexExploreHUD({
   onWorld: () => void;
   onResetView: () => void;
 }) {
+  const [mobileMoreOpen, setMobileMoreOpen] = React.useState(false);
+
   if (!state) {
     return (
       <div className="pointer-events-none fixed bottom-[calc(5.7rem+env(safe-area-inset-bottom))] left-1/2 z-[92] -translate-x-1/2">
@@ -46,7 +48,7 @@ export function HexExploreHUD({
       <HexExploreTouchControls movementInputRef={movementInputRef} enabled={touchControlsEnabled} />
 
       <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.7rem+env(safe-area-inset-bottom))] z-[92] flex items-end justify-between gap-2 md:inset-x-5">
-        <div className="pointer-events-auto min-w-0 max-w-[46vw] cozy-surface rounded-[1.15rem] p-3 max-sm:fixed max-sm:bottom-[calc(12.45rem+env(safe-area-inset-bottom))] max-sm:left-[calc(0.85rem+env(safe-area-inset-left))] max-sm:max-w-[220px] sm:w-[260px] sm:max-w-none">
+        <div data-hex-explore-status className="pointer-events-auto min-w-0 max-w-[46vw] cozy-surface rounded-[1.15rem] p-3 max-sm:fixed max-sm:bottom-[calc(12.45rem+env(safe-area-inset-bottom))] max-sm:left-[calc(0.85rem+env(safe-area-inset-left))] max-sm:max-w-[48vw] sm:w-[260px] sm:max-w-none">
           <div className="flex items-center gap-2.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#d4ddc8] bg-[#e8f0e3] text-sm font-semibold text-[#496750]">{state.level}</div>
             <div className="min-w-0 flex-1">
@@ -67,15 +69,23 @@ export function HexExploreHUD({
           </div>
         </div>
 
-        <div className="pointer-events-auto flex shrink-0 items-center gap-1 cozy-float rounded-2xl p-1.5">
+        <div data-hex-explore-actions className="pointer-events-auto flex shrink-0 items-center gap-1 cozy-float rounded-2xl p-1.5">
           <button type="button" onClick={onBag} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd] sm:hidden" aria-label="Bag">🎒</button>
-          <button type="button" onClick={onGoals} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd] sm:hidden" aria-label="Goals">✨</button>
-          <button type="button" onClick={onResetView} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd]" aria-label="Reset view" title="Reset view">⌂</button>
-          <button type="button" onClick={onToggleMusic} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd]" aria-label={musicMuted ? 'Unmute music' : 'Mute music'}>{musicMuted ? '🔇' : '🔊'}</button>
+          <div className="relative sm:hidden">
+            <button type="button" onClick={() => setMobileMoreOpen((open) => !open)} aria-label="More explore actions" aria-expanded={mobileMoreOpen} className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d]">⋯</button>
+            {mobileMoreOpen && (
+              <div role="group" aria-label="More explore actions" className="absolute bottom-[calc(100%+0.5rem)] right-0 z-[99] flex w-[160px] flex-col gap-1 rounded-2xl border border-white/75 bg-[#fffdf7] p-2 text-left shadow-2xl">
+                <button type="button" onClick={() => { setMobileMoreOpen(false); onGoals(); }} className="min-h-[44px] rounded-xl px-3 text-left text-xs font-semibold text-stone-700">✨ Goals</button>
+                <button type="button" onClick={() => { setMobileMoreOpen(false); onResetView(); }} className="min-h-[44px] rounded-xl px-3 text-left text-xs font-semibold text-stone-700">⌂ Reset view</button>
+                <button type="button" onClick={() => { setMobileMoreOpen(false); onToggleMusic(); }} className="min-h-[44px] rounded-xl px-3 text-left text-xs font-semibold text-stone-700">{musicMuted ? '🔇 Unmute' : '🔊 Mute'}</button>
+              </div>
+            )}
+          </div>
+          <button type="button" onClick={onResetView} className="hidden min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd] sm:block" aria-label="Reset view" title="Reset view">⌂</button>
+          <button type="button" onClick={onToggleMusic} className="hidden min-h-[44px] min-w-[44px] rounded-xl bg-[#f0e8da] px-2 text-xs font-semibold text-[#514a3d] hover:bg-[#e4eddd] sm:block" aria-label={musicMuted ? 'Unmute music' : 'Mute music'}>{musicMuted ? '🔇' : '🔊'}</button>
           <button type="button" onClick={onWorld} className="min-h-[44px] cozy-button-primary rounded-xl px-3 text-[11px] font-semibold">World</button>
         </div>
 
-        <div className="pointer-events-none fixed bottom-[calc(10.65rem+env(safe-area-inset-bottom))] left-1/2 max-w-[calc(100vw-8rem)] -translate-x-1/2 cozy-float rounded-full px-3 py-1 text-center text-[10px] font-medium sm:hidden">Move with the joystick · drag to look</div>
       </div>
     </>
   );
