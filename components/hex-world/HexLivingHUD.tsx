@@ -85,16 +85,16 @@ export function HexLivingHUD({
 
   return (
     <>
-      <div data-hex-top-hud className="pointer-events-none fixed inset-x-3 top-3 z-[95] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] md:inset-x-5 md:top-4">
+      <div data-hex-top-hud="true" className="pointer-events-none fixed inset-x-3 top-3 z-[95] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] md:inset-x-5 md:top-4">
         <div className="pointer-events-auto flex min-h-[46px] min-w-0 items-center gap-2 cozy-float rounded-[1.15rem] px-3 py-2">
           <span className="text-lg leading-none">{season.emoji}</span>
-          <div className="leading-tight">
-            <p className="text-[11px] font-black text-stone-800">Day {state.day} · {season.label}</p>
-            <p className="text-[9px] font-bold text-stone-500">{weather.emoji} {weather.label} · {formatFarmTime(state.timeMinutes)}</p>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-[11px] font-black text-stone-800">Day {state.day} · {season.label}</p>
+            <p className="truncate text-[9px] font-bold text-stone-500">{weather.emoji} {weather.label} · {formatFarmTime(state.timeMinutes)}</p>
           </div>
         </div>
 
-        <div className="pointer-events-auto hidden min-w-0 justify-center sm:flex">
+        <div className="pointer-events-auto hidden min-w-0 justify-center lg:flex">
           <button
             type="button"
             data-hex-family-strip
