@@ -85,8 +85,8 @@ export function HexLivingHUD({
 
   return (
     <>
-      <div className="pointer-events-none fixed inset-x-3 top-3 z-[95] grid grid-cols-[auto_1fr_auto] items-start gap-2 md:inset-x-5 md:top-4">
-        <div className="pointer-events-auto flex min-h-[46px] items-center gap-2 cozy-float rounded-[1.15rem] px-3 py-2">
+      <div data-hex-top-hud className="pointer-events-none fixed inset-x-3 top-3 z-[95] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] md:inset-x-5 md:top-4">
+        <div className="pointer-events-auto flex min-h-[46px] min-w-0 items-center gap-2 cozy-float rounded-[1.15rem] px-3 py-2">
           <span className="text-lg leading-none">{season.emoji}</span>
           <div className="leading-tight">
             <p className="text-[11px] font-black text-stone-800">Day {state.day} · {season.label}</p>
@@ -94,7 +94,7 @@ export function HexLivingHUD({
           </div>
         </div>
 
-        <div className="pointer-events-auto flex min-w-0 justify-center">
+        <div className="pointer-events-auto hidden min-w-0 justify-center sm:flex">
           <button
             type="button"
             data-hex-family-strip
@@ -114,7 +114,7 @@ export function HexLivingHUD({
           </button>
         </div>
 
-        <div className="pointer-events-auto flex max-w-[46vw] items-center justify-end gap-1 overflow-x-auto cozy-float rounded-[1.15rem] p-1 md:max-w-none md:gap-1.5 md:p-1.5">
+        <div className="pointer-events-auto flex max-w-[48vw] items-center justify-end gap-1 overflow-x-auto cozy-float rounded-[1.15rem] p-1 sm:max-w-[42vw] md:max-w-none md:gap-1.5 md:p-1.5">
           <StatusChip copy={`⚡ ${state.energy}/${state.maxEnergy}`} label="Energy" />
           <StatusChip copy={`🪙 ${state.coins}`} label="Coins" />
           <button type="button" onClick={() => togglePanel('journey')} className="hidden min-h-[40px] shrink-0 rounded-xl bg-[#ecf1e5] px-2.5 text-[10px] font-semibold text-[#456950] sm:block" aria-label="Open level progress">
