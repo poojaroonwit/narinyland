@@ -38,6 +38,8 @@ test('switching active Land aborts stale fetches and replaces the snapshot befor
   const source = await readFile(new URL('../app/garden/_components/GardenWorldStage.tsx', import.meta.url), 'utf8');
   assert.match(source, /setSnapshot\(null\)/);
   assert.match(source, /controller\.abort\(\)/);
-  assert.match(source, /\[activeLandId, reloadKey\]/);
+  assert.match(source, /\[activeLandId, reloadKey, configLoaded\]/);
+  assert.match(source, /if \(!configLoaded\) \{/);
+  assert.match(source, /Retry loading/);
   assert.match(source, /landId=\{snapshot\.world\.landId\}/);
 });
