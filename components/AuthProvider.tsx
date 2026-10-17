@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { isAuthenticated, getUser, logout as authLogout, initAppKit, getUserCircles, AuthRequiredError, AuthUnavailableError } from '@/lib/auth';
 import { cacheVerifiedAuthUser, clearCachedAuthUser, readCachedAuthUser, resolveAuthUser } from '@/lib/auth-bootstrap';
-import { getActiveCircleId, setActiveCircleId } from '@/lib/circle-store';
+import { getActiveCircleId, resolveActiveWorldId, setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
 
 type Circle = { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string };
@@ -200,9 +200,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         ? userInfo.attributes.circleId : null;
       const storedCircleId = getActiveCircleId();
       const preferredCircleId = storedCircleId || savedCircleId;
-      const resolvedCircleId = circlesVerified
-        ? (userCircles.find(circle => circle.id === preferredCircleId)?.id ?? userCircles[0]?.id ?? null)
-        : (preferredCircleId ?? null);
+      const resolvedCircleId = resolveActiveWorldId(
+        userCircles.map(circle => circle.id),
+        preferredCircleId,
+        circlesVerified,
+      );
 
       if (!circlesVerified && resolvedCircleId) {
         userCircles = [{
