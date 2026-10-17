@@ -17,6 +17,8 @@ export const GardenWorldStage: React.FC = () => {
   const {
     hasAcceptedProposal,
     configLoaded,
+    configLoadError,
+    retryConfigLoad,
     appConfig,
     handleProposalAccepted,
     handleProposalStepChange,
@@ -63,6 +65,11 @@ export const GardenWorldStage: React.FC = () => {
   }, [activeCircleId]);
 
   React.useEffect(() => {
+    if (!configLoaded) {
+      setSnapshot(null);
+      setError(null);
+      return;
+    }
     if (!activeLandId) {
       setSnapshot(null);
       setError('No active Land is available yet.');
@@ -89,7 +96,26 @@ export const GardenWorldStage: React.FC = () => {
       current = false;
       controller.abort();
     };
-  }, [activeLandId, reloadKey]);
+  }, [activeLandId, reloadKey, configLoaded]);
+
+  if (!configLoaded) {
+    return (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#f7f1e6] px-5" role="status">
+        <div className="cozy-surface w-full max-w-sm rounded-[1.5rem] p-6 text-center">
+          <div aria-hidden="true" className="mb-3 text-3xl">🌿</div>
+          <h1 className="text-lg font-semibold text-stone-800">{configLoadError ? 'Could not open your world' : 'Opening your world…'}</h1>
+          <p className="mt-2 text-sm text-stone-600">
+            {configLoadError ? 'Your saved memories are safe. Please check your connection and retry.' : 'Loading your shared garden and memories.'}
+          </p>
+          {configLoadError && (
+            <button type="button" onClick={retryConfigLoad} className="cozy-button-primary mt-5 min-h-11 rounded-xl px-5 text-sm font-semibold">
+              Retry loading
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
