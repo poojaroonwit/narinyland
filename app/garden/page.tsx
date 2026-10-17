@@ -137,6 +137,12 @@ const Home: React.FC = () => {
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [loadedCircleId, setLoadedCircleId] = useState<string | null>(null);
+  const [configLoadError, setConfigLoadError] = useState<string | null>(null);
+  const [configRetryNonce, setConfigRetryNonce] = useState(0);
+  const retryConfigLoad = React.useCallback(() => setConfigRetryNonce(value => value + 1), []);
+  // The last world's data must not be shown while a new circle is loading.
+  const worldReady = configLoaded && loadedCircleId !== null && loadedCircleId === activeCircleId;
   const previousAcceptedProposalRef = React.useRef(hasAcceptedProposal);
 
   const closeFloatingPanels = React.useCallback((except?: 'volume' | 'circle' | 'land' | 'user') => {
@@ -263,6 +269,10 @@ const Home: React.FC = () => {
 
   
   useEffect(() => {
+    let cancelled = false;
+    setConfigLoaded(false);
+    setConfigLoadError(null);
+    setHasAcceptedProposal(false);
     const fetchData = async () => {
       try {
         const [
@@ -280,6 +290,9 @@ const Home: React.FC = () => {
           statsAPI.get().catch(() => ({ xp: 0, level: 1, leaves: 0, points: 0 })),
           activeCircleId ? circlesAPI.listMembers(activeCircleId).catch(() => ({ members: [] })) : Promise.resolve({ members: [] })
         ]);
+
+        // Ignore results from a world that was left while its request was in flight.
+        if (cancelled) return;
 
         if (membersData?.members) {
           setCircleMembers(membersData.members);
@@ -348,15 +361,20 @@ const Home: React.FC = () => {
         // Set Stats
         setLoveStats(stats);
         
+        setLoadedCircleId(activeCircleId);
         setConfigLoaded(true);
       } catch (err: unknown) {
-        console.warn('⚠️ Could not load data from API, using defaults:', getErrorMessage(err));
-        setConfigLoaded(true);
+        if (cancelled) return;
+        console.error('Could not load the selected world:', getErrorMessage(err));
+        setConfigLoadError(getErrorMessage(err));
+        setLoadedCircleId(null);
+        setConfigLoaded(false);
       }
     };
 
-    fetchData();
-  }, [activeCircleId]);
+    if (activeCircleId) void fetchData();
+    return () => { cancelled = true; };
+  }, [activeCircleId, configRetryNonce]);
 
   // ─── Save config to database when setAppConfig is called ────────────
   const handleSetAppConfig: typeof setAppConfig = (updater) => {
@@ -395,10 +413,11 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!worldReady) return;
     const isCompleted = !appConfig.showProposal || !!appConfig.proposal?.isAccepted || 
                         ((appConfig.proposal?.progress || 0) >= (appConfig.proposal?.questions?.length || 0) && (appConfig.proposal?.questions?.length || 0) > 0);
     setHasAcceptedProposal(isCompleted);
-  }, [appConfig.proposal?.isAccepted, appConfig.proposal?.progress, appConfig.proposal?.questions?.length, appConfig.showProposal]);
+  }, [appConfig.proposal?.isAccepted, appConfig.proposal?.progress, appConfig.proposal?.questions?.length, appConfig.showProposal, worldReady]);
 
   useEffect(() => {
     const becameAccepted = hasAcceptedProposal && !previousAcceptedProposalRef.current;
@@ -452,7 +471,7 @@ const Home: React.FC = () => {
   const daysTogether = Math.max(0, Math.floor((new Date().getTime() - new Date(appConfig.anniversaryDate).getTime()) / (1000 * 60 * 60 * 24)));
   const flowerCount = Math.floor(daysTogether / appConfig.daysPerFlower);
 
-  const gardenContext = { user, logout, authLoading, circles, activeCircleId, setActiveCircle, refreshUser, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, confirmPrompt, answerConfirmPrompt, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded, setConfigLoaded, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount };
+  const gardenContext = { user, logout, authLoading, circles, activeCircleId, setActiveCircle, refreshUser, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, confirmPrompt, answerConfirmPrompt, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded: worldReady, setConfigLoaded, configLoadError, retryConfigLoad, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount };
 
   return (
     <GardenPageProvider value={gardenContext}>
