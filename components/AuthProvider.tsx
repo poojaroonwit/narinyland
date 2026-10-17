@@ -49,6 +49,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [circles, setCircles] = useState<Circle[]>([]);
   const [activeCircleId, setActiveCircleIdState] = useState<string | null>(null);
   const [authUnavailable, setAuthUnavailable] = useState(false);
+  const [worldListUnavailable, setWorldListUnavailable] = useState(false);
   const checkingRef = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -225,6 +226,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
       }
 
+      if (!circlesVerified && !resolvedCircleId) {
+        // Do not misrepresent a network failure as a newly registered user.
+        setWorldListUnavailable(true);
+        setLoading(false);
+        checkingRef.current = false;
+        return;
+      }
+      setWorldListUnavailable(false);
       setCircles(userCircles);
 
       setActiveCircleIdState(resolvedCircleId);
@@ -256,6 +265,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setCircles([]);
       setActiveCircleIdState(null);
       setAuthUnavailable(false);
+      setWorldListUnavailable(false);
       clearCachedAuthUser();
     }
 
@@ -368,6 +378,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           >
             Retry now
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (worldListUnavailable && isLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f2e7] px-5 text-stone-800">
+        <div className="cozy-surface w-full max-w-sm rounded-[1.5rem] p-6 text-center">
+          <h1 className="text-xl font-semibold">Your worlds are temporarily unavailable</h1>
+          <p className="mt-2 text-sm text-stone-600">We could not check your worlds right now. Your progress has not been reset.</p>
+          <button type="button" onClick={() => void checkAuth()} className="cozy-button-primary mt-5 min-h-11 rounded-xl px-5 text-sm font-semibold">Retry connecting</button>
         </div>
       </div>
     );
