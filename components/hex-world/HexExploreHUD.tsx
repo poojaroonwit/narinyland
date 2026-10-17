@@ -49,6 +49,7 @@ export function HexExploreHUD({
   return (
     <>
       <HexExploreTouchControls movementInputRef={movementInputRef} enabled={touchControlsEnabled} />
+      <p className="sr-only">Move with the joystick · drag to look</p>
 
       <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.7rem+env(safe-area-inset-bottom))] z-[92] flex items-end justify-between gap-2 md:inset-x-5">
         <div data-hex-explore-status="true" className="pointer-events-auto min-w-0 max-w-[46vw] cozy-surface rounded-[1.15rem] p-3 max-sm:fixed max-sm:bottom-[calc(12.45rem+env(safe-area-inset-bottom))] max-sm:left-[calc(0.85rem+env(safe-area-inset-left))] max-sm:max-w-[48vw] sm:w-[260px] sm:max-w-none">
