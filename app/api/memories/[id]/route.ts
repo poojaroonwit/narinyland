@@ -11,6 +11,7 @@ type MemoryUpdateBody = {
   caption?: string | null;
   sortOrder?: number;
   url?: string;
+  albumId?: string | null;
 };
 
 function getMemoryCacheKey(configId: string, privacy: string | null): string {
@@ -59,6 +60,13 @@ export async function POST(
     if (privacy !== undefined) updateData.privacy = privacy;
     if (caption !== undefined) updateData.caption = caption;
     if (url) updateData.url = url;
+    const albumId = formData.get('albumId');
+    if (typeof albumId === 'string') {
+      if (albumId && !(await prisma.album.findFirst({ where: { id: albumId, configId }, select: { id: true } }))) {
+        return NextResponse.json({ error: 'Album not found in this world' }, { status: 400 });
+      }
+      updateData.album = albumId ? { connect: { id: albumId } } : { disconnect: true };
+    }
 
     // Handle file upload
     if (file) {
@@ -88,7 +96,7 @@ export async function POST(
       data: updateData,
     });
 
-    await invalidateMemoryCache(configId);
+    await invalidateMemoryCache(configId).catch((error) => console.error('Memory updated; cache invalidation pending:', error));
 
     return NextResponse.json(memory);
   } catch (error) {
@@ -110,7 +118,7 @@ export async function PUT(
     const id = params.id;
     const { configId } = access;
     const body = (await request.json()) as MemoryUpdateBody;
-    const { privacy, caption, sortOrder, url } = body;
+    const { privacy, caption, sortOrder, url, albumId } = body;
 
     const existingMemory = await prisma.memory.findFirst({
       where: { id, configId },
@@ -129,13 +137,19 @@ export async function PUT(
     if (caption !== undefined) updateData.caption = caption;
     if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
     if (url !== undefined) updateData.url = url;
+    if (albumId !== undefined) {
+      if (albumId && !(await prisma.album.findFirst({ where: { id: albumId, configId }, select: { id: true } }))) {
+        return NextResponse.json({ error: 'Album not found in this world' }, { status: 400 });
+      }
+      updateData.album = albumId ? { connect: { id: albumId } } : { disconnect: true };
+    }
 
     const memory = await prisma.memory.update({
       where: { id },
       data: updateData,
     });
 
-    await invalidateMemoryCache(configId);
+    await invalidateMemoryCache(configId).catch((error) => console.error('Memory updated; cache invalidation pending:', error));
 
     return NextResponse.json(memory);
   } catch (error) {
@@ -169,7 +183,7 @@ export async function DELETE(
 
     await prisma.memory.delete({ where: { id } });
 
-    await invalidateMemoryCache(configId);
+    await invalidateMemoryCache(configId).catch((error) => console.error('Memory updated; cache invalidation pending:', error));
 
     return NextResponse.json({ success: true });
   } catch (error) {
