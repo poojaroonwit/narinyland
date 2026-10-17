@@ -103,7 +103,9 @@ test('coupon redemption waits for confirmed server response before moving to his
   ]);
   assert.match(types, /onRedeem\?: \(id: string\) => Promise<boolean>/);
   assert.match(coupon, /const confirmed = await onRedeem\(targetId\)/);
-  assert.match(coupon, /if \(!confirmed\) return/);
+  assert.match(coupon, /if \(!confirmed\)/);
+  assert.match(coupon, /redeemBusyRef\.current/);
+  assert.match(coupon, /setRedeemError\('Could not redeem this coupon/);
   assert.match(coupon, /if \(!isRedeeming\) setSelectedCoupon\(null\)/);
   assert.match(actions, /return redeemed/);
 });
@@ -120,4 +122,12 @@ test('letter composer holds a failed draft and blocks multiple in-flight sends',
   assert.match(letter, /Your draft is still here/);
   assert.match(letter, /disabled=\{isSending/);
   assert.match(actions, /return letterSaved/);
+});
+
+
+test('letter attachments must succeed before delivery is considered complete', async () => {
+  const actions = await read('app/garden/_components/useGardenActions.ts');
+  assert.match(actions, /Could not prepare the attached media/);
+  assert.match(actions, /throw new Error\('Could not prepare the attached media\.'/);
+  assert.match(actions, /setLoveLetters\(\(prev\) => prev\.filter\(\(letter\) => letter\.id !== msg\.id\)\)/);
 });
