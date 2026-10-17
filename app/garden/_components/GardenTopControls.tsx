@@ -13,6 +13,7 @@ export const GardenTopControls: React.FC = () => {
     user,
     logout,
     authLoading,
+    configLoaded,
     circles,
     activeCircleId,
     setActiveCircle,
@@ -140,6 +141,8 @@ export const GardenTopControls: React.FC = () => {
   const userForMenu = user
     ? { name: user.name || 'My Account', email: user.email || '', picture: user.picture || '' }
     : null;
+
+  if (!configLoaded) return null;
 
   return (
     <>
