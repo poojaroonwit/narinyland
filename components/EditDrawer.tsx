@@ -126,7 +126,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     setIsSaving(true);
     setSaveError('');
     try {
-      const confirmed = await saveGardenSettings(localConfig, config);
+      const confirmed = await saveGardenSettings(localConfig, config, savedTimelineMediaIdsRef.current);
       setConfig(confirmed);
       setLocalConfig(confirmed);
       setHasChanges(false);
