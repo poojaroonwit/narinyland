@@ -161,6 +161,7 @@ export const EditDrawerShell: React.FC = () => {
                     )}
                   </div>
                   
+                  {isMobile && saveError && <p role="alert" className="p-3 text-xs text-red-600">{saveError}</p>}
                   {/* Sticky Footer Save Button (Mobile Only) */}
                   {isMobile && (
                     <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-30">
