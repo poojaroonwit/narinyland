@@ -78,3 +78,37 @@ test('explore and model inventory affordances are usable', async () => {
   assert.match(objects, /Purchased custom models/);
   assert.match(letters, /Add a message before sending/);
 });
+
+
+test('background config edits are serialized and pinned to their original world', async () => {
+  const [garden, client] = await Promise.all([
+    read('app/garden/page.tsx'),
+    read('services/api.ts'),
+  ]);
+  assert.match(garden, /configWriteQueueRef/);
+  assert.match(garden, /const targetCircleId = activeCircleId/);
+  assert.match(garden, /configAPI\.update\(payload, targetCircleId\)/);
+  assert.match(client, /'X-Circle-Id': circleId/);
+});
+
+test('presentation settings are in the database schema and REST config API', async () => {
+  const [schema, migration, route] = await Promise.all([
+    read('prisma/schema.prisma'),
+    read('prisma/migrations/20261017182000_narinyland_presentation_settings/migration.sql'),
+    read('app/api/config/route.ts'),
+  ]);
+  for (const key of ['galleryPhysicsEnabled', 'galleryInterval', 'includeTimelineInGallery', 'showTimelineImagesOnHomepage', 'proposalFinalWording']) {
+    assert.ok(schema.includes(key), key);
+    assert.ok(migration.includes(key), key);
+    assert.ok(route.includes(key), key);
+  }
+  assert.match(route, /mailFolders: config\.mailFolders/);
+});
+
+test('mobile navigation gives access to all remaining destinations', async () => {
+  const garden = await read('app/garden/_components/GardenAcceptedContent.tsx');
+  assert.match(garden, /aria-controls="garden-mobile-more"/);
+  assert.match(garden, /aria-modal="true"/);
+  assert.match(garden, /World Shop/);
+  assert.match(garden, /event\.key === 'Escape'/);
+});
