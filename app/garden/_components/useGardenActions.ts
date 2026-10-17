@@ -193,6 +193,7 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
     }
     // The reward does not depend on the optional timeline entry succeeding.
     if (redeemed) await addXP();
+    return redeemed;
   };
 
   const handleAddCoupon = async (data: {
