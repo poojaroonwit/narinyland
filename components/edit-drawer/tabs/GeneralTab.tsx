@@ -123,10 +123,11 @@ export const GeneralTab: React.FC = () => {
                 </div>
                 
                 {/* PWA / App Identity */}
-                <div className="bg-pink-50/30 p-4 rounded-md border border-pink-100 space-y-4">
+                <fieldset disabled className="bg-pink-50/30 p-4 rounded-md border border-pink-100 space-y-4 opacity-70">
                   <h4 className="text-xs font-black text-pink-400 uppercase tracking-widest flex items-center gap-2">
                     <i className="fas fa-mobile-alt"></i> App Identity & PWA
                   </h4>
+                  <p className="text-xs text-stone-600">PWA name, theme, and icon are managed globally in deployment configuration. They cannot be changed per world in Settings.</p>
                   <div className="grid grid-cols-2 gap-3">
                      <div>
                        <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">App Name (Long)</label>
@@ -206,7 +207,7 @@ export const GeneralTab: React.FC = () => {
                        )}
                     </div>
                   </div>
-                </div>
+                </fieldset>
                 <div className="col-span-2">
                     <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Music Playlist (One URL per line) 🎵</label>
                     <textarea 
