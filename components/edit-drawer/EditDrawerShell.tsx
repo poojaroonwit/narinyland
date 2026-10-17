@@ -101,7 +101,7 @@ export const EditDrawerShell: React.FC = () => {
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
                       >
-                        {hasChanges ? 'Save Changes' : 'No Changes'}
+                        {isSaving ? 'Saving…' : hasChanges ? 'Save Changes' : 'No Changes'}
                       </button>
                     </div>
                   </div>
