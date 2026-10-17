@@ -27,7 +27,7 @@ export type CouponDraft = {
 export interface LoveCouponsProps {
   coupons: Coupon[];
   partners?: Partners;
-  onRedeem?: (id: string) => void; // Parent confirmation function
+  onRedeem?: (id: string) => Promise<boolean>; // Resolve true only after server confirmation
   onDelete?: (id: string) => void;
   onAdd?: (data: CouponDraft) => void;
 }
