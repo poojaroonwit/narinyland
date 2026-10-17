@@ -12,6 +12,7 @@ import { useEditDrawerContext } from '../context';
 export const ObjectsTab: React.FC = () => {
   const {
     localConfig,
+    onOpenShop,
     partners,
     circles,
     activeCircleId,
@@ -83,26 +84,23 @@ export const ObjectsTab: React.FC = () => {
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
                   <i className="fas fa-cube text-pink-400"></i> Object Library
                 </h3>
-                <label className="cursor-pointer bg-pink-500 text-white hover:bg-pink-600 px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shadow-md">
-                  <i className="fas fa-upload mr-2"></i> Upload Model
-                  <input 
-                    type="file" 
-                    accept=".glb,.gltf" 
-                    className="hidden" 
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      
-                      try {
-                        await uploadAPI.upload(file);
-                        // Add to a "Custom Models" inventory or similar logic
-                        alert(`Successfully uploaded ${file.name}! It is now available in your Custom models.`);
-                      } catch {
-                        alert('Upload failed. Please try again.');
-                      }
-                    }} 
-                  />
-                </label>
+                <button type="button" onClick={onOpenShop} disabled={!onOpenShop} className="min-h-[44px] rounded-xl bg-pink-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-pink-600 disabled:opacity-50">
+                  <i className="fas fa-store mr-2" aria-hidden="true" />Upload in World Shop
+                </button>        </label>
+              </div>
+
+              <p className="text-xs text-stone-500">Custom models are added to your world after purchasing and uploading them in the World Shop. Uploading here alone does not create an inventory item.</p>
+              <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                <h4 className="font-semibold">Purchased custom models</h4>
+                {(localConfig.lands ?? []).flatMap((land: any) =>
+                  (land.items ?? []).filter((item: any) => item.type === 'custom_3d').map((item: any) => ({ ...item, landName: land.name }))
+                ).length ? (
+                  <ul className="mt-2 space-y-2">
+                    {(localConfig.lands ?? []).flatMap((land: any) =>
+                      (land.items ?? []).filter((item: any) => item.type === 'custom_3d').map((item: any) => ({ ...item, landName: land.name }))
+                    ).map((item: any) => <li key={item.id} className="rounded-lg bg-white px-3 py-2 text-xs">📦 Model in {item.landName} — ready in that Land</li>)}
+                  </ul>
+                ) : <p className="mt-1 text-xs">No purchased custom models yet.</p>}
               </div>
 
               {/* Category Filters */}
