@@ -280,7 +280,7 @@ export async function PUT(request: Request) {
       }
     }
 
-    await invalidateConfigCaches(configId);
+    await invalidateConfigCaches(configId).catch((error) => console.error('Config saved; cache invalidation pending:', error));
     return NextResponse.json(config);
   } catch (error) {
     console.error('Error updating config:', error instanceof Error ? error.message : 'unknown error');
