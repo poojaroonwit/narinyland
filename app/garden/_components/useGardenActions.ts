@@ -151,8 +151,10 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
   };
 
   const handleRedeemCoupon = async (id: string) => {
+    let redeemed = false;
     try {
       await couponsAPI.redeem(id);
+      redeemed = true;
 
       setAppConfig((prev) => ({
         ...prev,
@@ -183,11 +185,14 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
         }));
       }
 
-      await addXP();
     } catch (error) {
-      console.error('Failed to redeem coupon:', error);
-      notify('Failed to redeem coupon. Please try again.');
+      console.error('Coupon redemption or timeline update failed:', error);
+      notify(redeemed
+        ? 'Coupon redeemed, but its timeline activity could not be saved.'
+        : 'Failed to redeem coupon. Please try again.');
     }
+    // The reward does not depend on the optional timeline entry succeeding.
+    if (redeemed) await addXP();
   };
 
   const handleAddCoupon = async (data: {
@@ -233,6 +238,7 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
   };
 
   const handleSendMessage = async (msg: LoveLetterMessage) => {
+    let letterSaved = false;
     try {
       setLoveLetters((prev) => [msg, ...prev]);
 
@@ -262,6 +268,7 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
           ? { type: savedLetter.media.type, url: savedLetter.media.url }
           : letter.media,
       } : letter));
+      letterSaved = true;
 
       // Letter reward is committed by the server. Refresh the resulting stats.
       await addXP();
@@ -287,9 +294,14 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
         timeline: [newTimelineEvent, ...prev.timeline],
       }));
     } catch (error) {
-      console.error('Failed to send letter:', error);
-      notify('Failed to save your letter. Please try again.');
-      setLoveLetters((prev) => prev.filter((letter) => letter.id !== msg.id));
+      console.error('Failed to save letter or its follow-up activity:', error);
+      if (letterSaved) {
+        // A failed timeline entry or reward refresh does not unsend a letter.
+        notify('Letter sent, but its timeline activity could not be updated.');
+      } else {
+        notify('Failed to save your letter. Please try again.');
+        setLoveLetters((prev) => prev.filter((letter) => letter.id !== msg.id));
+      }
     }
   };
 

@@ -148,12 +148,13 @@ export async function getUserCircles(): Promise<Circle[]> {
       cache: 'no-store',
     });
     if (res.status === 401 || res.status === 403) throw new AuthRequiredError(`Auth error: ${res.status}`);
-    if (!res.ok) return [];
+    if (!res.ok) throw new AuthUnavailableError(`World list request failed: ${res.status}`);
     return extractCircleList(await res.json());
   } catch (error) {
-    if (error instanceof AuthRequiredError) throw error;
-    console.error('getUserCircles error:', error);
-    return [];
+    // An unavailable list is not the same as having no worlds. Let the
+    // provider preserve the last known selection instead of re-onboarding.
+    if (error instanceof AuthRequiredError || error instanceof AuthUnavailableError) throw error;
+    throw new AuthUnavailableError(error instanceof Error ? error.message : 'Could not load worlds');
   }
 }
 

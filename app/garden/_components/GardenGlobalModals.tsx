@@ -17,6 +17,7 @@ type GardenToastState = {
 export const GardenGlobalModals: React.FC = () => {
   const {
     hasAcceptedProposal,
+    configLoaded,
     isLetterOpen,
     setIsLetterOpen,
     isEditDrawerOpen,
@@ -44,7 +45,7 @@ export const GardenGlobalModals: React.FC = () => {
     handleDeleteTimeline,
   } = useGardenPageContext();
 
-  if (!hasAcceptedProposal) return null;
+  if (!configLoaded || !hasAcceptedProposal) return null;
 
   return (
     <>

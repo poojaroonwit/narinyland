@@ -16,6 +16,7 @@ export const GardenAcceptedContent: React.FC = () => {
   const { activeCircleId } = useAuth();
   const {
     hasAcceptedProposal,
+    configLoaded,
     activeTab,
     appConfig,
     combinedInteractions,
@@ -40,7 +41,7 @@ export const GardenAcceptedContent: React.FC = () => {
 
   const activeLand = appConfig.lands?.find((land: { isActive?: boolean }) => land.isActive) ?? appConfig.lands?.[0];
 
-  if (!hasAcceptedProposal) return null;
+  if (!configLoaded || !hasAcceptedProposal) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pointer-events-none relative z-10 flex h-full w-full flex-col">
@@ -108,7 +109,10 @@ export const GardenAcceptedContent: React.FC = () => {
               activeLandId={activeLand?.id}
               onPurchase={async (item) => {
                 const landId = activeLand?.id;
-                if (!landId) return;
+                if (!landId) {
+                  showToast('Choose a Land before purchasing.');
+                  return;
+                }
 
                 setLoveStats((previous: typeof loveStats) => ({ ...previous, points: previous.points - item.price }));
                 try {

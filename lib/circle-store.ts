@@ -24,3 +24,18 @@ export function setActiveCircleId(id: string | null): void {
     }
   }
 }
+
+/**
+ * Choose an active world only from memberships the server has verified.
+ * During a temporary outage, preserve the last known ID instead of
+ * treating an unreachable world list as an empty membership list.
+ */
+export function resolveActiveWorldId(
+  verifiedWorldIds: readonly string[],
+  preferredId: string | null,
+  worldListVerified: boolean,
+): string | null {
+  if (!worldListVerified) return preferredId;
+  if (preferredId && verifiedWorldIds.includes(preferredId)) return preferredId;
+  return verifiedWorldIds[0] ?? null;
+}

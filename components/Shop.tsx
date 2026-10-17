@@ -31,6 +31,7 @@ interface ShopProps {
 
 const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact = false }) => {
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const purchaseInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const triggerUpload = () => {
@@ -39,7 +40,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 
   const handleCustomUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || purchaseInFlightRef.current) return;
 
     if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
       alert('Please upload a .glb or .gltf file.');
@@ -59,6 +60,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
       return;
     }
 
+    purchaseInFlightRef.current = true;
     setPurchasingId('custom-3d');
     try {
       const uploadResult = await uploadAPI.upload(file, 'models');
@@ -67,12 +69,14 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
       console.error('Failed to upload model or purchase:', error);
       alert('Upload failed. Please try again.');
     } finally {
+      purchaseInFlightRef.current = false;
       setPurchasingId(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleBuy = async (item: ShopItem) => {
+    if (purchaseInFlightRef.current) return;
     if (item.id === 'custom-3d') {
       triggerUpload();
       return;
@@ -88,10 +92,12 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
       return;
     }
 
+    purchaseInFlightRef.current = true;
     setPurchasingId(item.id);
     try {
       await onPurchase(item);
     } finally {
+      purchaseInFlightRef.current = false;
       setPurchasingId(null);
     }
   };
@@ -116,7 +122,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
             <button
               type="button"
               onClick={() => handleBuy(item)}
-              disabled={points < item.price || purchasingId === item.id}
+              disabled={points < item.price || purchasingId !== null}
               className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
                 purchasingId === item.id
                   ? 'bg-gray-300 text-white cursor-wait'
@@ -181,7 +187,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
                 <button
                   type="button"
                   onClick={() => handleBuy(item)}
-                  disabled={points < item.price || purchasingId === item.id}
+                  disabled={points < item.price || purchasingId !== null}
                   className={`rounded-md px-4 py-2 text-xs font-black uppercase tracking-wider shadow-sm transition-all ${
                     purchasingId === item.id
                       ? 'cursor-wait bg-gray-300 text-white'

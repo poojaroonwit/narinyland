@@ -8,6 +8,7 @@ import { useGardenPageContext } from './context';
 export const GardenStatusOverlays: React.FC = () => {
   const {
     hasAcceptedProposal,
+    configLoaded,
     activeTab,
     appConfig,
     isMobile,
@@ -18,7 +19,7 @@ export const GardenStatusOverlays: React.FC = () => {
     handleInstallApp,
   } = useGardenPageContext();
 
-  if (!hasAcceptedProposal) return null;
+  if (!configLoaded || !hasAcceptedProposal) return null;
 
   return (
     <>

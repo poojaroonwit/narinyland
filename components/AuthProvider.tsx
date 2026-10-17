@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { isAuthenticated, getUser, logout as authLogout, initAppKit, getUserCircles, AuthRequiredError, AuthUnavailableError } from '@/lib/auth';
 import { cacheVerifiedAuthUser, clearCachedAuthUser, readCachedAuthUser, resolveAuthUser } from '@/lib/auth-bootstrap';
-import { getActiveCircleId, setActiveCircleId } from '@/lib/circle-store';
+import { getActiveCircleId, resolveActiveWorldId, setActiveCircleId } from '@/lib/circle-store';
 import { usePathname, useRouter } from 'next/navigation';
 
 type Circle = { id: string; name: string; description?: string; role: string; memberCount?: number; createdAt?: string };
@@ -49,6 +49,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [circles, setCircles] = useState<Circle[]>([]);
   const [activeCircleId, setActiveCircleIdState] = useState<string | null>(null);
   const [authUnavailable, setAuthUnavailable] = useState(false);
+  const [worldListUnavailable, setWorldListUnavailable] = useState(false);
   const checkingRef = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -167,8 +168,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
       // Fetch circles and determine active circle
       let userCircles: Circle[] = [];
+      let circlesVerified = false;
       try {
         userCircles = await getUserCircles();
+        circlesVerified = true;
       } catch (err) {
         if (err instanceof AuthRequiredError) {
           console.warn('AuthProvider: getUserCircles returned auth error, session likely expired.');
@@ -191,36 +194,46 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         console.warn('AuthProvider: getUserCircles failed, falling back to stored active circle:', err);
       }
 
-      // Use the explicitly stored circle ID, falling back to first available circle
-      const savedCircleId = userInfo.attributes?.circleId as string | undefined;
+      // A stored ID is a preference, not proof that the user still has access.
+      // A verified empty list routes to onboarding; an unavailable list keeps
+      // the last-known world until the server can be reached again.
+      const savedCircleId = typeof userInfo.attributes?.circleId === 'string'
+        ? userInfo.attributes.circleId : null;
       const storedCircleId = getActiveCircleId();
-      let resolvedCircleId = savedCircleId || storedCircleId || null;
+      const preferredCircleId = storedCircleId || savedCircleId;
+      const resolvedCircleId = resolveActiveWorldId(
+        userCircles.map(circle => circle.id),
+        preferredCircleId,
+        circlesVerified,
+      );
 
-      // If no circle stored yet but user already has circles, auto-pick the first one
-      if (!resolvedCircleId && userCircles.length > 0) {
-        resolvedCircleId = userCircles[0].id;
-        // Persist to localStorage and AppKit attributes so subsequent loads are instant
-        setActiveCircleId(resolvedCircleId);
+      if (!circlesVerified && resolvedCircleId) {
+        userCircles = [{
+          id: resolvedCircleId,
+          name: 'Current World',
+          description: 'Current World',
+          role: 'member',
+        }];
+      }
+
+      if (circlesVerified && resolvedCircleId && resolvedCircleId !== savedCircleId) {
+        // Keep the next sign-in consistent after a world was removed or changed.
         try {
           const { getAppKit } = await import('@/lib/auth');
           await getAppKit().updateAttributes({ circleId: resolvedCircleId });
         } catch (err) {
-          console.error('Failed to persist circle to attributes:', err);
+          console.warn('Could not persist corrected active world:', err);
         }
       }
 
-      if (resolvedCircleId && !userCircles.some(circle => circle.id === resolvedCircleId)) {
-        userCircles = [
-          {
-            id: resolvedCircleId,
-            name: 'Current World',
-            description: 'Current World',
-            role: 'member',
-          },
-          ...userCircles,
-        ];
+      if (!circlesVerified && !resolvedCircleId) {
+        // Do not misrepresent a network failure as a newly registered user.
+        setWorldListUnavailable(true);
+        setLoading(false);
+        checkingRef.current = false;
+        return;
       }
-
+      setWorldListUnavailable(false);
       setCircles(userCircles);
 
       setActiveCircleIdState(resolvedCircleId);
@@ -252,6 +265,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setCircles([]);
       setActiveCircleIdState(null);
       setAuthUnavailable(false);
+      setWorldListUnavailable(false);
       clearCachedAuthUser();
     }
 
@@ -364,6 +378,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           >
             Retry now
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (worldListUnavailable && isLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f2e7] px-5 text-stone-800">
+        <div className="cozy-surface w-full max-w-sm rounded-[1.5rem] p-6 text-center">
+          <h1 className="text-xl font-semibold">Your worlds are temporarily unavailable</h1>
+          <p className="mt-2 text-sm text-stone-600">We could not check your worlds right now. Your progress has not been reset.</p>
+          <button type="button" onClick={() => void checkAuth()} className="cozy-button-primary mt-5 min-h-11 rounded-xl px-5 text-sm font-semibold">Retry connecting</button>
         </div>
       </div>
     );
