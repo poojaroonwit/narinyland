@@ -129,16 +129,6 @@ body:has([data-hex-overlay-state="hud"]) [data-hex-undo-toast] {
   transform: translateX(-50%);
 }
 
-body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > aside {
-  max-height: calc(100dvh - 17rem - env(safe-area-inset-bottom));
-}
-
-@media (min-width: 768px) {
-  body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > aside {
-    max-height: calc(100dvh - 12rem);
-  }
-}
-
 @media (max-height: 640px) {
   [data-hex-hud-panel][data-has-notices="true"] {
     max-height: 28vh;
@@ -162,12 +152,13 @@ body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] 
   overscroll-behavior: contain;
 }
 
-body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] > [data-hex-gameplay-sheet] {
-  max-height: min(54dvh, calc(100dvh - var(--hex-sheet-bottom) - 5.75rem - env(safe-area-inset-top)));
-}
-
 [data-hex-world-toolbar] {
   z-index: var(--hex-layer-navigation);
+}
+
+body:has([data-hex-expansion-panel]) [data-hex-top-hud] {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Blocking surfaces own the controls; keep the world visible without ghost buttons. */
