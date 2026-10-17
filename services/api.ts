@@ -531,6 +531,8 @@ export const couponsAPI = {
     });
   },
 
+  update: (id: string, data: { title: string; emoji: string; desc: string; color: string; forPartner: string; points: number }) => fetchAPI<CouponRecord>(`/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
   redeem: (id: string) => fetchAPI<CouponRecord>(`/coupons/${id}/redeem`, { method: 'PUT' }),
 
   delete: (id: string) => fetchAPI<ApiMutationResult>(`/coupons/${id}`, { method: 'DELETE' }),
