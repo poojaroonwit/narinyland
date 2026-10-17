@@ -12,6 +12,8 @@ export const EditDrawerShell: React.FC = () => {
     isMobile,
     onClose,
     hasChanges,
+    isSaving,
+    saveError,
     activeTab,
     expandedAccordion,
     previewItem,
