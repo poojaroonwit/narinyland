@@ -155,6 +155,7 @@ export async function GET(request: Request) {
       pwaBackgroundColor: process.env.PWA_BG_COLOR || '#ffffff',
       pwaIconUrl: process.env.PWA_ICON_URL || null,
       musicPlaylist: config.musicPlaylist || [],
+      mailFolders: config.mailFolders || [],
       showProposal: config.showProposal ?? true,
       proposal: {
         questions: config.proposalQuestions,
