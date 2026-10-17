@@ -59,7 +59,8 @@ export default function OnboardingPage() {
         role: 'member',
       });
       
-      await refreshUser();
+      // The world was created/joined already; a profile refresh is optional.
+      await refreshUser().catch((error) => console.warn('Profile refresh deferred:', error));
       router.replace('/garden');
     } catch (err: unknown) {
       setError(getErrorMessage(err));
@@ -92,7 +93,8 @@ export default function OnboardingPage() {
       // Set as active and persist to attributes
       await setActiveCircle(code);
       
-      await refreshUser();
+      // The world was created/joined already; a profile refresh is optional.
+      await refreshUser().catch((error) => console.warn('Profile refresh deferred:', error));
       router.replace('/garden');
     } catch (err: unknown) {
       setError(getErrorMessage(err));
