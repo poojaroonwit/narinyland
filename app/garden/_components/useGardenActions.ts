@@ -304,6 +304,7 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
         setLoveLetters((prev) => prev.filter((letter) => letter.id !== msg.id));
       }
     }
+    return letterSaved;
   };
 
   const handleUpdateMessage = async (msg: LoveLetterMessage) => {
