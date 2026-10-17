@@ -109,7 +109,10 @@ export const GardenAcceptedContent: React.FC = () => {
               activeLandId={activeLand?.id}
               onPurchase={async (item) => {
                 const landId = activeLand?.id;
-                if (!landId) return;
+                if (!landId) {
+                  showToast('Choose a Land before purchasing.');
+                  return;
+                }
 
                 setLoveStats((previous: typeof loveStats) => ({ ...previous, points: previous.points - item.price }));
                 try {
