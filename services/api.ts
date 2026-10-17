@@ -376,12 +376,13 @@ export const memoriesAPI = {
   list: (privacy?: string) =>
     fetchAPI<MemoryRecord[]>(`/memories${privacy && privacy !== 'all' ? `?privacy=${privacy}` : ''}`),
 
-  create: (data: { url?: string; privacy?: string; caption?: string; file?: File }) => {
+  create: (data: { url?: string; privacy?: string; caption?: string; albumId?: string | null; file?: File }) => {
     if (data.file) {
       const formData = new FormData();
       formData.append('image', data.file);
       if (data.privacy) formData.append('privacy', data.privacy);
       if (data.caption) formData.append('caption', data.caption);
+      if (data.albumId !== undefined) formData.append('albumId', data.albumId ?? '');
       return fetchFormData<MemoryRecord>('/memories', formData);
     }
     return fetchAPI<MemoryRecord>('/memories', {
@@ -390,13 +391,14 @@ export const memoriesAPI = {
     });
   },
 
-  update: (id: string, data: { url?: string; privacy?: string; caption?: string; file?: File }) => {
+  update: (id: string, data: { url?: string; privacy?: string; caption?: string; albumId?: string | null; file?: File }) => {
     if (data.file) {
       const formData = new FormData();
       formData.append('image', data.file);
       if (data.url) formData.append('url', data.url);
       if (data.privacy) formData.append('privacy', data.privacy);
       if (data.caption) formData.append('caption', data.caption);
+      if (data.albumId !== undefined) formData.append('albumId', data.albumId ?? '');
       return fetchFormData<MemoryRecord>(`/memories/${id}`, formData);
     }
     return fetchAPI<MemoryRecord>(`/memories/${id}`, {
