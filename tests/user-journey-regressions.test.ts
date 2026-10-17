@@ -67,3 +67,57 @@ test('timeline failures never undo a delivered letter or a redeemed coupon', asy
   assert.match(actions, /Letter sent, but its timeline activity/);
   assert.match(actions, /else \{\s*notify\('Failed to save your letter/);
 });
+
+
+test('land changes are serialized and shown only after server confirmation', async () => {
+  const [garden, controls] = await Promise.all([
+    read('app/garden/page.tsx'),
+    read('app/garden/_components/GardenTopControls.tsx'),
+  ]);
+  assert.match(garden, /landSwitchBusyRef\.current/);
+  assert.match(garden, /if \(landSwitchBusyRef\.current/);
+  assert.match(garden, /const activeLand = await landsAPI\.setActive\(landId\)/);
+  assert.match(garden, /if \(activeCircleIdRef\.current !== requestedCircleId\) return/);
+  assert.match(garden, /landSwitchBusyRef\.current = false/);
+  assert.match(controls, /isSwitchingLand/);
+  assert.match(controls, /disabled=\{isSwitchingLand \|\| isCreatingLand\}/);
+});
+
+test('world does not interpret failed personal and shared records as empty collections', async () => {
+  const garden = await read('app/garden/page.tsx');
+  for (const expression of [
+    'lettersAPI.list(),',
+    'timelineAPI.list(),',
+    'memoriesAPI.list(),',
+    'statsAPI.get(),',
+  ]) assert.ok(garden.includes(expression), expression);
+  assert.doesNotMatch(garden, /lettersAPI\.list\(\)\.catch\(\(\) => \[\]\)/);
+  assert.doesNotMatch(garden, /statsAPI\.get\(\)\.catch\(/);
+});
+
+test('coupon redemption waits for confirmed server response before moving to history', async () => {
+  const [coupon, types, actions] = await Promise.all([
+    read('components/LoveCoupons.tsx'),
+    read('components/love-coupons/types.ts'),
+    read('app/garden/_components/useGardenActions.ts'),
+  ]);
+  assert.match(types, /onRedeem\?: \(id: string\) => Promise<boolean>/);
+  assert.match(coupon, /const confirmed = await onRedeem\(targetId\)/);
+  assert.match(coupon, /if \(!confirmed\) return/);
+  assert.match(coupon, /if \(!isRedeeming\) setSelectedCoupon\(null\)/);
+  assert.match(actions, /return redeemed/);
+});
+
+test('letter composer holds a failed draft and blocks multiple in-flight sends', async () => {
+  const [letter, actions] = await Promise.all([
+    read('components/LoveLetter.tsx'),
+    read('app/garden/_components/useGardenActions.ts'),
+  ]);
+  assert.match(letter, /onSendMessage: \(msg: LoveLetterMessage\) => Promise<boolean>/);
+  assert.match(letter, /if \(sendingRef\.current/);
+  assert.match(letter, /const saved = await onSendMessage\(newMessage\)/);
+  assert.match(letter, /if \(!saved\)/);
+  assert.match(letter, /Your draft is still here/);
+  assert.match(letter, /disabled=\{isSending/);
+  assert.match(actions, /return letterSaved/);
+});
