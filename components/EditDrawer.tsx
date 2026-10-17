@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Interaction, AppConfig, MediaContent } from '../types';
 import { uploadAPI, circlesAPI, landsAPI } from '../services/api';
 import "react-datepicker/dist/react-datepicker.css";
@@ -51,6 +51,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   // Local draft state so changes only apply when "Save" is clicked
   const [localConfig, setLocalConfig] = useState<AppConfig>(config);
   const [hasChanges, setHasChanges] = useState(false);
+  const wasOpenRef = useRef(false);
+  const hydratedWorldRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -92,7 +94,10 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
   // Re-sync local state when drawer opens
   useEffect(() => {
-    if (isOpen) {
+    const shouldHydrate = isOpen && (!wasOpenRef.current || hydratedWorldRef.current !== activeCircleId);
+    wasOpenRef.current = isOpen;
+    if (shouldHydrate) {
+      hydratedWorldRef.current = activeCircleId;
       const cloned = JSON.parse(JSON.stringify(config)) as AppConfig;
       // Re-hydrate Date objects that were serialized to strings
       if (cloned.timeline) {
@@ -107,6 +112,12 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   }, [isOpen, config]);
 
   if (!isOpen) return null;
+
+  const handleRequestClose = () => {
+    if (isSaving) return;
+    if (hasChanges && !window.confirm('Discard your unsaved settings changes?')) return;
+    onClose();
+  };
 
   const handleSave = async () => {
     if (isSaving || !hasChanges) return;
@@ -536,7 +547,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     return <TabComponent />;
   };
 
-  const drawerContext = { localConfig, partners, onOpenShop, circles, activeCircleId, newWorldName, editingCircleId, editingCircleName, isCircleUpdating, newLandName, objectCategoryFilter, isUploading, igToken, isFetchingIG, igProfileResult, expandedCouponId, isDraggingOver, isOpen, isMobile, onClose, hasChanges, isSaving, saveError, activeTab, expandedAccordion, previewItem, TAB_ICONS, EDIT_TABS, renderTabContent, handleSave, updateLocal, handleInputChange, handlePwaIconUpload, addPet, removePet, handlePetChange, addProposalQuestion, removeProposalQuestion, updateProposalQuestion, setProposalProgress, setIgToken, fetchInstagramProfile, fetchInstagramFeed, handleMultiFileUpload, handleGalleryUrlChange, toggleGalleryPrivacy, addGalleryImage, removeGalleryImage, handleFileUpload, setPreviewItem, getPreviewUrl, handleDragOver, handleDragLeave, handleDrop, isVideo, addAlbum, deleteAlbum, handleGalleryAlbumChange, handleTimelineFileUpload, handleTimelineChange, addTimelineEvent, setExpandedCouponId, handleCouponChange, addCoupon, setActiveCircle, setNewWorldName, handleCreateWorld, setEditingCircleId, setEditingCircleName, handleUpdateWorld, handleDeleteWorld, setNewLandName, addLand, deleteLand, toggleLandActive, setObjectCategoryFilter, uploadAPI, setActiveTab, setExpandedAccordion };
+  const drawerContext = { localConfig, partners, onOpenShop, circles, activeCircleId, newWorldName, editingCircleId, editingCircleName, isCircleUpdating, newLandName, objectCategoryFilter, isUploading, igToken, isFetchingIG, igProfileResult, expandedCouponId, isDraggingOver, isOpen, isMobile, onClose: handleRequestClose, hasChanges, isSaving, saveError, activeTab, expandedAccordion, previewItem, TAB_ICONS, EDIT_TABS, renderTabContent, handleSave, updateLocal, handleInputChange, handlePwaIconUpload, addPet, removePet, handlePetChange, addProposalQuestion, removeProposalQuestion, updateProposalQuestion, setProposalProgress, setIgToken, fetchInstagramProfile, fetchInstagramFeed, handleMultiFileUpload, handleGalleryUrlChange, toggleGalleryPrivacy, addGalleryImage, removeGalleryImage, handleFileUpload, setPreviewItem, getPreviewUrl, handleDragOver, handleDragLeave, handleDrop, isVideo, addAlbum, deleteAlbum, handleGalleryAlbumChange, handleTimelineFileUpload, handleTimelineChange, addTimelineEvent, setExpandedCouponId, handleCouponChange, addCoupon, setActiveCircle, setNewWorldName, handleCreateWorld, setEditingCircleId, setEditingCircleName, handleUpdateWorld, handleDeleteWorld, setNewLandName, addLand, deleteLand, toggleLandActive, setObjectCategoryFilter, uploadAPI, setActiveTab, setExpandedAccordion };
 
   return (
     <EditDrawerProvider value={drawerContext}>
