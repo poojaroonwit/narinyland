@@ -99,6 +99,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     wasOpenRef.current = isOpen;
     if (shouldHydrate) {
       hydratedWorldRef.current = activeCircleId;
+      savedTimelineMediaIdsRef.current.clear();
       const cloned = JSON.parse(JSON.stringify(config)) as AppConfig;
       // Re-hydrate Date objects that were serialized to strings
       if (cloned.timeline) {
