@@ -255,7 +255,7 @@ export async function createCircleViaServer(name: string, description?: string, 
   return res.json();
 }
 
-export async function getCircleMembersViaServer(circleId: string): Promise<Array<{
+export async function getCircleMembersViaServer(circleId: string, fresh = false): Promise<Array<{
   userId: string;
   name: string;
   avatar?: string;
@@ -271,7 +271,7 @@ export async function getCircleMembersViaServer(circleId: string): Promise<Array
       `${baseUrl}/api/v1/admin/applications/${applicationId}/circles/${circleId}/members`,
       {
         headers: { Authorization: `Bearer ${token}` },
-        next: { revalidate: 30 },
+        ...(fresh ? { cache: 'no-store' as const } : { next: { revalidate: 30 } }),
       }
     );
     if (!res.ok) return [];
