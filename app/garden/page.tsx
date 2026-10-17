@@ -332,11 +332,11 @@ const Home: React.FC = () => {
           musicPlaylist: serverConfig.musicPlaylist || prev.musicPlaylist,
           proposal: serverConfig.proposal || prev.proposal,
           partners: serverConfig.partners || prev.partners,
-          gallery: memories.length ? memories.map((m: any) => ({ id: m.id, url: m.url, privacy: m.privacy, caption: m.caption, albumId: m.albumId })) : prev.gallery,
+          gallery: memories.map((m: any) => ({ id: m.id, url: m.url, privacy: m.privacy, caption: m.caption, albumId: m.albumId })),
           timeline: mappedTimeline,
-          coupons: serverConfig.coupons?.length ? serverConfig.coupons : prev.coupons,
-          albums: serverConfig.albums || prev.albums,
-          lands: serverConfig.lands || prev.lands,
+          coupons: serverConfig.coupons ?? [],
+          albums: serverConfig.albums ?? [],
+          lands: serverConfig.lands ?? [],
           showProposal: serverConfig.showProposal ?? prev.showProposal,
         }));
 
