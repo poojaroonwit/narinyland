@@ -43,3 +43,43 @@ test('switching active Land aborts stale fetches and replaces the snapshot befor
   assert.match(source, /Retry loading/);
   assert.match(source, /landId=\{snapshot\.world\.landId\}/);
 });
+
+
+test('world and land menus use bounded sheets, semantic labels, and Escape dismissal', async () => {
+  const source = await readFile(new URL('../app/garden/_components/GardenTopControls.tsx', import.meta.url), 'utf8');
+  assert.match(source, /event\.key === 'Escape'/);
+  assert.match(source, /id="garden-world-selector" role="dialog"/);
+  assert.match(source, /id="garden-land-selector" role="dialog"/);
+  assert.match(source, /max-h-\[85dvh\]/);
+  assert.match(source, /aria-label="Close land selector"/);
+  assert.match(source, /isMobile=\{isMobile\}/);
+  assert.match(source, /isSwitchingLand/);
+});
+
+test('account menu uses responsive props and closes on Escape without render-time browser reads', async () => {
+  const source = await readFile(new URL('../components/UserDropdown.tsx', import.meta.url), 'utf8');
+  assert.match(source, /if \(event\.key === 'Escape'\) setDropdownOpen\(false\)/);
+  assert.match(source, /initial=\{isMobile \?/);
+  assert.doesNotMatch(source, /window\.innerWidth/);
+});
+
+test('short mobile landing pages can grow and show all actions', async () => {
+  const source = await readFile(new URL('../components/landing/LandingWorldExperience.tsx', import.meta.url), 'utf8');
+  assert.match(source, /min-h-\[100svh\] overflow-x-hidden/);
+  assert.match(source, /pointer-events-none relative z-30/);
+  assert.match(source, /sm:absolute sm:inset-x-0/);
+});
+
+test('Places panel suspends touch movement and closes on Escape', async () => {
+  const source = await readFile(new URL('../components/open-world/OpenWorldExperience.tsx', import.meta.url), 'utf8');
+  assert.match(source, /enabled=\{!mapOpen\}/);
+  assert.match(source, /movementInputRef\.current = \{ \.\.\.ZERO_HEX_EXPLORE_MOVEMENT \}/);
+  assert.match(source, /event\.key === 'Escape'/);
+});
+
+test('install suggestion is nonblocking and dismissible', async () => {
+  const source = await readFile(new URL('../app/garden/_components/GardenStatusOverlays.tsx', import.meta.url), 'utf8');
+  assert.match(source, /aria-label="Dismiss install suggestion"/);
+  assert.match(source, /setShowInstallPrompt\(false\)/);
+  assert.doesNotMatch(source, /top-1\/2/);
+});
