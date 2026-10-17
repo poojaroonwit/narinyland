@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AddButton, CouponCard, PartnerAvatar } from './love-coupons/CouponChrome';
 import { Coupon, CouponDraft, LoveCouponsProps } from './love-coupons/types';
@@ -12,6 +12,8 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
   const [isAdding, setIsAdding] = useState(false);
   const [animatingRedeemId, setAnimatingRedeemId] = useState<string | null>(null);
   const [isRedeeming, setIsRedeeming] = useState(false);
+  const redeemBusyRef = useRef(false);
+  const [redeemError, setRedeemError] = useState('');
 
   const [newCoupon, setNewCoupon] = useState({
     title: '',
@@ -25,17 +27,25 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
   const handleCardClick = (id: string, currentlyRedeemed: boolean) => {
     if (currentlyRedeemed) return;
     const coupon = coupons.find(c => c.id === id);
-    if (coupon) setSelectedCoupon(coupon);
+    if (coupon) {
+      setRedeemError('');
+      setSelectedCoupon(coupon);
+    }
   };
 
   const confirmRedeem = async () => {
-    if (!selectedCoupon || !onRedeem || isRedeeming) return;
+    if (!selectedCoupon || !onRedeem || redeemBusyRef.current) return;
+    redeemBusyRef.current = true;
     const targetId = selectedCoupon.id;
     setIsRedeeming(true);
+    setRedeemError('');
     try {
       // The confirmation modal stays open until the server confirms redemption.
       const confirmed = await onRedeem(targetId);
-      if (!confirmed) return;
+      if (!confirmed) {
+        setRedeemError('Could not redeem this coupon. Please try again.');
+        return;
+      }
       setAnimatingRedeemId(targetId);
       await new Promise(resolve => setTimeout(resolve, 500));
       setSelectedCoupon(null);
@@ -43,7 +53,9 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
       setTimeout(() => setAnimatingRedeemId(null), 2000);
     } catch (error) {
       console.error('Could not confirm coupon redemption:', error);
+      setRedeemError('Could not redeem this coupon. Please try again.');
     } finally {
+      redeemBusyRef.current = false;
       setIsRedeeming(false);
     }
   };
@@ -207,6 +219,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                   >
                     {isRedeeming ? 'Redeeming...' : 'Redeem Now 🎟️'}
                   </button>
+                  {redeemError && <p role="alert" className="text-xs font-medium text-red-600">{redeemError}</p>}
                   <div className="flex justify-center gap-6">
                     <button
                       onClick={() => { if (!isRedeeming) setSelectedCoupon(null); }}
