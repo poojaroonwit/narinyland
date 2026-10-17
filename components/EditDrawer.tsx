@@ -255,15 +255,24 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   };
 
   const handleTimelineFileUpload = async (id: string, file: File) => {
+    if (!config.timeline.some((event) => event.id === id)) {
+      setSaveError('Save this new timeline event first, then attach media.');
+      return;
+    }
     try {
-      const type: MediaContent['type'] = file.type.startsWith('audio') ? 'audio' : file.type.startsWith('video') ? 'video' : 'image';
-      const result = await uploadAPI.upload(file, 'timeline');
+      // Timeline media requires a server-side event mutation. A generic file
+      // upload URL alone is not stored in the timeline database.
+      const result = await timelineAPI.update(id, { files: [file] });
+      savedTimelineMediaIdsRef.current.add(id);
       updateLocal(prev => ({
         ...prev,
-        timeline: prev.timeline.map(item => item.id === id ? { ...item, media: { type, url: result.url } } : item)
+        timeline: prev.timeline.map(item => item.id === id
+          ? { ...item, media: result.media, mediaItems: result.mediaItems }
+          : item),
       }));
+      setSaveError('');
     } catch (err: unknown) {
-      alert(`Upload failed: ${getErrorMessage(err)}`);
+      setSaveError(`Timeline media upload failed: ${getErrorMessage(err)}`);
     }
   };
 
