@@ -330,8 +330,15 @@ const Home: React.FC = () => {
           showTimelineImagesOnHomepage: serverConfig.showTimelineImagesOnHomepage ?? prev.showTimelineImagesOnHomepage,
           includeTimelineInGallery: serverConfig.includeTimelineInGallery ?? prev.includeTimelineInGallery,
           musicPlaylist: serverConfig.musicPlaylist || prev.musicPlaylist,
-          proposal: serverConfig.proposal || prev.proposal,
-          partners: serverConfig.partners || prev.partners,
+          proposal: serverConfig.proposal ?? {
+            questions: ['Will you be my partner forever?'],
+            isAccepted: false,
+            progress: 0,
+          },
+          partners: serverConfig.partners ?? {
+            partner1: { name: 'Partner 1', avatar: '❤️' },
+            partner2: { name: 'Partner 2', avatar: '💖' },
+          },
           gallery: memories.map((m: any) => ({ id: m.id, url: m.url, privacy: m.privacy, caption: m.caption, albumId: m.albumId })),
           timeline: mappedTimeline,
           coupons: serverConfig.coupons ?? [],
@@ -353,10 +360,13 @@ const Home: React.FC = () => {
           media: l.media
         })));
 
-        // Set Proposal State
-        if (serverConfig.proposal?.isAccepted) {
-          setHasAcceptedProposal(true);
-        }
+        // Resolve the new world's entry gate before revealing its content.
+        // Otherwise the previous world's accepted state can flash or leak.
+        const questionCount = serverConfig.proposal?.questions?.length ?? 0;
+        const proposalComplete = serverConfig.showProposal === false
+          || !!serverConfig.proposal?.isAccepted
+          || (questionCount > 0 && (serverConfig.proposal?.progress ?? 0) >= questionCount);
+        setHasAcceptedProposal(proposalComplete);
 
         // Set Stats
         setLoveStats(stats);
