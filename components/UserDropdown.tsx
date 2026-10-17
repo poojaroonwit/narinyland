@@ -25,6 +25,7 @@ export default function UserDropdown({
   isOpen: controlledOpen,
   onOpenChange,
   loading,
+  isMobile = false,
 }: UserDropdownProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,8 +38,18 @@ export default function UserDropdown({
     onOpenChange?.(nextOpen);
   }, [controlledOpen, onOpenChange]);
 
-  // Close dropdown when clicking outside
+  // Register dismissal events only while open; Escape works on mobile and desktop.
   useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDropdownOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, setDropdownOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
@@ -48,7 +59,7 @@ export default function UserDropdown({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef, setDropdownOpen]);
+  }, [isOpen, setDropdownOpen]);
 
   const displayUser = user || { name: 'My Account', email: '', picture: '' };
   
@@ -112,9 +123,9 @@ export default function UserDropdown({
             />
             
             <motion.div
-              initial={typeof window !== 'undefined' && window.innerWidth < 768 ? { y: "100%" } : { opacity: 0, y: -10, scale: 0.95 }}
-              animate={typeof window !== 'undefined' && window.innerWidth < 768 ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
-              exit={typeof window !== 'undefined' && window.innerWidth < 768 ? { y: "100%" } : { opacity: 0, y: -10, scale: 0.95 }}
+              initial={isMobile ? { y: "100%" } : { opacity: 0, y: -10, scale: 0.95 }}
+              animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={isMobile ? { y: "100%" } : { opacity: 0, y: -10, scale: 0.95 }}
               transition={{ type: "spring", damping: 25, stiffness: 300, duration: 0.2 }}
               className={`fixed md:absolute bottom-0 md:bottom-auto md:top-full md:right-0 md:mt-3 w-full md:w-56 cozy-surface rounded-t-[2rem] md:rounded-2xl overflow-hidden z-[80]`}
             >

@@ -26,6 +26,16 @@ export function OpenWorldExperience() {
   const [mapOpen, setMapOpen] = React.useState(false);
   const movementInputRef = React.useRef<HexExploreMovementInput>({ ...ZERO_HEX_EXPLORE_MOVEMENT });
 
+  React.useEffect(() => {
+    if (!mapOpen) return;
+    movementInputRef.current = { ...ZERO_HEX_EXPLORE_MOVEMENT };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMapOpen(false);
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [mapOpen]);
+
   const onPlayerMove = React.useCallback((next: { x: number; z: number }) => {
     setPosition((previous) =>
       Math.abs(next.x - previous.x) > 0.1 || Math.abs(next.z - previous.z) > 0.1 ? next : previous);
