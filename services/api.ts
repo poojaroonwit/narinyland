@@ -363,9 +363,10 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
 export const configAPI = {
   get: () => fetchAPI<AppConfig>('/config'),
   
-  update: (data: ConfigUpdatePayload) =>
+  update: (data: ConfigUpdatePayload, circleId?: string | null) =>
     fetchAPI<AppConfig>('/config', {
       method: 'PUT',
+      ...(circleId ? { headers: { 'Content-Type': 'application/json', 'X-Circle-Id': circleId } } : {}),
       body: JSON.stringify(data),
     }),
 };
