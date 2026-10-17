@@ -59,8 +59,8 @@ export function HexWorldToolbar({
         <button type="button" onClick={onGoals} className={actionClass('goals', 'bg-[#476b55] text-white')}><span className="block text-base leading-none">✨</span>Goals</button>
 
         <div className="ml-0.5 flex flex-col gap-1 border-l border-[#ddcfbc] pl-1 sm:pl-1.5">
-          {viewMode === 'world' && <button type="button" onClick={onExpand} aria-label="Grow land" title="Grow land" className="h-[23px] w-8 rounded-md bg-[#eee4d2] text-xs font-semibold text-[#765c35]">⬡+</button>}
-          <button type="button" onClick={onResetView} aria-label="Reset view" title={viewMode === 'person' ? 'Reset player view' : 'Reset world view'} className="h-[23px] w-8 rounded-md bg-[#eee4d2] text-xs font-semibold text-[#5c5246]">⌂</button>
+          {viewMode === 'world' && <button type="button" onClick={onExpand} aria-label="Grow land" title="Grow land" className="min-h-[44px] min-w-[44px] rounded-md bg-[#eee4d2] text-xs font-semibold text-[#765c35]">⬡+</button>}
+          <button type="button" onClick={onResetView} aria-label="Reset view" title={viewMode === 'person' ? 'Reset player view' : 'Reset world view'} className="min-h-[44px] min-w-[44px] rounded-md bg-[#eee4d2] text-xs font-semibold text-[#5c5246]">⌂</button>
         </div>
       </div>
 
