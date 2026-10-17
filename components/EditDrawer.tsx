@@ -53,6 +53,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   const [hasChanges, setHasChanges] = useState(false);
   const wasOpenRef = useRef(false);
   const hydratedWorldRef = useRef<string | null>(null);
+  const savedTimelineMediaIdsRef = useRef(new Set<string>());
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
