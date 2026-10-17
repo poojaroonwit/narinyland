@@ -29,25 +29,22 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
   };
 
   const confirmRedeem = async () => {
-    if (selectedCoupon && onRedeem) {
-      const targetId = selectedCoupon.id;
-      setIsRedeeming(true);
-      
-      // Wait for stamp animation to complete on modal
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      onRedeem(targetId);
+    if (!selectedCoupon || !onRedeem || isRedeeming) return;
+    const targetId = selectedCoupon.id;
+    setIsRedeeming(true);
+    try {
+      // The confirmation modal stays open until the server confirms redemption.
+      const confirmed = await onRedeem(targetId);
+      if (!confirmed) return;
       setAnimatingRedeemId(targetId);
-      
-      // Close modal
+      await new Promise(resolve => setTimeout(resolve, 500));
       setSelectedCoupon(null);
-      setIsRedeeming(false);
-      
-      // Move to history
       setStatusTab('redeemed');
-      
-      // Clear secondary animation state after a delay
       setTimeout(() => setAnimatingRedeemId(null), 2000);
+    } catch (error) {
+      console.error('Could not confirm coupon redemption:', error);
+    } finally {
+      setIsRedeeming(false);
     }
   };
   
@@ -157,7 +154,7 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedCoupon(null)}
+              onClick={() => { if (!isRedeeming) setSelectedCoupon(null); }}
               className="absolute inset-0 bg-pink-900/40 backdrop-blur-md"
             />
             
@@ -212,12 +209,14 @@ const LoveCoupons: React.FC<LoveCouponsProps> = ({ coupons, partners, onRedeem, 
                   </button>
                   <div className="flex justify-center gap-6">
                     <button
-                      onClick={() => setSelectedCoupon(null)}
+                      onClick={() => { if (!isRedeeming) setSelectedCoupon(null); }}
+                      disabled={isRedeeming}
                       className="py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
                     >
                       Maybe Later
                     </button>
                     <button
+                      disabled={isRedeeming}
                       onClick={() => {
                         if (onDelete && selectedCoupon) {
                           onDelete(selectedCoupon.id);
