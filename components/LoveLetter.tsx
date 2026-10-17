@@ -408,7 +408,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
 
                  <button 
                    onClick={handleSend}
-                   disabled={isSending || (!composeContent.trim() && !composeMedia)}
+                   disabled={isSending || !composeContent.trim()}
                    className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-md shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-widest text-sm"
                  >
                    {isSending ? 'Sending…' : 'Seal & Send 📮'}
