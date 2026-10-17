@@ -72,6 +72,15 @@ export const CouponCard: React.FC<{
           rotateZ: stampRotate,
           transformStyle: "preserve-3d"
         }}
+        role={isRedeemed ? undefined : 'button'}
+        tabIndex={isRedeemed ? -1 : 0}
+        aria-label={`View ${coupon.title} coupon`}
+        onKeyDown={(event) => {
+          if (!isRedeemed && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            onCardClick(coupon.id, false);
+          }
+        }}
         onClick={(e) => {
           e.stopPropagation();
           onCardClick(coupon.id, isRedeemed);
