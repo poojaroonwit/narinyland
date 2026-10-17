@@ -22,7 +22,7 @@ export async function saveGardenSettings(draft: AppConfig, previous: AppConfig, 
   // and does not persist an arbitrary media URL from the settings draft.
   if (nextTimeline.some((event) => {
     const prior = oldTimeline.find((item) => item.id === event.id);
-    return prior && changed(event.media, prior.media);
+    return prior && changed(event.media, prior.media) && !savedTimelineMediaIds.has(event.id);
   })) throw new Error('Timeline media changes must use the Timeline upload flow.');
 
   for (const item of nextTimeline) {
