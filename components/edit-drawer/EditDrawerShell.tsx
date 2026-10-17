@@ -172,7 +172,7 @@ export const EditDrawerShell: React.FC = () => {
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                         }`}
                       >
-                        {hasChanges ? (
+                        {isSaving ? 'Saving…' : hasChanges ? (
                           <>
                             <i className="fas fa-check-circle"></i>
                             Save All Changes
