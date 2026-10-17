@@ -11,6 +11,10 @@ type ConfigUpdateBody = {
   anniversaryDate?: unknown;
   treeStyle?: unknown;
   galleryStyle?: unknown;
+  galleryPhysicsEnabled?: unknown;
+  galleryInterval?: unknown;
+  showTimelineImagesOnHomepage?: unknown;
+  includeTimelineInGallery?: unknown;
   gallerySource?: unknown;
   instagramUsername?: unknown;
   daysPerTree?: unknown;
@@ -25,7 +29,8 @@ type ConfigUpdateBody = {
   timelineZoomLevel?: unknown;
   timelineThumbnailHeight?: unknown;
   musicPlaylist?: unknown;
-  proposal?: { questions?: unknown; progress?: unknown };
+  mailFolders?: unknown;
+  proposal?: { questions?: unknown; progress?: unknown; finalWording?: unknown };
   partners?: Record<string, PartnerInput>;
   isProposalAccepted?: unknown;
   proposalProgress?: unknown;
@@ -122,6 +127,10 @@ export async function GET(request: Request) {
       anniversaryDate: config.anniversaryDate.toISOString(),
       treeStyle: config.treeStyle,
       galleryStyle: config.galleryStyle,
+      galleryPhysicsEnabled: config.galleryPhysicsEnabled,
+      galleryInterval: config.galleryInterval,
+      showTimelineImagesOnHomepage: config.showTimelineImagesOnHomepage,
+      includeTimelineInGallery: config.includeTimelineInGallery,
       gallerySource: config.gallerySource,
       instagramUsername: config.instagramUsername,
       daysPerTree: config.daysPerTree,
@@ -151,6 +160,7 @@ export async function GET(request: Request) {
         questions: config.proposalQuestions,
         isAccepted: config.isProposalAccepted,
         progress: config.proposalProgress,
+        finalWording: config.proposalFinalWording,
       },
       partners: partnersRecord,
       coupons: config.coupons.map((coupon) => ({
@@ -228,6 +238,11 @@ export async function PUT(request: Request) {
     const timelineCardScale = boundedNumber(body.timelineCardScale, 0.5, 2.5);
     if (timelineCardScale !== undefined) updateData.timelineCardScale = timelineCardScale;
 
+    if (typeof body.galleryPhysicsEnabled === 'boolean') updateData.galleryPhysicsEnabled = body.galleryPhysicsEnabled;
+    if (typeof body.showTimelineImagesOnHomepage === 'boolean') updateData.showTimelineImagesOnHomepage = body.showTimelineImagesOnHomepage;
+    if (typeof body.includeTimelineInGallery === 'boolean') updateData.includeTimelineInGallery = body.includeTimelineInGallery;
+    const galleryInterval = boundedNumber(body.galleryInterval, 1, 3600, true);
+    if (galleryInterval !== undefined) updateData.galleryInterval = galleryInterval;
     if (typeof body.showQRCode === 'boolean') updateData.showQRCode = body.showQRCode;
     if (typeof body.showCouponsOnTimeline === 'boolean') updateData.showCouponsOnTimeline = body.showCouponsOnTimeline;
     if (typeof body.showProposal === 'boolean') updateData.showProposal = body.showProposal;
@@ -237,6 +252,8 @@ export async function PUT(request: Request) {
     if (mixedFlowers !== undefined) updateData.mixedFlowers = mixedFlowers;
     const musicPlaylist = boundedStringList(body.musicPlaylist, 50, 500);
     if (musicPlaylist !== undefined) updateData.musicPlaylist = musicPlaylist;
+    const mailFolders = boundedStringList(body.mailFolders, 20, 80);
+    if (mailFolders !== undefined) updateData.mailFolders = mailFolders;
 
     if (body.pets !== undefined && body.pets !== null && typeof body.pets === 'object') {
       updateData.pets = body.pets as Prisma.InputJsonValue;
@@ -247,6 +264,8 @@ export async function PUT(request: Request) {
       if (questions !== undefined) updateData.proposalQuestions = questions;
       const progress = boundedNumber(body.proposal.progress, 0, 100, true);
       if (progress !== undefined) updateData.proposalProgress = progress;
+      const finalWording = boundedString(body.proposal.finalWording, 500);
+      if (finalWording !== undefined) updateData.proposalFinalWording = finalWording;
     }
     const proposalProgress = boundedNumber(body.proposalProgress, 0, 100, true);
     if (proposalProgress !== undefined) updateData.proposalProgress = proposalProgress;
