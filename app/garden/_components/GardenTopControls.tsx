@@ -89,7 +89,7 @@ export const GardenTopControls: React.FC = () => {
         description: typeof result.description === 'string' ? result.description : name,
         role: result.role || 'member',
       });
-      await refreshUser?.();
+      await refreshUser?.().catch((error: unknown) => console.warn('Profile refresh deferred:', error));
       showToast?.(`Created world “${name}”`);
     } catch (error) {
       showToast?.(`Could not create world: ${getErrorMessage(error)}`);
