@@ -54,3 +54,16 @@ test('shop serializes purchases across all items and restores action state', asy
   assert.match(shop, /disabled=\{points < item\.price \|\| purchasingId !== null\}/);
   assert.match(shop, /purchaseInFlightRef\.current = false/);
 });
+
+
+test('timeline failures never undo a delivered letter or a redeemed coupon', async () => {
+  const actions = await read('app/garden/_components/useGardenActions.ts');
+  assert.match(actions, /let redeemed = false/);
+  assert.match(actions, /if \(redeemed\) await addXP\(\)/);
+  assert.match(actions, /Coupon redeemed, but its timeline activity/);
+  assert.match(actions, /let letterSaved = false/);
+  assert.match(actions, /letterSaved = true/);
+  assert.match(actions, /if \(letterSaved\)/);
+  assert.match(actions, /Letter sent, but its timeline activity/);
+  assert.match(actions, /else \{\s*notify\('Failed to save your letter/);
+});
