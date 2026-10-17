@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Interaction, AppConfig, MediaContent } from '../types';
-import { uploadAPI, circlesAPI, landsAPI } from '../services/api';
+import { uploadAPI, circlesAPI, landsAPI, timelineAPI } from '../services/api';
 import "react-datepicker/dist/react-datepicker.css";
 import { EditDrawerProvider } from './edit-drawer/context';
 import { EditDrawerShell } from './edit-drawer/EditDrawerShell';
