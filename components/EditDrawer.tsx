@@ -130,6 +130,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
       setConfig(confirmed);
       setLocalConfig(confirmed);
       setHasChanges(false);
+      savedTimelineMediaIdsRef.current.clear();
       onSave?.();
       onClose();
     } catch (error) {
