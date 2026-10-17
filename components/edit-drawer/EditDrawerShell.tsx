@@ -94,7 +94,7 @@ export const EditDrawerShell: React.FC = () => {
                     <div className="p-4 border-t border-gray-100">
                       <button
                         onClick={handleSave}
-                        disabled={!hasChanges}
+                        disabled={!hasChanges || isSaving}
                         className={`w-full py-3 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
                           hasChanges
                             ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
@@ -165,7 +165,7 @@ export const EditDrawerShell: React.FC = () => {
                     <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-30">
                       <button
                         onClick={handleSave}
-                        disabled={!hasChanges}
+                        disabled={!hasChanges || isSaving}
                         className={`w-full py-4 rounded-full text-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
                           hasChanges
                             ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xl shadow-pink-200'
