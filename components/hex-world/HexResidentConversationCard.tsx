@@ -34,7 +34,7 @@ export function HexResidentConversationCard({ target, state, busy, onAction, onC
 
   return (
     <aside
-      className="pointer-events-auto fixed bottom-[calc(7.2rem+env(safe-area-inset-bottom))] left-1/2 z-[96] w-[min(92vw,390px)] -translate-x-1/2 rounded-[1.5rem] border border-white/70 bg-[#fffdf7]/94 p-4 shadow-2xl shadow-stone-950/15 backdrop-blur-xl sm:bottom-[6.25rem]"
+      className="pointer-events-auto fixed bottom-[calc(7.2rem+env(safe-area-inset-bottom))] left-1/2 z-[96] max-h-[min(56dvh,calc(100dvh-13rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-[min(92vw,390px)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[1.5rem] border border-white/70 bg-[#fffdf7]/94 p-4 shadow-2xl shadow-stone-950/15 backdrop-blur-xl sm:bottom-[6.25rem]"
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
     >
