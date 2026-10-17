@@ -17,16 +17,24 @@ async function createPaidItem(
   configId: string,
   data: { type: string; landId: string; x: number; y: number; z: number; rotation: number; modelUrl: string | null },
   price: number,
+  requestId: string | null,
   retries = 2
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
+      if (requestId) {
+        const existing = await tx.purchasedItem.findUnique({ where: { id: requestId } });
+        if (existing) {
+          if (existing.landId !== data.landId || existing.type !== data.type || existing.modelUrl !== data.modelUrl) throw new Error('Purchase request reused for a different item');
+          return existing;
+        }
+      }
       await spendSharedPoints(tx, configId, price);
-      return tx.purchasedItem.create({ data });
+      return tx.purchasedItem.create({ data: { ...data, ...(requestId ? { id: requestId } : {}) } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
-    if (retries > 0 && getErrorField(error, 'code') === 'P2034') {
-      return createPaidItem(configId, data, price, retries - 1);
+    if (retries > 0 && ['P2034', 'P2002'].includes(String(getErrorField(error, 'code')))) {
+      return createPaidItem(configId, data, price, requestId, retries - 1);
     }
     throw error;
   }
@@ -59,6 +67,10 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({})) as Record<string, unknown>;
     const landId = typeof body.landId === 'string' ? body.landId : '';
+    const requestId = typeof body.requestId === 'string' ? body.requestId : null;
+    if (requestId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      return NextResponse.json({ error: 'Invalid purchase request ID' }, { status: 400 });
+    }
     const definition = getPurchasedItemDefinition(body.type);
     if (!definition || !landId) {
       return NextResponse.json({ error: 'Unknown shop item or missing landId' }, { status: 400 });
@@ -80,12 +92,12 @@ export async function POST(request: Request) {
       z: boundedCoordinate(body.z, -100, 100, 0),
       rotation: boundedCoordinate(body.rotation, -Math.PI * 4, Math.PI * 4, 0),
       modelUrl,
-    }, definition.price);
+    }, definition.price, requestId);
 
     await Promise.all([
       redis.del(`app_config:${access.configId}`),
       redis.del(`app_stats:${access.configId}`),
-    ]);
+    ]).catch((error) => console.error('Purchase committed; cache invalidation pending:', error));
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
