@@ -167,8 +167,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
       // Fetch circles and determine active circle
       let userCircles: Circle[] = [];
+      let circlesVerified = false;
       try {
         userCircles = await getUserCircles();
+        circlesVerified = true;
       } catch (err) {
         if (err instanceof AuthRequiredError) {
           console.warn('AuthProvider: getUserCircles returned auth error, session likely expired.');
@@ -191,34 +193,34 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         console.warn('AuthProvider: getUserCircles failed, falling back to stored active circle:', err);
       }
 
-      // Use the explicitly stored circle ID, falling back to first available circle
-      const savedCircleId = userInfo.attributes?.circleId as string | undefined;
+      // A stored ID is a preference, not proof that the user still has access.
+      // A verified empty list routes to onboarding; an unavailable list keeps
+      // the last-known world until the server can be reached again.
+      const savedCircleId = typeof userInfo.attributes?.circleId === 'string'
+        ? userInfo.attributes.circleId : null;
       const storedCircleId = getActiveCircleId();
-      let resolvedCircleId = savedCircleId || storedCircleId || null;
+      const preferredCircleId = storedCircleId || savedCircleId;
+      const resolvedCircleId = circlesVerified
+        ? (userCircles.find(circle => circle.id === preferredCircleId)?.id ?? userCircles[0]?.id ?? null)
+        : (preferredCircleId ?? null);
 
-      // If no circle stored yet but user already has circles, auto-pick the first one
-      if (!resolvedCircleId && userCircles.length > 0) {
-        resolvedCircleId = userCircles[0].id;
-        // Persist to localStorage and AppKit attributes so subsequent loads are instant
-        setActiveCircleId(resolvedCircleId);
+      if (!circlesVerified && resolvedCircleId) {
+        userCircles = [{
+          id: resolvedCircleId,
+          name: 'Current World',
+          description: 'Current World',
+          role: 'member',
+        }];
+      }
+
+      if (circlesVerified && resolvedCircleId && resolvedCircleId !== savedCircleId) {
+        // Keep the next sign-in consistent after a world was removed or changed.
         try {
           const { getAppKit } = await import('@/lib/auth');
           await getAppKit().updateAttributes({ circleId: resolvedCircleId });
         } catch (err) {
-          console.error('Failed to persist circle to attributes:', err);
+          console.warn('Could not persist corrected active world:', err);
         }
-      }
-
-      if (resolvedCircleId && !userCircles.some(circle => circle.id === resolvedCircleId)) {
-        userCircles = [
-          {
-            id: resolvedCircleId,
-            name: 'Current World',
-            description: 'Current World',
-            role: 'member',
-          },
-          ...userCircles,
-        ];
       }
 
       setCircles(userCircles);
