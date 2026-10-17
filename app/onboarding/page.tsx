@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/components/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
-import { getAccessToken } from '@/lib/auth';
 
 type Mode = 'select' | 'create' | 'join';
 
@@ -27,21 +26,18 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
 
   const handleCreate = async () => {
+    if (loading) return;
     if (!worldName.trim()) { setError('Please enter a world name'); return; }
     setLoading(true);
     setError('');
     try {
-      const token = getAccessToken();
       const res = await fetch('/api/circles', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: worldName.trim(),
           description: `${worldName.trim()} - a Narinyland world`,
-          userId: user?.sub,
         }),
       });
 
@@ -54,16 +50,8 @@ export default function OnboardingPage() {
       const circleId = circle.circleId || circle.id;
       if (!circleId) throw new Error('AppKit did not return a world ID.');
       
-      // Add the user to the circle in AppKit
-      await fetch('/api/circles/join', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ circleId, userId: user?.sub }),
-      }).catch(() => {});
-
+      // Creation already establishes AppKit ownership and local membership.
+      // Do not issue a second join request that can fail after creation succeeds.
       // Set as active and persist to attributes
       await setActiveCircle(circleId, {
         name: worldName.trim(),
@@ -81,24 +69,24 @@ export default function OnboardingPage() {
   };
 
   const handleJoin = async () => {
+    if (loading) return;
     const code = worldCode.trim();
     if (!code) { setError('Please enter a world code'); return; }
     setLoading(true);
     setError('');
     try {
-      const token = getAccessToken();
       const res = await fetch('/api/circles/join', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ circleId: code, userId: user?.sub }),
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circleId: code }),
       });
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as ApiErrorBody;
-        throw new Error(data.error || 'Failed to join world. Check the code and try again.');
+        throw new Error(res.status === 403
+          ? 'Ask the world owner to invite you before using the world code.'
+          : data.error || 'Failed to join world. Check the code and try again.');
       }
 
       // Set as active and persist to attributes
@@ -243,7 +231,7 @@ export default function OnboardingPage() {
                   className="w-full px-4 py-3 rounded-md border border-gray-200 focus:outline-none focus:border-emerald-400 text-gray-800 text-sm font-mono"
                   autoFocus
                 />
-                <p className="text-xs text-gray-400 mt-1">Ask your partner for their world code</p>
+                <p className="text-xs text-gray-400 mt-1">Ask your partner for an invitation and their world code.</p>
               </div>
 
               {error && <p className="text-red-500 text-xs">{error}</p>}
