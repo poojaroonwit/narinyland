@@ -86,7 +86,7 @@ export const ObjectsTab: React.FC = () => {
                 </h3>
                 <button type="button" onClick={onOpenShop} disabled={!onOpenShop} className="min-h-[44px] rounded-xl bg-pink-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-pink-600 disabled:opacity-50">
                   <i className="fas fa-store mr-2" aria-hidden="true" />Upload in World Shop
-                </button>        </label>
+                </button>
               </div>
 
               <p className="text-xs text-stone-500">Custom models are added to your world after purchasing and uploading them in the World Shop. Uploading here alone does not create an inventory item.</p>
