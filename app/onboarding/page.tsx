@@ -17,7 +17,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function OnboardingPage() {
-  const { user, refreshUser, setActiveCircle } = useAuth();
+  const { refreshUser, setActiveCircle } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('select');
   const [worldName, setWorldName] = useState('');
