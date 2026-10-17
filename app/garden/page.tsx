@@ -344,7 +344,7 @@ const Home: React.FC = () => {
           coupons: serverConfig.coupons ?? [],
           albums: serverConfig.albums ?? [],
           lands: serverConfig.lands ?? [],
-          showProposal: serverConfig.showProposal ?? prev.showProposal,
+          showProposal: serverConfig.showProposal ?? true,
         }));
 
         // Transform Letters
