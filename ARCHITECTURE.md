@@ -288,7 +288,7 @@ User Input → Emotion Detection → Gemini API → Response Generation → Pet 
 ### Development
 - **Package Manager**: npm
 - **Code Quality**: ESLint, TypeScript
-- **Deployment**: Railway, Vercel ready
+- **Deployment**: Railway
 - **Containerization**: Docker
 
 ## Data Flow
@@ -355,14 +355,10 @@ graph TB
         A --> C[Desktop]
     end
     
-    subgraph "CDN / Frontend"
-        D[Vercel CDN] --> E[Static Assets]
-        D --> F[Next.js App]
-    end
-    
-    subgraph "Backend Services"
-        G[Railway Server] --> H[API Routes]
-        G --> I[Server Functions]
+    subgraph "Railway Application"
+        D[Railway Public Endpoint] --> F[Next.js App + Static Assets]
+        F --> H[API Routes]
+        F --> I[Server Functions]
     end
     
     subgraph "Database & Storage"
@@ -380,7 +376,6 @@ graph TB
     A --> D
     B --> D
     C --> D
-    D --> G
     H --> J
     H --> L
     H --> M

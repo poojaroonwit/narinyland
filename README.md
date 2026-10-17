@@ -46,7 +46,7 @@ A romantic, AI-powered virtual companion for couples that reacts to your presenc
 - **Storage**: UniBox file storage for media files
 - **Cache**: Redis for session management
 - **AI**: Google Gemini API for pet interactions
-- **Deployment**: Railway, Vercel ready
+- **Deployment**: Railway (application, weekly backup, PostgreSQL, and Redis)
 
 ## 🚀 Quick Start
 
@@ -190,15 +190,14 @@ For detailed technical architecture, system design, and data flow information, s
 
 ## 🚀 Deployment
 
-### Railway (Recommended)
-1. Connect your GitHub repository
-2. Set environment variables in Railway dashboard
-3. Deploy automatically
+### Railway (Production)
+Narinyland uses the existing Railway project and its `main`-branch service for production deployments. Keep the scheduled backup, PostgreSQL, and Redis services on Railway.
 
-### Vercel
-1. Install Vercel CLI
-2. Run `vercel` in project root
-3. Configure environment variables
+1. Connect `poojaroonwit/narinyland` to the Railway `narinyland` service using branch `main`.
+2. Set the required environment variables in Railway.
+3. Run database migrations using `npm run db:migrate` and deploy automatically.
+
+The legacy external preview deployments have been retired from the source configuration. Their hosted projects and GitHub integrations must also be disconnected in the provider dashboards to stop external builds and status checks.
 
 ### Docker
 ```bash

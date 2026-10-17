@@ -295,8 +295,8 @@ function toWorldInterestQuery(options: WorldInterestQuery = {}) {
   return params;
 }
 
-// Use VITE_API_URL if defined, otherwise default to relative '/api' path
-// This allows the Vite proxy (in dev) and Vercel rewrites (in prod) to handle routing
+// Default to same-origin Next.js API routes in development and on Railway.
+// NEXT_PUBLIC_API_URL is an optional explicit API override.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // ─── Helper ──────────────────────────────────────────────────────────
