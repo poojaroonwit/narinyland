@@ -9,7 +9,7 @@ import { CoupleWorldAdventure } from '../../../components/couple-world/CoupleWor
 import LoveCoupons from '../../../components/LoveCoupons';
 import LoveLetter from '../../../components/LoveLetter';
 import Shop from '../../../components/Shop';
-import { purchasedItemsAPI } from '../../../services/api';
+import { purchasedItemsAPI, statsAPI } from '../../../services/api';
 import { useGardenPageContext } from './context';
 
 export const GardenAcceptedContent: React.FC = () => {
@@ -110,24 +110,31 @@ export const GardenAcceptedContent: React.FC = () => {
               onPurchase={async (item) => {
                 const landId = activeLand?.id;
                 if (!landId) {
-                  showToast('Choose a Land before purchasing.');
-                  return;
+                  throw new Error('Choose a Land before purchasing.');
                 }
-
-                setLoveStats((previous: typeof loveStats) => ({ ...previous, points: previous.points - item.price }));
+                let newItem;
                 try {
-                  const newItem = await purchasedItemsAPI.create({ type: item.type, landId, modelUrl: item.modelUrl });
-                  setAppConfig((previous: typeof appConfig) => ({
-                    ...previous,
-                    lands: previous.lands?.map((land: { id: string; items?: unknown[] }) => (
-                      land.id === landId ? { ...land, items: [...(land.items || []), newItem] } : land
-                    )),
-                  }));
-                  showToast(`You bought a ${item.name}! 🛍️`);
-                } catch {
-                  setLoveStats((previous: typeof loveStats) => ({ ...previous, points: previous.points + item.price }));
-                  showToast('Purchase failed. Please try again.');
+                  newItem = await purchasedItemsAPI.create({ type: item.type, landId, modelUrl: item.modelUrl, requestId: item.requestId });
+                } catch (error) {
+                  showToast('Purchase was not confirmed. Retrying the same item is safe.');
+                  throw error;
                 }
+                // The server transaction is authoritative. A failed stats refresh
+                // must not turn a committed purchase into a false purchase failure.
+                setAppConfig((previous: typeof appConfig) => ({
+                  ...previous,
+                  lands: previous.lands?.map((land: { id: string; items?: unknown[] }) => (
+                    land.id === landId
+                      ? { ...land, items: (land.items || []).some((existing: any) => existing.id === newItem.id)
+                        ? land.items
+                        : [...(land.items || []), newItem] }
+                      : land
+                  )),
+                }));
+                showToast(`You bought a ${item.name}! 🛍️`);
+                void statsAPI.get()
+                  .then((latest) => setLoveStats((previous: typeof loveStats) => ({ ...previous, ...latest })))
+                  .catch((error) => console.warn('Purchase completed; stats refresh pending:', error));
               }}
             />
           </motion.div>
