@@ -107,11 +107,22 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    setConfig(localConfig);
-    if (onSave) onSave();
-    setHasChanges(false);
-    onClose();
+  const handleSave = async () => {
+    if (isSaving || !hasChanges) return;
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      const confirmed = await saveGardenSettings(localConfig, config);
+      setConfig(confirmed);
+      setLocalConfig(confirmed);
+      setHasChanges(false);
+      onSave?.();
+      onClose();
+    } catch (error) {
+      setSaveError(`${getErrorMessage(error)} Refresh the world before retrying if some changes were already saved.`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateLocal = (updater: (prev: AppConfig) => AppConfig) => {
