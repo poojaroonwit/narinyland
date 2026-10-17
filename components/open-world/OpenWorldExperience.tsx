@@ -37,7 +37,7 @@ export function OpenWorldExperience() {
   const nearest = getNearestOpenWorldLandmark(position.x, position.z);
 
   return (
-    <main className="relative h-[100dvh] min-h-[30rem] overflow-hidden bg-[#f2eddf] text-[#443d35]" aria-label="Narinyland open-world exploration">
+    <main className="relative h-[100dvh] min-h-0 overflow-hidden bg-[#f2eddf] text-[#443d35]" aria-label="Narinyland open-world exploration">
       <div className="absolute inset-0">
         <OpenWorldScene chunkCenter={chunkCenter} movementInputRef={movementInputRef} resetNonce={resetNonce} onPlayerMove={onPlayerMove} />
       </div>
@@ -58,9 +58,9 @@ export function OpenWorldExperience() {
         </Link>
       </header>
 
-      <HexExploreTouchControls movementInputRef={movementInputRef} enabled />
+      <HexExploreTouchControls movementInputRef={movementInputRef} enabled={!mapOpen} />
 
-      <div className="pointer-events-none absolute inset-x-3 bottom-[calc(6.3rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-end gap-3 sm:inset-x-5 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <div className="pointer-events-none absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-end gap-3 sm:inset-x-5 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="pointer-events-auto flex flex-col items-end gap-2">
           <p className="cozy-float hidden rounded-full px-3 py-2 text-[11px] font-medium text-[#665e51] sm:block">
             Walk into new regions—nearby terrain streams as you go
@@ -92,7 +92,7 @@ export function OpenWorldExperience() {
       {mapOpen && (
         <aside
           id="open-world-map"
-          className="cozy-surface pointer-events-auto absolute bottom-[calc(10.3rem+env(safe-area-inset-bottom))] right-3 z-40 w-[min(21rem,calc(100vw-1.5rem))] rounded-[1.4rem] p-4 sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:right-5"
+          className="cozy-surface pointer-events-auto absolute bottom-[calc(5.3rem+env(safe-area-inset-bottom))] right-3 z-40 max-h-[min(57dvh,calc(100dvh-14.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-[min(21rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-[1.4rem] p-4 sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:right-5 sm:max-h-[min(70dvh,calc(100dvh-10rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))]"
           aria-label="Open-world places"
         >
           <div className="flex items-center justify-between gap-3">
@@ -104,10 +104,10 @@ export function OpenWorldExperience() {
             {OPEN_WORLD_LANDMARKS.map((landmark) => {
               const distance = Math.round(Math.hypot(landmark.x - position.x, landmark.z - position.z));
               return (
-                <div key={landmark.id} className="flex items-center justify-between gap-3 rounded-xl bg-[#faf4e8] px-3 py-2.5">
-                  <div className="flex items-center gap-2">
+                <div key={landmark.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-[#faf4e8] px-3 py-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span aria-hidden="true">{ICONS[landmark.kind]}</span>
-                    <div><p className="text-xs font-semibold">{landmark.title}</p><p className="text-[10px] text-[#827566]">{landmark.hint}</p></div>
+                    <div className="min-w-0"><p className="text-xs font-semibold">{landmark.title}</p><p className="break-words text-[10px] text-[#827566]">{landmark.hint}</p></div>
                   </div>
                   <span className="shrink-0 text-[10px] font-medium text-[#60775c]">{distance}m</span>
                 </div>
