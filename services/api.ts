@@ -105,6 +105,7 @@ type StatsResult = LoveStats & {
   leveledUp?: boolean;
 };
 type PurchasedItemCreatePayload = {
+  requestId?: string;
   type: string;
   landId: string;
   x?: number;
@@ -362,9 +363,10 @@ async function fetchFormData<T>(path: string, formData: FormData): Promise<T> {
 export const configAPI = {
   get: () => fetchAPI<AppConfig>('/config'),
   
-  update: (data: ConfigUpdatePayload) =>
+  update: (data: ConfigUpdatePayload, circleId?: string | null) =>
     fetchAPI<AppConfig>('/config', {
       method: 'PUT',
+      ...(circleId ? { headers: { 'Content-Type': 'application/json', 'X-Circle-Id': circleId } } : {}),
       body: JSON.stringify(data),
     }),
 };
@@ -375,12 +377,13 @@ export const memoriesAPI = {
   list: (privacy?: string) =>
     fetchAPI<MemoryRecord[]>(`/memories${privacy && privacy !== 'all' ? `?privacy=${privacy}` : ''}`),
 
-  create: (data: { url?: string; privacy?: string; caption?: string; file?: File }) => {
+  create: (data: { url?: string; privacy?: string; caption?: string; albumId?: string | null; file?: File }) => {
     if (data.file) {
       const formData = new FormData();
       formData.append('image', data.file);
       if (data.privacy) formData.append('privacy', data.privacy);
       if (data.caption) formData.append('caption', data.caption);
+      if (data.albumId !== undefined) formData.append('albumId', data.albumId ?? '');
       return fetchFormData<MemoryRecord>('/memories', formData);
     }
     return fetchAPI<MemoryRecord>('/memories', {
@@ -389,13 +392,14 @@ export const memoriesAPI = {
     });
   },
 
-  update: (id: string, data: { url?: string; privacy?: string; caption?: string; file?: File }) => {
+  update: (id: string, data: { url?: string; privacy?: string; caption?: string; albumId?: string | null; file?: File }) => {
     if (data.file) {
       const formData = new FormData();
       formData.append('image', data.file);
       if (data.url) formData.append('url', data.url);
       if (data.privacy) formData.append('privacy', data.privacy);
       if (data.caption) formData.append('caption', data.caption);
+      if (data.albumId !== undefined) formData.append('albumId', data.albumId ?? '');
       return fetchFormData<MemoryRecord>(`/memories/${id}`, formData);
     }
     return fetchAPI<MemoryRecord>(`/memories/${id}`, {
@@ -530,6 +534,8 @@ export const couponsAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  update: (id: string, data: { title: string; emoji: string; desc: string; color: string; forPartner: string; points: number }) => fetchAPI<CouponRecord>(`/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   redeem: (id: string) => fetchAPI<CouponRecord>(`/coupons/${id}/redeem`, { method: 'PUT' }),
 

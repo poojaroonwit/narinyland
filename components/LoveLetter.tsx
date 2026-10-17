@@ -121,7 +121,10 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
   };
 
   const handleSend = async () => {
-    if (sendingRef.current || (!composeContent.trim() && !composeMedia)) return;
+    if (sendingRef.current || !composeContent.trim()) {
+      if (!composeContent.trim()) setSendError('Add a message before sending your letter. You can attach media too.');
+      return;
+    }
     const unlockDate = new Date(composeDate);
     if (Number.isNaN(unlockDate.getTime())) {
       setSendError('Choose a valid unlock date.');
@@ -405,7 +408,7 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
 
                  <button 
                    onClick={handleSend}
-                   disabled={isSending || (!composeContent.trim() && !composeMedia)}
+                   disabled={isSending || !composeContent.trim()}
                    className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-md shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-widest text-sm"
                  >
                    {isSending ? 'Sending…' : 'Seal & Send 📮'}

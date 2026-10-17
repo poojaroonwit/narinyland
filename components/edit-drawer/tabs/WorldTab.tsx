@@ -76,6 +76,35 @@ export const WorldTab: React.FC = () => {
     uploadAPI,
   } = useEditDrawerContext();
 
+  const [inviteCircleId, setInviteCircleId] = React.useState('');
+  const [inviteUserId, setInviteUserId] = React.useState('');
+  const [inviting, setInviting] = React.useState(false);
+  const [inviteMessage, setInviteMessage] = React.useState('');
+
+  const addPartnerAccess = async () => {
+    if (inviting || !inviteCircleId || !inviteUserId.trim()) return;
+    setInviting(true);
+    setInviteMessage('');
+    try {
+      const response = await fetch('/api/circles/invite', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circleId: inviteCircleId, targetUserId: inviteUserId.trim() }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not add this partner.');
+      setInviteMessage(payload.status === 'active'
+        ? 'Partner access confirmed. They can now join using the world code.'
+        : 'AppKit accepted the member addition. Ask the partner to sign in; access verification is pending.');
+      setInviteUserId('');
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'Could not add this partner.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
         return (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
              
@@ -102,6 +131,22 @@ export const WorldTab: React.FC = () => {
                 </div>
                 <p className="text-[9px] mt-3 text-white/80 italic">A world is a shared space for you and your partner. Each world has its own timeline, memories, and settings.</p>
              </div>
+
+             <section aria-label="Invite a partner" className="rounded-xl border border-rose-100 bg-white p-4 text-sm text-stone-700">
+               <h3 className="font-semibold">Add a partner to your world</h3>
+               <p className="mt-1 text-xs text-stone-500">Only a world owner or administrator can grant membership. Ask your partner for their AppKit user ID. A world code by itself does not grant access.</p>
+               <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                 <select aria-label="World to share" value={inviteCircleId} onChange={(e) => setInviteCircleId(e.target.value)} className="min-h-11 min-w-0 rounded-lg border border-stone-200 bg-white p-2 text-xs">
+                   <option value="">Choose world</option>
+                   {circles.filter((circle: any) => circle.id).map((circle: any) => <option value={circle.id} key={circle.id}>{circle.name}</option>)}
+                 </select>
+                 <input aria-label="Partner AppKit user ID" value={inviteUserId} onChange={(e) => setInviteUserId(e.target.value)} placeholder="AppKit user ID" className="min-h-11 min-w-0 rounded-lg border border-stone-200 p-2 text-xs" />
+                 <button type="button" disabled={inviting || !inviteCircleId || !inviteUserId.trim()} onClick={addPartnerAccess} className="min-h-11 rounded-lg bg-pink-500 px-4 text-xs font-semibold text-white disabled:opacity-50">
+                   {inviting ? 'Checking…' : 'Grant access'}
+                 </button>
+               </div>
+               {inviteMessage && <p role="status" className="mt-2 text-xs">{inviteMessage}</p>}
+             </section>
 
              {/* Circles List */}
              <div className="space-y-4">
@@ -152,9 +197,13 @@ export const WorldTab: React.FC = () => {
                           <div className="flex items-center gap-2 mt-1">
                             <code className="text-[9px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">{circle.id}</code>
                             <button 
-                              onClick={() => {
-                                navigator.clipboard.writeText(circle.id);
-                                alert('World Code copied to clipboard!');
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(circle.id);
+                                  setInviteMessage('World code copied. Your partner must also have AppKit membership.');
+                                } catch {
+                                  setInviteMessage('Clipboard access failed. Select and copy the displayed world code.');
+                                }
                               }}
                               className="text-gray-300 hover:text-pink-500 transition-colors"
                               title="Copy World Code"

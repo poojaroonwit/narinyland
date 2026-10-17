@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { isConfigAccessDenied, requireConfigAccess } from '@/lib/config-access';
+import { normalizeCouponPartner, normalizeCouponRewardPoints } from '@/lib/coupon-rewards';
 
 type CouponUpdateBody = {
   title?: string;
@@ -11,7 +12,6 @@ type CouponUpdateBody = {
   color?: string;
   forPartner?: string;
   points?: number;
-  redeemedAt?: string | Date | null;
 };
 
 // PUT /api/coupons/[id]
@@ -27,6 +27,17 @@ export async function PUT(
     const id = params.id;
     const { configId } = access;
     const body = (await request.json()) as CouponUpdateBody;
+    const points = body.points === undefined ? undefined : normalizeCouponRewardPoints(body.points);
+    const recipient = body.forPartner === undefined ? undefined : normalizeCouponPartner(body.forPartner);
+    const textFields: Array<[keyof Pick<CouponUpdateBody, 'title' | 'emoji' | 'desc' | 'color'>, number]> = [
+      ['title', 120], ['emoji', 16], ['desc', 500], ['color', 64],
+    ];
+    if (points === null || recipient === null || textFields.some(([key, limit]) =>
+      body[key] !== undefined && (typeof body[key] !== 'string' || !body[key]?.trim() || body[key]!.trim().length > limit)
+    )) return NextResponse.json({ error: 'Invalid coupon fields or reward points' }, { status: 400 });
+    if (recipient && !(await prisma.partner.findFirst({ where: { configId, partnerId: recipient }, select: { id: true } }))) {
+      return NextResponse.json({ error: 'Coupon recipient not found' }, { status: 400 });
+    }
 
     const existingCoupon = await prisma.coupon.findFirst({
       where: { id, configId },
@@ -39,17 +50,16 @@ export async function PUT(
     const coupon = await prisma.coupon.update({
       where: { id },
       data: {
-        title: body.title,
-        emoji: body.emoji,
-        desc: body.desc,
-        color: body.color,
-        forPartner: body.forPartner,
-        points: body.points,
-        redeemedAt: body.redeemedAt ? new Date(body.redeemedAt) : undefined,
+        title: body.title?.trim(),
+        emoji: body.emoji?.trim(),
+        desc: body.desc?.trim(),
+        color: body.color?.trim(),
+        forPartner: recipient,
+        points,
       } satisfies Prisma.CouponUpdateInput
     });
 
-    await redis.del(`app_config:${configId}`);
+    await redis.del(`app_config:${configId}`).catch((error) => console.error('Coupon committed; cache invalidation pending:', error));
 
     return NextResponse.json(coupon);
   } catch (error) {
@@ -80,7 +90,7 @@ export async function DELETE(
     }
 
     await prisma.coupon.delete({ where: { id } });
-    await redis.del(`app_config:${configId}`);
+    await redis.del(`app_config:${configId}`).catch((error) => console.error('Coupon committed; cache invalidation pending:', error));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting coupon:', error);

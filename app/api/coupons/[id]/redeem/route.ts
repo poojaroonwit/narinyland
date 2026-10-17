@@ -72,7 +72,7 @@ export async function PUT(
     await Promise.all([
       redis.del(`app_config:${configId}`),
       redis.del(`app_stats:${configId}`),
-    ]);
+    ]).catch((error) => console.error('Coupon redeemed; cache invalidation pending:', error));
 
     return NextResponse.json({ success: true, coupon: result.coupon });
   } catch (error) {

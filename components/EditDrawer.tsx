@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Interaction, AppConfig, MediaContent } from '../types';
-import { uploadAPI, circlesAPI, landsAPI } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { Interaction, AppConfig } from '../types';
+import { uploadAPI, circlesAPI, landsAPI, timelineAPI } from '../services/api';
 import "react-datepicker/dist/react-datepicker.css";
 import { EditDrawerProvider } from './edit-drawer/context';
 import { EditDrawerShell } from './edit-drawer/EditDrawerShell';
 import { fetchInstagramFeedImport, fetchInstagramProfileImport } from './edit-drawer/instagramImport';
 import { CouponsTab, GalleryTab, GeneralTab, LandTab, ObjectsTab, ProposalTab, TimelineTab, WorldTab } from './edit-drawer/tabs';
 import { useAuth } from './AuthProvider';
+import { saveGardenSettings } from '@/lib/garden-settings-save';
 
 type EditTab = 'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'land' | 'objects';
 
@@ -28,9 +29,10 @@ interface EditDrawerProps {
   };
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   onSave?: () => void;
+  onOpenShop?: () => void;
 }
 
-const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave }) => {
+const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave, onOpenShop }) => {
   const { circles, activeCircleId, setActiveCircle, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<EditTab>('general');
   const [isMobile, setIsMobile] = useState(false);
@@ -49,6 +51,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   // Local draft state so changes only apply when "Save" is clicked
   const [localConfig, setLocalConfig] = useState<AppConfig>(config);
   const [hasChanges, setHasChanges] = useState(false);
+  const wasOpenRef = useRef(false);
+  const hydratedWorldRef = useRef<string | null>(null);
+  const savedTimelineMediaIdsRef = useRef(new Set<string>());
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // Instagram Fetch State
   const [igToken, setIgToken] = useState('');
@@ -88,7 +95,11 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
   // Re-sync local state when drawer opens
   useEffect(() => {
-    if (isOpen) {
+    const shouldHydrate = isOpen && (!wasOpenRef.current || hydratedWorldRef.current !== activeCircleId);
+    wasOpenRef.current = isOpen;
+    if (shouldHydrate) {
+      hydratedWorldRef.current = activeCircleId;
+      savedTimelineMediaIdsRef.current.clear();
       const cloned = JSON.parse(JSON.stringify(config)) as AppConfig;
       // Re-hydrate Date objects that were serialized to strings
       if (cloned.timeline) {
@@ -104,11 +115,35 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    setConfig(localConfig);
-    if (onSave) onSave();
-    setHasChanges(false);
+  const openShopSafely = () => {
+    if (isSaving) return;
+    if (hasChanges && !window.confirm('Discard unsaved Settings changes and open the World Shop?')) return;
+    onOpenShop?.();
+  };
+
+  const handleRequestClose = () => {
+    if (isSaving) return;
+    if (hasChanges && !window.confirm('Discard your unsaved settings changes?')) return;
     onClose();
+  };
+
+  const handleSave = async () => {
+    if (isSaving || !hasChanges) return;
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      const confirmed = await saveGardenSettings(localConfig, config, savedTimelineMediaIdsRef.current);
+      setConfig(confirmed);
+      setLocalConfig(confirmed);
+      setHasChanges(false);
+      savedTimelineMediaIdsRef.current.clear();
+      onSave?.();
+      onClose();
+    } catch (error) {
+      setSaveError(`${getErrorMessage(error)} Refresh the world before retrying if some changes were already saved.`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateLocal = (updater: (prev: AppConfig) => AppConfig) => {
@@ -226,15 +261,24 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   };
 
   const handleTimelineFileUpload = async (id: string, file: File) => {
+    if (!config.timeline.some((event) => event.id === id)) {
+      setSaveError('Save this new timeline event first, then attach media.');
+      return;
+    }
     try {
-      const type: MediaContent['type'] = file.type.startsWith('audio') ? 'audio' : file.type.startsWith('video') ? 'video' : 'image';
-      const result = await uploadAPI.upload(file, 'timeline');
+      // Timeline media requires a server-side event mutation. A generic file
+      // upload URL alone is not stored in the timeline database.
+      const result = await timelineAPI.update(id, { files: [file] });
+      savedTimelineMediaIdsRef.current.add(id);
       updateLocal(prev => ({
         ...prev,
-        timeline: prev.timeline.map(item => item.id === id ? { ...item, media: { type, url: result.url } } : item)
+        timeline: prev.timeline.map(item => item.id === id
+          ? { ...item, media: result.media, mediaItems: result.mediaItems }
+          : item),
       }));
+      setSaveError('');
     } catch (err: unknown) {
-      alert(`Upload failed: ${getErrorMessage(err)}`);
+      setSaveError(`Timeline media upload failed: ${getErrorMessage(err)}`);
     }
   };
 
@@ -521,7 +565,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     return <TabComponent />;
   };
 
-  const drawerContext = { localConfig, partners, circles, activeCircleId, newWorldName, editingCircleId, editingCircleName, isCircleUpdating, newLandName, objectCategoryFilter, isUploading, igToken, isFetchingIG, igProfileResult, expandedCouponId, isDraggingOver, isOpen, isMobile, onClose, hasChanges, activeTab, expandedAccordion, previewItem, TAB_ICONS, EDIT_TABS, renderTabContent, handleSave, updateLocal, handleInputChange, handlePwaIconUpload, addPet, removePet, handlePetChange, addProposalQuestion, removeProposalQuestion, updateProposalQuestion, setProposalProgress, setIgToken, fetchInstagramProfile, fetchInstagramFeed, handleMultiFileUpload, handleGalleryUrlChange, toggleGalleryPrivacy, addGalleryImage, removeGalleryImage, handleFileUpload, setPreviewItem, getPreviewUrl, handleDragOver, handleDragLeave, handleDrop, isVideo, addAlbum, deleteAlbum, handleGalleryAlbumChange, handleTimelineFileUpload, handleTimelineChange, addTimelineEvent, setExpandedCouponId, handleCouponChange, addCoupon, setActiveCircle, setNewWorldName, handleCreateWorld, setEditingCircleId, setEditingCircleName, handleUpdateWorld, handleDeleteWorld, setNewLandName, addLand, deleteLand, toggleLandActive, setObjectCategoryFilter, uploadAPI, setActiveTab, setExpandedAccordion };
+  const drawerContext = { localConfig, partners, onOpenShop: openShopSafely, circles, activeCircleId, newWorldName, editingCircleId, editingCircleName, isCircleUpdating, newLandName, objectCategoryFilter, isUploading, igToken, isFetchingIG, igProfileResult, expandedCouponId, isDraggingOver, isOpen, isMobile, onClose: handleRequestClose, hasChanges, isSaving, saveError, activeTab, expandedAccordion, previewItem, TAB_ICONS, EDIT_TABS, renderTabContent, handleSave, updateLocal, handleInputChange, handlePwaIconUpload, addPet, removePet, handlePetChange, addProposalQuestion, removeProposalQuestion, updateProposalQuestion, setProposalProgress, setIgToken, fetchInstagramProfile, fetchInstagramFeed, handleMultiFileUpload, handleGalleryUrlChange, toggleGalleryPrivacy, addGalleryImage, removeGalleryImage, handleFileUpload, setPreviewItem, getPreviewUrl, handleDragOver, handleDragLeave, handleDrop, isVideo, addAlbum, deleteAlbum, handleGalleryAlbumChange, handleTimelineFileUpload, handleTimelineChange, addTimelineEvent, setExpandedCouponId, handleCouponChange, addCoupon, setActiveCircle, setNewWorldName, handleCreateWorld, setEditingCircleId, setEditingCircleName, handleUpdateWorld, handleDeleteWorld, setNewLandName, addLand, deleteLand, toggleLandActive, setObjectCategoryFilter, uploadAPI, setActiveTab, setExpandedAccordion };
 
   return (
     <EditDrawerProvider value={drawerContext}>

@@ -10,6 +10,7 @@ export interface ShopItem {
   icon: string;
   description: string;
   modelUrl?: string | null;
+  requestId?: string;
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -33,6 +34,16 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const purchaseInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingPurchaseIdsRef = useRef(new Map<string, string>());
+  const pendingModelRef = useRef<{ fingerprint: string; url: string } | null>(null);
+  const [purchaseError, setPurchaseError] = useState('');
+  const purchaseRequestId = (key: string) => {
+    const existing = pendingPurchaseIdsRef.current.get(key);
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    pendingPurchaseIdsRef.current.set(key, id);
+    return id;
+  };
 
   const triggerUpload = () => {
     fileInputRef.current?.click();
@@ -62,12 +73,20 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 
     purchaseInFlightRef.current = true;
     setPurchasingId('custom-3d');
+    setPurchaseError('');
+    const key = `${activeLandId}:custom-3d:${file.name}:${file.size}:${file.lastModified}`;
     try {
-      const uploadResult = await uploadAPI.upload(file, 'models');
-      await onPurchase({ ...customItem, modelUrl: uploadResult.url });
+      const fingerprint = `${file.name}:${file.size}:${file.lastModified}`;
+      const modelUrl = pendingModelRef.current?.fingerprint === fingerprint
+        ? pendingModelRef.current.url
+        : (await uploadAPI.upload(file, 'models')).url;
+      pendingModelRef.current = { fingerprint, url: modelUrl };
+      await onPurchase({ ...customItem, modelUrl, requestId: purchaseRequestId(key) });
+      pendingPurchaseIdsRef.current.delete(key);
+      pendingModelRef.current = null;
     } catch (error) {
       console.error('Failed to upload model or purchase:', error);
-      alert('Upload failed. Please try again.');
+      setPurchaseError(error instanceof Error ? error.message : 'Could not purchase this model. Please retry.');
     } finally {
       purchaseInFlightRef.current = false;
       setPurchasingId(null);
@@ -94,8 +113,13 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
 
     purchaseInFlightRef.current = true;
     setPurchasingId(item.id);
+    setPurchaseError('');
+    const key = `${activeLandId}:${item.id}`;
     try {
-      await onPurchase(item);
+      await onPurchase({ ...item, requestId: purchaseRequestId(key) });
+      pendingPurchaseIdsRef.current.delete(key);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : 'Purchase failed. Please retry.');
     } finally {
       purchaseInFlightRef.current = false;
       setPurchasingId(null);
@@ -105,6 +129,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   if (compact) {
     return (
       <div className="space-y-2">
+        {purchaseError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{purchaseError}</p>}
         {SHOP_ITEMS.map(item => (
           <motion.div
             key={item.id}
@@ -149,6 +174,7 @@ const Shop: React.FC<ShopProps> = ({ points, activeLandId, onPurchase, compact =
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col items-center">
       <div className="flex w-full flex-col rounded-md bg-white/90 p-6 shadow-xl backdrop-blur-md md:p-8">
+        {purchaseError && <p role="alert" className="mb-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{purchaseError}</p>}
         <div className="mb-6 flex items-center justify-between border-b border-amber-100 pb-4">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-black text-amber-700">

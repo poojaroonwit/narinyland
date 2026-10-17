@@ -12,6 +12,8 @@ export const EditDrawerShell: React.FC = () => {
     isMobile,
     onClose,
     hasChanges,
+    isSaving,
+    saveError,
     activeTab,
     expandedAccordion,
     previewItem,
@@ -88,18 +90,19 @@ export const EditDrawerShell: React.FC = () => {
                       ))}
                     </div>
     
+                    {saveError && <p role="alert" className="px-4 py-2 text-xs text-red-600">{saveError}</p>}
                     {/* Save Button in Sidebar */}
                     <div className="p-4 border-t border-gray-100">
                       <button
                         onClick={handleSave}
-                        disabled={!hasChanges}
+                        disabled={!hasChanges || isSaving}
                         className={`w-full py-3 rounded-md text-xs font-black uppercase tracking-widest transition-all ${
                           hasChanges
                             ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-lg shadow-pink-200'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
                       >
-                        {hasChanges ? 'Save Changes' : 'No Changes'}
+                        {isSaving ? 'Saving…' : hasChanges ? 'Save Changes' : 'No Changes'}
                       </button>
                     </div>
                   </div>
@@ -158,19 +161,20 @@ export const EditDrawerShell: React.FC = () => {
                     )}
                   </div>
                   
+                  {isMobile && saveError && <p role="alert" className="p-3 text-xs text-red-600">{saveError}</p>}
                   {/* Sticky Footer Save Button (Mobile Only) */}
                   {isMobile && (
                     <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-30">
                       <button
                         onClick={handleSave}
-                        disabled={!hasChanges}
+                        disabled={!hasChanges || isSaving}
                         className={`w-full py-4 rounded-full text-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
                           hasChanges
                             ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xl shadow-pink-200'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                         }`}
                       >
-                        {hasChanges ? (
+                        {isSaving ? 'Saving…' : hasChanges ? (
                           <>
                             <i className="fas fa-check-circle"></i>
                             Save All Changes

@@ -12,6 +12,7 @@ type MemoryCreateBody = {
   url?: string | null;
   privacy?: string;
   caption?: string | null;
+  albumId?: string | null;
 };
 
 function generateETag(data: unknown): string {
@@ -102,22 +103,28 @@ export async function POST(request: Request) {
     let url: string | null = null;
     let privacy: string = 'public';
     let caption: string | null = null;
+    let albumId: string | null = null;
 
     if (contentType.includes('application/json')) {
       const body = (await request.json()) as MemoryCreateBody;
       url = body.url || null;
       privacy = body.privacy || 'public';
       caption = body.caption || null;
+      albumId = typeof body.albumId === 'string' ? body.albumId : null;
     } else {
       const formData = await request.formData();
       file = formData.get('image') as File | null;
       url = formData.get('url') as string | null;
       privacy = (formData.get('privacy') as string) || 'public';
       caption = (formData.get('caption') as string) || null;
+      albumId = String(formData.get('albumId') || '') || null;
     }
 
     if (!['public', 'private'].includes(privacy)) {
       return NextResponse.json({ error: 'Invalid privacy value' }, { status: 400 });
+    }
+    if (albumId && !(await prisma.album.findFirst({ where: { id: albumId, configId }, select: { id: true } }))) {
+      return NextResponse.json({ error: 'Album not found in this world' }, { status: 400 });
     }
 
     let s3Key: string | null = null;
@@ -155,12 +162,13 @@ export async function POST(request: Request) {
         s3Key,
         privacy,
         caption,
+        albumId,
         sortOrder: newOrder,
         configId,
       },
     });
 
-    await invalidateMemoryCache(configId);
+    await invalidateMemoryCache(configId).catch((error) => console.error('Memory created; cache invalidation pending:', error));
 
     return NextResponse.json(memory, { status: 201 });
   } catch (error) {

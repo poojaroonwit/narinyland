@@ -396,39 +396,52 @@ const Home: React.FC = () => {
   }, [activeCircleId, configRetryNonce]);
 
   // ─── Save config to database when setAppConfig is called ────────────
+  // Keep writes outside React state updaters, which may be replayed. Serialize
+  // them and bind each request to the world active when the edit was made.
+  const appConfigRef = React.useRef(appConfig);
+  const configWriteQueueRef = React.useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => { appConfigRef.current = appConfig; }, [appConfig]);
+
   const handleSetAppConfig: typeof setAppConfig = (updater) => {
-    setAppConfig((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      // Persist to database (fire & forget)
-      configAPI.update({
-        appName: next.appName,
-        anniversaryDate: next.anniversaryDate,
-        treeStyle: next.treeStyle,
-        galleryStyle: next.galleryStyle,
-        gallerySource: next.gallerySource,
-        instagramUsername: next.instagramUsername,
-        daysPerTree: next.daysPerTree,
-        daysPerFlower: next.daysPerFlower,
-        flowerType: next.flowerType,
-        mixedFlowers: next.mixedFlowers,
-        skyMode: next.skyMode,
-        petType: next.petType,
-        pets: next.pets,
-        timelineDefaultRows: next.timelineDefaultRows,
-        showTimelineImagesOnHomepage: next.showTimelineImagesOnHomepage,
-        includeTimelineInGallery: next.includeTimelineInGallery,
-        musicPlaylist: next.musicPlaylist,
-        proposal: next.proposal,
-        isProposalAccepted: next.proposal.isAccepted,
-        proposalProgress: next.proposal.progress,
-        partners: next.partners,
-        coupons: next.coupons,
-        gallery: next.gallery,
-        showProposal: next.showProposal,
-      }).then(() => {})
-        .catch((err: unknown) => console.error('❌ Failed to save config:', getErrorMessage(err)));
-      return next;
-    });
+    const next = typeof updater === 'function' ? updater(appConfigRef.current) : updater;
+    appConfigRef.current = next;
+    setAppConfig(next);
+    const targetCircleId = activeCircleId;
+    if (!targetCircleId) return;
+    const payload = {
+      appName: next.appName,
+      anniversaryDate: next.anniversaryDate,
+      treeStyle: next.treeStyle,
+      galleryStyle: next.galleryStyle,
+      gallerySource: next.gallerySource,
+      galleryPhysicsEnabled: next.galleryPhysicsEnabled,
+      galleryInterval: next.galleryInterval,
+      instagramUsername: next.instagramUsername,
+      daysPerTree: next.daysPerTree,
+      daysPerFlower: next.daysPerFlower,
+      flowerType: next.flowerType,
+      mixedFlowers: next.mixedFlowers,
+      skyMode: next.skyMode,
+      petType: next.petType,
+      pets: next.pets,
+      graphicsQuality: next.graphicsQuality,
+      timelineDefaultRows: next.timelineDefaultRows,
+      showTimelineImagesOnHomepage: next.showTimelineImagesOnHomepage,
+      includeTimelineInGallery: next.includeTimelineInGallery,
+      musicPlaylist: next.musicPlaylist,
+      mailFolders: next.mailFolders,
+      proposal: next.proposal,
+      isProposalAccepted: next.proposal.isAccepted,
+      proposalProgress: next.proposal.progress,
+      partners: next.partners,
+      showProposal: next.showProposal,
+    };
+    configWriteQueueRef.current = configWriteQueueRef.current
+      .then(async () => { await configAPI.update(payload, targetCircleId); })
+      .catch((error: unknown) => {
+        console.error('Failed to save world config:', getErrorMessage(error));
+        showToast('Some world settings could not be saved. Check your connection.');
+      });
   };
 
   useEffect(() => {
