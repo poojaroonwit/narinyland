@@ -105,6 +105,7 @@ type StatsResult = LoveStats & {
   leveledUp?: boolean;
 };
 type PurchasedItemCreatePayload = {
+  requestId?: string;
   type: string;
   landId: string;
   x?: number;
