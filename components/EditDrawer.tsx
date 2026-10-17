@@ -9,6 +9,7 @@ import { EditDrawerShell } from './edit-drawer/EditDrawerShell';
 import { fetchInstagramFeedImport, fetchInstagramProfileImport } from './edit-drawer/instagramImport';
 import { CouponsTab, GalleryTab, GeneralTab, LandTab, ObjectsTab, ProposalTab, TimelineTab, WorldTab } from './edit-drawer/tabs';
 import { useAuth } from './AuthProvider';
+import { saveGardenSettings } from '@/lib/garden-settings-save';
 
 type EditTab = 'general' | 'proposal' | 'gallery' | 'timeline' | 'coupons' | 'world' | 'land' | 'objects';
 
