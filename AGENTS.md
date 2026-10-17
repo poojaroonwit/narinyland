@@ -117,4 +117,4 @@ APPKIT_DOMAIN
 
 ## Deployment
 
-Configured for Railway (recommended) or Vercel. `next.config.mjs` uses `output: 'standalone'` for containerization and has `bodySizeLimit: '50mb'` for large file uploads. Run `npm run db:migrate` (not `db:push`) for production schema changes.
+Railway is the sole supported deployment platform. The existing Railway `narinyland` service tracks `main` and uses `next.config.mjs` with `output: 'standalone'` for containerization and `bodySizeLimit: '50mb'` for large file uploads. Run `npm run db:migrate` (not `db:push`) for production schema changes. Do not re-enable external preview projects or deploy hooks.
