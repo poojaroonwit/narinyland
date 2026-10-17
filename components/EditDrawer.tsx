@@ -50,6 +50,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
   // Local draft state so changes only apply when "Save" is clicked
   const [localConfig, setLocalConfig] = useState<AppConfig>(config);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // Instagram Fetch State
   const [igToken, setIgToken] = useState('');
