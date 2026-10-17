@@ -29,9 +29,10 @@ interface EditDrawerProps {
   };
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   onSave?: () => void;
+  onOpenShop?: () => void;
 }
 
-const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave }) => {
+const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partners, setConfig, onSave, onOpenShop }) => {
   const { circles, activeCircleId, setActiveCircle, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<EditTab>('general');
   const [isMobile, setIsMobile] = useState(false);
@@ -535,7 +536,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ isOpen, onClose, config, partne
     return <TabComponent />;
   };
 
-  const drawerContext = { localConfig, partners, circles, activeCircleId, newWorldName, editingCircleId, editingCircleName, isCircleUpdating, newLandName, objectCategoryFilter, isUploading, igToken, isFetchingIG, igProfileResult, expandedCouponId, isDraggingOver, isOpen, isMobile, onClose, hasChanges, isSaving, saveError, activeTab, expandedAccordion, previewItem, TAB_ICONS, EDIT_TABS, renderTabContent, handleSave, updateLocal, handleInputChange, handlePwaIconUpload, addPet, removePet, handlePetChange, addProposalQuestion, removeProposalQuestion, updateProposalQuestion, setProposalProgress, setIgToken, fetchInstagramProfile, fetchInstagramFeed, handleMultiFileUpload, handleGalleryUrlChange, toggleGalleryPrivacy, addGalleryImage, removeGalleryImage, handleFileUpload, setPreviewItem, getPreviewUrl, handleDragOver, handleDragLeave, handleDrop, isVideo, addAlbum, deleteAlbum, handleGalleryAlbumChange, handleTimelineFileUpload, handleTimelineChange, addTimelineEvent, setExpandedCouponId, handleCouponChange, addCoupon, setActiveCircle, setNewWorldName, handleCreateWorld, setEditingCircleId, setEditingCircleName, handleUpdateWorld, handleDeleteWorld, setNewLandName, addLand, deleteLand, toggleLandActive, setObjectCategoryFilter, uploadAPI, setActiveTab, setExpandedAccordion };
+  const drawerContext = { localConfig, partners, onOpenShop, circles, activeCircleId, newWorldName, editingCircleId, editingCircleName, isCircleUpdating, newLandName, objectCategoryFilter, isUploading, igToken, isFetchingIG, igProfileResult, expandedCouponId, isDraggingOver, isOpen, isMobile, onClose, hasChanges, isSaving, saveError, activeTab, expandedAccordion, previewItem, TAB_ICONS, EDIT_TABS, renderTabContent, handleSave, updateLocal, handleInputChange, handlePwaIconUpload, addPet, removePet, handlePetChange, addProposalQuestion, removeProposalQuestion, updateProposalQuestion, setProposalProgress, setIgToken, fetchInstagramProfile, fetchInstagramFeed, handleMultiFileUpload, handleGalleryUrlChange, toggleGalleryPrivacy, addGalleryImage, removeGalleryImage, handleFileUpload, setPreviewItem, getPreviewUrl, handleDragOver, handleDragLeave, handleDrop, isVideo, addAlbum, deleteAlbum, handleGalleryAlbumChange, handleTimelineFileUpload, handleTimelineChange, addTimelineEvent, setExpandedCouponId, handleCouponChange, addCoupon, setActiveCircle, setNewWorldName, handleCreateWorld, setEditingCircleId, setEditingCircleName, handleUpdateWorld, handleDeleteWorld, setNewLandName, addLand, deleteLand, toggleLandActive, setObjectCategoryFilter, uploadAPI, setActiveTab, setExpandedAccordion };
 
   return (
     <EditDrawerProvider value={drawerContext}>
