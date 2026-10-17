@@ -121,7 +121,10 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
   };
 
   const handleSend = async () => {
-    if (sendingRef.current || (!composeContent.trim() && !composeMedia)) return;
+    if (sendingRef.current || !composeContent.trim()) {
+      if (!composeContent.trim()) setSendError('Add a message before sending your letter. You can attach media too.');
+      return;
+    }
     const unlockDate = new Date(composeDate);
     if (Number.isNaN(unlockDate.getTime())) {
       setSendError('Choose a valid unlock date.');
