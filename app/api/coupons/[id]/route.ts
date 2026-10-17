@@ -49,7 +49,7 @@ export async function PUT(
       } satisfies Prisma.CouponUpdateInput
     });
 
-    await redis.del(`app_config:${configId}`);
+    await redis.del(`app_config:${configId}`).catch((error) => console.error('Coupon committed; cache invalidation pending:', error));
 
     return NextResponse.json(coupon);
   } catch (error) {
@@ -80,7 +80,7 @@ export async function DELETE(
     }
 
     await prisma.coupon.delete({ where: { id } });
-    await redis.del(`app_config:${configId}`);
+    await redis.del(`app_config:${configId}`).catch((error) => console.error('Coupon committed; cache invalidation pending:', error));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting coupon:', error);
