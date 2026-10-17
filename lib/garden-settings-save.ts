@@ -3,7 +3,7 @@ import { configAPI, couponsAPI, memoriesAPI, timelineAPI } from '@/services/api'
 
 // Config PUT intentionally excludes entity collections. Save them using their own
 // authenticated endpoints, then rehydrate canonical server data.
-export async function saveGardenSettings(draft: AppConfig, previous: AppConfig): Promise<AppConfig> {
+export async function saveGardenSettings(draft: AppConfig, previous: AppConfig, savedTimelineMediaIds: ReadonlySet<string> = new Set()): Promise<AppConfig> {
   const changed = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
   const oldGallery = previous.gallery ?? [];
   const nextGallery = draft.gallery ?? [];
