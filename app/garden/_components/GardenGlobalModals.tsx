@@ -38,7 +38,7 @@ export const GardenGlobalModals: React.FC = () => {
     loveLetters,
     appConfig,
     activePartners,
-    handleSetAppConfig,
+    setAppConfig,
     switchTab,
     handleSendMessage,
     handleUpdateMessage,
@@ -65,7 +65,7 @@ export const GardenGlobalModals: React.FC = () => {
         onClose={() => setIsEditDrawerOpen(false)}
         config={appConfig}
         partners={activePartners}
-        setConfig={handleSetAppConfig}
+        setConfig={setAppConfig}
         onSave={() => showToast('Settings saved successfully! ✨')}
         onOpenShop={() => { setIsEditDrawerOpen(false); switchTab('shop'); }}
       />
