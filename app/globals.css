@@ -151,6 +151,7 @@ body:has([data-hex-overlay-state="details"]) [data-hex-overlay-state="details"] 
   --hex-sheet-bottom: calc(12.75rem + env(safe-area-inset-bottom));
   --hex-layer-navigation: 90;
   --hex-layer-sheet: 97;
+  --hex-sheet-bottom-mobile: calc(6rem + env(safe-area-inset-bottom));
 }
 
 [data-hex-gameplay-sheet] {
@@ -199,7 +200,16 @@ body:has([data-hex-overlay-state="resident-conversation"]) [data-hex-explore-sta
 }
 
 @media (max-width: 639px) {
+  /* Mobile panels replace the secondary toolbar instead of competing with it. */
+  body:has([data-hex-gameplay-sheet]) [data-hex-world-toolbar] {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
   [data-hex-gameplay-sheet] {
+    bottom: var(--hex-sheet-bottom-mobile);
+    max-height: min(66dvh, calc(100dvh - var(--hex-sheet-bottom-mobile) - 4.75rem - env(safe-area-inset-top)));
     left: calc(0.5rem + env(safe-area-inset-left));
     right: calc(0.5rem + env(safe-area-inset-right));
     width: auto;
