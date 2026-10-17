@@ -37,7 +37,7 @@ test('HexWorld overlays expose coordinated collision states instead of independe
   assert.match(undo, /data-hex-undo-toast/);
   assert.match(globals, /body:has\(\[data-hex-hud-panel\]\).*data-hex-edit-toolbar/s);
   assert.match(globals, /data-hex-overlay-state="hud".*data-hex-undo-toast/s);
-  assert.match(globals, /data-hex-overlay-state="details".*100dvh/s);
+  assert.match(globals, /\[data-hex-gameplay-sheet\][\s\S]*?100dvh/);
 });
 
 test('bottom navigation and gameplay controls stay inside narrow safe-area viewports', async () => {
@@ -51,4 +51,31 @@ test('bottom navigation and gameplay controls stay inside narrow safe-area viewp
   assert.match(toolbar, /sm:min-w-\[68px\]/);
   assert.match(garden, /safe-area-inset-bottom/);
   assert.match(garden, /max-w-\[calc\(100vw-1rem\)\]/);
+});
+
+test('small-screen gameplay overlays share a reserved region and do not cover controls', async () => {
+  const [globals, catalog, inventory, quick, details, explore, toolbar, hud] = await Promise.all([
+    read('app/globals.css'),
+    read('components/hex-world/HexBuildCatalog.tsx'),
+    read('components/hex-world/HexInventorySheet.tsx'),
+    read('components/hex-world/HexQuickActionPanel.tsx'),
+    read('components/hex-world/HexLivingActionPanel.tsx'),
+    read('components/hex-world/HexExploreHUD.tsx'),
+    read('components/hex-world/HexWorldToolbar.tsx'),
+    read('components/hex-world/HexLivingHUD.tsx'),
+  ]);
+  for (const sheet of [catalog, inventory, quick, details]) assert.match(sheet, /data-hex-gameplay-sheet/);
+  assert.match(globals, /--hex-sheet-bottom: calc\(12\.75rem \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(globals, /\[data-hex-gameplay-sheet\][\s\S]*?max-height: min\(54dvh/);
+  assert.match(globals, /max-width: 639px/);
+  assert.match(globals, /--hex-sheet-bottom-mobile/);
+  assert.match(globals, /body:has\(\[data-hex-gameplay-sheet\]\) \[data-hex-world-toolbar\]/);
+  assert.match(globals, /data-hex-explore-status/);
+  assert.match(globals, /data-hex-hud-notice-stack/);
+  assert.match(explore, /data-hex-explore-actions/);
+  assert.match(explore, /aria-expanded=\{mobileMoreOpen\}/);
+  assert.match(explore, /sm:hidden/);
+  assert.match(toolbar, /data-hex-world-toolbar/);
+  assert.match(hud, /data-hex-top-hud/);
+  assert.match(hud, /lg:grid-cols-/);
 });

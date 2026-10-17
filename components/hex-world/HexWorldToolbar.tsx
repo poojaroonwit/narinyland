@@ -33,7 +33,7 @@ export function HexWorldToolbar({
   const modeClass = (mode: HexViewMode) => `min-h-9 rounded-xl px-3 text-[11px] font-semibold transition-colors ${viewMode === mode ? 'bg-[#476b55] text-white' : 'text-[#6f6357] hover:bg-[#e9f0e3]'}`;
 
   return (
-    <div className="pointer-events-none fixed bottom-[calc(5.7rem+env(safe-area-inset-bottom))] left-1/2 z-[90] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-col items-center gap-1.5">
+    <div data-hex-world-toolbar="true" className="pointer-events-none fixed bottom-[calc(5.7rem+env(safe-area-inset-bottom))] left-1/2 z-[90] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-col items-center gap-1.5">
       <div className="pointer-events-auto flex items-center cozy-float rounded-xl p-1" aria-label="World view mode">
         <button type="button" onClick={() => onViewModeChange('world')} className={modeClass('world')}>World</button>
         <button type="button" onClick={() => onViewModeChange('person')} className={modeClass('person')}>Explore</button>

@@ -7,11 +7,11 @@ export function HexPlacementBar({ mode, busy, valid, reason, onRotateLeft, onRot
   onRotateLeft: () => void; onRotateRight: () => void; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
-    <div className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[94] flex -translate-x-1/2 flex-col items-center gap-1.5">
-      {!valid && reason && <div className="rounded-full bg-stone-900/78 px-3 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur">{reason}</div>}
+    <div className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[94] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-col items-center gap-1.5">
+      {!valid && reason && <div role="status" className="max-w-full break-words rounded-2xl bg-stone-900/78 px-3 py-1 text-center text-[11px] font-bold text-white shadow-lg backdrop-blur">{reason}</div>}
       {mode === 'placing' && (
-        <div className="rounded-full bg-stone-900/72 px-3 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur">
-          {busy ? 'Placing…' : 'Click a highlighted hex to place'}
+        <div className="max-w-full rounded-2xl bg-stone-900/72 px-3 py-1 text-center text-[11px] font-bold text-white shadow-lg backdrop-blur">
+          {busy ? 'Placing…' : 'Tap or click a highlighted hex to place'}
         </div>
       )}
       <div className="flex items-center gap-2 rounded-full border border-white/80 bg-white/92 p-2 shadow-2xl backdrop-blur-xl">

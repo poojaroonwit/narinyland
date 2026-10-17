@@ -69,8 +69,8 @@ export function HexExpansionController({
   const tierChoices = [1, 2, 3].map((tier) => snapshot.expansions.find((item) => item.tier === tier)).filter(Boolean) as typeof snapshot.expansions;
 
   return (
-    <div className="pointer-events-auto fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[94] w-[min(94vw,540px)] -translate-x-1/2 rounded-[1.55rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-amber-950/[0.08] backdrop-blur-xl">
-      <div className="flex items-start justify-between gap-3">
+    <div data-hex-expansion-panel="true" className="pointer-events-auto fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[94] max-h-[min(72dvh,calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-[min(94vw,540px)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[1.55rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-amber-950/[0.08] backdrop-blur-xl">
+      <div className="sticky -top-3.5 z-10 -mx-1 -mt-1 flex items-start justify-between gap-3 rounded-2xl bg-[#fffdf7]/96 px-1 py-2 backdrop-blur-xl">
         <div className="min-w-0 flex-1">
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-600">Grow your island</p>
           {!active ? (
@@ -94,7 +94,7 @@ export function HexExpansionController({
 
       {!active && (
         <div className="mt-3 space-y-2.5">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {tierChoices.map((choice) => {
               const tier = TIER_PRESENTATION[choice.tier] ?? TIER_PRESENTATION[1];
               const canAfford = snapshot.points >= choice.pointCost;

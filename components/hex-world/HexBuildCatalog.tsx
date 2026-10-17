@@ -38,7 +38,7 @@ export function HexBuildCatalog({ open, activeBuildingKey, onSelect, onClose }: 
 }) {
   if (!open) return null;
   return (
-    <aside className="pointer-events-auto fixed bottom-[calc(10.2rem+env(safe-area-inset-bottom))] left-1/2 z-[94] max-h-[54vh] w-[min(94vw,780px)] -translate-x-1/2 overflow-y-auto rounded-[1.55rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl">
+    <aside data-hex-gameplay-sheet="catalog" className="pointer-events-auto fixed bottom-[calc(10.2rem+env(safe-area-inset-bottom))] left-1/2 z-[94] max-h-[54vh] w-[min(94vw,780px)] -translate-x-1/2 overflow-y-auto rounded-[1.55rem] border border-white/80 bg-[#fffdf7]/96 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl">
       <div className="sticky top-0 z-10 -mx-1 -mt-1 mb-2 flex items-start justify-between gap-3 rounded-2xl bg-[#fffdf7]/96 px-1 pb-2 pt-1 backdrop-blur-xl">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-700">Build</p>

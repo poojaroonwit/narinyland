@@ -78,7 +78,7 @@ export function HexLivingActionPanel({
   };
 
   return (
-    <aside className="pointer-events-auto fixed bottom-[calc(11.6rem+env(safe-area-inset-bottom))] left-3 z-[92] max-h-[62vh] w-[min(94vw,410px)] overflow-y-auto rounded-[1.55rem] border border-white/75 bg-[#fffdf7]/92 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl md:bottom-[7rem] md:left-6">
+    <aside data-hex-gameplay-sheet="details" className="pointer-events-auto fixed bottom-[calc(11.6rem+env(safe-area-inset-bottom))] left-3 z-[92] max-h-[62vh] w-[min(94vw,410px)] overflow-y-auto rounded-[1.55rem] border border-white/75 bg-[#fffdf7]/92 p-3.5 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl md:bottom-[7rem] md:left-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.17em] text-emerald-700">Living Homestead</p>

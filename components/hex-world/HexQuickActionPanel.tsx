@@ -47,7 +47,7 @@ export function HexQuickActionPanel({ building, state, busy, onAction, onMore }:
   };
 
   return (
-    <aside className="pointer-events-auto fixed bottom-[calc(10.4rem+env(safe-area-inset-bottom))] left-1/2 z-[92] w-[min(92vw,420px)] -translate-x-1/2 rounded-[1.35rem] border border-white/80 bg-[#fffdf7]/94 p-3 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl">
+    <aside data-hex-gameplay-sheet="quick" className="pointer-events-auto fixed bottom-[calc(10.4rem+env(safe-area-inset-bottom))] left-1/2 z-[92] w-[min(92vw,420px)] -translate-x-1/2 rounded-[1.35rem] border border-white/80 bg-[#fffdf7]/94 p-3 shadow-2xl shadow-emerald-950/[0.08] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-700">Selected</p>
