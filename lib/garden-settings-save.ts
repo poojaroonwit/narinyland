@@ -1,4 +1,4 @@
-import type { AppConfig, Interaction, MemoryItem } from '@/types';
+import type { AppConfig } from '@/types';
 import { configAPI, couponsAPI, memoriesAPI, timelineAPI } from '@/services/api';
 
 // Config PUT intentionally excludes entity collections. Save them using their own
@@ -82,7 +82,7 @@ export async function saveGardenSettings(draft: AppConfig, previous: AppConfig):
   ]);
   return {
     ...freshConfig,
-    gallery: freshGallery.map((item: MemoryItem) => item),
-    timeline: freshTimeline.map((item: Interaction) => ({ ...item, timestamp: new Date(item.timestamp) })),
+    gallery: freshGallery,
+    timeline: freshTimeline.map((item) => ({ ...item, timestamp: new Date(item.timestamp) })),
   };
 }
