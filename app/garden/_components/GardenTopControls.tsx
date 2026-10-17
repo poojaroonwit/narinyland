@@ -27,6 +27,7 @@ export const GardenTopControls: React.FC = () => {
     setCircleMembers,
     isLandDropdownOpen,
     setIsLandDropdownOpen,
+    isSwitchingLand,
     isCircleDropdownOpen,
     setIsCircleDropdownOpen,
     isUserDropdownOpen,
@@ -101,7 +102,7 @@ export const GardenTopControls: React.FC = () => {
   const handleCreateLand = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = newLandName.trim();
-    if (!name || isCreatingLand || !activeCircleId) return;
+    if (!name || isCreatingLand || isSwitchingLand || !activeCircleId) return;
 
     setIsCreatingLand(true);
     try {
@@ -130,6 +131,7 @@ export const GardenTopControls: React.FC = () => {
   };
 
   const selectLand = async (landId: string) => {
+    if (isSwitchingLand || isCreatingLand) return;
     setIsLandDropdownOpen(false);
     try {
       await handleSelectLand(landId);
@@ -243,8 +245,9 @@ export const GardenTopControls: React.FC = () => {
             onClick={toggleLandDropdown}
             className="cozy-float flex h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-[#51483d] transition-colors hover:bg-[#f2ebdf] sm:px-4"
             aria-expanded={isLandDropdownOpen}
+            disabled={isSwitchingLand || isCreatingLand}
           >
-            <i className="fas fa-map-marked-alt text-xs text-[#8f7952]" />
+            <i className={`fas ${isSwitchingLand ? 'fa-spinner fa-spin' : 'fa-map-marked-alt'} text-xs text-[#8f7952]`} />
             <span className="max-w-[68px] truncate text-xs font-semibold sm:max-w-[100px] md:max-w-[140px]">{activeLand?.name || 'Select Land'}</span>
             <i className={`fas fa-chevron-down text-[10px] opacity-40 transition-transform ${isLandDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -268,12 +271,12 @@ export const GardenTopControls: React.FC = () => {
                     maxLength={40}
                     placeholder={activeCircleId ? 'New land' : 'Select world first'}
                     aria-label="New land name"
-                    disabled={!activeCircleId || isCreatingLand}
+                    disabled={!activeCircleId || isCreatingLand || isSwitchingLand}
                     className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs font-bold text-gray-700 outline-none placeholder:text-amber-300"
                   />
                   <button
                     type="submit"
-                    disabled={!activeCircleId || !newLandName.trim() || isCreatingLand}
+                    disabled={!activeCircleId || !newLandName.trim() || isCreatingLand || isSwitchingLand}
                     className="cozy-button-primary h-9 w-9 shrink-0 rounded-xl transition-colors"
                     aria-label="Create land"
                   >
@@ -285,6 +288,7 @@ export const GardenTopControls: React.FC = () => {
                     <button
                       type="button"
                       key={land.id}
+                      disabled={isSwitchingLand || isCreatingLand}
                       onClick={() => selectLand(land.id)}
                       className={`flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-xs font-semibold transition-colors ${land.id === activeLand?.id ? 'bg-[#54725b] text-white' : 'text-[#665c50] hover:bg-[#eff1e7] hover:text-[#476b55]'}`}
                     >

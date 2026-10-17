@@ -132,6 +132,10 @@ const Home: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'quests' | 'timeline' | 'coupons' | 'letters' | 'shop'>('home'); // Add activeTab state
   const [worldMode, setWorldMode] = useState<'tree' | 'globe'>('globe');
   const [isLandDropdownOpen, setIsLandDropdownOpen] = useState(false);
+  const [isSwitchingLand, setIsSwitchingLand] = useState(false);
+  const landSwitchBusyRef = React.useRef(false);
+  const activeCircleIdRef = React.useRef(activeCircleId);
+  activeCircleIdRef.current = activeCircleId;
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedFlagItem, setSelectedFlagItem] = useState<Interaction | null>(null);
@@ -229,33 +233,35 @@ const Home: React.FC = () => {
   }, []);
 
   const handleSelectLand = async (landId: string) => {
-    setAppConfig(prev => ({
-      ...prev,
-      lands: prev.lands?.map(l => ({
-        ...l,
-        isActive: l.id === landId
-      }))
-    }));
+    if (landSwitchBusyRef.current || !activeCircleId || !appConfig.lands?.some(land => land.id === landId)) return;
+    if (appConfig.lands.some(land => land.id === landId && land.isActive)) {
+      setIsLandDropdownOpen(false);
+      return;
+    }
+    landSwitchBusyRef.current = true;
+    setIsSwitchingLand(true);
+    const requestedCircleId = activeCircleId;
     setIsLandDropdownOpen(false);
-
     try {
+      // Do not render the destination land until the server confirms the
+      // selection. Serializing switches also prevents out-of-order responses.
       const activeLand = await landsAPI.setActive(landId);
+      if (activeCircleIdRef.current !== requestedCircleId) return;
       setAppConfig(prev => ({
         ...prev,
-        lands: prev.lands?.map(l => l.id === activeLand.id ? activeLand : { ...l, isActive: false })
+        lands: prev.lands?.map(land => land.id === activeLand.id
+          ? { ...land, ...activeLand, isActive: true }
+          : { ...land, isActive: false }),
       }));
     } catch (err: unknown) {
-      console.error('Failed to activate land:', getErrorMessage(err));
-      showToast(`Could not switch land: ${getErrorMessage(err)}`);
-      try {
-        const serverConfig = await configAPI.get();
-        setAppConfig(prev => ({
-          ...prev,
-          lands: serverConfig.lands || prev.lands,
-        }));
-      } catch {
-        // Keep the optimistic UI if the config refresh also fails.
+      if (activeCircleIdRef.current === requestedCircleId) {
+        console.error('Failed to activate land:', getErrorMessage(err));
+        showToast(`Could not switch land: ${getErrorMessage(err)}`);
       }
+      // Keep the previously confirmed active land; never show an unconfirmed switch.
+    } finally {
+      landSwitchBusyRef.current = false;
+      setIsSwitchingLand(false);
     }
   };
 
@@ -271,6 +277,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     setConfigLoaded(false);
+    setLoadedCircleId(null);
     setConfigLoadError(null);
     setHasAcceptedProposal(false);
     const fetchData = async () => {
@@ -284,10 +291,12 @@ const Home: React.FC = () => {
           membersData
         ] = await Promise.all([
           configAPI.get(),
-          lettersAPI.list().catch(() => []),
-          timelineAPI.list().catch(() => []), 
-          memoriesAPI.list().catch(() => []),
-          statsAPI.get().catch(() => ({ xp: 0, level: 1, leaves: 0, points: 0 })),
+          // These are shared-world records. A failed request is not an empty
+          // collection: keep the world loading and offer Retry instead.
+          lettersAPI.list(),
+          timelineAPI.list(),
+          memoriesAPI.list(),
+          statsAPI.get(),
           activeCircleId ? circlesAPI.listMembers(activeCircleId).catch(() => ({ members: [] })) : Promise.resolve({ members: [] })
         ]);
 
@@ -481,7 +490,7 @@ const Home: React.FC = () => {
   const daysTogether = Math.max(0, Math.floor((new Date().getTime() - new Date(appConfig.anniversaryDate).getTime()) / (1000 * 60 * 60 * 24)));
   const flowerCount = Math.floor(daysTogether / appConfig.daysPerFlower);
 
-  const gardenContext = { user, logout, authLoading, circles, activeCircleId, setActiveCircle, refreshUser, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, confirmPrompt, answerConfirmPrompt, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded: worldReady, setConfigLoaded, configLoadError, retryConfigLoad, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount };
+  const gardenContext = { user, logout, authLoading, circles, activeCircleId, setActiveCircle, refreshUser, hasAcceptedProposal, setHasAcceptedProposal, isLetterOpen, setIsLetterOpen, isEditDrawerOpen, setIsEditDrawerOpen, isSpreadsheetOpen, setIsSpreadsheetOpen, isStatsGuideOpen, setIsStatsGuideOpen, isVolumeModalOpen, setIsVolumeModalOpen, musicVolume, setMusicVolume, isMusicPlaying, setIsMusicPlaying, isMusicMuted, setIsMusicMuted, isMobile, deferredPrompt, setDeferredPrompt, isUserProfileModalOpen, setIsUserProfileModalOpen, showInstallPrompt, setShowInstallPrompt, toast, setToast, showToast, confirmPrompt, answerConfirmPrompt, petEmotion, setPetEmotion, petMessage, setPetMessage, loveStats, setLoveStats, loveLetters, setLoveLetters, appConfig, setAppConfig, handleSetAppConfig, circleMembers, setCircleMembers, activePartners, galleryViewMode, setGalleryViewMode, activeTab, setActiveTab, worldMode, setWorldMode, isLandDropdownOpen, setIsLandDropdownOpen, isSwitchingLand, isCircleDropdownOpen, setIsCircleDropdownOpen, isUserDropdownOpen, setIsUserDropdownOpen, selectedFlagItem, setSelectedFlagItem, isEditMode, setIsEditMode, configLoaded: worldReady, setConfigLoaded, configLoadError, retryConfigLoad, closeFloatingPanels, toggleVolumePanel, toggleCircleDropdown, toggleLandDropdown, switchTab, handleSelectLand, handleInstallApp, addXP, handleAddLeaf, handleProposalStepChange, handleProposalAccepted, handleRedeemCoupon, handleAddCoupon, handleDeleteCoupon, handleSendMessage, handleUpdateMessage, handleUpdateTimeline, handleAddTimeline, handleDeleteTimeline, handleMassTimelineUpdate, combinedInteractions, handleTimelineConfigUpdate, daysTogether, flowerCount };
 
   return (
     <GardenPageProvider value={gardenContext}>

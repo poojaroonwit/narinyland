@@ -18,7 +18,7 @@ interface LoveLetterProps {
   isOpen: boolean;
   onClose: () => void;
   messages: LoveLetterMessage[];
-  onSendMessage: (msg: LoveLetterMessage) => void;
+  onSendMessage: (msg: LoveLetterMessage) => Promise<boolean>;
   onUpdateMessage?: (msg: LoveLetterMessage) => void;
   partners: Partners;
   isInline?: boolean;
@@ -45,6 +45,9 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
   const [composeDate, setComposeDate] = useState(new Date().toISOString().slice(0, 16));
   const [composeMedia, setComposeMedia] = useState<MediaContent | undefined>(undefined);
   const [isRecording, setIsRecording] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const sendingRef = useRef(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -117,24 +120,44 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
     }
   };
 
-  const handleSend = () => {
-    if (!composeContent.trim() && !composeMedia) return;
-
+  const handleSend = async () => {
+    if (sendingRef.current || (!composeContent.trim() && !composeMedia)) return;
+    const unlockDate = new Date(composeDate);
+    if (Number.isNaN(unlockDate.getTime())) {
+      setSendError('Choose a valid unlock date.');
+      return;
+    }
     const newMessage: LoveLetterMessage = {
       id: Date.now().toString(),
       fromId: composeFrom,
       content: composeContent,
       timestamp: new Date(),
-      unlockDate: new Date(composeDate),
+      unlockDate,
       isRead: false,
-      media: composeMedia
+      media: composeMedia,
     };
 
-    onSendMessage(newMessage);
-    setView('list');
-    setComposeContent('');
-    setComposeMedia(undefined);
-    setComposeDate(new Date().toISOString().slice(0, 16));
+    sendingRef.current = true;
+    setIsSending(true);
+    setSendError('');
+    try {
+      const saved = await onSendMessage(newMessage);
+      if (!saved) {
+        setSendError('This letter was not saved. Your draft is still here.');
+        return;
+      }
+      if (composeMedia?.url.startsWith('blob:')) URL.revokeObjectURL(composeMedia.url);
+      setView('list');
+      setComposeContent('');
+      setComposeMedia(undefined);
+      setComposeDate(new Date().toISOString().slice(0, 16));
+    } catch (error) {
+      console.error('Could not deliver letter:', error);
+      setSendError('Could not send. Your draft is still here.');
+    } finally {
+      sendingRef.current = false;
+      setIsSending(false);
+    }
   };
 
   const getPartnerName = (id: string) => id === 'partner1' ? partners.partner1.name : partners.partner2.name;
@@ -382,11 +405,12 @@ const LoveLetter: React.FC<LoveLetterProps> = ({
 
                  <button 
                    onClick={handleSend}
-                   disabled={!composeContent.trim() && !composeMedia}
+                   disabled={isSending || (!composeContent.trim() && !composeMedia)}
                    className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-md shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-widest text-sm"
                  >
-                   Seal & Send 📮
+                   {isSending ? 'Sending…' : 'Seal & Send 📮'}
                  </button>
+                 {sendError && <p role="alert" className="text-center text-xs font-medium text-red-600">{sendError}</p>}
               </div>
             )}
 

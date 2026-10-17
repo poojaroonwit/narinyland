@@ -193,6 +193,7 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
     }
     // The reward does not depend on the optional timeline entry succeeding.
     if (redeemed) await addXP();
+    return redeemed;
   };
 
   const handleAddCoupon = async (data: {
@@ -250,7 +251,10 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
           const ext = msg.media.type === 'image' ? 'jpg' : msg.media.type === 'video' ? 'mp4' : 'ogg';
           file = new File([blob], `letter-media.${ext}`, { type: blob.type });
         } catch (error) {
+          // Never quietly deliver a text-only letter when an attachment failed.
+          // The composer retains the draft and media so the user can retry.
           console.error('Failed to process media blob:', error);
+          throw new Error('Could not prepare the attached media.');
         }
       }
 
@@ -303,6 +307,7 @@ export const useGardenActions = (ctx: GardenActionsContext) => {
         setLoveLetters((prev) => prev.filter((letter) => letter.id !== msg.id));
       }
     }
+    return letterSaved;
   };
 
   const handleUpdateMessage = async (msg: LoveLetterMessage) => {
